@@ -200,6 +200,27 @@ class ParamBucket(BaseModel):
     avg_converted: float | None = None
 
 
+# 0.15.0 — distribution par valeur d'un paramètre
+# ---------------------------------------------------------
+# Pour un paramètre numérique (unit_converted non null), on groupe par
+# (value_raw, value_converted) et on trie par value_converted ascendant
+# (float). Pour un paramètre enum (unit_converted null), on groupe par
+# value_raw et on trie alpha ascendant ; value_converted est null.
+# Si le nombre de valeurs numériques distinctes dépasse
+# `VALUE_DISTRIBUTION_BINNING_THRESHOLD` (100), on binne par pas régulier
+# (1 unité dans l'unité convertie, ex. 1 dBm pour rsrp) : value_raw et
+# value_converted portent la borne `[lo, hi)` et `mode = "binned"` au
+# niveau de l'item. Sinon `mode = "exact"`. Aucune invention : si la
+# valeur n'est pas en base, elle n'apparaît pas.
+class ValueBucket(BaseModel):
+    value_raw: str
+    value_converted: str | None = None
+    count: int = Field(ge=0)
+
+
+ValueDistributionMode = Literal["exact", "binned"]
+
+
 class ParamRow(BaseModel):
     system: Literal["LTE", "NR"]
     message: str
@@ -207,6 +228,9 @@ class ParamRow(BaseModel):
     count: int = Field(ge=0)
     unit_converted: str | None = None
     buckets: list[ParamBucket]
+    # 0.15.0 — ajout non-breaking : distribution par valeur du paramètre.
+    value_distribution: list[ValueBucket] = Field(default_factory=list)
+    value_distribution_mode: ValueDistributionMode = "exact"
 
 
 class ParamListV2(BaseModel):

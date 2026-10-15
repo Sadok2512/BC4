@@ -14,7 +14,7 @@ from app.routes import (
     settings as settings_routes,
 )
 
-app = FastAPI(title="bc4-back", version="0.14.0")
+app = FastAPI(title="bc4-back", version="0.15.0")
 
 # CORS (B2 / P1-1) : origines PILOTÉES par `BC4_CORS_ORIGINS` (jamais en
 # dur), méthodes/en-têtes explicites pour les uploads multipart
@@ -37,7 +37,7 @@ app.add_middleware(
 def health() -> dict[str, str]:
     with engine.connect() as conn:
         conn.execute(text("SELECT 1"))
-    return {"status": "ok", "env": settings.env, "version": "0.14.0"}
+    return {"status": "ok", "env": settings.env, "version": "0.15.0"}
 
 
 app.include_router(auth.router)

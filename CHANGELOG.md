@@ -2,6 +2,81 @@
 
 Versions SemVer. Type de bump: `patch` / `minor` / `major`. Un écart se ferme ou se déclare ouvert, jamais expliqué par hypothèse.
 
+## 0.15.0 — 2026-10-15 (minor) — `value_distribution` sur `/dict/params`
+
+> Bump **minor** : ajout d'un champ au contrat API. **Non-breaking**
+> côté front — le front `1.8.0` ignore simplement le champ supplémentaire
+> (`.optional()` / `.passthrough()` côté Zod) jusqu'au lot `1.8.1` qui
+> l'exposera dans le panneau « Distribution des valeurs ».
+> Garde G16 (G13/G14/G15 pris).
+
+### Ajouté
+- Champ **`value_distribution`** sur chaque élément de la réponse de
+  `GET /projects/{id}/dict/params?system=…` :
+  ```
+  value_distribution: list[ValueBucket]
+  ValueBucket = {value_raw: str, value_converted: str | None, count: int}
+  ```
+  Fournit la distribution par valeur du paramètre lui-même (le champ
+  `buckets` existant — opérateur × bande — reste INTACT).
+- Champ meta **`value_distribution_mode`** (`"exact" | "binned"`) :
+  signale explicitement si la distribution est binnée (quand le nombre
+  de valeurs distinctes dépasse `VALUE_DISTRIBUTION_BINNING_THRESHOLD = 100`,
+  binning par pas `BIN_WIDTH = 1` dans l'unité convertie). Sur TEST2, le
+  domaine 3GPP typique (`rsrpResult`: 0..97) est en-dessous du seuil →
+  mode `"exact"` partout en pratique ; le code supporte le binning pour
+  les futurs paramètres à large domaine.
+- Nouveau module **`app/dict/queries.py`** : `compute_value_distribution`
+  (requête + binning + tri). Signature :
+  `(db, project_id, system, message?, path, operator?, band?)` →
+  `(items, mode)`. Les filtres restreignent la requête AVANT agrégation
+  (pas de pré-calcul global écrasé).
+- Schéma Pydantic **`ValueBucket`** dans `app/schemas/dictionary.py` +
+  champ `value_distribution: list[ValueBucket]` et
+  `value_distribution_mode: ValueDistributionMode` sur `ParamRow`.
+
+### Règles d'agrégation
+- **Numérique** (`unit_converted` non null, règle 3GPP connue —
+  `rsrpResult`, `rsrqResult`, `q-RxLevMin`, `a3-Offset`, `threshold-RSRP`,
+  `s-Measure`, variantes NR) :
+  `GROUP BY value_raw, value_converted`, tri par `value_converted`
+  **cast en float ascendant** (jamais trié comme string si c'est un nombre).
+  Si une occurrence porte une valeur hors domaine 3GPP (non convertible),
+  elle est intégrée en queue avec `value_converted=null` plutôt que
+  silencieusement perdue.
+- **Enum / CHOICE** (`unit_converted` null, ex. `dl-Bandwidth` → `n50`
+  `n75` `n100`) : `GROUP BY value_raw`, tri alpha ascendant,
+  `value_converted=null` partout.
+- **0 occurrence** → `value_distribution = []`. Aucune invention de
+  valeur (règle « par le contenu, jamais par l'étiquette »).
+
+### Garde manuelle
+- `scripts/g16_value_distribution.sh` : rebuild API → pytest G16.
+- `tests/test_g16_value_distribution.py` : 5 vérifications
+  (distribution non vide, somme = count, formule `idx-141` pour
+  `rsrpResult`, enum avec `value_converted=null`, filtre `operator=Orange`
+  restrictif, préservation des buckets op × band).
+
+### Versioning
+- `pyproject.toml`, `app/main.py`, `tests/test_g1_boot.py` : **0.15.0**.
+- `/health` : `0.15.0`.
+
+### Écarts ouverts
+- **Filtres `dr` / `plaque` / `arcep`** : toujours pas câblés sur
+  `/dict/params` (idem 0.13.0). Le champ `value_distribution` respecte
+  les filtres qui existent (`system`, `message`, `operator`, `band`) ;
+  l'ajout des filtres géo côté dict reste un lot séparé.
+- **Binning jamais déclenché en pratique** sur TEST2 : les 53 valeurs
+  distinctes de `rsrpResult` LTE restent sous le seuil 100. Le code est
+  testé par le chemin « exact » ; le chemin « binned » n'a de garde
+  qu'en lecture de code (CHANGELOG explicite au cas où un paramètre
+  futur dépasse le seuil).
+- **Résidu non convertible en queue de distribution numérique** : si
+  pycrate remonte une valeur hors domaine 3GPP (ex. `rsrpResult = 200`
+  issu d'un bug amont), la valeur apparaît dans `value_distribution`
+  avec `value_converted=null` au lieu d'être muette. Choix explicite
+  pour cohérence `sum(count) == row.count`.
+
 ## 0.14.0 — 2026-10-15 (minor) — Fix mirror captures + PLMN non catalogué visible + bc4-enrich 1.2.0
 
 > Lot chaîné avec **bc4-enrich 1.2.0** (table PLMN étendue aux MVNO FR

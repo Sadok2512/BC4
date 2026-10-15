@@ -49,7 +49,9 @@ from app.schemas.dictionary import (
     ParamMapPoint,
     ParamMapV2,
     ParamRow,
+    ValueBucket,
 )
+from app.dict.queries import compute_value_distribution
 from app.services.dict_service import (
     build_dict_project,
     build_dict_tree,
@@ -253,6 +255,18 @@ def _build_param_list_v2(
 
     out: list[ParamRow] = []
     for r in main_rows:
+        # 0.15.0 — distribution par valeur du paramètre (filtres opérateur
+        # / bande / message RÉinjectés pour que la distribution respecte
+        # strictement le périmètre affiché).
+        vd_items, vd_mode = compute_value_distribution(
+            db,
+            project_id=project_id,
+            system=system,
+            message=r.message,
+            path=r.path,
+            operator=operator,
+            band=band,
+        )
         out.append(
             ParamRow(
                 system=r.system,  # type: ignore[arg-type]
@@ -261,6 +275,8 @@ def _build_param_list_v2(
                 count=int(r.n),
                 unit_converted=r.unit_converted,
                 buckets=buckets_by_key.get((r.system, r.message, r.path), []),
+                value_distribution=[ValueBucket(**item) for item in vd_items],
+                value_distribution_mode=vd_mode,  # type: ignore[arg-type]
             )
         )
     return ParamListV2(params=out)
