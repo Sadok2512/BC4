@@ -1,0 +1,10 @@
+[project]
+name = "bc4-back"
+version = "0.13.0"
+description = "BC4 backend FastAPI — B2 (auth comptes locaux)"
+requires-python = ">=3.10"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra -q"
+asyncio_mode = "auto"
