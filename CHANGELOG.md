@@ -2,6 +2,67 @@
 
 Versions SemVer. Type de bump: `patch` / `minor` / `major`. Un écart se ferme ou se déclare ouvert, jamais expliqué par hypothèse.
 
+## 0.14.0 — 2026-10-15 (minor) — Fix mirror captures + PLMN non catalogué visible + bc4-enrich 1.2.0
+
+> Lot chaîné avec **bc4-enrich 1.2.0** (table PLMN étendue aux MVNO FR
+> + `ctx["operator_by_plmn"]`). Garde G15 (G13/G14 sont pris par les
+> lots périmètre et dictionnaire).
+
+### Corrigé
+- **Bug mirror captures** (`app/ingest/nmf.py`, ex-ligne 730) :
+  `if project.n_captures_ingest is not None:` écrasait silencieusement
+  `project.captures` par 0 au prochain `refresh_project_summary`
+  sur un projet seedé B0 (`n_captures_ingest = 0`, pas None). Les 6
+  projets seedés (Paris 2.4M, Lyon 850k, Marseille 1.2M, Rennes 410k,
+  Benchmark 5.8M, Tests Indoor 320k) perdaient leurs captures seedés
+  au premier refresh déclenché. **Garde** : `n_captures_ingest > 0`.
+  Même garde appliquée à `scripts/mirror_ingest_to_b0.py`.
+- **PLMN non catalogué invisible** (`app/ingest/nmf.py`,
+  section post-enrich) : un PLMN SIB1 non catalogué remontait dans
+  `operators_plmn` mais pas dans `project.operators` → disparition
+  silencieuse en N/D côté front. Désormais, chaque PLMN non mappé
+  émet une entrée explicite `"PLMN <id> (non catalogué)"` dans
+  `project.operators`. Format partagé avec le front
+  (`OperatorChip` 1.6.0 : couleur slate neutre pour toute étiquette
+  hors des 4 MNO). Les MVNO FR reconnus en 1.2.0 (Lyca, Lebara, …)
+  sortent avec leur marque, pas en « non catalogué ».
+
+### Ajouté
+- `scripts/re_refresh_after_plmn_extension.py` : one-shot idempotent
+  qui itère sur TOUS les projets avec `status_ingest NOT NULL` et
+  appelle `refresh_project_summary`. Rapporte les deltas
+  `(captures_before, captures_after)` et `(operators_before,
+  operators_after)` par projet. Captures seedés **inchangés** (grâce
+  à la garde `> 0`).
+- `scripts/g15_mirror_plmn.sh` + `tests/test_g15_mirror_plmn.py` :
+  garde manuelle qui vérifie :
+  (a) refresh d'un projet seedé B0 ne touche PAS `captures` ;
+  (b) MVNO mappé (`20825` → « Lyca Mobile ») sort via
+      `ctx["operator_by_plmn"]` ;
+  (c) PLMN inconnu (`20899`) sort en `"PLMN 20899 (non catalogué)"`
+      dans `project.operators` (plus en N/D silencieux) ;
+  (d) TEST2 reste à 9 captures, operators
+      `["Bouygues","Free","Orange"]`.
+
+### Versions tierces chaînées
+- `bc4-enrich` : **1.1.0 → 1.2.0** (table PLMN étendue + nouveau
+  champ `operator_by_plmn`). Déployé à `/opt/nmf_decoder` via
+  bind-mount read-only — rebuild `api` nécessaire pour que le
+  module soit rechargé (sinon le binding Python conserve la 1.1.0
+  en cache). Voir `/home/devmat/BC4/decoder/CHANGELOG.md`.
+
+### Écarts ouverts
+- **20888** (Bouygues) : hérité de la table 1.0.0. Pas d'audit ANFR
+  frais fait dans ce lot — déclaration maintenue, pas vérifiée.
+- **20831** (Oracle Communications / ex-Mundio Mobile) : attribution
+  GSMA, pas trouvée dans la vue ANFR directe en 2024-2026. Si une
+  SIB1 réelle remonte `20831`, confirmer avant d'y faire reposer
+  une décision pilotage.
+- **Sous-marques invisibles** : Sosh / RED by SFR / B&You partagent
+  le PLMN parent — une capture Sosh sortira « Orange ». C'est
+  conforme à la règle « 4 MNO propres » ; un besoin de distinction
+  sous-marque demanderait une couche IE séparée (hors scope).
+
 ## 0.13.0 — 2026-10-15 (minor) — Dictionnaire complet RRC LTE+NR (`param_occurrence`)
 
 > Lot « dictionnaire » prévu initialement à 0.12.0. **Collision de version**

@@ -47,7 +47,14 @@ def mirror_one(project: Project) -> dict[str, Any]:
     """
     changes: dict[str, Any] = {}
 
-    if project.n_captures_ingest is not None and project.captures != project.n_captures_ingest:
+    # Fix 0.14.0 : miroir seulement si n_captures_ingest > 0.
+    # Un projet seedé B0 sans NMF réellement ingéré a
+    # n_captures_ingest=0 — on NE DOIT PAS écraser son `captures` seedé.
+    if (
+        project.n_captures_ingest is not None
+        and project.n_captures_ingest > 0
+        and project.captures != project.n_captures_ingest
+    ):
         changes["captures"] = (project.captures, project.n_captures_ingest)
         project.captures = project.n_captures_ingest
 

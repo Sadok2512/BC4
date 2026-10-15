@@ -684,10 +684,29 @@ def refresh_project_summary(db: Session, project: Project) -> None:
     enrich = _detect_enrich_context(db, project.id)
     if enrich["technos"]:
         project.technologies = enrich["technos"]
-    if enrich["operators"]:
-        project.operators = enrich["operators"]
     if enrich["bands"]:
         project.bands = enrich["bands"]
+    # ----------------------------------------------------------------
+    # Opérateurs (0.14.0, bc4-enrich 1.2.0) : doctrine « opérateur =
+    # PLMN primaire du SIB1 ». Seuls les 11 PLMN MNO FR (Orange, SFR,
+    # Bouygues, Free) sortent avec leur marque via
+    # `operator_by_plmn`. Un PLMN hors table (MVNO, DOM-TOM, réseau
+    # privé…) doit rester VISIBLE comme "PLMN <id> (non catalogué)"
+    # plutôt que de disparaître en N/D. Format partagé avec le front
+    # (OperatorChip 1.6.0 : couleur slate pour toute étiquette hors
+    # des 4 MNO).
+    # ----------------------------------------------------------------
+    plmns_seen = list(enrich.get("plmns") or [])
+    if plmns_seen:
+        op_by_plmn = enrich.get("operator_by_plmn") or {}
+        labels: list[str] = []
+        for plmn in plmns_seen:
+            op = op_by_plmn.get(plmn)
+            if op is not None:
+                labels.append(op)
+            else:
+                labels.append(f"PLMN {plmn} (non catalogué)")
+        project.operators = sorted(set(labels))
     # operators_plmn : dict {plmn: 1} pour trace ; vide si aucun SIB1 décodé.
     project.operators_plmn = {p: 1 for p in enrich["plmns"]} or (project.operators_plmn or {})
 
@@ -727,7 +746,13 @@ def refresh_project_summary(db: Session, project: Project) -> None:
     #                      geocoding des `stg_event.lat/lon`, hors
     #                      scope de ce patch — écart ouvert déclaré).
     # ---------------------------------------------------------------
-    if project.n_captures_ingest is not None:
+    # Mirror B1-ingest → B0 (fix bug 0.14.0) : `n_captures_ingest > 0`
+    # au lieu de `is not None`. Un projet seedé B0 sans fichier NMF
+    # ingéré a `n_captures_ingest = 0` (initialisé par la 1re ingestion
+    # avortée ou par une migration), mais ses `captures` seedés (ex.
+    # Paris 2.4M) doivent rester intacts. L'ancienne garde écrasait
+    # `captures` à 0 au prochain `refresh_project_summary`.
+    if project.n_captures_ingest is not None and project.n_captures_ingest > 0:
         project.captures = project.n_captures_ingest
     if isinstance(project.technos_seen, dict) and project.technos_seen:
         _ZOD_TECHS = {"LTE", "NR", "EN-DC"}

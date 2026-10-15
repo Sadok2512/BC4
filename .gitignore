@@ -1,35 +1,32 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-*.egg-info/
-.pytest_cache/
-
-# Virtual envs
-.venv/
-venv/
-env/
-
-# Secrets & env
-.env
-.env.local
-*.pem
-*.key
-
-# Postgres & local DB artefacts
-*.pgdata
-pgdata/
-bc4_pgdata/
-
-# IDE / OS
-.vscode/
-.idea/
-.DS_Store
-Thumbs.db
 
 # Build
-dist/
-build/
+# IDE / OS
+# Postgres & local DB artefacts
+# Python
+# Secrets & env
+# Virtual envs
+*$py.class
+*.egg-info/
+*.key
 *.log
+*.pem
+*.pgdata
+*.py[cod]
+*.so
+.DS_Store
+.Python
+.env
+.env.local
+.idea/
+.pytest_cache/
+.venv/
+.vscode/
+Thumbs.db
+__pycache__/
+bc4.db
+bc4_pgdata/
+build/
+dist/
+env/
+pgdata/
+venv/

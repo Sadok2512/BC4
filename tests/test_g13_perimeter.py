@@ -62,7 +62,9 @@ def _encode_lte_sib1(mcc, mnc, cell_id_int: int) -> str:
 def test_enrich_v11_exposes_cells():
     import bc4_enrich
 
-    assert bc4_enrich.__version__ == "bc4-enrich 1.1.0"
+    # 1.1.0+ : la clé `cells` doit être présente (1.2.0 chaîne et étend
+    # la table PLMN, mais la sortie `cells` reste la même).
+    assert bc4_enrich.__version__ >= "bc4-enrich 1.1.0", bc4_enrich.__version__
     hex_payload = _encode_lte_sib1([2, 0, 8], [0, 1], 41000001)
     events = [
         {
