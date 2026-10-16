@@ -111,12 +111,13 @@
       "nature": "Métrique mesurée",
       "family": "Latence",
       "aliases": [],
-      "formula": null,
-      "source": "(indisponible : règle non définie)",
-      "unit": null,
+      "formula": "percentile_cont sur measurement_points.latency (tous opérateurs)",
+      "source": "measurement_points.latency (DAA/DCOMP-derived)",
+      "unit": "ms",
       "available_check": {
-        "kind": "always_unavailable",
-        "reason": "métrique mesurée AGG_APP_LATENCY sans mapping prouvé côté décodeur."
+        "kind": "mp_metric",
+        "arg": "latency",
+        "reason_if_null": "measurement_points.latency NULL partout — latence pas encore extraite des events data_* (écart 0.24.0)."
       },
       "service_scope": [
         "HTTP_DOWNLOAD",

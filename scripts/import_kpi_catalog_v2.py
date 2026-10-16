@@ -390,6 +390,28 @@ def _enrich(code: str, name: str, techno: str, nature: str, family: str) -> dict
             enriched["service_scope"] = list(_SERVICE_DATA)
             return enriched
 
+        # Agrégat latence applicative — mp.latency (non peuplée dans
+        # le corpus actuel ; déclarée PENDING avec source visible, pas
+        # UNAVAILABLE : la règle est bien câblée, c'est la colonne qui
+        # attend le mapping DAA/DCOMP).
+        if code == "AGG_APP_LATENCY":
+            enriched["unit"] = "ms"
+            enriched["source"] = "measurement_points.latency (DAA/DCOMP-derived)"
+            enriched["formula"] = (
+                "percentile_cont sur measurement_points.latency "
+                "(tous opérateurs)"
+            )
+            enriched["available_check"] = {
+                "kind": "mp_metric",
+                "arg": "latency",
+                "reason_if_null": (
+                    "measurement_points.latency NULL partout — latence "
+                    "pas encore extraite des events data_* (écart 0.24.0)."
+                ),
+            }
+            enriched["service_scope"] = list(_SERVICE_DATA)
+            return enriched
+
         # Latences : colonnes non peuplées.
         if suffix in _LATENCY_CODES:
             col = "latency"
