@@ -34,7 +34,10 @@ from app.schemas.settings import (
     UserCreate,
     UsersResponse,
 )
+from app.schemas.llm import LlmSettings, LlmSettingsInput, LlmTestResult
 from app.services.auth import hash_password
+from app.services.llm_client import probe_llm
+from app.services.llm_crypto import LlmCryptoError, encrypt_key, get_row
 
 
 # Reverse mapping Zod (admin|editor|viewer) → DB FR (admin|ingenieur|lecteur)
@@ -311,3 +314,112 @@ def put_ai_config(actor: Actor = Depends(get_actor)) -> dict:
         "code": "NOT_IMPLEMENTED",
         "message": "Config IA — écart ouvert B0 (voir CHANGELOG)",
     })
+
+
+# ----- LLM config (0.16.0) -----
+# Admin-only. `api_key` chiffrée au repos (Fernet) ; jamais renvoyée
+# en clair, jamais loggée. GET expose `api_key_set` (bool) uniquement.
+def _llm_response(row) -> LlmSettings:
+    return LlmSettings(
+        provider=row.provider,
+        base_url=row.base_url,
+        model=row.model,
+        enabled=row.enabled,
+        api_key_set=bool(row.api_key_cipher),
+        temperature=row.temperature,
+        max_tokens=row.max_tokens,
+        updated_at=row.updated_at.replace(microsecond=0).isoformat().replace("+00:00", "Z")
+        if row.updated_at
+        else None,
+        model_loop=row.model_loop or "",
+        daily_cap_usd=row.daily_cap_usd,
+    )
+
+
+@router.get("/llm", response_model=LlmSettings)
+def get_llm_settings(
+    actor: Actor = Depends(get_actor), db: Session = Depends(get_db)
+) -> LlmSettings:
+    require_role(actor, "admin")
+    return _llm_response(get_row(db))
+
+
+@router.put("/llm", response_model=LlmSettings)
+def put_llm_settings(
+    body: LlmSettingsInput,
+    actor: Actor = Depends(get_actor),
+    db: Session = Depends(get_db),
+) -> LlmSettings:
+    require_role(actor, "admin")
+    row = get_row(db)
+
+    if body.provider is not None:
+        row.provider = body.provider.strip()
+    if body.base_url is not None:
+        row.base_url = body.base_url.strip()
+    if body.model is not None:
+        row.model = body.model.strip()
+    if body.enabled is not None:
+        row.enabled = body.enabled
+    if body.temperature is not None:
+        row.temperature = body.temperature
+    if body.max_tokens is not None:
+        row.max_tokens = body.max_tokens
+    # 0.27.0 — maîtrise des coûts
+    if body.model_loop is not None:
+        row.model_loop = body.model_loop.strip() or None
+    if body.daily_cap_usd is not None:
+        row.daily_cap_usd = body.daily_cap_usd
+
+    # api_key: None = untouched, "" = clear, non-empty = encrypt + store.
+    if body.api_key is not None:
+        if body.api_key == "":
+            row.api_key_cipher = None
+        else:
+            try:
+                row.api_key_cipher = encrypt_key(body.api_key)
+            except LlmCryptoError as exc:
+                # Fail fast rather than storing cleartext in disguise.
+                raise HTTPException(
+                    400,
+                    {"code": "LLM_CRYPTO", "message": str(exc), "field": "api_key"},
+                ) from exc
+
+    row.updated_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(row)
+    return _llm_response(row)
+
+
+@router.get("/llm/usage")
+def get_llm_usage(
+    actor: Actor = Depends(get_actor), db: Session = Depends(get_db)
+) -> dict:
+    """0.27.0 — Dépense LLM du jour UTC + breakdown par modèle.
+
+    Admin-only. Retourne `{date, spent_today_usd, by_model[...]}`.
+    Les coûts sont ESTIMÉS (table PRICING en code) — à auditer vs la
+    facture provider si écart.
+    """
+    require_role(actor, "admin")
+    from app.assistant.budget import usage_summary
+    summary = usage_summary(db)
+    row = get_row(db)
+    summary["cap_usd"] = row.daily_cap_usd
+    if row.daily_cap_usd:
+        summary["remaining_usd"] = max(0.0, row.daily_cap_usd - summary["spent_today_usd"])
+    else:
+        summary["remaining_usd"] = None
+    return summary
+
+
+@router.post("/llm/test", response_model=LlmTestResult)
+def test_llm_connection(
+    actor: Actor = Depends(get_actor), db: Session = Depends(get_db)
+) -> LlmTestResult:
+    """Probe la config LLM courante : un chat completion `max_tokens=1`.
+    Admin-only. Jamais 5xx (le détail d'échec est dans `message`,
+    jamais la clé en clair)."""
+    require_role(actor, "admin")
+    ok, model, latency_ms, err = probe_llm(db)
+    return LlmTestResult(ok=ok, model=model, latency_ms=latency_ms, message=err)

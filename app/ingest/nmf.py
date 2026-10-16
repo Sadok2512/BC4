@@ -27,7 +27,9 @@ from __future__ import annotations
 import hashlib
 import importlib
 import importlib.util
+import json as _json_module
 import os
+import shutil
 import sys
 import tempfile
 import uuid
@@ -47,6 +49,12 @@ from app.models import NmfFile, Project
 MAX_FILE_BYTES = 2 * 1024 * 1024 * 1024  # 2 GiB par fichier NMF
 SPOOL_THRESHOLD = 32 * 1024 * 1024       # bascule disque au-delà de 32 MiB
 BATCH_SIZE = 1000
+
+# 0.30.0 — Dossier persistant du .nmf source. Volume Docker nommé
+# `bc4_nmf_source` monté sur `/var/lib/bc4/nmf-source` (défaut), surchargeable
+# via `BC4_NMF_SOURCE_DIR`. Idempotent : si le fichier existe déjà sous
+# `<source_dir>/<project_id>/<nmf_file_id>.nmf`, on ne recopie pas.
+NMF_SOURCE_DIR = os.environ.get("BC4_NMF_SOURCE_DIR", "/var/lib/bc4/nmf-source")
 
 # Deny-list : jamais recopiée vers stg_event, même si le décodeur l'expose.
 IDENTITY_KEYS: set[str] = {
@@ -189,19 +197,39 @@ def _strip_identity(ev: dict) -> dict:
 @dataclass
 class DecodeResult:
     captures: int
-    events: list[dict] = field(default_factory=list)   # events aplatis prêts à insérer
+    # Events de SIGNALISATION (category=="signalling"). Vont dans
+    # `stg_event` et alimentent le dictionnaire RRC via populate.py.
+    events: list[dict] = field(default_factory=list)
+    # 0.24.0 (BC1) — Events MESURE + DÉBIT (``measurement`` / ``throughput``
+    # dans la terminologie 1.1.0). Vont dans `stg_measurement_raw`.
+    # 0.30.0 — Avec le décodeur 2.0.0, cette liste n'est plus alimentée
+    # directement (les catégories sont plus granulaires) ; `populate_measurements`
+    # BC1 est quand même appelé via les lignes CELLMEAS copiées depuis
+    # `stg_event_raw` (voir ``_mirror_cellmeas_into_stg_measurement_raw``).
+    measurements: list[dict] = field(default_factory=list)
+    # 0.30.0 — Events NON-signalling tous catégorisés (``cellmeas``,
+    # ``cmdreq``, ``data_action``, ``data_request``, ``data_summary``,
+    # ``tx_power``, ``cqi``, ``lock``, ``gps``, ``other``). Vont dans
+    # ``stg_event_raw``. Chaque dict porte ``raw_fields`` **dict**
+    # (nom prouvé → valeur).
+    raw_events: list[dict] = field(default_factory=list)
     gps_count: int = 0
     operators: dict[str, int] = field(default_factory=dict)  # PLMN → compteur
     technos: dict[str, int] = field(default_factory=dict)
+    # 0.30.0 — meta file-level (header `#...`).
+    meta: dict[str, Any] = field(default_factory=dict)
     error: str | None = None
 
 
 def decode_nmf_file(path: str, handle: DecoderHandle) -> DecodeResult:
-    """Décode un fichier NMF via `bc4_decoder.decode_nmf_file`. Itère un
-    flux de dicts PLATS (voir contrat du décodeur, docstring du module
-    canonique). Jamais de valeurs inventées : si le décodeur est indisponible
-    ou plante, on retourne un `DecodeResult` avec `error` renseigné et des
-    compteurs à 0.
+    """Décode un NMF via ``bc4_decoder.decode_nmf_file_full`` (2.0.0).
+
+    Fallback explicite sur ``decode_nmf_file`` (1.0.0) si la nouvelle porte
+    n'est pas exposée — l'écart est **déclaré** via ``error`` et on continue
+    avec les events signalling seuls (backcompat).
+
+    Jamais de valeurs inventées : décodeur indisponible ou crash →
+    ``DecodeResult`` avec ``error`` renseigné + compteurs à 0.
     """
     if not handle.available:
         return DecodeResult(
@@ -212,15 +240,24 @@ def decode_nmf_file(path: str, handle: DecoderHandle) -> DecodeResult:
         )
 
     try:
-        decode_fn = getattr(handle.decoder, "decode_nmf_file", None)
-        if decode_fn is None:
+        decode_full_fn = getattr(handle.decoder, "decode_nmf_file_full", None)
+        decode_legacy_fn = getattr(handle.decoder, "decode_nmf_file", None)
+        if decode_full_fn is None and decode_legacy_fn is None:
             return DecodeResult(
                 captures=0,
                 events=[],
                 gps_count=0,
-                error="decoder_contract: bc4_decoder.decode_nmf_file missing",
+                error="decoder_contract: ni decode_nmf_file_full ni decode_nmf_file",
             )
-        events_iter: Iterable[dict] = decode_fn(path)
+
+        meta: dict[str, Any] = {}
+        if decode_full_fn is not None:
+            blob = decode_full_fn(path)
+            meta = blob.get("meta") or {}
+            events_iter: Iterable[dict] = blob.get("events") or []
+        else:
+            # Fallback 1.0.0 — tout vient en signalling.
+            events_iter = decode_legacy_fn(path)
     except Exception as e:
         return DecodeResult(
             captures=0,
@@ -230,6 +267,7 @@ def decode_nmf_file(path: str, handle: DecoderHandle) -> DecodeResult:
         )
 
     events: list[dict] = []
+    raw_events: list[dict] = []
     gps = 0
     operators: dict[str, int] = {}
     technos: dict[str, int] = {}
@@ -237,19 +275,18 @@ def decode_nmf_file(path: str, handle: DecoderHandle) -> DecodeResult:
 
     try:
         for ev in events_iter:
-            # Dicts plats : capture_id, seq, ts, event_code, system,
-            # direction, message, channel, freq, pci, payload_hex, lat, lon.
+            # Dicts plats, voir docstring décodeur 2.0.0 (section events).
             ev = _strip_identity(dict(ev))
             cap_id = ev.get("capture_id")
             if cap_id is None:
-                # Sécurité : le décodeur canonique garantit `capture_id`
-                # non-null. On déclarerait l'écart plutôt que de l'inventer.
                 return DecodeResult(
                     captures=len(capture_ids),
                     events=events,
+                    raw_events=raw_events,
                     gps_count=gps,
                     operators=operators,
                     technos=technos,
+                    meta=meta,
                     error="decoder_contract: event sans capture_id",
                 )
             capture_ids.add(str(cap_id))
@@ -258,56 +295,92 @@ def decode_nmf_file(path: str, handle: DecoderHandle) -> DecodeResult:
                 return DecodeResult(
                     captures=len(capture_ids),
                     events=events,
+                    raw_events=raw_events,
                     gps_count=gps,
                     operators=operators,
                     technos=technos,
+                    meta=meta,
                     error="decoder_contract: event sans seq",
                 )
             lat = ev.get("lat")
             lon = ev.get("lon")
             if lat is not None and lon is not None:
                 gps += 1
-            # PLMN non exposé par bc4_decoder 1.0.0 → `operators` reste
-            # vide (écart ouvert déclaré au CHANGELOG). On ne devine pas.
             plmn = ev.get("plmn")
             if plmn:
                 operators[str(plmn)] = operators.get(str(plmn), 0) + 1
             system = ev.get("system")
             if system:
                 technos[str(system)] = technos.get(str(system), 0) + 1
-            events.append(
-                {
-                    "capture_id": str(cap_id),
-                    "seq": int(seq),
-                    "ts": _s(ev.get("ts")),
-                    "event_code": _s(ev.get("event_code")),
-                    "system": _s(system),
-                    "channel": _s(ev.get("channel")),
-                    "direction": _s(ev.get("direction")),
-                    "message": _s(ev.get("message")),
-                    "freq": _s(ev.get("freq")),
-                    "pci": _s(ev.get("pci")),
-                    "payload_hex": _s(ev.get("payload_hex")),
-                    "lat": float(lat) if lat is not None else None,
-                    "lon": float(lon) if lon is not None else None,
-                }
-            )
+
+            # Dispatch par catégorie décodeur 2.0.0.
+            category = ev.get("category") or "signalling"
+            if category == "signalling":
+                events.append(
+                    {
+                        "capture_id": str(cap_id),
+                        "seq": int(seq),
+                        "ts": _s(ev.get("ts")),
+                        "event_code": _s(ev.get("event_code")),
+                        "system": _s(system),
+                        "channel": _s(ev.get("channel")),
+                        "direction": _s(ev.get("direction")),
+                        "message": _s(ev.get("message")),
+                        "freq": _s(ev.get("freq")),
+                        "pci": _s(ev.get("pci")),
+                        "payload_hex": _s(ev.get("payload_hex")),
+                        "lat": float(lat) if lat is not None else None,
+                        "lon": float(lon) if lon is not None else None,
+                    }
+                )
+            else:
+                # Décodeur 2.0.0 : raw_fields est un DICT nommé (fallback cN).
+                # Décodeur 1.1.0 (BC1 ancien) : raw_fields est une list[str].
+                # Dans le second cas, on l'adapte en dict ``{"c0": v0, ...}``
+                # pour normaliser avec le schéma stg_event_raw.
+                rf = ev.get("raw_fields")
+                if isinstance(rf, dict):
+                    raw_fields_dict = {k: (None if v is None else str(v)) for k, v in rf.items()}
+                elif isinstance(rf, list):
+                    raw_fields_dict = {
+                        f"c{i}": (None if v is None else str(v))
+                        for i, v in enumerate(rf)
+                    }
+                else:
+                    raw_fields_dict = {}
+                raw_events.append(
+                    {
+                        "capture_id": str(cap_id),
+                        "seq": int(seq),
+                        "ts": _s(ev.get("ts")),
+                        "event_code": _s(ev.get("event_code")) or "UNKNOWN",
+                        "category": category,
+                        "system": _s(system),
+                        "lat": float(lat) if lat is not None else None,
+                        "lon": float(lon) if lon is not None else None,
+                        "raw_fields": raw_fields_dict,
+                    }
+                )
     except Exception as e:
         return DecodeResult(
             captures=len(capture_ids),
             events=events,
+            raw_events=raw_events,
             gps_count=gps,
             operators=operators,
             technos=technos,
+            meta=meta,
             error=f"decoder_iter_error: {e!r}",
         )
 
     return DecodeResult(
         captures=len(capture_ids),
         events=events,
+        raw_events=raw_events,
         gps_count=gps,
         operators=operators,
         technos=technos,
+        meta=meta,
     )
 
 
@@ -321,6 +394,26 @@ def _s(v: Any) -> str | None:
 # ---------------------------------------------------------------------------
 # Persistance
 # ---------------------------------------------------------------------------
+
+
+def _persist_source_file(tmp_path: str, project_id: str, nmf_file_id: str) -> str | None:
+    """Copie le ``.nmf`` du tempfile vers ``NMF_SOURCE_DIR/<project_id>/<nmf_file_id>.nmf``.
+
+    Idempotent : si la destination existe déjà, on ne recopie pas (le même
+    ``nmf_file_id`` ne doit arriver qu'une fois ; en cas d'erreur système
+    on garde ce qui est là). Retourne le chemin absolu de la copie, ou
+    ``None`` si l'écriture échoue (ingestion continue, écart déclaré sur
+    ``NmfFile.error_msg``).
+    """
+    try:
+        dest_dir = os.path.join(NMF_SOURCE_DIR, project_id)
+        os.makedirs(dest_dir, exist_ok=True)
+        dest = os.path.join(dest_dir, f"{nmf_file_id}.nmf")
+        if not os.path.exists(dest):
+            shutil.copyfile(tmp_path, dest)
+        return dest
+    except OSError:
+        return None
 
 
 def ingest_upload(
@@ -352,8 +445,14 @@ def ingest_upload(
         if existing is not None:
             return existing
 
+        nmf_id = uuid.uuid4().hex[:16]
+        # 0.30.0 — persiste le .nmf source AVANT de fermer le tempfile.
+        # Jamais fatal : si l'écriture échoue, on continue sans source_path
+        # (déclaré via `error_msg`, pas inventé).
+        source_path = _persist_source_file(tmp_path, project.id, nmf_id)
+
         nmf = NmfFile(
-            id=uuid.uuid4().hex[:16],
+            id=nmf_id,
             project_id=project.id,
             filename=filename,
             size_bytes=size,
@@ -361,15 +460,51 @@ def ingest_upload(
             uploaded_at=datetime.now(timezone.utc),
             status="decoding",
             decoder_version=handle.version if handle.available else "unavailable",
-            error_msg=None,
+            error_msg=None if source_path else "source_path_write_failed",
             n_captures=0,
             n_events=0,
             n_gps=0,
+            source_path=source_path,
         )
         db.add(nmf)
         db.flush()  # pour disposer de nmf.id en FK avant les inserts stg_event
 
         result = decode_nmf_file(tmp_path, handle)
+
+        # 0.30.0 — meta file-level (header `#...` + env depuis le nom).
+        if result.meta:
+            m = result.meta
+            nmf.dl = m.get("dl")
+            nmf.ts_label = m.get("ts")
+            # 0.33.0 — Fallback env **déclaré** : le décodeur dérive `env`
+            # depuis `os.path.basename(path)`, or ici `path` est le tempfile
+            # anonyme (`/tmp/tmpXXXXXX.nmf`) qui ne contient pas
+            # `incar`/`indoor`. On rejoue la même règle (par le CONTENU,
+            # littéral présent) sur le `filename` original de l'upload.
+            # Jamais inventé : si ni le décodeur ni le filename ne portent
+            # le littéral, `env` reste NULL déclaré.
+            env_decoded = m.get("env")
+            if env_decoded is None and filename:
+                base = os.path.basename(filename).lower()
+                if "incar" in base:
+                    env_decoded = "incar"
+                elif "indoor" in base:
+                    env_decoded = "indoor"
+            nmf.env = env_decoded
+            # start_at = concat start_time + start_date si dispo, verbatim.
+            start_time = m.get("start_time")
+            start_date = m.get("start_date")
+            if start_time and start_date:
+                nmf.start_at = f"{start_date} {start_time}"
+            elif start_time:
+                nmf.start_at = start_time
+            elif start_date:
+                nmf.start_at = start_date
+            nmf.device_sw = m.get("device_sw")
+            nmf.device_name = m.get("device_name")
+            nmf.product = m.get("product")
+            nmf.imei_present = bool(m.get("imei_present")) if m.get("imei_present") is not None else None
+            nmf.imsi_present = bool(m.get("imsi_present")) if m.get("imsi_present") is not None else None
 
         if result.error:
             nmf.status = "error"
@@ -424,6 +559,109 @@ def ingest_upload(
                     batch,
                 )
 
+        # 0.30.0 — Stream TOUT ce qui n'est pas signalling dans `stg_event_raw`
+        # avec `raw_fields` **dict** nommé (fallback cN sur les positions
+        # non prouvées). Backcompat BC1 : on miroite aussi les catégories
+        # CELLMEAS (plus data_summary, pertinentes pour le skeleton MP) dans
+        # `stg_measurement_raw` **au format list[str]** pour ne pas casser
+        # la route `/measurements/raw` et `populate_measurements` BC1.
+        if result.raw_events:
+            raw_rows: list[dict] = []
+            mirror_rows: list[dict] = []
+            for ev in result.raw_events:
+                raw_rows.append(
+                    {
+                        "project_id": project.id,
+                        "nmf_file_id": nmf.id,
+                        "capture_id": ev["capture_id"],
+                        "seq": ev["seq"],
+                        "ts": ev["ts"],
+                        "event_code": ev["event_code"],
+                        "category": ev["category"],
+                        "system": ev["system"],
+                        "lat": ev["lat"],
+                        "lon": ev["lon"],
+                        "raw_fields": _json_module.dumps(ev["raw_fields"]),
+                    }
+                )
+                # Mirror BC1 : CELLMEAS → stg_measurement_raw (category='measurement')
+                # pour que `populate_measurements` crée les skeleton MP et que
+                # `populate_measurement_points` puisse UPDATE dessus.
+                if ev["category"] == "cellmeas":
+                    # Reconstruit une list[str] sérialisée pour la table BC1.
+                    rf_dict = ev["raw_fields"] or {}
+                    rf_list = [v if v is not None else "" for v in rf_dict.values()]
+                    mirror_rows.append(
+                        {
+                            "project_id": project.id,
+                            "nmf_file_id": nmf.id,
+                            "capture_id": ev["capture_id"],
+                            "seq": ev["seq"],
+                            "ts": ev["ts"],
+                            "event_code": ev["event_code"],
+                            "category": "measurement",
+                            "system": ev["system"],
+                            "lat": ev["lat"],
+                            "lon": ev["lon"],
+                            "raw_fields": _json_module.dumps(rf_list),
+                        }
+                    )
+                elif ev["category"] == "data_summary":
+                    rf_dict = ev["raw_fields"] or {}
+                    rf_list = [v if v is not None else "" for v in rf_dict.values()]
+                    mirror_rows.append(
+                        {
+                            "project_id": project.id,
+                            "nmf_file_id": nmf.id,
+                            "capture_id": ev["capture_id"],
+                            "seq": ev["seq"],
+                            "ts": ev["ts"],
+                            "event_code": ev["event_code"],
+                            "category": "throughput",
+                            "system": ev["system"],
+                            "lat": ev["lat"],
+                            "lon": ev["lon"],
+                            "raw_fields": _json_module.dumps(rf_list),
+                        }
+                    )
+            for i in range(0, len(raw_rows), BATCH_SIZE):
+                batch = raw_rows[i : i + BATCH_SIZE]
+                db.execute(
+                    text(
+                        """
+                        INSERT INTO stg_event_raw (
+                            project_id, nmf_file_id, capture_id, seq,
+                            category, event_code, ts, system, lat, lon, raw_fields
+                        ) VALUES (
+                            :project_id, :nmf_file_id, :capture_id, :seq,
+                            :category, :event_code, :ts, :system, :lat, :lon,
+                            CAST(:raw_fields AS JSONB)
+                        )
+                        """
+                    ),
+                    batch,
+                )
+            for i in range(0, len(mirror_rows), BATCH_SIZE):
+                batch = mirror_rows[i : i + BATCH_SIZE]
+                db.execute(
+                    text(
+                        """
+                        INSERT INTO stg_measurement_raw (
+                            project_id, nmf_file_id, capture_id, seq, ts,
+                            event_code, category, system, lat, lon, raw_fields
+                        ) VALUES (
+                            :project_id, :nmf_file_id, :capture_id, :seq, :ts,
+                            :event_code, :category, :system, :lat, :lon,
+                            CAST(:raw_fields AS JSONB)
+                        )
+                        """
+                    ),
+                    batch,
+                )
+            # Alimente le flag "measurements" du résultat pour que la logique
+            # de populate ci-dessous soit déclenchée comme en 0.24.0 BC1.
+            result.measurements = mirror_rows
+
         nmf.status = "done"
         nmf.n_captures = result.captures
         nmf.n_events = len(result.events)
@@ -437,6 +675,38 @@ def ingest_upload(
                 acc[plmn] = int(acc.get(plmn, 0)) + int(n)
             project.operators_plmn = acc
         db.commit()
+
+        # 0.24.0 Keystone — Peuple `measurement_points` depuis
+        # `stg_measurement_raw` fraîchement inséré. Idempotent (purge
+        # les anciens points mesure du projet, préserve les seeds B0).
+        # Appelé après le commit stg_event pour que `_build_sib1_index`
+        # ait accès aux SIB1 à jour. Erreur ici → NMF reste `done` mais
+        # un warning est émis (pas de rollback d'ingestion).
+        if result.measurements:
+            try:
+                from app.services.populate_measurements import populate_measurements
+                populate_measurements(db, project.id, purge=True)
+            except Exception as exc:
+                # Journalisé mais non-fatal — l'ingestion staging a réussi.
+                nmf.error_msg = f"populate_measurements_warning: {exc!r}"
+                db.commit()
+        # 0.30.0 — Enrichissement MP depuis `stg_event_raw` + meta fichier.
+        # UPDATE sur les skeleton rows (CELLMEAS) et INSERT pour les autres
+        # catégories (CMDREQ, data_*, tx_power, cqi, lock, other).
+        # Appelé APRÈS le skeleton BC1 pour profiter des lignes insérées.
+        if result.raw_events:
+            try:
+                from app.measure.populate import populate_measurement_points
+                populate_measurement_points(db, project.id, purge=False)
+            except Exception as exc:
+                # Journalisé mais non-fatal — staging raw + skeleton BC1
+                # ont réussi, l'enrichissement 2.0.0 reste rejouable via
+                # `scripts/backfill_measurements.py` (idempotent).
+                nmf.error_msg = (
+                    (nmf.error_msg + " | " if nmf.error_msg else "")
+                    + f"populate_measurement_points_warning: {exc!r}"
+                )
+                db.commit()
         return nmf
     finally:
         try:
@@ -791,4 +1061,22 @@ def refresh_project_summary(db: Session, project: Project) -> None:
         import logging as _log
         _log.getLogger("app.ingest.nmf").warning(
             "populate_param_occurrence skipped: %r", e
+        )
+
+    # 0.33.0 — Re-run du gating par preuve APRÈS populate_param_occurrence.
+    # Les appels per-file de populate_measurement_points voyaient
+    # param_occurrence vide (populé seulement en fin de batch), donc la
+    # preuve ±2 dB échouait systématiquement sur ``no_rrc_sample`` → les
+    # métriques prouvables (rsrp, rsrq) restaient NULL. On rejoue
+    # populate_measurement_points une fois que param_occurrence est à
+    # jour, pour que MEASUREMENT_MAPPING se peuple et que l'UPDATE
+    # COALESCE câble enfin rsrp/rsrq sur les lignes CELLMEAS déjà créées.
+    try:
+        from app.measure.populate import populate_measurement_points
+
+        populate_measurement_points(db, project.id, purge=False)
+    except Exception as e:  # pragma: no cover — surface honnête
+        import logging as _log
+        _log.getLogger("app.ingest.nmf").warning(
+            "populate_measurement_points (post-RRC) skipped: %r", e
         )

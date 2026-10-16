@@ -102,6 +102,21 @@ class NmfFile(Base):
     n_captures: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     n_events: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     n_gps: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # 0.30.0 — câblage `bc4-decoder 2.0.0::decode_nmf_file_full`.
+    # Chemin absolu du .nmf source PERSISTÉ (jamais le tempfile). Dossier
+    # cible : `/var/lib/bc4/nmf-source/<project_id>/<nmf_file_id>.nmf`
+    # (ou `$BC4_NMF_SOURCE_DIR/...`). Volume Docker nommé `bc4_nmf_source`.
+    source_path: Mapped[str | None] = mapped_column(String, nullable=True)
+    # file meta (header `#...` du NMF — jamais inventé).
+    dl: Mapped[str | None] = mapped_column(String, nullable=True)
+    ts_label: Mapped[str | None] = mapped_column(String, nullable=True)
+    env: Mapped[str | None] = mapped_column(String, nullable=True)
+    start_at: Mapped[str | None] = mapped_column(String, nullable=True)
+    device_sw: Mapped[str | None] = mapped_column(String, nullable=True)
+    device_name: Mapped[str | None] = mapped_column(String, nullable=True)
+    product: Mapped[str | None] = mapped_column(String, nullable=True)
+    imei_present: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    imsi_present: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
 
 
 class StgEvent(Base):
@@ -137,6 +152,97 @@ class StgEvent(Base):
     lon: Mapped[float | None] = mapped_column(Float, nullable=True)
 
 
+class StgMeasurementRaw(Base):
+    """Staging des events `measurement` + `throughput` du décodeur 1.1.0.
+
+    Chaque ligne est une ligne CSV COMPLÈTE du .nmf (`raw_fields`), telle
+    que remontée par le décodeur après masquage identité. Le mapping
+    `champ CSV → métrique radio (RSRP, RSRQ, SINR, CQI, débit…)` relève
+    de la Phase 1 (lot 0.24.0 : infrastructure ; mapping Phase 1 à faire
+    sur un NMF témoin). JAMAIS parsé côté SQL.
+
+    Ordre canonique `(capture_id, seq)`. `ts` : attribut seulement.
+    Aucune identité abonné (masquage à la source par le décodeur).
+    """
+
+    __tablename__ = "stg_measurement_raw"
+    __table_args__ = (
+        Index("ix_stg_meas_raw_project_code", "project_id", "event_code"),
+        Index(
+            "ix_stg_meas_raw_project_capture_seq",
+            "project_id", "capture_id", "seq",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    project_id: Mapped[str] = mapped_column(
+        ForeignKey("projects.id", ondelete="CASCADE"), nullable=False
+    )
+    nmf_file_id: Mapped[str] = mapped_column(
+        ForeignKey("nmf_file.id", ondelete="CASCADE"), nullable=False
+    )
+    capture_id: Mapped[str] = mapped_column(String, nullable=False)
+    seq: Mapped[int] = mapped_column(Integer, nullable=False)
+    ts: Mapped[str | None] = mapped_column(String, nullable=True)
+    event_code: Mapped[str] = mapped_column(String, nullable=False)
+    category: Mapped[str] = mapped_column(String, nullable=False)  # measurement | throughput
+    system: Mapped[str | None] = mapped_column(String, nullable=True)
+    lat: Mapped[float | None] = mapped_column(Float, nullable=True)
+    lon: Mapped[float | None] = mapped_column(Float, nullable=True)
+    # Ligne CSV complète (JSON array of str). Phase 1 mappe aval.
+    raw_fields: Mapped[list] = mapped_column(JSON, nullable=False)
+
+
+class StgEventRaw(Base):
+    """Staging brut des events NON-signalling du décodeur 2.0.0.
+
+    Expose VERBATIM ce que ``decode_nmf_file_full`` renvoie pour les
+    catégories ``cellmeas``, ``cmdreq``, ``data_action``, ``data_request``,
+    ``data_summary``, ``tx_power``, ``cqi``, ``lock``, ``gps``, ``other``.
+    Les events ``signalling`` restent dans ``StgEvent`` (contrat 1.0.0
+    préservé — RRC populate continue de lire là).
+
+    ``raw_fields`` est un **dict** nommé par position prouvée (fallback
+    ``cN`` pour les positions non prouvées). Zéro parsing SQL : tout est
+    lu en Python par ``app/measure/populate.py``.
+
+    Ordre canonique ``(capture_id, seq)``. ``ts`` : attribut seulement.
+    Aucune identité abonné (masquage à la source par le décodeur +
+    défense en profondeur dans l'ingest).
+    """
+
+    __tablename__ = "stg_event_raw"
+    __table_args__ = (
+        Index(
+            "ix_stg_event_raw_project_category",
+            "project_id", "category",
+        ),
+        Index(
+            "ix_stg_event_raw_project_capture_seq",
+            "project_id", "capture_id", "seq",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    project_id: Mapped[str] = mapped_column(
+        ForeignKey("projects.id", ondelete="CASCADE"), nullable=False
+    )
+    nmf_file_id: Mapped[str] = mapped_column(
+        ForeignKey("nmf_file.id", ondelete="CASCADE"), nullable=False
+    )
+    capture_id: Mapped[str] = mapped_column(String, nullable=False)
+    seq: Mapped[int] = mapped_column(Integer, nullable=False)
+    category: Mapped[str] = mapped_column(String, nullable=False)
+    event_code: Mapped[str] = mapped_column(String, nullable=False)
+    ts: Mapped[str | None] = mapped_column(String, nullable=True)
+    system: Mapped[str | None] = mapped_column(String, nullable=True)
+    lat: Mapped[float | None] = mapped_column(Float, nullable=True)
+    lon: Mapped[float | None] = mapped_column(Float, nullable=True)
+    # dict nommé — JSONB côté Postgres. On garde `JSON` ici pour que
+    # SQLAlchemy abstraie (SQLite fallback des tests utilise JSON).
+    raw_fields: Mapped[dict] = mapped_column(JSON, nullable=False)
+
+
 class MeasurementPoint(Base):
     __tablename__ = "measurement_points"
 
@@ -144,12 +250,16 @@ class MeasurementPoint(Base):
     project_id: Mapped[str] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True)
     lat: Mapped[float] = mapped_column(Float, nullable=False)
     lng: Mapped[float] = mapped_column(Float, nullable=False)
-    operator: Mapped[str] = mapped_column(String, nullable=False, index=True)
-    tech: Mapped[str] = mapped_column(String, nullable=False, index=True)
-    service: Mapped[str] = mapped_column(String, nullable=False, index=True)
-    band: Mapped[str] = mapped_column(String, nullable=False, index=True)
-    dep: Mapped[str] = mapped_column(String, nullable=False, index=True)
-    site: Mapped[str] = mapped_column(String, nullable=False)
+    # 0.24.0 — operator/tech/service/dep/site/band deviennent nullable
+    # pour accueillir les points issus de `stg_measurement_raw` (NMF).
+    # Pattern populate.py : NULL en base, COALESCE("non attribué") au SELECT.
+    # Les seeds historiques ont toujours tout renseigné — pas de régression.
+    operator: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    tech: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    service: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    band: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    dep: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    site: Mapped[str | None] = mapped_column(String, nullable=True)
     ts: Mapped[str] = mapped_column(String, nullable=False)
     dl: Mapped[float | None] = mapped_column(Float, nullable=True)
     rsrp: Mapped[float | None] = mapped_column(Float, nullable=True)
@@ -157,6 +267,30 @@ class MeasurementPoint(Base):
     latency: Mapped[float | None] = mapped_column(Float, nullable=True)
     capture_id: Mapped[str | None] = mapped_column(String, nullable=True)
     seq: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # 0.24.0 Keystone — colonnes métriques (NULL tant que mapping Phase 1
+    # non prouvé). `event_code` identifie la famille source (CELLMEAS,
+    # CQI, PHRATE…) ; les métriques ne sont peuplées QUE pour les codes
+    # dont le mapping est validé par preuve (plage 3GPP + croisement RRC).
+    rsrq: Mapped[float | None] = mapped_column(Float, nullable=True)
+    rssi: Mapped[float | None] = mapped_column(Float, nullable=True)
+    cqi: Mapped[float | None] = mapped_column(Float, nullable=True)
+    mimo_rank: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    tx_power: Mapped[float | None] = mapped_column(Float, nullable=True)
+    thrpt_ul: Mapped[float | None] = mapped_column(Float, nullable=True)
+    event_code: Mapped[str | None] = mapped_column(String, nullable=True)
+    # 0.30.0 — câblage `bc4-decoder 2.0.0::decode_nmf_file_full`. Colonnes
+    # enrichies additives (non-breaking) : `operator` reste AUTORITAIRE
+    # depuis #DL (meta.dl). `operator_source` déclare l'origine. Pas
+    # d'invention : positions non prouvées côté décodeur = NULL.
+    operator_source: Mapped[str | None] = mapped_column(String, nullable=True)
+    operator_mismatch: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    service_name: Mapped[str | None] = mapped_column(String, nullable=True)
+    service_action: Mapped[str | None] = mapped_column(String, nullable=True)
+    service_type: Mapped[str | None] = mapped_column(String, nullable=True)
+    phase: Mapped[str | None] = mapped_column(String, nullable=True)
+    env: Mapped[str | None] = mapped_column(String, nullable=True)
+    rat: Mapped[str | None] = mapped_column(String, nullable=True)
+    earfcn: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
 
 class DictMessage(Base):
@@ -371,6 +505,58 @@ class ReferenceImport(Base):
     rows_rejected: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     status: Mapped[str] = mapped_column(String, nullable=False)
     report: Mapped[dict] = mapped_column(JSON, nullable=False)
+
+
+class LlmSettingsRow(Base):
+    """Config LLM persistée (singleton id=1).
+
+    `api_key_cipher` est un blob Fernet (base64). NE JAMAIS lu en clair
+    hors de `app/services/llm_crypto.decrypt_key`. NE JAMAIS loggé.
+    Précédence côté `/assistant` : DB > env (`BC4_LLM_*`).
+    """
+
+    __tablename__ = "settings_llm"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
+    provider: Mapped[str] = mapped_column(String, nullable=False, default="")
+    base_url: Mapped[str] = mapped_column(String, nullable=False, default="")
+    model: Mapped[str] = mapped_column(String, nullable=False, default="")
+    api_key_cipher: Mapped[str | None] = mapped_column(Text, nullable=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    temperature: Mapped[float | None] = mapped_column(Float, nullable=True)
+    max_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    # 0.27.0 — Maîtrise des coûts
+    # Modèle utilisé par la boucle agent (tool-calling répétitif).
+    # Si NULL, fallback sur `model`. Permet d'affecter un modèle cher
+    # (model) au probe/qualité et un modèle pas cher (model_loop) à
+    # la boucle outils où la précision de rédaction est secondaire.
+    model_loop: Mapped[str | None] = mapped_column(String, nullable=True)
+    # Plafond journalier USD. NULL = pas de cap. Le moteur refuse
+    # d'appeler le LLM dès que SUM(llm_usage.cost) du jour >= cap.
+    daily_cap_usd: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+
+class LlmUsage(Base):
+    """Journal d'appels LLM — tokens entrée/sortie + coût estimé (0.27.0).
+
+    Alimente le plafond journalier (`settings_llm.daily_cap_usd`) et
+    permet d'auditer la dépense agrégée par modèle / jour. Pas
+    d'identité abonné (log de méta-usage, pas de contenu utilisateur).
+    """
+
+    __tablename__ = "llm_usage"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    model: Mapped[str] = mapped_column(String, nullable=False)
+    prompt_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    completion_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    estimated_cost_usd: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    conversation_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    step: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
 
 class GeoReference(Base):

@@ -15,5 +15,8 @@ email-validator==2.2.0
 # project.operators / project.bands à l'ingestion. Sans pycrate le module
 # dégrade gracieusement (operators vides, écart déclaré).
 pycrate==0.8.1
+# 0.16.0 : chiffrement symétrique Fernet de la clé LLM stockée en base
+# (jamais relue en clair, jamais loggée).
+cryptography==43.0.3
 pytest==8.3.4
 pytest-asyncio==0.24.0

@@ -1,4 +1,5 @@
 import os
+from contextlib import contextmanager
 
 import httpx
 import pytest
@@ -76,6 +77,77 @@ _TEST_NAME_PATTERNS = (
     "g11-",
     "G11 Enrich",
 )
+
+
+# ---------------------------------------------------------------------------
+# Sandbox LLM — snapshot/restore de `settings_llm` autour des gardes qui
+# mutent la config LLM (G18, G19, G21+). Un cleanup destructif
+# (`api_key:""` + `enabled:false`) détruisait la config LLM utilisateur
+# dès qu'un dev lançait une garde contre l'API live. **Un test ne doit
+# JAMAIS laisser un état partagé pire qu'il ne l'a trouvé.**
+#
+# La sauvegarde se fait au niveau du cipher Fernet (SELECT direct) pour
+# préserver EXACTEMENT la clé chiffrée — l'API, par design, ne renvoie
+# jamais la clé en clair, on ne peut donc pas la ré-émettre via PUT.
+# ---------------------------------------------------------------------------
+@contextmanager
+def _snapshot_llm_state():
+    """Snapshot settings_llm (id=1) au niveau DB puis restore à la sortie."""
+    from sqlalchemy import text as sql_text
+
+    from app.db import SessionLocal
+
+    snap: dict | None = None
+    with SessionLocal() as db:
+        row = db.execute(
+            sql_text(
+                "SELECT provider, base_url, model, api_key_cipher, enabled, "
+                "temperature, max_tokens FROM settings_llm WHERE id = 1"
+            )
+        ).one_or_none()
+        if row is not None:
+            snap = {
+                "provider": row[0],
+                "base_url": row[1],
+                "model": row[2],
+                "api_key_cipher": row[3],
+                "enabled": row[4],
+                "temperature": row[5],
+                "max_tokens": row[6],
+            }
+    try:
+        yield
+    finally:
+        if snap is None:
+            return
+        with SessionLocal() as db:
+            db.execute(
+                sql_text(
+                    "UPDATE settings_llm SET "
+                    "provider = :provider, base_url = :base_url, model = :model, "
+                    "api_key_cipher = :api_key_cipher, enabled = :enabled, "
+                    "temperature = :temperature, max_tokens = :max_tokens "
+                    "WHERE id = 1"
+                ),
+                snap,
+            )
+            db.commit()
+
+
+@pytest.fixture(scope="module")
+def llm_state_sandbox():
+    """Snapshot/restore `settings_llm` autour d'un module de tests.
+
+    Usage dans un module :
+        pytestmark = pytest.mark.usefixtures("llm_state_sandbox")
+
+    Les mutations PUT /settings/llm effectuées pendant les tests
+    peuvent ensuite être « destructrices » sans crainte — l'état est
+    restauré à la fin du module. **Préférer** cette fixture à un test
+    de cleanup explicite (qui ne se déclenche pas en cas de crash).
+    """
+    with _snapshot_llm_state():
+        yield
 
 
 @pytest.fixture(scope="session", autouse=True)

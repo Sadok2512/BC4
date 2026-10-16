@@ -90,6 +90,12 @@ class BlockMap(BaseModel):
     points: list[MeasurementPoint]
     center: tuple[float, float]
     source_id: str
+    # 0.26.0 — métadonnées optionnelles pour les cartes agrégées
+    # (map_metric). Non-breaking : les anciens appels n'ont pas ces
+    # champs ; les nouveaux les posent explicitement.
+    unit: str | None = None
+    value_range: tuple[float, float] | None = None
+    grid: dict | None = None
 
 
 Block = Annotated[
@@ -136,7 +142,13 @@ class AssistantResponse(BaseModel):
     execution_steps: list[ExecStep]
     warnings: list[str]
     error: AssistantError | None = None
-    demo: Literal[True] = True
+    # 0.23.0 — `demo` est maintenant dynamique : `True` seulement pour
+    # les projets purement seedés (synthétiques, sans ingestion NMF).
+    # `False` quand le projet porte des `param_occurrence` (données
+    # réelles décodées). Le flag reste présent pour conserver la UI
+    # qui en dépend ; la UI (1.11.2+) n'affiche la pilule « Données
+    # démo » que si `demo === True`.
+    demo: bool = True
 
 
 class UserMessage(BaseModel):

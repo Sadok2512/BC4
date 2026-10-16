@@ -12,6 +12,8 @@ from app.models.base import (
     KpiCatalogGroup,
     KpiCatalogItem,
     KpiRrcSummary,
+    LlmSettingsRow,
+    LlmUsage,
     MeasurementPoint,
     NmfFile,
     OrganizationRow,
@@ -21,6 +23,8 @@ from app.models.base import (
     ReferenceImport,
     RrcObservation,
     StgEvent,
+    StgEventRaw,
+    StgMeasurementRaw,
     User,
 )
 
@@ -38,6 +42,8 @@ __all__ = [
     "KpiCatalogGroup",
     "KpiCatalogItem",
     "KpiRrcSummary",
+    "LlmSettingsRow",
+    "LlmUsage",
     "MeasurementPoint",
     "NmfFile",
     "OrganizationRow",
@@ -47,5 +53,7 @@ __all__ = [
     "ReferenceImport",
     "RrcObservation",
     "StgEvent",
+    "StgEventRaw",
+    "StgMeasurementRaw",
     "User",
 ]

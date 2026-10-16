@@ -32,6 +32,21 @@ class Settings(BaseSettings):
     demo_password: str | None = Field(default=None, alias="BC4_DEMO_PASSWORD")
     demo_role: str = Field(default="ingenieur", alias="BC4_DEMO_ROLE")
 
+    # LLM (0.16.0) — précédence : DB (settings_llm) > env ci-dessous.
+    # BC4_LLM_SECRET_KEY : clé Fernet pour chiffrer l'api_key au repos.
+    # Si absente, GET fonctionne (api_key_set reflète la DB), mais PUT
+    # d'une clé lèvera (fail-fast, pas de stockage en clair déguisé).
+    llm_secret_key: str | None = Field(default=None, alias="BC4_LLM_SECRET_KEY")
+    llm_provider: str = Field(default="", alias="BC4_LLM_PROVIDER")
+    llm_base_url: str = Field(default="", alias="BC4_LLM_BASE_URL")
+    llm_model: str = Field(default="", alias="BC4_LLM_MODEL")
+    llm_api_key: str = Field(default="", alias="BC4_LLM_API_KEY")
+    llm_enabled: bool = Field(default=False, alias="BC4_LLM_ENABLED")
+    # 0.27.0 — model_loop (boucle outils, pas cher) + cap journalier.
+    # Fallback env si DB vide ; DB prévaut si posée.
+    llm_model_loop: str = Field(default="", alias="BC4_LLM_MODEL_LOOP")
+    llm_daily_cap_usd: float = Field(default=0.0, alias="BC4_LLM_DAILY_CAP_USD")
+
     @property
     def cors_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

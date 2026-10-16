@@ -1,0 +1,508 @@
+"""Enrichissement ``measurement_points`` depuis ``stg_event_raw`` (0.30.0).
+
+Hook post-décodage ajouté à ``ingest_upload`` après ``populate_measurements``
+(skeleton BC1) et ``populate_param_occurrence`` (RRC dict). Ce module ne
+RE-CRÉE pas les lignes : il **UPDATE** celles déjà insérées par le skeleton
+BC1 (match sur ``(project_id, capture_id, seq, event_code)``), puis **INSERT**
+celles qui proviennent de catégories qui ne sont pas remontées dans
+``stg_measurement_raw`` (``cmdreq``, ``data_*``, ``tx_power``, ``cqi``, ``lock``,
+``other``) — on perd zéro event du corpus.
+
+Doctrine (jamais déviée) :
+- Par le CONTENU, jamais par l'étiquette (``rat_code`` → ``rat``, pas de
+  trust aveugle du nom de fichier).
+- Ordre ``(capture_id, seq)`` strict : les ``service_action`` et ``env`` se
+  propagent au DERNIER précédent dans cet ordre, pas par ``ts``.
+- ``operator`` AUTORITAIRE depuis ``nmf_file.dl`` (meta.dl). Divergence
+  avec le dernier SIB1 PLMN précédent → ``operator_mismatch=True`` +
+  ``operator_source`` déclaré. Jamais masqué par un fallback silencieux.
+- **Un champ non prouvé = NULL déclaré**, jamais inventé.
+- Zéro identité abonné en sortie (le décodeur masque à la source, mais on
+  ne touche à aucune colonne qui pourrait porter une identité ici — les
+  seules valeurs numériques extraites viennent de champs **prouvés** par
+  ``app.measure.proof.run_proof`` contre ``param_occurrence`` (±2 dB).
+
+0.33.0 — Gating par preuve
+--------------------------
+
+Les mappings ``raw_fields → measurement_points.{rsrp, rsrq, sinr, cqi,
+tx_power, thrpt_dl, thrpt_ul}`` passent désormais par
+``MEASUREMENT_MAPPING`` qui n'est peuplée QUE depuis
+``app.measure.proof.mapping_from_proof(run_proof(db, project_id))``.
+Un candidat ``rejected`` reste NULL à l'aval et apparaît dans le rapport
+de preuve (traçabilité + CHANGELOG). Tableau de preuve sur
+REF_PETITE_FORET (bump 0.33.0) :
+
+- ``cell0_rsrp_dbm`` ↔ ``measResultPCell/rsrpResult$``
+  → **verdict chiffré enregistré dans scripts/g24_measurement_full.sh** ;
+  si proven ±2 dB → MEASUREMENT_MAPPING['rsrp'].
+- ``cell0_rsrq_db`` ↔ ``measResultPCell/rsrqResult$``
+  → idem ``rsrq``.
+- ``cell0_sinr_db`` : pas de référence RRC chiffrée canonique en LTE
+  Rel-8 (rs-sinr-r13 est LTE-A, non peuplé sur le corpus) → ``sinr``
+  **rejected: no_rrc_reference** → NULL déclaré à l'aval.
+- ``cqi``, ``tx_power``, ``thrpt_dl``, ``thrpt_ul`` : pas de référence
+  RRC comparable → NULL déclaré à l'aval tant que la preuve n'est pas
+  câblée (iPerf GT, références externes).
+"""
+from __future__ import annotations
+
+import json
+import uuid
+from typing import Any
+
+from sqlalchemy import text
+from sqlalchemy.orm import Session
+
+from app.dict.populate import _build_sib1_index, _resolve_context
+from app.measure.mapping import (
+    operator_from_dl,
+    operator_from_plmn,
+    phase_from_action,
+    rat_from_code,
+    service_type_from,
+)
+from app.measure.proof import mapping_from_proof, run_proof
+
+
+BATCH_SIZE = 500
+
+
+# ---------------------------------------------------------------------------
+# 0.33.0 — Gating par preuve. ``MEASUREMENT_MAPPING`` est **vide** par
+# défaut : elle n'est peuplée QUE par ``app.measure.proof.run_proof`` au
+# début de ``populate_measurement_points``. Un candidat ``rejected`` reste
+# donc NULL à l'aval. Jamais mappé à l'aveugle.
+#
+# Forme : ``{metric → {"category": str, "field": str}}``.
+# ---------------------------------------------------------------------------
+_DEFAULT_METRIC_KEYS = ("rsrp", "rsrq", "sinr", "cqi", "tx_power",
+                       "thrpt_dl", "thrpt_ul")
+
+
+# ---------------------------------------------------------------------------
+# Helpers de lecture ``raw_fields``.
+# ---------------------------------------------------------------------------
+
+def _try_float(v: Any) -> float | None:
+    """Convertit ``v`` → float si parseable, sinon None. Jamais 0 par défaut."""
+    if v is None:
+        return None
+    try:
+        s = str(v).strip()
+        if not s:
+            return None
+        return float(s)
+    except (TypeError, ValueError):
+        return None
+
+
+def _try_int(v: Any) -> int | None:
+    f = _try_float(v)
+    if f is None:
+        return None
+    try:
+        return int(f)
+    except (TypeError, ValueError):
+        return None
+
+
+def _raw(ev_raw: Any) -> dict[str, Any]:
+    """Charge ``raw_fields`` quel que soit le type retourné par le driver.
+
+    JSONB côté Postgres sort déjà en dict côté SQLAlchemy, mais la colonne
+    est aussi lisible via ``raw_fields::text`` dans certaines routes — on
+    s'autorise les deux formats sans supposer.
+    """
+    if ev_raw is None:
+        return {}
+    if isinstance(ev_raw, dict):
+        return ev_raw
+    try:
+        return json.loads(ev_raw) if ev_raw else {}
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return {}
+
+
+# ---------------------------------------------------------------------------
+# PLMN du dernier SIB1 précédent — pour ``operator_mismatch``.
+# ---------------------------------------------------------------------------
+
+def _last_sib1_plmn_before(
+    sib1_idx: dict,
+    capture_id: str,
+    seq: int,
+    system: str | None,
+) -> str | None:
+    """Retourne le PLMN du dernier SIB1 précédent ``(capture_id, seq)`` pour
+    la techno ``system``. ``_build_sib1_index`` retourne ``(operator, band)``
+    déjà résolus, mais on veut le label opérateur SIB1 pour le mismatch —
+    on passe par ``_resolve_context`` qui retourne ``(operator, band)``.
+    Si rien avant, retourne None.
+    """
+    if not system or system.upper() not in {"LTE", "NR"}:
+        return None
+    try:
+        operator, _band = _resolve_context(
+            sib1_idx, str(capture_id), int(seq), system.upper(), None, None
+        )
+    except Exception:
+        return None
+    return operator
+
+
+# ---------------------------------------------------------------------------
+# Fil des service_action / env : propagation ``(capture_id, seq)`` stricte.
+# ---------------------------------------------------------------------------
+
+def _iter_raw_events(db: Session, project_id: str) -> list[Any]:
+    """Charge tous les events ``stg_event_raw`` du projet, triés
+    ``(capture_id, seq)``. Jamais trié par ``ts``.
+    """
+    return db.execute(
+        text(
+            """
+            SELECT id, nmf_file_id, capture_id, seq, category, event_code, ts,
+                   system, lat, lon, raw_fields
+            FROM stg_event_raw
+            WHERE project_id = :pid
+            ORDER BY capture_id, seq
+            """
+        ),
+        {"pid": project_id},
+    ).all()
+
+
+# ---------------------------------------------------------------------------
+# Charge le ``meta`` fichier pour chaque ``nmf_file`` du projet.
+# ---------------------------------------------------------------------------
+
+def _file_meta_by_id(db: Session, project_id: str) -> dict[str, dict]:
+    rows = db.execute(
+        text(
+            """
+            SELECT id, dl, ts_label, env
+            FROM nmf_file
+            WHERE project_id = :pid
+            """
+        ),
+        {"pid": project_id},
+    ).all()
+    return {
+        r.id: {"dl": r.dl, "ts_label": r.ts_label, "env": r.env}
+        for r in rows
+    }
+
+
+# ---------------------------------------------------------------------------
+# Point d'entrée.
+# ---------------------------------------------------------------------------
+
+def populate_measurement_points(
+    db: Session, project_id: str, *, purge: bool = False
+) -> dict:
+    """Enrichit (UPDATE) et complète (INSERT) ``measurement_points`` depuis
+    ``stg_event_raw`` + ``nmf_file.meta``.
+
+    Flot :
+    1. Charge le ``meta`` par ``nmf_file_id``.
+    2. Charge l'index SIB1 (``_build_sib1_index`` depuis ``stg_event``).
+    3. Itère ``stg_event_raw`` dans l'ordre ``(capture_id, seq)``.
+       - Maintient ``current_service_action`` (dernier CMDREQ précédent).
+       - Pour chaque event, calcule ``operator`` (depuis dl), ``rat``, etc.
+       - CELLMEAS : essaie l'UPDATE sur une ligne existante (skeleton BC1)
+         match ``(project_id, capture_id, seq, event_code='CELLMEAS')``.
+         Si rien → INSERT (lignes nouvelles).
+       - CMDREQ / data_* / tx_power / cqi / lock / other :
+         INSERT (ces catégories ne sont pas dans ``stg_measurement_raw``,
+         le skeleton ne les a jamais vues).
+    4. Commit.
+
+    ``purge=False`` par défaut : ``populate_measurements`` BC1 a déjà
+    purgé en amont les lignes à ``event_code IS NOT NULL`` avant son
+    insert. On ne purge pas une seconde fois (on perdrait le skeleton BC1).
+
+    Retourne un rapport ``{updated, inserted, by_category, operators,
+    mismatches}``.
+    """
+    report: dict[str, Any] = {
+        "updated": 0,
+        "inserted": 0,
+        "by_category": {},
+        "mismatches": 0,
+        "operators_file": {},
+        "proof": [],
+        "mapping": {},
+    }
+
+    # 0.33.0 — Preuve ±2 dB AVANT tout mapping. ``MEASUREMENT_MAPPING`` ne
+    # contient QUE les candidats prouvés contre param_occurrence. Les
+    # rejetés restent NULL déclaré à l'aval. Le rapport de preuve chiffré
+    # est joint à ``report['proof']`` (consommé par G24 et le CHANGELOG).
+    proof_rows = run_proof(db, project_id)
+    MEASUREMENT_MAPPING: dict[str, dict[str, str]] = mapping_from_proof(proof_rows)
+    report["proof"] = [p.as_dict() for p in proof_rows]
+    report["mapping"] = MEASUREMENT_MAPPING
+
+    file_meta = _file_meta_by_id(db, project_id)
+
+    # Index SIB1 pour mismatch — réutilise la source RRC.
+    sib1_rows = db.execute(
+        text(
+            """
+            SELECT id, capture_id, seq, system, message, freq, pci, payload_hex
+            FROM stg_event
+            WHERE project_id = :pid
+              AND message IS NOT NULL
+              AND (message LIKE '%%SystemInformationBlockType1%%'
+                   OR message LIKE '%%SIB1%%'
+                   OR message LIKE '%%SystemInformation1%%')
+            """
+        ),
+        {"pid": project_id},
+    ).all()
+    sib1_idx = _build_sib1_index(sib1_rows)
+
+    events = _iter_raw_events(db, project_id)
+    if not events:
+        return report
+
+    # Index service_action courant par capture (propagation stricte).
+    current_action_by_capture: dict[str, str | None] = {}
+    # Dernier CMDREQ.service_name/ts_label hérite de meta.ts_label par fichier
+    # (NEMO n'exprime pas le "service name" par CMDREQ — meta.ts est la
+    # vérité file-level).
+
+    updates: list[dict] = []
+    inserts: list[dict] = []
+
+    for r in events:
+        rfields = _raw(r.raw_fields)
+        category = r.category
+        report["by_category"][category] = report["by_category"].get(category, 0) + 1
+
+        # ------------------------------------------------------------
+        # Propagation service_action — CMDREQ seul.
+        # ------------------------------------------------------------
+        if category == "cmdreq":
+            action = rfields.get("service_action")
+            if action is not None and str(action).strip():
+                current_action_by_capture[str(r.capture_id)] = str(action)
+
+        action_now = current_action_by_capture.get(str(r.capture_id))
+        phase = phase_from_action(action_now)
+
+        meta = file_meta.get(r.nmf_file_id) or {}
+        dl = meta.get("dl")
+        ts_label = meta.get("ts_label")
+        env = meta.get("env")
+
+        operator_file = operator_from_dl(dl)
+        operator_source = "file" if operator_file else None
+
+        # Si pas d'opérateur depuis #DL, fallback SIB1 (déclaré via source).
+        sib1_op = _last_sib1_plmn_before(
+            sib1_idx, r.capture_id, r.seq, r.system
+        )
+        operator = operator_file
+        if operator is None and sib1_op is not None:
+            operator = sib1_op
+            operator_source = "sib1"
+        if operator is None:
+            operator_source = "none"
+
+        # Mismatch : operator (file) ≠ sib1_op (quand SIB1 décode un MNO FR
+        # différent du #DL). Pas de faux-positif MVNO : operator_from_plmn
+        # retourne None hors des 4 MNO FR, donc sib1_op=None dans ce cas.
+        mismatch: bool | None = None
+        if operator_file is not None and sib1_op is not None:
+            mismatch = operator_file != sib1_op
+            if mismatch:
+                report["mismatches"] += 1
+
+        if operator:
+            report["operators_file"][operator] = (
+                report["operators_file"].get(operator, 0) + 1
+            )
+
+        service_name = ts_label  # verbatim
+        service_action = action_now
+        service_type = service_type_from(service_name, service_action)
+
+        # ------------------------------------------------------------
+        # Métriques — gating par preuve (0.33.0).
+        # MEASUREMENT_MAPPING ne liste QUE les champs prouvés contre
+        # ``param_occurrence`` ±2 dB. Un métrique absente de la table =
+        # NULL déclaré (jamais inventé). ``earfcn`` reste câblé par le
+        # CONTENU (int entier non ambigu) tant qu'il reste dans la même
+        # catégorie que la métrique parente.
+        # ------------------------------------------------------------
+        rsrp = rsrq = sinr = None
+        cqi = tx_power = None
+        thrpt_dl = thrpt_ul = None
+        earfcn = None
+        rat = rat_from_code(rfields.get("rat_code"))
+
+        def _read(metric_key: str) -> float | None:
+            spec = MEASUREMENT_MAPPING.get(metric_key)
+            if spec is None:
+                return None  # non prouvé → NULL déclaré
+            if spec["category"] != category:
+                return None  # mauvaise catégorie pour cet event
+            return _try_float(rfields.get(spec["field"]))
+
+        rsrp = _read("rsrp")
+        rsrq = _read("rsrq")
+        sinr = _read("sinr")
+        cqi = _read("cqi")
+        tx_power = _read("tx_power")
+        thrpt_dl = _read("thrpt_dl")
+        thrpt_ul = _read("thrpt_ul")
+        if category == "cellmeas":
+            # EARFCN reste câblé par le CONTENU (int non ambigu dans le
+            # dict NMF, pas une métrique radio au sens de la preuve ±dB).
+            earfcn = _try_int(rfields.get("cell0_earfcn"))
+
+        # ------------------------------------------------------------
+        # UPDATE si skeleton BC1 a déjà créé la ligne.
+        # ------------------------------------------------------------
+        updates.append(
+            {
+                "pid": project_id,
+                "capture_id": str(r.capture_id),
+                "seq": int(r.seq),
+                "event_code": r.event_code,
+                "operator": operator,
+                "operator_source": operator_source,
+                "operator_mismatch": mismatch,
+                "service_name": service_name,
+                "service_action": service_action,
+                "service_type": service_type,
+                "phase": phase,
+                "env": env,
+                "rat": rat,
+                "earfcn": earfcn,
+                "rsrp": rsrp,
+                "rsrq": rsrq,
+                "sinr": sinr,
+                "cqi": cqi,
+                "tx_power": tx_power,
+                "thrpt_dl": thrpt_dl,
+                "thrpt_ul": thrpt_ul,
+            }
+        )
+
+        # ------------------------------------------------------------
+        # INSERT pour les catégories jamais vues par le skeleton.
+        # ------------------------------------------------------------
+        if category not in {"cellmeas"}:
+            # Skip si pas de lat/lon : une mesure sans GPS précédent n'est
+            # pas géo-localisable (jamais 0,0 inventé).
+            lat_v = r.lat if r.lat is not None else None
+            lon_v = r.lon if r.lon is not None else None
+            if lat_v is None or lon_v is None:
+                continue
+            inserts.append(
+                {
+                    "id": f"mp-{uuid.uuid4().hex[:12]}",
+                    "project_id": project_id,
+                    "lat": float(lat_v),
+                    "lng": float(lon_v),
+                    "operator": operator,
+                    "tech": r.system,
+                    "band": None,  # band non prouvée hors CELLMEAS
+                    "service": None,
+                    "dep": None,
+                    "site": None,
+                    "ts": r.ts or "",
+                    "capture_id": str(r.capture_id),
+                    "seq": int(r.seq),
+                    "event_code": r.event_code,
+                    # Métriques gatées par preuve : NULL déclaré si la
+                    # catégorie ne porte pas la métrique prouvée.
+                    "rsrp": None, "rsrq": None, "rssi": None, "sinr": None,
+                    "cqi": cqi, "mimo_rank": None, "tx_power": tx_power,
+                    "dl": thrpt_dl, "thrpt_ul": thrpt_ul, "latency": None,
+                    "operator_source": operator_source,
+                    "operator_mismatch": mismatch,
+                    "service_name": service_name,
+                    "service_action": service_action,
+                    "service_type": service_type,
+                    "phase": phase,
+                    "env": env,
+                    "rat": rat,
+                    "earfcn": None,  # non applicable hors CELLMEAS
+                }
+            )
+
+    # ------------------------------------------------------------
+    # UPDATE batch (match sur (pid, capture_id, seq, event_code)).
+    # ------------------------------------------------------------
+    updated = 0
+    for i in range(0, len(updates), BATCH_SIZE):
+        chunk = updates[i : i + BATCH_SIZE]
+        for u in chunk:
+            res = db.execute(
+                text(
+                    """
+                    UPDATE measurement_points
+                    SET operator = :operator,
+                        operator_source = :operator_source,
+                        operator_mismatch = :operator_mismatch,
+                        service_name = :service_name,
+                        service_action = :service_action,
+                        service_type = :service_type,
+                        phase = :phase,
+                        env = :env,
+                        rat = :rat,
+                        earfcn = COALESCE(:earfcn, earfcn),
+                        rsrp = COALESCE(:rsrp, rsrp),
+                        rsrq = COALESCE(:rsrq, rsrq),
+                        sinr = COALESCE(:sinr, sinr),
+                        cqi = COALESCE(:cqi, cqi),
+                        tx_power = COALESCE(:tx_power, tx_power),
+                        dl = COALESCE(:thrpt_dl, dl),
+                        thrpt_ul = COALESCE(:thrpt_ul, thrpt_ul)
+                    WHERE project_id = :pid
+                      AND capture_id = :capture_id
+                      AND seq = :seq
+                      AND event_code = :event_code
+                    """
+                ),
+                u,
+            )
+            updated += res.rowcount or 0
+    report["updated"] = updated
+
+    # ------------------------------------------------------------
+    # INSERT batch pour les catégories hors skeleton.
+    # ------------------------------------------------------------
+    for i in range(0, len(inserts), BATCH_SIZE):
+        chunk = inserts[i : i + BATCH_SIZE]
+        db.execute(
+            text(
+                """
+                INSERT INTO measurement_points (
+                    id, project_id, lat, lng, operator, tech, service, band,
+                    dep, site, ts, dl, rsrp, sinr, latency,
+                    capture_id, seq, rsrq, rssi, cqi, mimo_rank, tx_power,
+                    thrpt_ul, event_code,
+                    operator_source, operator_mismatch,
+                    service_name, service_action, service_type,
+                    phase, env, rat, earfcn
+                ) VALUES (
+                    :id, :project_id, :lat, :lng, :operator, :tech, :service, :band,
+                    :dep, :site, :ts, :dl, :rsrp, :sinr, :latency,
+                    :capture_id, :seq, :rsrq, :rssi, :cqi, :mimo_rank, :tx_power,
+                    :thrpt_ul, :event_code,
+                    :operator_source, :operator_mismatch,
+                    :service_name, :service_action, :service_type,
+                    :phase, :env, :rat, :earfcn
+                )
+                """
+            ),
+            chunk,
+        )
+    report["inserted"] = len(inserts)
+    db.commit()
+    return report

@@ -1,7 +1,7 @@
 [project]
 name = "bc4-back"
-version = "0.15.0"
-description = "BC4 backend FastAPI — B2 (auth comptes locaux)"
+version = "0.34.0"
+description = "BC4 backend FastAPI — extraction d'intention LLM structuré (robuste phrasé)"
 requires-python = ">=3.10"
 
 [tool.pytest.ini_options]

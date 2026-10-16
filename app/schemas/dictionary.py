@@ -173,6 +173,18 @@ GroupBy = Literal["operator", "band", "operator,band"]
 class DictTreeParam(BaseModel):
     param: str
     count: int = Field(ge=0)
+    # 0.22.3 — libellé d'affichage désambigué pour l'arbre `/dict/tree`.
+    # Égal à la feuille (`leaf`) du path quand ce leaf est unique dans
+    # `(system, message)`. En cas de collision (ex. plusieurs
+    # `rsrpResult` sous `MeasurementReport`), suffixé par le premier
+    # ancêtre distinctif entre parenthèses, ex.
+    # `"rsrpResult (measResultPCell)"` vs `"rsrpResult (measResult)"`.
+    # Jamais inventé — dérivé 100% du path. Non-breaking (champ additif
+    # tolere par le Zod front, cf. non-régression `value_distribution`
+    # 0.15.0 et `value_matrix` 0.21.0). Le champ `param` reste le path
+    # complet non suffixé (clé stable pour `/dict/params?path=…` et
+    # `/dict/param/map`).
+    label: str = ""
 
 
 class DictTreeMessage(BaseModel):
@@ -221,6 +233,23 @@ class ValueBucket(BaseModel):
 ValueDistributionMode = Literal["exact", "binned"]
 
 
+# 0.18.0 — Value matrix (value × operator × band)
+# ---------------------------------------------------------
+# Table croisée exposée pour chaque paramètre : chaque cellule donne,
+# pour un `(value_raw, value_converted, operator, band)`, le `count`.
+# `operator` et `band` sont des chaînes jamais nulles ("non attribué"
+# remplace NULL — jamais inventées depuis `operators_plmn` ou
+# `freq`/`pci`). Le front consomme ce champ pour afficher le
+# « regroupement par opérateur × bande » (grouping.ts) qui était
+# désactivé en 0.15.0 faute de donnée exposée en cross-table.
+class ValueMatrixCell(BaseModel):
+    value_raw: str
+    value_converted: str | None = None
+    operator: str
+    band: str
+    count: int = Field(ge=0)
+
+
 class ParamRow(BaseModel):
     system: Literal["LTE", "NR"]
     message: str
@@ -231,6 +260,8 @@ class ParamRow(BaseModel):
     # 0.15.0 — ajout non-breaking : distribution par valeur du paramètre.
     value_distribution: list[ValueBucket] = Field(default_factory=list)
     value_distribution_mode: ValueDistributionMode = "exact"
+    # 0.18.0 — ajout non-breaking : table croisée value × operator × band.
+    value_matrix: list[ValueMatrixCell] = Field(default_factory=list)
 
 
 class ParamListV2(BaseModel):

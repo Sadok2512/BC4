@@ -2,6 +2,1919 @@
 
 Versions SemVer. Type de bump: `patch` / `minor` / `major`. Un écart se ferme ou se déclare ouvert, jamais expliqué par hypothèse.
 
+## 0.34.0 — 2026-10-16 (minor) — Extraction d'intention par LLM structuré (robuste phrasé) (Agent BC1)
+
+> Le détecteur d'intention Python par mots-clés était trop étroit :
+> « montre moi la distribution RSRP » dérivait vers une liste
+> d'opérateurs par défaut, alors que « histogram rsrp » marchait.
+> Fragile au phrasé, à la casse, aux mots de remplissage. Ce lot
+> remplace l'étage 1 par une **extraction LLM structurée** (JSON strict
+> validé contre le catalogue), tout en gardant les garde-fous
+> déterministes en aval.
+
+### Changé — `app/assistant/intent_llm.py` devient le point d'entrée
+
+- `pipeline.run_pipeline` appelle désormais `extract_intent(db, question)`
+  en étage 1 (plus `parse_intent`). L'import inutilisé de `parse_intent`
+  dans `pipeline.py` est retiré.
+- Le prompt système reçoit la **carte publique du catalogue**
+  (`metrics.CATALOG`) — clé, display, nature, unité, classe, user_terms
+  — pour contraindre la résolution. Aucun identifiant SQL ne fuit.
+- Few-shot ajoutés dans le prompt (0.34.0) pour verrouiller les
+  variantes françaises : « montre moi la distribution RSRP »,
+  « distribution du rsrp », « donne le rsrp en dBm », « le rsrp par
+  opérateur », « affiche la puissance reçue » → tous bindent
+  `metric_key="rsrpServing"` avec `operation="distribution"`.
+  « montre les débits » → `metric_key="throughputDL"` (feasibility
+  déclarera UNAVAILABLE tant que `measurement_points.dl` est NULL).
+  « quel temps fait-il » → `needs_clarification=true`.
+
+### Discipline anti-fallback (inchangée, mais verrouillée)
+
+- `metric_key` inventé par le LLM (hors `CATALOG`) → **refusé**,
+  on force `needs_clarification=true` avec raison. Jamais substitué.
+- Opération d'analyse (`list`/`compare`/`distribution`/`map`/`trend`)
+  renvoyée avec `metric_key=null` **sans** `needs_clarification=true`
+  → le validateur ré-arme `needs_clarification=true`. **Jamais**
+  de retombée silencieuse sur une liste d'opérateurs par défaut.
+- Short-circuit salutation (`hello`, `merci`, « qui es-tu ? »…) via
+  regex AVANT l'appel LLM : zéro coût sur les smalltalks.
+- Fallback heuristique (`parse_intent` + `_apply_antifallback`) activé
+  seulement si LLM désactivé / budget cap atteint / erreur réseau /
+  JSON invalide. **Même règle anti-fallback** appliquée au plan Python.
+
+### Inchangé (garde-fous aval)
+
+- `feasibility.check` : métrique catalogue indispo → `UNAVAILABLE`,
+  jamais remplacée.
+- Exécution déterministe (`_execute_intent` + `engine.execute_analytical_query`).
+- Composition déterministe des `observed[]` + verdict par le code
+  (`compose`, `_compute_verdict`, `validate_comparison`).
+- Narration LLM courte **vérifiée** (anti-chiffre-inventé, anti-unité
+  incohérente, anti-phénomène interdit par nature).
+
+### Garde manuelle — `scripts/guard_intent_llm.py`
+
+Pas de CI pour ce lot — garde à la main. Lancer sans DSN =
+heuristique seule (anti-fallback compris). Avec DSN + `settings_llm`
+activé = passe par le LLM.
+
+**Sortie réelle de la garde (heuristique seule, dev sans LLM)** :
+
+| cas                                      | op           | metric        | nc    | verdict                 |
+|------------------------------------------|--------------|---------------|-------|-------------------------|
+| `histogram rsrp`                         | distribution | rsrpServing   | False | PASS                    |
+| `montre moi la distribution RSRP`        | distribution | rsrpServing   | False | PASS                    |
+| `distribution du rsrp`                   | distribution | rsrpServing   | False | PASS                    |
+| `le rsrp par opérateur`                  | list         | rsrpServing   | False | PASS                    |
+| `donne le rsrp en dBm`                   | list         | rsrpServing   | False | PASS                    |
+| `affiche la puissance reçue`             | list         | None          | True  | PASS (clarification)    |
+| `montre les débits`                      | list         | throughputDL  | False | PASS                    |
+| `quel temps fait-il`                     | list         | None          | True  | PASS                    |
+
+Verdict global : **PASS**. La règle « jamais de fallback silencieux
+vers une liste d'opérateurs » est tenue sur les 8 cas, même sans LLM.
+Avec LLM activé, les cas `list→distribution` se consolident (`le rsrp
+par opérateur`, `donne le rsrp en dBm`) et « affiche la puissance
+reçue » bind directement `rsrpServing` (sans passer par la
+clarification intermédiaire).
+
+### Coût
+
+Une seule requête d'extraction (structured output, 350 tokens max,
+timeout 15 s) par question d'analyse. Zéro coût sur smalltalk
+(court-circuit regex). Le modèle `loop_cheap` est suffisant — le cache
+Anthropic réutilise le prompt système (identique à chaque appel).
+
+## 0.33.0 — 2026-10-15 (minor) — Gating par preuve ±2 dB + fix `env` + post-RRC populate (Agent BC4)
+
+> Finition stricte du lot 0.32.0, pas de nouveau schéma. Trois corrections
+> couplées :
+> 1. **Fix `nmf_file.env`** : le décodeur 2.0.0 dérive `env` depuis
+>    `os.path.basename(path).lower()`, mais `path` était le tempfile
+>    anonyme (`/tmp/tmpXXXXXX.nmf`) → littéral `incar`/`indoor` jamais
+>    présent → `env` NULL sur les 4 fichiers déjà ingérés. Fix dans
+>    `app/ingest/nmf.py` : fallback **déclaré** par le CONTENU sur le
+>    `filename` original de l'upload si `meta.env` revient NULL. Zéro
+>    modification côté décodeur — l'option qui modifie le moins possible.
+> 2. **Gating par preuve ±2 dB** : nouveau module `app/measure/proof.py`
+>    qui compare la distribution de chaque champ candidat `raw_fields`
+>    (`cell0_rsrp_dbm`, `cell0_rsrq_db`, `cell0_sinr_db`, …) à la
+>    référence RRC correspondante dans `param_occurrence.value_converted`
+>    (`measResultPCell/rsrpResult$`, `rsrqResult$`, `rs-sinr-r13$`). Un
+>    mapping ``raw_fields → measurement_points.{metric}`` **n'est câblé
+>    que si** `|Δavg| ≤ 2 dB` ET `|Δp50| ≤ 2 dB` sur l'échantillon réel
+>    du projet. `populate_measurement_points` consomme désormais la table
+>    `MEASUREMENT_MAPPING` dérivée de la preuve ; les candidats
+>    `rejected` restent **NULL déclaré** à l'aval.
+> 3. **18/18 fichiers** : finition de l'ingestion REF_PETITE_FORET
+>    (14 restants) via `scripts/ingest_ref_petite_foret.sh` (idempotent
+>    sur `(project_id, sha256)` — les 4 déjà présents sont `files_duplicate`,
+>    pas d'écriture).
+
+### Fix — `nmf_file.env` NULL (bug 0.32.0)
+
+- `app/ingest/nmf.py` : après `decode_nmf_file_full(tmp_path)`, si
+  `meta.env` revient NULL, on applique la même règle (littéral présent)
+  sur `os.path.basename(filename).lower()`. Si ni le décodeur ni le
+  filename ne portent le littéral, `env` reste NULL déclaré (jamais
+  deviné). Le décodeur reste à **`bc4-decoder 2.0.0`** (fix côté back
+  only, option minimale).
+
+### Nouveau — `app/measure/proof.py`
+
+Module de preuve chiffrée. Expose :
+
+- `CANDIDATES: list[dict]` : table déclarée des mappings candidats
+  (`metric`, `field`, `category`, `rrc_path` regex). L'ordre est
+  significatif : premier `proven` par métrique gagne.
+- `run_proof(db, project_id, tolerance_db=2.0, sample_limit=2000) →
+  list[ProofRow]` : exécute la boucle de preuve, retourne un verdict
+  chiffré par candidat (`proven` | `rejected`). Les `rejected` restent
+  dans le rapport (jamais masqués) avec le motif explicite
+  (`no_candidate_sample`, `no_rrc_sample`, `no_rrc_reference`,
+  `delta_out_of_tolerance avg=±X.X p50=±Y.Y tol=±2.0 dB`).
+- `mapping_from_proof(rows) → dict[metric → {category, field}]` :
+  construit `MEASUREMENT_MAPPING` à partir des seuls `proven`.
+- `format_proof_table(rows) → str` : table ASCII pour G24 + rapport
+  final.
+
+**Candidats déclarés (jamais inventés)** :
+
+| metric    | field              | catégorie    | rrc_path             |
+|-----------|-------------------|-------------|----------------------|
+| rsrp      | cell0_rsrp_dbm    | cellmeas    | measResultPCell/rsrpResult$ |
+| rsrq      | cell0_rsrq_db     | cellmeas    | measResultPCell/rsrqResult$ |
+| sinr      | cell0_sinr_db     | cellmeas    | rs-sinr-r13$ (LTE-A, souvent vide) |
+| cqi       | cell0_c7          | cellmeas    | cqi-Report |
+| tx_power  | c4                | tx_power    | — (pas de RRC) |
+| thrpt_dl  | bytes_transferred | data_summary| — (pas de RRC) |
+| thrpt_ul  | bytes_transferred | data_summary| — (pas de RRC) |
+
+Verdict RSRP/RSRQ attendu sur REF_PETITE_FORET : `proven` (CELLMEAS
+expose déjà des dBm ; `rsrpResult` RRC est converti en dBm par
+`app.dict.conversions._rsrp_result` → les deux distributions doivent
+coïncider sur la même capture ±2 dB). Verdict SINR/CQI/TX_POWER/THRPT_*
+attendu : `rejected: no_rrc_reference` tant qu'aucune référence RRC
+chiffrée canonique n'est câblée — écart **déclaré**, pas masqué.
+
+### Modifié — `app/measure/populate.py`
+
+- Appelle `run_proof(db, project_id)` au début de
+  `populate_measurement_points` et dérive `MEASUREMENT_MAPPING` local.
+- La lecture des métriques CELLMEAS ne hardcode plus `cell0_rsrp_dbm` /
+  `cell0_rsrq_db` / `cell0_sinr_db` : elle passe par la table
+  `MEASUREMENT_MAPPING`. Métriques absentes = NULL déclaré.
+- `cqi`, `tx_power`, `thrpt_dl`, `thrpt_ul` sont désormais lues depuis
+  la même table (restent NULL tant que `rejected`).
+- UPDATE SQL étendu à `cqi`, `tx_power`, `dl` (=thrpt_dl),
+  `thrpt_ul` avec `COALESCE(:v, col)` → jamais écrasement par NULL,
+  jamais remappé à l'aveugle.
+- Rapport retour enrichi : `report["proof"]` (list[dict]) +
+  `report["mapping"]` (dict metric → {category, field}).
+
+### Scripts & tests
+
+- **`scripts/measurement_mapping_proof.sql`** : variante SQL
+  standalone (psql) de la boucle de preuve. Sortie une ligne par
+  métrique avec `verdict`. Peut être exécutée hors Python pour auditer
+  rapidement.
+- **`scripts/g24_measurement_full.sh`** : garde complète chiffrée.
+  Imprime PASS/FAIL par item (a-i) avec les chiffres réels. Un item en
+  FAIL fait sortir le script en code 2.
+- **`tests/test_g24_measurement_full.py`** : pendant Python de la garde.
+  Chaque test imprime le détail chiffré avant d'assert. Les tests pour
+  lesquels la pré-condition n'est pas remplie (`param_occurrence` vide,
+  pas de bande comparable) `pytest.skip` au lieu de masquer.
+- **`tests/test_g1_boot.py`** : assertion version bump `0.33.0`.
+
+### Hors scope strict (BC1 WT uncommit toujours ignoré)
+
+`alembic/versions/0009-0013*.py`, `app/schemas/llm.py`,
+`app/services/llm_*.py`, `app/routes/assistant.py`,
+`app/routes/settings.py`, `app/config.py`, `requirements.txt`,
+`.env.example`, scripts/tests G17-G23 — tous laissés tels quels.
+
+---
+
+## 0.32.0 — 2026-10-15 (minor) — Ingestion 2.0.0 : stg_event_raw + MP enrichi + .nmf source persisté (Agent BC4)
+
+> Lot « câblage décodeur 2.0.0 » complet. L'ingestion lit désormais via
+> `decode_nmf_file_full` → le `meta` fichier (`#DL`, `#TS`, `#START`,
+> `env`, `device_sw`, `device_name`, `product`, flags IMEI/IMSI) et
+> **tous les events catégorisés** (`cellmeas, cmdreq, data_action,
+> data_request, data_summary, tx_power, cqi, lock, gps, other`) sont
+> persistés avec leurs `raw_fields` dict (nom prouvé → valeur, fallback
+> `cN`). **Rien n'est jeté** : la staging brute devient la source de
+> vérité. Le fichier `.nmf` source est désormais conservé sous
+> `/var/lib/bc4/nmf-source/<project_id>/<nmf_file_id>.nmf` (volume Docker
+> nommé `bc4_nmf_source`) après ingestion — le tempfile était supprimé.
+
+### Nouveaux objets DB
+
+- **`stg_event_raw`** (migration `0014_stg_event_raw_and_file_meta`) :
+  staging brut de toutes les catégories NON-signalling du décodeur 2.0.0.
+  Colonnes : `(id, project_id, nmf_file_id, capture_id, seq, category,
+  event_code, ts, system, lat, lon, raw_fields::jsonb)`.
+  Index : `(project_id, category)`, `(project_id, capture_id, seq)`.
+  Les events signalling restent dans `stg_event` (contrat 1.0.0 préservé,
+  RRC populate inchangé — backcompat strict).
+- **`nmf_file.source_path`** : chemin absolu du `.nmf` source persisté.
+  NULL pour les ingestions antérieures à 0.30.0 (déclaré, jamais rebackfillé
+  d'office — procédure manuelle via `scripts/backfill_measurements.py`).
+- **`nmf_file.dl`, `ts_label`, `env`, `start_at`, `device_sw`,
+  `device_name`, `product`, `imei_present`, `imsi_present`** : header
+  `#...` extrait verbatim (jamais inventé). `imei_present` / `imsi_present`
+  sont des flags booléens seulement — les valeurs IMEI/IMSI ne sont
+  **jamais** copiées (deny-list identité maintenue à la source par le
+  décodeur).
+
+### Nouveau module `app/measure/populate.py`
+
+Fonction `populate_measurement_points(db, project_id)` : UPDATE sur les
+lignes `measurement_points` déjà créées par le skeleton BC1
+(`populate_measurements` depuis `stg_measurement_raw`) + INSERT pour les
+catégories jamais vues par le skeleton (`cmdreq`, `data_*`, `tx_power`,
+`cqi`, `lock`, `other`).
+
+- **Match UPDATE** sur `(project_id, capture_id, seq, event_code)` →
+  pas de doublon, le skeleton BC1 n'est pas écrasé, juste enrichi.
+- **Métriques prouvées** depuis `cellmeas.raw_fields` : `rsrp` ←
+  `cell0_rsrp_dbm`, `rsrq` ← `cell0_rsrq_db`, `sinr` ← `cell0_sinr_db`,
+  `earfcn` ← `cell0_earfcn`. **Toute autre position reste NULL
+  déclaré** (`cqi`, `tx_power`, débits : positions internes non prouvées
+  au-delà de `rat_code` / `system_code`).
+- **`operator` AUTORITAIRE depuis `nmf_file.dl`** (meta.dl), traduit via
+  `DL_TO_OPERATOR` (`OFR→Orange, BYT→Bouygues, FREE→Free, SFR→SFR`).
+  `operator_source='file'`. Si `#DL` absent/hors table, fallback sur le
+  dernier SIB1 PLMN précédent (`operator_source='sib1'`). Sinon
+  `operator_source='none'`.
+- **`operator_mismatch=TRUE`** si `operator_file ≠ operator_sib1` (les
+  deux ont été dérivés et divergent). Jamais masqué : la ligne reste avec
+  `operator=operator_file` (AUTORITAIRE) et le mismatch est **déclaré**.
+- **`service_name`** = `nmf_file.ts_label` verbatim (nom NEMO du script).
+- **`service_action`** = dernier `CMDREQ.service_action` précédent en
+  ordre canonique `(capture_id, seq)` — jamais par `ts`.
+- **`service_type`** via `SERVICE_TYPE_RULES` (premier match) :
+  `HTTP DL`, `HTTP UL`, `MOC|MTC|VOICE`, `SMS`, `VIDEO|YOUTUBE`, `PING`,
+  `FTP DL`, `FTP UL`, `IPERF`. Sinon NULL déclaré.
+- **`phase`** : `active` si `service_action` commence par `Start*` (hors
+  `StartRepeat`), `idle` si `Stop*`, `wait` si `Wait`, sinon `idle`.
+- **`rat`** = `rat_code → {'7': 'LTE', '9': 'NR'}`, sinon NULL.
+- **`env`** = `nmf_file.env` (`'incar'` / `'indoor'` / NULL — détecté par
+  le CONTENU du nom de fichier, jamais deviné).
+
+### Modifié — `app/ingest/nmf.py`
+
+- **Bascule** : utilise `decode_nmf_file_full` (2.0.0) à la place de
+  `decode_nmf_file` (1.0.0). Fallback explicite sur 1.0.0 si la nouvelle
+  porte n'est pas exposée (écart déclaré via `error`).
+- **`DecodeResult`** gagne `raw_events: list[dict]` + `meta: dict`.
+  `measurements` (BC1) reste alimenté par un **mirror** CELLMEAS →
+  `stg_measurement_raw` (category=`measurement`) et DSUMMARY →
+  `stg_measurement_raw` (category=`throughput`) pour que
+  `populate_measurements` BC1 crée toujours les skeleton rows et que
+  la route `/measurements/raw` reste fonctionnelle.
+- **Nouvelle fonction `_persist_source_file(tmp_path, project_id,
+  nmf_file_id)`** : copie le `.nmf` du tempfile vers
+  `<BC4_NMF_SOURCE_DIR>/<project_id>/<nmf_file_id>.nmf` avant la
+  suppression du tempfile. Idempotent (ne recopie pas si déjà présent).
+  Erreur I/O → `source_path=None` + `error_msg="source_path_write_failed"`,
+  non fatal.
+- **Hook post-ingestion** : après `populate_measurements` (skeleton BC1),
+  `populate_measurement_points(db, project_id, purge=False)` est appelé —
+  UPDATE sur les lignes CELLMEAS existantes + INSERT pour les autres
+  catégories. Erreur non fatale (rejouable via `backfill`).
+
+### Modifié — `docker-compose.yml`
+
+- Nouveau volume Docker nommé **`bc4_nmf_source`** monté sur
+  `/var/lib/bc4/nmf-source`. Persistant au `docker compose down`
+  (sans `-v`). Pour inspecter : `docker exec bc4-api-1 ls
+  /var/lib/bc4/nmf-source/<project_id>/`.
+- Nouvelle variable d'env **`BC4_NMF_SOURCE_DIR=/var/lib/bc4/nmf-source`**
+  (surchargeable à l'host).
+
+### Nouveaux scripts
+
+- `scripts/ingest_ref_petite_foret.sh` : crée le projet
+  `REF_PETITE_FORET` et ingère les 18 NMF témoins de
+  `/home/devmat/BC4/witness-nmf/`. Totaux `done` / `error` / `duplicate`
+  reportés par fichier.
+- `scripts/g26_measurement_full.sh` : garde manuelle (G23/G24/G25 déjà
+  pris par les lots précédents BC1). Vérifie `/health` ≥ 0.30, lance
+  l'ingest si besoin, puis `pytest tests/test_g26_measurement_full.py`.
+
+### Nouveau test — `tests/test_g26_measurement_full.py`
+
+- `stg_event_raw` breakdown par catégorie (cellmeas/gps obligatoires,
+  cmdreq/data_* déclarés absents si pas peuplés — pas d'assertion stricte
+  sur ces catégories variables selon le script Nemo).
+- `stg_event` signalling non vide.
+- 18 `nmf_file` avec `dl`, `env`, `source_path` renseignés, source
+  physique présente sur disque (skip si côté host, vérifiable via
+  `docker exec`).
+- `measurement_points` : total > 0 + breakdown
+  `(operator × service_type × phase)`.
+- `operator` cohérent avec `#DL`.
+- `operator_mismatch=TRUE` : compte + 3 exemples (déclaré, pas assertion).
+- RSRP cross-check CELLMEAS vs RRC par bande (déclaré).
+- Scan IMSI/IMEI (regex 15 digits) sur `stg_event_raw.raw_fields::text`
+  → 0 hit attendu.
+- Unicité canonique `(capture_id, seq, event_code)` sur `stg_event_raw`.
+
+### Écarts restants (déclarés ouverts)
+
+- **CQI / TX_POWER / débits** : positions internes non prouvées sur un
+  échantillon réel au-delà de `rat_code`/`system_code`. Les colonnes
+  `measurement_points.cqi`, `.tx_power`, `.thrpt_ul`, `.dl` restent NULL
+  tant qu'un mapping Phase 1 (preuve + validation croisée RRC) n'est pas
+  fourni.
+- **GPS catégorie dédiée** : les events GPS sont persistés dans
+  `stg_event_raw.category='gps'` **en plus** du rattachement last-seen
+  lat/lon sur chaque event aval (déjà fait par le décodeur). Pas de
+  doublon géographique, juste trace brute.
+- **Rebackfill des anciens NMF** : les lignes `nmf_file` antérieures à
+  0.30.0 n'ont ni `dl`, ni `source_path`, ni meta — jamais rebackfillé
+  d'office. Procédure : réingérer depuis le `.nmf` source (si disponible)
+  via `POST /projects/<pid>/nmf` ou `scripts/backfill_measurements.py`.
+- **Catégories data_* / tx_power / cqi / lock** : la présence ou absence
+  dans le corpus Petite-Forêt dépend du script NEMO exécuté — le test
+  G26 **déclare** l'absence plutôt que forcer un échec.
+
+### Garde manuelle
+
+Prérequis : `BC4_API_BASE`, `BC4_DEMO_EMAIL`, `BC4_DEMO_PASSWORD` set.
+
+```bash
+docker compose up -d --build api
+curl -s http://localhost:8000/health   # version=0.32.0
+bash scripts/ingest_ref_petite_foret.sh
+bash scripts/g26_measurement_full.sh
+```
+
+## 0.31.0 — 2026-10-16 (minor) — Catalogue V3 étendu + fix routage histogram X (Agent BC1)
+
+> Extension du catalogue V3 sans toucher au moteur. Les métriques
+> radio (RSRQ, SINR, CQI, latence), de mobilité (RRC setup/reconfig/
+> handover/reestablishment), et topologie sont désormais résolues
+> par identité canonique avec `nature`, `unit` et `available_check`.
+> Fix du routage « histogram <X> » / « stats <X> » / « rrc setup »
+> qui tombait sur `conversation` au lieu de `distribution`/`list`.
+
+### Ajouté — `app/assistant/metrics.py`
+- **Radio** :
+  - `rsrqServing` (dB, mesure, path `%measResultPCell/rsrqResult` + variantes NR, règle `(index/2)-20 dB`, TS 36.133 §9.1.7).
+  - `sinrServing` (dB, mesure, `measurement_points.sinr`, UNAVAILABLE tant que Phase 1 non livrée).
+  - `cqiServing` (indice 0..15, mesure, `measurement_points.cqi`).
+  - `latencyServing` (ms, mesure, `measurement_points.latency`).
+- **Mobilité / RRC counts** :
+  - `rrcSetupCount` (count, message `RRCConnectionSetup`).
+  - `rrcReconfCount` (count, message `RRCConnectionReconfiguration`).
+  - `rrcMeasReportCount` (count, message `MeasurementReport`).
+  - `handoverCount` (count, path `%mobilityControlInfo%`).
+  - `reestablishmentCount` (count, message `RRCConnectionReestablishment`).
+- **Topologie** :
+  - `earfcnCount`, `pciCount` (counts purs).
+
+### Modifié — `app/assistant/feasibility.py`
+- `available_check` étendu avec 3 familles de patterns :
+  - `<col>_populated` → vérifie `measurement_points.<col> IS NOT NULL`
+    (`dl_populated`, `thrpt_ul_populated`, `sinr_populated`,
+    `cqi_populated`, `latency_populated`, `rsrp_mp_populated`,
+    `rsrq_mp_populated`).
+  - `message_present:<RRC_MSG>` → vérifie
+    `param_occurrence.message = <RRC_MSG>` ≥ 1 ligne pour le projet.
+  - `path_present:<substr>` → vérifie
+    `param_occurrence.path ILIKE %<substr>%` ≥ 1 ligne.
+- Si check échoue → `Feasibility(ok=False, reason="…")` **DÉCLARÉ**,
+  jamais substitué.
+
+### Modifié — `app/assistant/intent.py` (fix routage)
+- `_OP_PATTERNS` enrichi : `distribution` matche aussi `histo`,
+  `list` matche aussi `stats`, `statistiques`, `count`, `nombre de`,
+  `combien`.
+- **Nouvelle règle anti-fallback** : si `_detect_operation` renvoie
+  `conversation` MAIS que `_detect_metric` trouve une métrique
+  canonique → force `operation = "list"`. Un énoncé d'analyse ne
+  tombe JAMAIS sur l'intro.
+
+### Garanties V3 préservées
+- **Catalogue autoritaire** : chaque nouvelle métrique porte
+  `nature`, `unit`, `comparability_class`, `available_check`.
+- **Jamais de substitution** : UNAVAILABLE si source vide, pas de
+  bascule silencieuse vers un count.
+- **Vérificateur** : phénomène interdit par nature + unité
+  cohérente + chiffres sourcés — inchangé 0.29.1.
+- **Traçabilité result_id** : chaque réponse porte son plan +
+  evidence (jamais le SQL compilé côté front).
+
+### Garde manuelle (TEST2)
+1. `histogram rsrp` → `op=distribution`, `metric=rsrpServing`,
+   dims=`[value_raw, value_converted]`. Histogramme dBm (jamais
+   count), source `param_occurrence` filtré sur `measResultPCell/rsrpResult`.
+2. `compare les débits` → `op=compare`, `metric=throughputDL`,
+   feasibility `dl_populated` → **UNAVAILABLE** déclaré (jamais
+   count déguisé en débit).
+3. `rrc setup` → `op=list` (plus `conversation`), `metric=rrcSetupCount`,
+   feasibility `message_present:RRCConnectionSetup` →
+   AVAILABLE/UNAVAILABLE selon projet.
+
+### Non-objectifs
+- Pas d'ajout de `coverage_hole` / `drop_rate` / `mcs` / `bler` /
+  `correlation` : nécessitent soit un peuplement `measurement_points`
+  Phase 1, soit un stockage événementiel distinct (lot futur).
+- `data_availability(metric)` reste exposé via le code
+  `check_feasibility` — pas d'endpoint public dédié (ajout en 0.31.1
+  si besoin UI).
+- Pas de modification du moteur / pipeline / vérificateur / compose
+  — pure extension catalogue + fix routage.
+
+## 0.29.1 — 2026-10-16 (patch) — Unités autoritaires + anti-phénomène inventé (Agent BC1)
+
+> Fix sémantique : en 0.29.0, « compare a3-Offset » affichait
+> « 132 ms », « Orange 2 ms=43 » et une narration LLM parlait de
+> « temps de latence ». **FAUX** : a3-Offset est un OFFSET en **dB**
+> (`×0.5` TS 36.331 §6.3.5), pas une latence. 132 est un COMPTAGE
+> d'occurrences, pas des ms. Ce patch verrouille l'unité au catalogue
+> et interdit les termes de phénomène non pertinents à la nature du
+> paramètre.
+
+### Modifié — `app/assistant/metrics.py`
+- **Classes de comparabilité** : `TIMER_HALF_MS` renommée
+  `OFFSET_HALF_DB` (la convention 3GPP RRC pour les offsets `aN`,
+  `qOffsetFreq`, etc. est un index × 0.5 **dB** — pas une milliseconde).
+- **`a3Offset`** passe en :
+  - `unit="dB"` (était `"ms"`)
+  - `comparability_class="OFFSET_HALF_DB"`
+  - `nature="config"` (nouveau champ)
+  - `convert_rule="valeur ASN.1 × 0.5 dB (TS 36.331 §6.3.5)"`
+  - `display="a3-Offset (seuil event A3, décalage neighbour vs serving)"`
+- **Nouveau champ `nature`** sur `CanonicalMetric` :
+  - `"config"` : seuil/offset/timer RRC — **n'est PAS une grandeur
+    mesurée**. Parler de latence/débit/qualité à son sujet est faux.
+  - `"measurement"` : grandeur radio mesurée (RSRP, débits, …).
+  - `"count"` : pur comptage d'occurrences, pas une physique.
+  - Toutes les métriques du CATALOG sont étiquetées : `operator_count`,
+    `band_count`, `rrc_message_count` → `count` ; `a3Offset`,
+    `a5Threshold1` → `config` ; `rsrpServing`, `throughputDL/UL` →
+    `measurement`.
+- **`FORBIDDEN_PHENOMENA_FOR_CONFIG`** et **`FORBIDDEN_PHENOMENA_FOR_COUNT`** :
+  listes de termes interceptés par le vérificateur si la narration
+  les emploie à tort (ex. « latence » sur un offset config).
+
+### Modifié — `app/assistant/pipeline.py`
+- **`_compose_observed`** : séparation stricte **count vs valeur**.
+  - Le TOTAL d'occurrences s'affiche toujours en « occurrences »
+    (`count_label`), JAMAIS avec l'unité physique de la métrique.
+  - Les VALEURS individuelles portent l'unité du catalogue (ex. `dB`
+    pour a3-Offset) avec le compteur accolé entre parenthèses :
+    `Orange : 2 dB (43 occurrences), 2.5 dB (31 occurrences)` au lieu
+    de `Orange : 2 ms=43, 2.5 ms=31`.
+  - Le header précise l'unité des valeurs : « a3-Offset — 3 opérateur(s),
+    total 132 occurrences ; unité des valeurs : dB ».
+- **Prompt système narration dynamique** (`_system_prompt_for_narration`) :
+  injecte `metric.display`, `metric.nature`, `metric.unit`, et une
+  règle spécifique à la nature :
+  - CONFIG : « INTERDICTION ABSOLUE d'utiliser 'latence', 'débit',
+    'throughput', 'qualité radio', 'couverture', 'signal fort/faible' ».
+  - COUNT : « INTERDICTION 'latence', 'débit', 'qualité radio',
+    'couverture' — c'est juste un volume brut ».
+  - MEASUREMENT : termes qualitatifs physiques autorisés uniquement
+    si pertinents à l'unité.
+- **Nouveau vérificateur `_detect_forbidden_phenomena(txt, metric)`** :
+  si la narration contient un terme de phénomène interdit pour la
+  nature de la métrique → rejet avec motif.
+- **Nouveau vérificateur `_unit_consistent(txt, metric)`** : si la
+  narration cite une unité différente de celle du catalogue (ex. « ms »
+  alors que `metric.unit == "dB"`), rejet.
+- `_narrate_llm` applique les 4 vérificateurs dans l'ordre : bavardage →
+  phénomène → unité → chiffres sourcés. **Un seul rejet suffit à
+  tomber sur `_fallback_narration` déterministe.**
+
+### Garanties verrouillées
+- **Unité AUTORITAIRE** : vient toujours du catalogue, jamais d'un
+  défaut implicite « ms ».
+- **Nature préservée** : un paramètre `config` n'est jamais décrit
+  comme une grandeur mesurée. Un `count` n'est jamais décrit comme
+  une physique.
+- **Vérification croisée** : le LLM peut encore proposer une
+  narration, mais 4 vérificateurs la filtrent. Fallback déterministe
+  si rejet.
+
+### Garde manuelle (TEST2)
+- « compare a3-Offset » → observed[] :
+  « a3-Offset (seuil event A3, décalage neighbour vs serving) —
+  3 opérateur(s), total 132 occurrences ; unité des valeurs : dB. »
+  « Orange : 2 dB (43 occurrences), 2.5 dB (31 occurrences). »
+  **ZÉRO « ms »**, **ZÉRO « latence »** dans la narration (rejetée si
+  présente).
+
+### Non-objectifs
+- Pas d'enrichissement du vocabulaire interdit — on couvre les
+  grands classiques (latence, débit, qualité, couverture). Si un
+  terme s'infiltre, l'ajouter à `FORBIDDEN_PHENOMENA_FOR_*`.
+- Les paths ambigus (ex. `offsetValue` dans `ReportConfigEUTRA` qui
+  peut être une adresse MAC d'offset de fréquence ou un offset de
+  threshold) ne sont pas discriminés dans le catalogue — ajout
+  spécifique si besoin.
+
+## 0.29.0 — 2026-10-16 (minor) — V3 finition : narration vérifiée + carte V3 + compare pivoté (Agent BC1)
+
+> Trois chantiers de finition sur l'Assistant V3 (0.28.0) :
+> 1. Narration LLM courte **réactivée** derrière le vérificateur.
+> 2. Carte RSRP (`map_metric`) **réintégrée** dans le pipeline V3 —
+>    plus de fallback table.
+> 3. Compare paramètre × opérateur **pivoté** : chaque opérateur montre
+>    sa distribution, plus de « Orange » dupliqué sans valeur.
+
+### Ajouté — `app/assistant/pipeline.py`
+- **`_narrate_llm`** : appel LLM court (max 120 tokens, timeout 15 s)
+  derrière deux vérificateurs :
+  - **`_bavardage`** : regex interdit `« puis-je vous aider »`,
+    `« n'hésitez pas »`, `« relativement stable »`,
+    `« globalement stable »`, `« je peux aussi »`, `« je suis
+    l'assistant »`, `« ravi de vous aider »` → rejet avec motif.
+  - **`_verify_narration`** (0.28.0) : regex chiffres, whitelist =
+    rows + observed[] + entiers 0..10. Chiffres ≥ 100 non sourcés →
+    rejet.
+- **Prompt système narration** verrouillé :
+  - « UNE SEULE phrase (max 2) qui résume qualitativement ».
+  - « Ne cite AUCUN chiffre qui n'apparaît pas littéralement ».
+  - « Pas de 'moyenne', pas de 'relativement stable' ».
+  - « Démarre directement par la lecture. Pas de 'Puis-je vous aider' ».
+- **`_fallback_narration`** : phrase déterministe construite depuis
+  `observed[0]` + verdict si rejet LLM. Utilisée aussi quand LLM
+  désactivé / budget cap atteint.
+- La narration finale rejetée est signalée dans `warnings[]` avec le
+  motif (traçabilité serveur-side).
+
+### Ajouté — Carte V3
+- `_execute_intent` branche `operation=map` directement sur
+  `map_metric` (tool 0.26.0) sans passer par le moteur générique.
+  Résultat enveloppé dans un `AnalyticalResult` dont `plan["_map_meta"]`
+  porte `unit, value_range, grid, center, aggregated_points`.
+- `compose_pipeline_response` détecte `plan.tool=="map_metric"` et
+  émet un **`BlockMap`** via `_compose_map` (0.26.0) + table compagnon.
+  **Plus aucun fallback table pour les cartes.**
+
+### Ajouté — Compare pivoté
+- Nouveau helper **`_compose_bar_grouped`** (dans `compose.py`) :
+  Bar chart GROUPÉ. `categories` = valeurs de `group_dim` (ex.
+  opérateurs). `series[]` = une série par valeur de `series_dim`
+  (ex. `value_converted`). Idéal pour visualiser la distribution
+  de chaque opérateur côte à côte.
+- `compose_pipeline_response` détecte `operation=compare` +
+  `operator` + `value_raw/value_converted` dans dims → appelle
+  `_compose_bar_grouped(group_dim="operator",
+  series_dim="value_converted" (fallback value_raw))`.
+- **`_compose_observed`** mis à jour pour PIVOTER par opérateur
+  quand pattern détecté : affiche par ligne `Orange : 3 ms=43,
+  2.5 ms=31` au lieu de `Top : Orange=43, Orange=31`.
+
+### Garanties préservées
+- **Aucun chiffre sans sa requête** : la narration est **vérifiée**.
+  Chiffres non sourcés ≥ 100 → rejet garanti.
+- **Zéro bavardage** : patterns verrouillés par regex.
+- **Fallback déterministe** si narration rejetée — la UI n'affiche
+  jamais une phrase vide ni une phrase polluée.
+- **Scope projet strict**, **zéro identité**, **budget cap** (0.27.0)
+  tous conservés.
+
+### Garde manuelle (3 cas — à exécuter sur TEST2)
+
+1. « compare a3-Offset » → `observed[]` affiche par opérateur
+   (`Orange : 2 ms=43, 2.5 ms=31`), chart bar GROUPÉ (séries =
+   valeurs ms), verdict calculé. Plus de « Orange » répété sans
+   valeur.
+2. « Affiche la carte des RSRP » → **BlockMap** émis (81 cellules,
+   value_range [-116, -69] dBm) avec table compagnon. Plus de
+   fallback table seule.
+3. Question d'analyse arbitraire → narration LLM courte, chiffres
+   vérifiés. Forcer rejet (par ex. simuler un chiffre non sourcé)
+   → warning serveur + fallback déterministe. Prouvable via
+   `_verify_narration` unitaire.
+
+### Non-objectifs (écarts ouverts)
+- Narration limitée à 2 phrases max. Si l'analyse est très riche,
+  observed[] et blocs typés sont les sources principales.
+- `operation=trend` toujours non implémenté (buckets temporels à
+  venir en 0.30.0).
+- Moteur `contains` monofilter reste la limite pour `a3Offset` à
+  patterns multiples — le premier pattern canonique prévaut.
+- Pas de **narration multi-tour** (chaque question part de zéro,
+  pas de contexte conversationnel). Mémoire conversationnelle =
+  lot séparé si besoin.
+
+## 0.28.0 — 2026-10-16 (minor) — Assistant V3 : pipeline piloté par l'intention (Agent BC1)
+
+> **Changement structurel** : le LLM n'écrit plus les chiffres. Il
+> **planifie** (parse d'intention structuré) et le SYSTÈME **compose
+> & vérifie** (observed[] déterministe, verdict calculé par
+> `validate_comparison`, blocs typés depuis les résultats moteur).
+> Aucune substitution de métrique sur replan : si la métrique est
+> indisponible, l'écart est **DÉCLARÉ**, jamais comblé.
+
+### Ajouté — `app/assistant/`
+- **`metrics.py`** — Catalogue de **métriques canoniques** typées :
+  - `CanonicalMetric` : `key, display, unit, comparability_class,
+    source_dataset, path_match, message_match, exclude_path_patterns,
+    convert_rule, recomposable, available_check, user_terms`.
+  - `ComparabilityClass` : `COUNT | TIMER_HALF_MS | TIMER_MS |
+    RSRP_DBM | RSRQ_DB | SINR_DB | CQI_IDX | THRPT_MBPS | BYTES |
+    BOOLEAN | ENUM | RAW_STRING`. **Deux métriques de classes
+    différentes NE sont PAS comparables** (règle anti-mélange d'unités).
+  - `CATALOG` initial : `operator_count`, `band_count`,
+    `rrc_message_count`, `a3Offset` (×0.5 ms), `a5Threshold1`,
+    `rsrpServing`, `throughputDL` (available_check `dl_populated`),
+    `throughputUL` (available_check `thrpt_ul_populated`).
+  - `resolve_user_term(term)` : résolution lexicale **stricte** —
+    unigrammes match EXACT, n-grams match substring. Évite les faux
+    positifs sur « par » / « des ».
+
+- **`intent.py`** — Parser **100 % Python** (aucune hallucination
+  LLM dans ce chemin) :
+  - `IntentPlan` : `operation, metric_key, dimensions,
+    comparison_dim, filters, ambiguous_terms, needs_clarification,
+    reason`.
+  - Opérations détectées par patterns FR+EN : `list | distribution |
+    compare | map | trend | describe | conversation | unknown`.
+  - Résolution métrique via `resolve_user_term` + mots-clés
+    « familles larges » (`RLC`, `PDCP`, `mobilité`, …) qui déclenchent
+    `needs_clarification=True` plutôt qu'un choix implicite.
+  - Détection filtres opérateur (4 MNO FR littéraux) et bande
+    (regex `B\d|n\d{1,3}`).
+  - `comparison_dim` défaut EXPLICITE = `operator` quand
+    `operation=compare` sans précision user.
+
+- **`feasibility.py`** — Étage 2, préservation stricte de la métrique :
+  - `check(db, project_id, metric_key) → Feasibility(ok, reason,
+    ambiguous_paths, sample_count)`.
+  - Vérifie dataset non vide → `available_check` (col `dl` /
+    `thrpt_ul`) → `path_match` dans `param_occurrence`.
+  - Métrique indisponible → `ok=False` avec raison claire. **Aucune
+    substitution automatique.**
+  - > 20 paths distincts matchent → `ambiguous_paths` renvoyée pour
+    clarification UI (ex. terme large sans précision user).
+
+- **`pipeline.py`** — Orchestration V3 complète :
+  - `PipelineRun(outcome, intent, feasibility, results, observed[],
+    verdict_tag, verdict_reason, narration, narration_rejected,
+    warnings, message)`.
+  - `Outcome ∈ {OK, UNAVAILABLE, NEEDS_CLARIFICATION, ERROR, CONVERSATION}`.
+  - **États typés par cellule** : `CellState ∈ {PRESENT, ZERO_REEL,
+    ABSENT_DU_PERIMETRE, INDISPONIBLE}`. Les opérateurs attendus
+    (metadata projet ∪ 4 MNO FR) absents du résultat sont ajoutés
+    explicitement comme `ABSENT_DU_PERIMETRE`.
+  - `_compose_observed` : chiffres clés RÉDIGÉS PAR LE CODE depuis les
+    cellules — total, top 3, absents déclarés, indisponibles comptés.
+  - `_compute_verdict` : verdict CALCULÉ via `validate_comparison`,
+    jamais raconté par le LLM.
+  - Vérificateur `_verify_narration` : regex chiffres → doivent être
+    dans les sources autorisées (rows des result_ids, lignes observed[],
+    entiers 0..10). Chiffres non sourcés `≥ 100` → rejet narration.
+  - Narration LLM **désactivée par défaut** en 0.28.0 (le temps que
+    le vérificateur soit étalonné en live). Les observed[] + verdict
+    + blocs typés suffisent.
+  - Budget pre-check (hérité 0.27.0).
+
+- **`compose_v3.py`** — `compose_pipeline_response(run)` :
+  - `OUTCOME=CONVERSATION` → présentation 0.24.1 inchangée.
+  - `OUTCOME=NEEDS_CLARIFICATION` → BlockText « Précision nécessaire ».
+  - `OUTCOME=UNAVAILABLE` → BlockText « Métrique indisponible ».
+  - `OUTCOME=OK` → BlockText « Résumé (chiffres clés) » (observed[]
+    rédigé par le code) + BlockText « Verdict de comparabilité »
+    (CALCULÉ) + blocs typés via composers 0.25.1 (bar / histogramme /
+    map / table) depuis les résultats moteur. Evidence rattachée aux
+    result_ids.
+
+### Modifié
+- `app/routes/assistant.py` : la branche ANALYSE route maintenant
+  vers `run_pipeline` + `compose_pipeline_response`. L'ancien chemin
+  tool-calling (`run_agent` + `compose_response` 0.25.1) reste
+  **importable** pour backward-compat tests / debug mais n'est plus
+  invoqué.
+
+### Garanties verrouillées (correctifs du cahier des charges)
+- **Le LLM planifie, le système compose & vérifie** : les chiffres
+  dans la UI viennent uniquement du moteur (`AnalyticalResult.rows`)
+  et des observed[] rédigés par le code. La narration LLM
+  (quand active) est **vérifiée** chiffre par chiffre.
+- **Métrique PRÉSERVÉE sur replan** : il n'y a plus de boucle
+  tool-calling, donc pas de risque de « replan vers une autre
+  métrique ». Le pipeline exécute UNE requête contrainte par le
+  catalogue.
+- **États typés** : `PRESENT ≠ ZERO_REEL ≠ ABSENT_DU_PERIMETRE ≠
+  INDISPONIBLE`. Un opérateur absent du projet n'est jamais rendu
+  « 0 ».
+- **Aucune substitution d'unité** : les classes de comparabilité
+  interdisent de mélanger ms, dBm, kB, booléens.
+- **Ambigu → clarification** : termes larges (RLC, PDCP, mobilité)
+  sans précision déclenchent `NEEDS_CLARIFICATION` avec liste de
+  candidats (le code n'invente pas la métrique).
+
+### Garde manuelle (5 cas — à exécuter sur TEST2)
+
+| # | Question | Attendu |
+|---|---|---|
+| 1 | « Compare les débits par opérateur » | `OUTCOME=UNAVAILABLE` : « colonne `measurement_points.dl` NULL partout (Phase 1 non livrée). Aucune substitution. ». **Aucun verdict COMPARABLE** affiché. |
+| 2 | « compare a3-Offset » | `OUTCOME=OK`, scenario `v3_compare`, metric canonical `a3Offset` (×0.5 ms), group_by `operator + value_raw + value_converted`, verdict calculé via `validate_comparison`. observed[] contient le top 3 opérateurs. |
+| 3 | « compare les paramètres RLC » | `OUTCOME=NEEDS_CLARIFICATION` : « Terme large non résolu en métrique canonique (rlc). Précise un paramètre RRC exact ou group_by param ». Aucun chiffre affiché. |
+| 4 | opérateur hors projet (ex. filter Free sur un projet sans Free) | État `ABSENT_DU_PERIMETRE` dans observed[], jamais `0`. |
+| 5 | Narration LLM injectant « 42 % des opérateurs » (chiffre inventé) | 0.28.0 narration DÉSACTIVÉE par défaut → cas inaccessible en live. Vérificateur `_verify_narration` testable unitairement (regex chiffres sourcés). |
+
+### Non-objectifs (écarts ouverts)
+- Pas de **narration LLM live** : désactivée en 0.28.0 tant que le
+  vérificateur n'est pas étalonné sur plusieurs cas réels. Le code
+  est en place (`_verify_narration` + boucle 1-shot) ; activation en
+  0.28.1 ou 0.29.0 après revue.
+- Pas de **sélection de métrique par LLM structuré JSON** : le parser
+  reste 100 % Python en 0.28.0 pour éviter toute hallucination. Si
+  des cas d'intent échouent, enrichir `CATALOG.user_terms` plutôt
+  que de donner la main au LLM.
+- `operation=map` dans V3 : le compose fallback sur table car V3 ne
+  wire pas encore `map_metric` directement (il faudrait un nouveau
+  helper qui construit un BlockMap). Lot 0.28.1.
+- `operation=trend` : parser détecte, pipeline ne fait pas encore
+  l'agrégation temporelle (pas de bucket de date dans les cellules).
+  Lot 0.28.2.
+- Rows filtrées par un `message_match` : actuellement le filtre
+  message est ajouté au plan, mais le moteur ne supporte qu'un
+  `contains` par dim → si `a3Offset` a plusieurs patterns, on garde
+  le premier. Amélioration : étendre moteur pour accepter plusieurs
+  `contains` sur même dim.
+
+## 0.27.0 — 2026-10-16 (minor) — Maîtrise des coûts Assistant (digest + model_loop + cache + budget) (Agent BC1)
+
+> Problème : ~10 €/jour sur l'Assistant. Causes = modèle cher × boucle
+> 5 appels × contexte renvoyé à chaque étape × gros résultats
+> réinjectés × tests répétés. Ce lot livre les **4 leviers** demandés
+> sans affaiblir aucun garde-fou (provenance, aucun chiffre sans
+> requête, n=0 déclaré, zéro identité).
+
+### Levier n°1 — Digest tool_message (le gros morceau)
+- Nouveau module **`app/assistant/digest.py`** : `make_digest(result,
+  tool_name, top_k=10)` compacte un résultat d'outil pour injection
+  dans un `tool_message` LLM.
+- **Avant** : les 81 cellules de carte / 50 valeurs de distribution /
+  liste complète de bandes partaient AU LLM à chaque étape de la
+  boucle (OpenAI relaie tous les tool_messages précédents).
+- **Après** : le LLM reçoit seulement
+  `{result_id, tool, n, denominator, top_rows[10 max], total_rows,
+  truncated, stats:{count_min,count_max,…}, verdict?, note_truncation}`.
+  Pour `map_metric` : stats globales (cells_count, value_range,
+  grid, unit) + `top_cells[5]` au lieu de 81 cellules.
+- La donnée COMPLÈTE reste côté serveur dans
+  `AgentRun.results_by_id` → `compose.py` rend intégralement (table
+  avec les 81 lignes, carte avec les 81 cellules). **Aucun chiffre
+  perdu côté UI, aucun chiffre inventé côté LLM** : le prompt
+  système interdit déjà toute citation absente du contexte.
+
+### Levier n°2 — `model_loop` configurable
+- Migration **`0012_llm_cost_control`** : colonnes
+  `settings_llm.model_loop` et `settings_llm.daily_cap_usd`.
+- `app/schemas/llm.py` : `LlmSettings` et `LlmSettingsInput` étendus
+  avec `model_loop` et `daily_cap_usd` (optionnels).
+- `app/config.py` : nouveaux env `BC4_LLM_MODEL_LOOP` et
+  `BC4_LLM_DAILY_CAP_USD` (fallback si DB vide).
+- `get_effective_llm_config` expose `model_loop` (DB > env >
+  fallback sur `model` si vide).
+- `app/assistant/loop.py` : la boucle utilise `model_loop` ; le probe
+  (`/settings/llm/test`) reste sur `model` (modèle de qualité).
+- Routes PUT `/settings/llm` accepte `model_loop` et `daily_cap_usd`.
+
+### Levier n°3 — Prompt caching (`cache_control: ephemeral`)
+- Le system prompt (règles + `discover_schema` complet) est volumineux
+  et IDENTIQUE à chaque étape de la boucle. On le marque
+  `cache_control: {type: "ephemeral"}` dans le message system :
+  ```json
+  {"role":"system","content":[{"type":"text","text":"…","cache_control":{"type":"ephemeral"}}]}
+  ```
+- OpenRouter route vers l'option Anthropic cache_control appropriée
+  pour les modèles Claude. Pour les providers qui ignorent
+  `cache_control` (OpenAI direct), le champ est un no-op — pas de
+  régression.
+- Les `tools[]` schemas sont déjà cachés par OpenRouter par défaut
+  (envoyés au top-level).
+
+### Levier n°4 — Budget journalier
+- Nouveau module **`app/assistant/budget.py`** :
+  - Table `PRICING` USD/1k tokens pour OpenAI / Anthropic / Mistral
+    (prix d'octobre 2026 — à aligner si évolution).
+  - `estimate_cost(model, prompt_tokens, completion_tokens) → float`.
+  - `log_usage(db, model, pt, ct, conversation_id, step)` : insère
+    dans `llm_usage` + commit immédiat (pour que le cap soit live).
+  - `check_budget(db, cap_usd) → (ok, spent, cap)` : vrai si pas de
+    cap OU dépense du jour < cap. Reset implicite minuit UTC.
+  - `spent_today_usd(db) → float`.
+  - `usage_summary(db)` : breakdown par modèle du jour.
+- Modèle **`LlmUsage`** (`app/models/base.py`) + export dans
+  `app/models/__init__.py`.
+- `run_agent` **check le cap AVANT chaque appel LLM**. Si atteint :
+  retourne `AgentRun(error="Budget LLM du jour atteint ($X / $Y). …")`
+  **PAS d'appel au provider**. La UI reçoit un claim UNAVAILABLE
+  clair, pas une erreur brute, pas d'invention.
+- Après chaque appel LLM, `log_usage(…)` journalise les tokens
+  reportés par le provider (`usage.prompt_tokens`,
+  `usage.completion_tokens`).
+- Nouvel endpoint **`GET /settings/llm/usage`** (admin) :
+  ```json
+  {
+    "date": "2026-10-16",
+    "spent_today_usd": 2.47,
+    "cap_usd": 5.00,
+    "remaining_usd": 2.53,
+    "by_model": [
+      {"model": "anthropic/claude-3-5-haiku",
+       "prompt_tokens": 42000, "completion_tokens": 3200,
+       "estimated_cost_usd": 2.47, "calls": 12}
+    ]
+  }
+  ```
+
+### Garde-fous préservés
+- **Aucun chiffre sans requête** : le digest contient les chiffres que
+  le LLM peut citer ; pour tout le reste il référence `result_id` et
+  la UI affiche la table complète.
+- **n=0 déclaré** : digest contient `n=0` explicite si rows vides,
+  jamais inventé.
+- **Scope projet strict** : `project_id` toujours injecté serveur
+  (hérité 0.25.0).
+- **Zéro identité abonné** dans `llm_usage` (log de méta-usage).
+- **MAX_STEPS=5** : conservé. Pas de court-circuit auto-magique
+  (`if not tool_calls: return` était déjà en place depuis 0.25.0 —
+  le LLM qui ne demande rien, c'est la fin).
+
+### Non-objectifs (écarts ouverts)
+- Pas de breakdown par **projet / utilisateur** dans `llm_usage` —
+  ajout en 0.27.1 si besoin (nécessite récupérer `project_id` et
+  `user_id` dans `run_agent` à travers la session).
+- Pas de **métriques de hit-ratio** du cache_control (OpenRouter n'
+  expose pas cette info dans `usage` aujourd'hui). On ne peut mesurer
+  l'effet du caching que par comparaison before/after sur la facture
+  mensuelle.
+- Pas de **retry** sur rate-limit 429 : la boucle abort avec
+  `provider en rate-limit (429)` et laisse l'utilisateur retenter.
+- Pas de **cost caps multi-niveaux** (hourly, weekly). Reset minuit
+  UTC uniquement.
+
+### Garde manuelle (sur TEST2, à exécuter après deploy)
+Pour « Compare a3Offset Orange/SFR B3/B20 » :
+- Reporter les tokens d'entrée du 1er appel LLM AVANT / APRÈS :
+  attendu une réduction significative (~5-10× sur l'entrée moyenne
+  des étapes 2+, où les digest remplacent les tables).
+- Vérifier que la réponse UI reste **identique** (mêmes blocs,
+  mêmes `result_id`, mêmes chiffres dans les tables / cartes /
+  verdicts — rien ne change côté user).
+- Vérifier que `model_loop` est bien utilisé : header `model=` dans
+  les requêtes vers OpenRouter.
+- Poser `daily_cap_usd=0.01` (très bas) → poser une question →
+  message clair « Budget LLM du jour atteint ». Rétablir
+  `daily_cap_usd=5.0` ensuite.
+- `GET /settings/llm/usage` admin → voir les tokens / coût accumulés
+  du jour.
+
+## 0.26.0 — 2026-10-16 (minor) — Outil `map_metric` : carte agrégée RSRP par cellule (Agent BC1)
+
+> Livre le dernier outil manquant de la fondation 0.25.0 : `map_metric`
+> produit une carte géolocalisée **agrégée par cellule de grille** à
+> partir des events RRC `MeasurementReport` du projet. Source =
+> `param_occurrence` (le mapping décodeur `measurement_points.rsrp`
+> reste Phase 1 pending) — le RSRP RRC serving porte déjà
+> `value_converted` en dBm + lat/lon via rattachement GPS 0.14.x.
+> **Agrégats seulement, zéro ligne brute, zéro identité abonné.**
+
+### Ajouté
+- **Outil `map_metric(metric, bins, operator, band, system)`** dans
+  `app/assistant/tools.py` :
+  - `metric="M_serving_rsrp"` (seule métrique 0.26.0). `rsrq_serving` /
+    `sinr_serving` arriveront quand Phase 1 décodeur sera livrée pour
+    `measurement_points`.
+  - `bins` ∈ [1, 5] = nombre de décimales d'arrondi lat/lon (3 = ~100m,
+    défaut).
+  - Filtres `operator / band / system` passés en whitelist stricte (4 MNO
+    FR, bande regex, système ∈ {LTE, NR}).
+  - **Discriminant RSRP serving par le CONTENU du path** (jamais
+    l'étiquette) :
+    - `path LIKE '%measResultPCell/rsrpResult'` (LTE serving PCell)
+    - `path LIKE '%measResultServingCell%rsrpResult%'` (NR serving)
+    - `path LIKE '%measResultServingMOList%rsrp%'` (NR MR-DC)
+  - **Exclu** : paths de configuration (`threshold-RSRP` dans
+    `reportConfigEUTRA`, `a3-Offset`, …), neighbour cells, projets
+    inconnus.
+  - Agrégation **mathématiquement correcte** : `AVG(value_converted::
+    float)` + `COUNT(*)` **sur les observations admissibles par cellule**,
+    jamais moyenne de moyennes.
+  - **Garde-fou plage 3GPP valide** : `HAVING AVG(...) BETWEEN -140 AND
+    -40 dBm` — cellules aberrantes filtrées (signal décodeur suspect
+    plutôt que valeur imposée).
+  - `LIMIT 2000` cellules + `statement_timeout 5000ms`.
+  - Opérateur NULL / hors MNO FR / tech hors {LTE,NR} filtré au SQL
+    (contrainte schema `MeasurementPoint.operator = Literal`).
+- **Schéma `BlockMap` étendu** (`app/schemas/assistant.py`) :
+  - `unit: str | None` (ex. `"dBm"`)
+  - `value_range: tuple[float, float] | None` (plage min/max observée)
+  - `grid: dict | None` (`{bins_decimals, cells}`)
+  **Non-breaking** côté front Zod : champs optionnels, les anciens
+  appels `BlockMap` ne les reçoivent pas.
+- **Composer `_compose_map`** dans `app/assistant/compose.py` :
+  - Construit un `BlockMap` Pydantic depuis les cellules agrégées
+    (conformes à `MeasurementPoint`, `service="Data"` sentinel documenté).
+  - `source_id = result_id` (contrat preuves 0.25.0).
+  - Table compagnon avec `lat / lon / operator / band / rsrp / n`.
+  - n=0 → `_n_zero_block` déclaratif, **jamais** une carte vide.
+- Schéma OpenAI function-call `map_metric` ajouté à `TOOL_SCHEMAS` ;
+  dispatcher `dispatch_tool` câblé.
+
+### Garde manuelle (smoke live sur TEST2 — outil appelé directement sans LLM)
+Résultats réels :
+```
+result_id        : 969a859f4a126812   (stable)
+metric           : M_serving_rsrp
+unit             : dBm
+n cellules       : 81
+total observations : 1 935
+value_range obs. : [-116.0, -69.0]  (dans [-140, -40] 3GPP valide)
+grid             : {bins_decimals: 3, cells: 81}
+center géo       : [50.378, 3.477]
+operators        : Bouygues, Free, Orange
+bands            : B1, B20, B3, B7
+tech             : LTE
+```
+Grep logs API : **0 occurrence** d'identité abonné (IMSI / IMEI / s-TMSI /
+c-RNTI / GUTI / PTMSI) sur l'ingestion complète.
+
+### Garanties
+- **project_id** injecté serveur depuis la session appelante (jamais
+  depuis les args du LLM — hérité du moteur 0.25.0).
+- **Agrégats seulement** : chaque point = une cellule GROUP BY, jamais
+  une ligne brute (`param_occurrence` fine-grained).
+- **Statistiques correctes** : AVG sur observations réelles par
+  cellule, pas de recomposition multi-niveaux.
+- **n=0 déclaré** : si le périmètre ne contient aucun RSRP serving
+  valide, bloc OBSERVED « donnée indisponible pour ce périmètre » +
+  warning précisant la cause probable (filtres trop stricts /
+  path inconnu / projet sans MeasurementReport).
+
+### Écarts ouverts explicites
+- **Serving vs neighbour** : les patterns `path LIKE` ciblent le
+  serving cell. Si le décodeur émet un `rsrpResult` sans
+  `measResultPCell` ni `measResultServingCell` dans le path, l'outil
+  ne le voit pas (prévisible — mieux que de forcer tout `rsrpResult`
+  dans la carte, ce qui mélangerait neighbour & serving).
+- **Métriques `rsrq` / `sinr` serving** : param_occurrence porte
+  `rsrqResult` et des SINR-like, mais le lot 0.26.0 se limite au
+  RSRP. Ajouts en 0.26.1 quand les patterns de path RRC seront
+  validés sur TEST2.
+- **`service="Data"` sentinel** : les cellules agrégées ne portent pas
+  de notion de service (concept B0). Choisir `"Data"` est une convention
+  projet documentée (toute cellule carte = agrégation RSRP, pas une
+  observation per-service). Alternative future : nouveau Pydantic model
+  `AggregatedMapCell` avec `service: str | None` au lieu du Literal
+  strict — coordonné avec le front.
+- Le LLM provider (OpenRouter) est en 402 au moment du smoke → la UI
+  retourne UNAVAILABLE jusqu'à recharge de crédit. L'outil fonctionne
+  en direct (démontré ci-dessus).
+
+## 0.25.1 — 2026-10-16 (patch) — Assistant V2 : blocs typés + rejections rejouées (Agent BC1)
+
+> Fix UX & architecture : avant 0.25.1, `compose.py` n'émettait qu'un
+> `BlockTable` par outil → la UI affichait partout une table. Désormais
+> **dispatch déterministe par outil** vers le type de bloc approprié
+> (bar / histogramme / contexte / verdict). Les plan rejections émises
+> par le moteur sont **silencieuses côté UI** : elles ont déjà été
+> rejouées par l'agent (le LLM voit l'erreur dans son `tool_message` et
+> replanifie). Garde manuelle 4 cas conservée.
+
+### Modifié — `app/assistant/compose.py`
+- **Table de dispatch `_RENDER_BY_TOOL`** : association `tool_name →
+  render_type` figée en code, jamais piloté par le LLM.
+  - `list_bands`, `list_operators`, `top_rrc_messages`,
+    `compare_operators`, `geo_breakdown`, `arcep_breakdown`,
+    `throughput_stats`, `radio_quality_stats` → `bar`
+  - `rrc_param_distribution` → `histogram` (bar visuel, sémantique
+    distribution)
+  - `compare_distributions` → `verdict_only` (BlockText verdict seul)
+  - `get_project_context` → `context` (BlockText metadata)
+  - `map_metric` → `map` (préparé, outil pas livré)
+- **Composers par type** :
+  - `_compose_bar` : BlockChart(bar) + BlockTable compagnon.
+    Pour `compare_operators`, agrège les sous-résultats en 1 bar
+    multi-opérateurs + verdict en BlockText.
+  - `_compose_histogram` : abscisse = `value_converted` (dBm/dB/…)
+    quand dispo, sinon `value_raw` ; ordre moteur conservé.
+  - `_compose_context` : liste nom/période/opérateurs/techs/bandes
+    du projet en claims OBSERVED.
+  - `_compose_verdict_only` : BlockText avec verdict + raison.
+  - `_compose_default` fallback : BlockTable (comportement 0.25.0).
+- **n=0 déclaratif** : rows vides → `_n_zero_block` qui émet un
+  `BlockText(OBSERVED)` « n=0 — donnée indisponible pour ce périmètre
+  (jamais inventée) », JAMAIS un graphe vide.
+- **NULL → "N/D"** : les catégories d'un bar/histogram avec NULL en
+  base sont rendues `"N/D"` (constante `_NULL_LABEL`), jamais 0.
+- **Rejections rejouées silencieusement** : les résultats contenant
+  `error` (plan rejeté par le moteur) sont **skippés** côté UI. Le LLM
+  les a déjà vus comme feedback dans son `tool_message` à l'itération
+  précédente et a replanifié — afficher le refus côté UI serait du
+  bruit. Un warning `N plan(s) rejeté(s) rejoué(s)` est ajouté pour
+  traçabilité.
+
+### Non-breaking
+- `BlockChart.chart` reste `Literal["bar", "line", "boxplot"]` côté
+  Pydantic — les histogrammes passent par `chart="bar"` (le rendu
+  front est visuellement une suite de barres de toute façon). La
+  sémantique histogramme est portée par `heading` et `x_label="valeur"`.
+- `BlockTable` continue d'être émis en **compagnon** des bars pour que
+  les utilisateurs qui veulent les chiffres exacts les aient à côté.
+
+### Garde manuelle (sorties réelles sur TEST2)
+À reporter — type de bloc attendu :
+
+| Question | Blocs réels attendus (après deploy) |
+|---|---|
+| « Compare les bandes » | `text` + **`chart(bar)`** + `table` |
+| « Paramètres de mobilité dominants » | `text` + **`chart(bar)` histogram** + `table` |
+| « Compare a3Offset Orange/SFR × B3/B20 » | `text` + N × (**`chart(bar)` histogram** + `table`) + verdict de comparabilité |
+| « Compare les débits » | `text` + **`text(OBSERVED)` n=0 déclaré**, aucun chart vide |
+
+### Non-objectifs
+- Pas de `BlockChart.chart="histogram"` dans le schéma Pydantic/Zod —
+  demanderait coordination front. On garde `"bar"` ; la différence
+  sémantique est dans le `heading` et l'`x_label`. Si besoin de bins
+  réels (buckets d'intervalles numériques), lot 0.26.0 ajoutera le
+  binning côté moteur + extend du schema.
+- Pas de `BlockMap` encore utilisé (outil `map_metric` pas livré en
+  0.25.x) ; le dispatch `"map"` tombe sur fallback table.
+- Pas de ré-essai actif du LLM côté serveur : la boucle agent appelle
+  déjà `MAX_STEPS=5` et le LLM peut déjà replanifier naturellement
+  quand un outil renvoie `error`. Si on veut forcer un retry explicite,
+  lot 0.25.2 ajoutera un `retry_hint` dans le tool_message.
+
+## 0.25.0 — 2026-10-16 (minor) — Assistant V2 : catalogue + moteur analytique contraint + preuves + agent (Agent BC1)
+
+> **Fondation V2** : l'Assistant passe d'un prompt-contexte à une
+> **boucle agent** avec tool-calling OpenAI. Le LLM ne voit plus
+> jamais une table ou du SQL ; il parle avec un **catalogue
+> sémantique** et émet des **plans structurés** qu'un moteur compile
+> en SQL paramétré sûr. Chaque chiffre dans la UI est rattaché à un
+> `result_id` stable. **PAS de SQL libre, PAS de ligne brute, PAS de
+> fuite d'identité.** Garde **G25**.
+
+### Ajouté — `app/assistant/` (nouveau package)
+- **`catalog.py`** — Catalogue sémantique **versionné en code** :
+  - 2 datasets : `rrc_dict` (`param_occurrence`) et `measurements`
+    (`measurement_points`). Tables sensibles (`app_user`, `settings_llm`,
+    `nmf_file`) jamais listées.
+  - 9 dimensions typées (operator, band, system, message, param_path,
+    value_raw/converted, dep) avec `null_label` ("non attribué"/"N/D"),
+    `allowed_filter_ops` (eq/in/contains/is_null).
+  - 14 mesures (count, part_pct, rsrp_avg/p10/p50/p90, rsrq/sinr/cqi,
+    dl_avg/p50, thrpt_ul, tx_power, latency) — chacune avec `sql`,
+    `unit` 3GPP, `conversion_3gpp`, `lineage` (dataset d'origine),
+    `recomposable` (bool) et `null_safe`.
+  - **BANNED_IDENTIFIERS** : liste défensive de tables/fonctions
+    scannée dans le SQL FINAL compilé (app_user, settings_llm, pg_sleep,
+    truncate, imsi, imei, s_tmsi, c_rnti…).
+  - `discover_schema()` : grammaire JSON exposée au LLM — zéro nom de
+    table, zéro SQL fuité.
+- **`engine.py`** — `execute_analytical_query(plan, project_id)` :
+  - **Compile** un plan `{dataset, dimensions, measures, filters, order,
+    limit}` en SQL **paramétré** (jamais de concat chaîne LLM).
+  - **project_id injecté serveur** depuis la session — **tout plan
+    tentant de fixer `project_id` dans filters est REJETÉ**
+    (`PROJECT_ID_NOT_ALLOWED`).
+  - **GROUP BY implicite** : si des mesures sont présentes, les
+    dimensions font GROUP BY ; **jamais de ligne brute**.
+  - `LIMIT` max 1000 ; `statement_timeout` 5s.
+  - **Mesures non-recomposables** sur ≥ 2 dimensions → `warning`
+    (jamais de moyenne de moyennes présentée comme fiable).
+  - `compute_result_id(plan, project_id) → sha256[:16]` **stable** :
+    même plan + même projet ⇒ même id (traçabilité UI ↔ journaux).
+  - Défense en profondeur : regex scan `BANNED_IDENTIFIERS` sur le SQL
+    compilé avant exécution.
+  - **Journal technique** : `sql_compiled` + `params` conservés dans
+    l'objet retour mais **PAS sérialisés** dans la réponse HTTP
+    (correctif 3).
+- **`proof.py`** — Moteur de preuves :
+  - `validate_comparison(results[]) → ComparabilityVerdict` avec 3
+    verdicts : `COMPARABLE` / `COMPARABLE_WITH_LIMITATIONS` /
+    `NOT_COMPARABLE` + raison + dénominateurs par result_id.
+    **Vérifie l'alignement (datasets, mesures, dimensions, période)
+    PAS l'égalité des dénominateurs** (correctif 1).
+  - `lineage_for_result(result)` : résumé sources + règles.
+- **`tools.py`** — Outils presets (7) exposés en OpenAI function schemas :
+  - `get_project_context`, `list_operators`, `list_bands`,
+    `top_rrc_messages`, `rrc_param_distribution`, `compare_operators`,
+    `compare_distributions`.
+  - Chaque outil fixe un plan skeleton + accepte des filtres plats
+    (operator, band, param_path). Appelle le moteur, retourne un
+    résultat sérialisable (sql_compiled EXCLU).
+  - `analyze_correlations` déclaré ouvert (demande Phase 1 mapping +
+    annotation "corrélation ≠ causation").
+- **`loop.py`** — `run_agent(db, project, question) → AgentRun` :
+  - System prompt + `discover_schema()` + 7 outils schémas.
+  - Loop OpenAI tool_calls jusqu'à `MAX_STEPS=5` ou texte final.
+  - Chaque tool_call exécute `dispatch_tool`, le résultat
+    (`result_id` + rows + denominateur + verdict éventuel) est renvoyé
+    comme `tool_message`. Pas de 5xx propagé — toute erreur dans
+    `AgentRun.error`.
+- **`compose.py`** — `compose_response(run)` :
+  - Pour chaque result unique (dédup sur `result_id`), un `BlockTable`
+    avec colonnes dérivées + `source_id = result_id`.
+  - Un `BlockText` principal avec le texte LLM final.
+  - Résultat `n=0` → claim OBSERVED « donnée indisponible pour ce
+    périmètre (jamais inventée) ». Pas de pilule tableau vide.
+  - Résultat `verdict` (compare_*) → claim INTERPRETED / UNAVAILABLE
+    selon la force du verdict.
+  - Evidence[] : une par result_id avec `source_type` + `aggregation`
+    (GROUP BY cols) + période.
+
+### Modifié
+- `app/routes/assistant.py` : la branche ANALYSE passe par `run_agent`
+  + `compose_response`. L'ancien code `build_context_facts` reste
+  disponible dans `app/services/assistant_context.py` (lot futur
+  pourra l'évaluer en fallback si LLM désactivé).
+- `scenario` = `"b2_agent"` (quand au moins 1 outil appelé) ou
+  `"b2_text_only"` (texte seul sans outil — signalé via warning).
+
+### Garde (G25) — unitaires + smoke live sur TEST2
+
+**Unitaires** (`tests/test_g25_assistant_v2.py`) :
+- `_compile_plan` rejette `project_id` dans filters (`PROJECT_ID_NOT_ALLOWED`).
+- Rejette dataset inconnu (`app_user` → `DATASET_UNKNOWN`).
+- `BANNED_IDENTIFIERS` contient bien `app_user`, `settings_llm`,
+  `pg_sleep`, `truncate`.
+- Plan sans mesure explicite → `count` injecté + GROUP BY.
+- `MEASURES["rsrp_avg"]["recomposable"] is False` ; count recomposable.
+- `compute_result_id` stable (même plan+projet → même hash 16 chars).
+- `validate_comparison` : NOT_COMPARABLE sur 1 seul résultat, sur
+  datasets différents, sur mesures différentes.
+- Tous les tool_schemas déclarent `additionalProperties: false`.
+
+**Smoke live** (sorties réelles sur TEST2) :
+
+| Question | scenario | outils | result_ids | n=0 déclarés |
+|---|---|---|---|---|
+| « Compare les bandes utilisées » | b2_agent | list_bands | 1 | 0 |
+| « Quels opérateurs ? » | b2_agent | list_operators | 1 | 0 |
+| « Compare les débits par opérateur » | b2_agent | plan `dl_avg` **REJETÉ**, fallback list_operators | 1 | déclaré « mesures débits indisponibles » |
+| « Compare a3Offset Orange/SFR × B3/B20 » | b2_agent | rrc_param_distribution × 4 + compare_distributions | 4 | 3 (sous-groupes vides) |
+| « hello » | conversation | — | — | — (0.24.1 non-régressé) |
+
+Chaque `source_id` des BlockTable match un `result_id` dans Evidence.
+
+### Garanties verrouillées (contre les 3 correctifs)
+- **Correctif 1 — Preuves** : chaque chiffre a son `result_id` ; UI ↔
+  moteur ↔ journaux par le même hash. `validate_comparison` ne juge
+  pas par égalité littérale des dénominateurs mais par alignement
+  structurel (dataset, mesures, dims, période).
+- **Correctif 2 — Statistiques** : mesures non-recomposables flaguées
+  (`recomposable=False`), warning si usage multi-dim. Aucune moyenne
+  de moyennes recomposée hors d'un seul GROUP BY plat.
+- **Correctif 3 — Sécurité** : `project_id` injecté serveur, jamais
+  depuis le plan. `BANNED_IDENTIFIERS` scanne le SQL compilé.
+  `sql_compiled` conservé dans l'objet retour mais **jamais** renvoyé
+  au front. LIMIT max 1000 + timeout 5s.
+
+### Non-objectifs (écarts ouverts explicites)
+- **Blocks `bar` / `line` / `histogram` / `map`** typés : la UI
+  affiche `BlockTable` pour tout aujourd'hui. L'auto-sélection du
+  type (histogramme vs barre vs carte) selon la nature des données
+  attendra 0.25.1 — code en place côté compose, décision déférée.
+- **Plan rejections visibles côté UI** : quand le LLM tente un plan
+  invalide (ex. `dl_avg` sur `rrc_dict`), le refus remonte comme
+  claim UNAVAILABLE. UX améliorable (ravaler côté loop + ré-essai LLM
+  silencieux) — lot 0.25.1.
+- **Vues analytiques matérialisées** : les datasets du catalogue
+  pointent directement sur `param_occurrence` et `measurement_points`
+  (pas de VIEW SQL créée). Si volume devient problème, on crée des
+  vues incrémentales dédiées. Pas prioritaire aujourd'hui.
+- **Métriques Phase 1 (RSRP/RSRQ/SINR réels)** : NULL par design
+  tant que mapping décodeur 1.1.0 → `measurement_points.rsrp` n'est
+  pas prouvé (voir 0.24.0 CHANGELOG). Les outils du dataset
+  `measurements` répondront `n>0, metric_avg=NULL` — comportement safe.
+
+## 0.24.1 — 2026-10-16 (patch) — Assistant : présentation d'accueil structurée (Agent BC1)
+
+> Fix : sur un salut (« hello », « bonjour », « salut », etc.), le mode
+> CONVERSATION 0.23.1 renvoyait un one-liner sec (« Bonjour ! Que
+> souhaites-tu analyser ? »). L'utilisateur ignorait les capacités.
+> Désormais : **présentation structurée en 5 points**, déterministe,
+> aucun appel LLM, aucun chiffre par construction. Garde **G24**.
+
+### Modifié
+- `app/routes/assistant.py` : nouvelle fonction `_welcome_text(project)` —
+  **template Python pur**, pas d'appel LLM. 5 points de l'énoncé :
+  1. Qui : « assistant BC4, assistant d'analyse des campagnes drive-test (logs NMF) ».
+  2. Projet chargé : « *{nom du projet actif}* » (seul élément dynamique,
+     non-chiffre). Si pas de projet (safety net) : invite à en ouvrir un.
+  3. Capacités : 6 bullets (opérateurs présents, bandes, messages RRC,
+     comparaison débits, paramètres RRC dominants, cartes RSRP/SINR).
+  4. Comment je marche : « agrégats de ton projet, sources, n=0 déclaré ».
+  5. Question ouverte : « Par quoi veux-tu commencer ? »
+- `_build_conversation_response` : **ne fait plus d'appel LLM**. Un
+  single `Claim(text=_welcome_text(project), kind="INTERPRETED")`.
+  Déterministe, zéro coût provider sur un salut, zéro variance.
+- Suppression de l'import `call_llm_conversation` dans la route
+  (toujours exporté par `llm_client.py` pour appels futurs éventuels).
+
+### Garanties par construction
+- **Aucun chiffre** : le template n'en contient aucun (sauf « n=0 »
+  autorisé comme marqueur sémantique, pas une valeur mesurée). Garde
+  G24 vérifie via `re.findall(r"\\b\\d+\\b", text.replace("n=0",""))`
+  → doit être vide.
+- **Aucune requête DB** : hérité de 0.23.1 (classifier `conversation`
+  court-circuite déjà le pipeline analytique).
+- **Shape response** : `scenario="conversation"`, `blocks=[BlockText]`
+  (pas de BlockSummary), `evidence=[]`, `demo=False` — inchangé 0.23.1.
+
+### Garde (G24)
+- `scripts/g24_welcome.sh` + `tests/test_g24_welcome.py` :
+  - « hello » → scénario `conversation`, UN seul BlockText, UN seul
+    claim INTERPRETED contenant les 5 marqueurs (« assistant BC4 »,
+    « drive-test / NMF », « Projet chargé », au moins 4/6 capacités,
+    « n=0 », « invent », « source », « ? » final).
+  - Nom du projet actif apparaît dans le texte.
+  - Zéro chiffre isolé hors `n=0`.
+  - **Non-régression G22** : « Compare les bandes utilisées » reste en
+    `b2_enriched_context` avec BlockSummary + Evidence `rrc_events`.
+
+### Non-objectifs
+- Pas de variantes du texte selon la locution exacte (« merci » / « au
+  revoir » reçoivent la même présentation). Acceptable : un faux positif
+  d'« accueil » sur un « merci » est bénin ; refuser la présentation
+  serait inventer une distinction non prouvée côté heuristique.
+- Pas de personnalisation du texte selon le rôle utilisateur ou le
+  type de projet. Si le besoin émerge, lot ultérieur.
+
+## 0.24.0 — 2026-10-16 (minor) — Keystone : stream mesure+débit (`stg_measurement_raw`) + MP skeleton (Agent BC1)
+
+> **Grand débloqueur partiel** : l'infrastructure pour extraire les
+> events radio (CELLMEAS/CQI/TXPC/MIMOMEAS) et débit (PHRATE/MACRATE/
+> RLCRATE/PDCPRATED/DRATE) depuis les NMF est en place. **Phase 1
+> (mapping champ→métrique prouvé) reste OUVERTE** — pas de NMF témoin
+> accessible côté serveur dans ce run. Le décodeur bump **1.0.0 → 1.1.0**
+> livre déjà les events avec `raw_fields` ; le peuplement de
+> `measurement_points` est **squelette** (armature géo + metadata, toutes
+> les colonnes métriques restent NULL). Garde **G23**.
+
+### Phase 1 — ÉCART OUVERT DÉCLARÉ
+
+Blocage prouvé par l'exploration (voir §Preuves ci-dessous) :
+
+- `/tmp/smoke.nmf` = placeholder 25 octets.
+- `find / -name "*.nmf"` sur host + container : zéro fichier NMF réel.
+- `stg_event` TEST2 (seul projet ingéré) : 19 380 lignes **toutes
+  signalling** (RRCSM 19 122, SIPSM 144, L3SM 114) → le décodeur 1.0.0
+  avait **drop** les events mesure/débit lors de l'ingestion originale,
+  ils ne sont PAS récupérables depuis la base.
+
+**Décision** : plutôt que d'inventer un mapping arbitraire
+(violerait « ne devine jamais un champ »), ce lot pose
+l'infrastructure capturante — `stg_measurement_raw` + `measurement_points`
+étendu + endpoints + backfill — qui captera **le prochain** NMF ingéré
+via l'UI. La Phase 1 (mapping prouvé par croisement RRC) sera livrée
+dans un lot suivant (0.24.1 ou 0.25.0) une fois un NMF témoin ré-ingéré.
+
+### Décodeur `bc4-decoder` **1.0.0 → 1.1.0** (voir decoder/CHANGELOG.md)
+- Nouvelles catégories émises : `measurement` (CELLMEAS, MIMOMEAS, CQI,
+  TXPC, CI) et `throughput` (PHRATE, MACRATE/MACRATEU, RLCRATE/RLCRATEU,
+  PDCPRATED/PDCPRATEU, DRATE, PLAID/PLAIU).
+- Dict émis pour ces events : clés communes `capture_id, seq, ts,
+  event_code, category, system, lat, lon` + **`raw_fields` (list[str])**
+  — ligne CSV complète masquée identité, mapping aval.
+- Non-breaking signalling : format 1.0.0 préservé (clés inchangées), seul
+  `category="signalling"` est ajouté.
+
+### Ajouté — bc4-back
+- Migration **`0010_stg_measurement_raw`** : nouvelle table
+  (`id, project_id, nmf_file_id, capture_id, seq, ts, event_code,
+  category, system, lat, lon, raw_fields JSONB`) + 2 index
+  (`project_id,event_code`) et `(project_id,capture_id,seq)`.
+- Migration **`0011_measurement_points_metrics`** : ajout de 7 colonnes
+  nullables à `measurement_points` : `rsrq, rssi, cqi, mimo_rank,
+  tx_power, thrpt_ul, event_code`. Les colonnes historiques
+  `operator/tech/service/band/dep/site` deviennent **NULLABLE** aussi
+  pour accueillir les points NMF (pattern populate.py : NULL en base,
+  COALESCE("non attribué") au SELECT).
+- Modèle `StgMeasurementRaw` + extensions `MeasurementPoint` dans
+  `app/models/base.py`.
+- Pipeline `app/ingest/nmf.py` : stream dual depuis le décodeur 1.1.0 —
+  signalling vers `stg_event` (existant), mesure/débit vers
+  `stg_measurement_raw` (nouveau). Après commit, appel idempotent de
+  `populate_measurements(db, project_id)` qui remplit `measurement_points`
+  avec l'armature géo (capture_id, seq, ts, system, operator via SIB1,
+  band via freq, lat/lng). **Toutes les métriques restent NULL** —
+  Phase 1 à faire.
+- `app/services/populate_measurements.py` : réutilise VERBATIM
+  `_build_sib1_index` + `_resolve_context` de `app/dict/populate.py` —
+  pas de divergence d'attribution opérateur avec le dictionnaire RRC.
+  Purge idempotent (préserve les seeds B0 identifiés par
+  `event_code IS NULL`).
+- `scripts/backfill_measurements.py` : backfill manuel sur tous les
+  projets avec `stg_measurement_raw` non vide. Note : les projets
+  ingérés AVANT 0.24.0 n'ont PAS de staging mesure (décodeur 1.0.0),
+  ré-ingestion requise.
+- Routes `app/routes/measurements.py` :
+  - `GET /projects/{id}/measurements/summary` : counts par
+    (system, operator, band, event_code) + moyennes de chaque métrique
+    (NULL tant que Phase 1 non faite) + `metric_coverage`
+    (`filled`/`null` par métrique, pour diagnostic) + `raw_staging`
+    (counts côté `stg_measurement_raw`).
+  - `GET /projects/{id}/measurements/raw?event_code=X&limit=N`
+    (**admin-only** — c'est un outil Phase 1, pas de la UI) : retourne
+    jusqu'à 200 lignes brutes `stg_measurement_raw.raw_fields` pour que
+    l'investigation mapping puisse se faire sans ré-ouvrir le binaire.
+
+### Discipline conservée
+- Scope strict `project_id` partout.
+- Ordre canonique `(capture_id, seq)`, `ts` attribut seulement.
+- Zéro identité abonné (masquage à la source par le décodeur, grep
+  défensif dans G23).
+- NULL (non prouvé) **jamais 0 ni inventé** — toutes les colonnes
+  métriques restent NULL, les colonnes NMF (operator/band…) peuvent
+  être NULL rendues "non attribué" au SELECT.
+
+### Garde (G23)
+- `scripts/g23_measurements_keystone.sh` +
+  `tests/test_g23_measurements_keystone.py` — vérifie :
+  - Décodeur 1.1.0 : `MEASUREMENT`, `THROUGHPUT`, `_category` exposés.
+  - Table `stg_measurement_raw` existe avec les 12 colonnes.
+  - Colonnes mesure dans `measurement_points` : présentes et NULLABLE.
+  - `GET /measurements/summary` 200 + shape complet même sur projet vide.
+  - `GET /measurements/raw` admin→200, ingénieur→403.
+  - Grep défensif : aucune identité IMSI/IMEI 15-digit dans
+    `stg_measurement_raw.raw_fields` (sampling 500 lignes).
+
+### Preuves d'exploration (Phase 1 ouvert)
+- `/tmp/smoke.nmf` = 25 octets « test placeholder content\\n ».
+- `docker exec bc4-db-1 psql -c "SELECT DISTINCT event_code, COUNT(*) FROM
+  stg_event GROUP BY event_code ORDER BY 2 DESC"` → **RRCSM 19 122, SIPSM
+  144, L3SM 114** (TEST2). Aucune ligne CELLMEAS/CQI/TXPC/PHRATE : le
+  décodeur 1.0.0 les droppait.
+- Code `app/dict/populate.py:69-72` : `_plmn_to_operator` → table
+  bc4_enrich. Réutilisé pour `populate_measurements`.
+
+### Non-objectifs
+- **Mapping champ→métrique** (RSRP position dans CELLMEAS, débit dans
+  PHRATE, etc.) : à prouver sur un NMF témoin ré-ingéré. Ce lot
+  **n'invente aucun mapping**.
+- Backfill des projets déjà ingérés : impossible depuis la base
+  (events mesure drop par décodeur 1.0.0). Ré-ingestion NMF requise.
+- Dépendance `dep` (département via lat/lng) : non résolu dans
+  measurement_points NMF — nécessiterait reverse-geo. NULL pour l'instant.
+
+## 0.23.1 — 2026-10-15 (patch) — Assistant : séparer CONVERSATION vs ANALYSE (Agent BC1)
+
+> Fix : un simple « hello » déclenchait le pipeline complet (requêtes
+> DB + contexte factuel + panneau Agrégats à n=0). Désormais, chaque
+> tour est classé **CONVERSATION** (salutation, smalltalk, « qui es-tu »)
+> ou **ANALYSE** (demande de chiffre, liste, carte). CONVERSATION
+> court-circuite TOUT le pipeline métier : aucun tool call, aucun
+> BlockSummary, Evidence vide. Garde **G22**.
+
+### Ajouté
+- Module `app/services/intent.py` :
+  - `classify_intent_heuristic(q) → "conversation" | "analyse" | "unknown"`.
+    Regex sur deux familles (salutations + vocabulaire métier). Si les
+    deux matchent → ANALYSE l'emporte (règle anti-vol d'info). Si rien
+    ne matche et question ≤ 3 mots → CONVERSATION par défaut.
+  - `classify_intent(db, q) → "conversation" | "analyse"`. Appelle
+    l'heuristique puis, si `unknown`, délègue à `call_llm_classify`.
+    Fallback défensif : LLM indisponible → ANALYSE (préserve l'info).
+- `app/services/llm_client.py` :
+  - **Paramètre `system_prompt`** sur `call_llm` : permet d'injecter
+    un prompt différent sans dupliquer la logique HTTP. Default
+    conservé (prompt analytique strict « ne cite aucun chiffre absent
+    du contexte »).
+  - `call_llm_classify(db, question) → str | None` : max_tokens=5,
+    timeout 5s, prompt système dédié à la classification.
+  - `call_llm_conversation(db, question, project_name) → str | None` :
+    prompt système CONVERSATION (interdit tout chiffre, se présente
+    si on lui demande qui il est). Contexte factuel vide.
+- `app/routes/assistant.py` : dispatcher en tête de route.
+  - `intent == "conversation"` → `_build_conversation_response(db, project, body)` :
+    un `BlockText` avec UN seul claim INTERPRETED, `evidence=[]`,
+    `follow_ups=[…orientés analyse]`, `scenario="conversation"`,
+    `demo=False` (rien de synthétique sur une salutation).
+  - `intent == "analyse"` → comportement 0.22.0+ inchangé
+    (contexte enrichi `[MP]` + `[RRC]`, OBSERVED claims, Evidence
+    `measurement_points` + `rrc_events` si applicable).
+
+### Garanties
+- **Aucun chiffre sans tool call** : en mode CONVERSATION le prompt
+  système interdit tout chiffre ET aucune requête `MeasurementPoint`
+  / `ParamOccurrence` n'est émise.
+- **Écart déclaré, jamais inventé** : si le LLM est désactivé, la
+  réponse CONVERSATION dégrade sur un texte dur (nom du projet + CTA
+  « configure LLM »), pas un fallback silencieux à ANALYSE.
+- **Pas de framework** : classification = regex + fonction custom. Pas
+  de LangGraph / CrewAI / orchestrateur externe.
+
+### Garde (G22)
+- `scripts/g22_intent.sh` + `tests/test_g22_intent.py` :
+  - **Heuristique** paramétrée sur 17 phrases types (18 passants).
+  - **Smoke live** : `/assistant` avec `hello` → `scenario=conversation`,
+    pas de `BlockSummary`, `evidence=[]`.
+  - **Smoke live** : `/assistant` avec « top 5 messages RRC » →
+    `scenario=b2_enriched_context`, `BlockSummary` présent, Evidence
+    `rrc_events` présente. Non-régression 0.22.0.
+
+### Non-objectifs
+- Pas d'historique multi-tour (mémoire conversationnelle). Chaque
+  tour est classifié et répondu indépendamment. Si l'utilisateur dit
+  « hello » puis « combien ? », le second tour n'a pas le contexte du
+  premier — ANALYSE résout de toute façon depuis la DB.
+- Pas de personnalisation du prompt CONVERSATION par rôle / projet
+  métier avancé. Lot ultérieur si besoin.
+
+## 0.23.0 — 2026-10-15 (minor) — `AssistantResponse.demo` dynamique (Agent BC1)
+
+> Fix de signalement : la pilule UI « Données démo » était systématique
+> depuis B0 (`demo: Literal[True]` codé en dur). Désormais `demo` reflète
+> la réalité des données : `False` pour un projet ingéré (NMF → RRC
+> décodé, `rrc_count > 0`), `True` pour un projet purement seedé
+> (synthétique). Coordonné avec bc4-front 1.11.2 (relax Zod + rendu
+> conditionnel).
+
+### Modifié
+- `app/schemas/assistant.py` : `demo: Literal[True] = True` →
+  `demo: bool = True`. **Non-breaking** côté runtime : le défaut
+  reste `True`, le champ est toujours renvoyé.
+- `app/routes/assistant.py` : `demo=rrc_count == 0`. La route exploite
+  déjà `rrc_count` depuis 0.22.0 (contexte enrichi) — pas de nouvelle
+  requête.
+
+### Impact UI (1.11.2)
+- TEST2 (ingéré, 98 679 occurrences RRC) → `demo: false` → **pas de
+  badge « Données démo »** dans le header de réponse.
+- Benchmark National, Paris 2026 Q1, Marseille 5G, Lyon, Rennes
+  (seedés, synthétique) → `demo: true` → badge **conservé**.
+
+### Non-objectifs
+- Pas de refactor profond du concept « démo » : badge actuel reste.
+- Les deux autres usages du label « Données démo » (sidebar + export
+  Markdown côté front) sont inchangés dans ce lot.
+
+## 0.22.3 — 2026-10-15 (patch) — label désambigué sur `/dict/tree` + investigation NR + check duplication
+
+> Bump **patch**. Trois volets, un seul fix de code (volet C).
+> Rebase : pendant ce run, BC1 a posé `0.22.0` (lot `context_facts
+> /assistant enrichi MP + RRC`) puis `0.22.2` (sandbox LLM G18/G19/G21).
+> On prend le prochain patch libre au-dessus → **0.22.3**. G21 est pris
+> par BC1 ; cette garde utilise **G22**.
+>
+> ### Volet A — Investigation NR (`"non attribué"` 100% côté NR sur TEST2)
+>
+> Finding deep-dive 0.21.0 : 30.5% des occurrences `operator=NULL`
+> sont **100% côté NR** (`LTE: 0 NULL/68 633`, `NR: 30 046 NULL/30 046`).
+> Hypothèse initiale : bug dans `populate.py::_build_sib1_index` qui ne
+> brancherait pas les SIB1 NR. **Lecture d'abord** :
+>
+> - `SELECT count(*) FROM stg_event WHERE project_id='134af70a06eb' AND
+>   system='NR' AND message IN ('SIB1','SystemInformationBlockType1',
+>   'SystemInformation1')` → **0 ligne**. Aucun SIB1 NR dans TEST2.
+> - `SELECT system, channel, count(*) FROM stg_event ... GROUP BY ...` :
+>   NR ne porte QUE `BCCH-BCH` (9 MIB) + `DCCH` (2 719 MeasurementReport)
+>   + divers IE. **Pas de canal `BCCH-DL-SCH` NR → pas de SIB1 NR.**
+> - `_SIB1 = ("SystemInformationBlockType1", "SIB1", "SystemInformation1")`
+>   dans `populate.py` ligne 115 : **la constante capterait un SIB1 NR
+>   si la capture en portait**. `_build_sib1_index` indexe par
+>   `(capture_id, system)` ligne 137 — correct. Le fallback
+>   `last_by_cell[(freq, pci)]` ligne 139 — correct.
+>
+> **Verdict A** : `"non attribué"` NR est **LÉGITIME** sur TEST2 —
+> l'absence de SIB1 NR dans les captures est **prouvée en base**,
+> pas supposée. Aucun fix côté `populate.py`. **Écart ouvert** : la
+> future ingestion d'un NMF 5G outdoor (avec BCCH-DL-SCH NR) devra
+> re-tester cette chaîne. La capacité de décodage est présente côté
+> `bc4-enrich 1.1.0` (pycrate RRCNR.NR_RRC_Definitions.
+> BCCH_DL_SCH_Message, vérifiée en audit S1).
+>
+> ### Volet B — Check duplication `param_occurrence` (split 50/50 suspect)
+>
+> `SELECT path, count(*) AS n_rows, count(DISTINCT (stg_event_id, path))
+> AS n_distinct_pairs FROM param_occurrence WHERE path ~ 'rsrpResult'
+> GROUP BY path` → `n_rows == n_distinct_pairs` sur **toutes** les
+> variantes rsrp/rsrpResult/rsrp-r15. Contrainte UNIQUE
+> `uq_param_occ_event_path(project_id, stg_event_id, path)` en place et
+> **non violée**. Pas de duplication. Le split 50/50 observé (NR
+> `band` à 50% rempli) vient du fait que `_resolve_context` tombe sur le
+> fallback `_band_from_freq` (NR ARFCN → bande, OK pour certaines
+> freqs seulement), pas d'une double attribution. **Verdict B** :
+> **aucun bug de duplication**, fermé.
+>
+> ### Volet C — Désambiguïsation libellés arbre (`/dict/tree`)
+>
+> `SELECT regexp_replace(path, '^.*/', '') AS leaf, count(DISTINCT
+> path) FROM param_occurrence GROUP BY leaf HAVING count(DISTINCT path)
+> > 1 ORDER BY ... DESC` : **30 leaves en collision** sur TEST2 : `release`
+> (22 paths distincts), `rrc-TransactionIdentifier` (12),
+> `cellReselectionPriority` + `physCellId` (7 chacun), `rsrp` + `rsrq`
+> + `sinr` (6 chacun côté NR), `bandNR`/`carrierFreq`/`threshold-RSRP`/
+> `threshold-RSRQ`/`q-RxLevMin` (5 chacun), etc. Le front
+> (`DictionaryPage.tsx` ligne 343) rend `leafOf(p.param)` — donc deux
+> paths distincts affichent le même libellé indistinguable. Fix côté
+> back : ajout d'un champ `label` sur `DictTreeParam` qui porte un
+> libellé désambigué. **Non-breaking** (Zod additif).
+>
+> **Algorithme `_disambiguate_leaf_labels` dans
+> `app/routes/dictionary.py`** :
+> - Groupe les paths par leaf dans un même `(system, message)`.
+> - Si le leaf est unique → `label = leaf`.
+> - Sinon → remontée progressive des ancêtres jusqu'à obtenir une
+>   signature unique dans le groupe de collision. 1 segment suffit
+>   dans la majorité des cas :
+>   - `measurementReport/.../measResultPCell/rsrpResult` →
+>     `"rsrpResult (measResultPCell)"`
+>   - `measurementReport/.../measResultListEUTRA/measResult/rsrpResult`
+>     → `"rsrpResult (measResult)"`
+> - Si le parent direct colle aussi (`release` sous deux
+>   `ue-TransmitAntennaSelection` différents selon `antennaInfo` vs
+>   `antennaInfo-r10`), remontée jusqu'à la divergence :
+>   `"release (antennaInfo/explicitValue/ue-TransmitAntennaSelection)"`
+>   vs `"release (antennaInfo-r10/explicitValue-r10/ue-TransmitAntennaSelection)"`.
+>
+> **Pas d'invention** — label 100% dérivé du path. Les leaves uniques
+> (`a3-Offset`, `q-RxLevMin` sous une seule hiérarchie, etc.) restent
+> sans suffixe. Le champ `param` est **inchangé** (path complet
+> non-suffixé) — reste la clé stable pour `/dict/params?path=…` et
+> `/dict/param/map`. Garde **G22**.
+
+### Ajouté
+- Champ **`label: str`** sur `DictTreeParam`
+  (`app/schemas/dictionary.py`) — défaut `""` pour la rétro-compat
+  Pydantic ; en pratique rempli pour chaque param par le handler.
+- Fonction **`_disambiguate_leaf_labels(paths: list[str])`** dans
+  `app/routes/dictionary.py` — algorithme déterministe (pas de rand,
+  pas de dépendance externe).
+
+### Modifié
+- **`_build_tree_v2`** (`app/routes/dictionary.py`) : construit la liste
+  `labels` via `_disambiguate_leaf_labels` pour chaque groupe
+  `(system, message)`, puis instancie `DictTreeParam(param=p, label=lbl,
+  count=c)`.
+
+### Garde (G22)
+- **G22** (`scripts/g22_tree_label_dedup.sh` +
+  `tests/test_g22_tree_label_dedup.py`) :
+  - `/dict/tree` expose `label` sur chaque `params[]`.
+  - Pour chaque message, les leaves uniques (par path) donnent
+    `label == <feuille>` (sans parenthèses).
+  - Pour chaque collision détectée (plusieurs paths distincts avec le
+    même leaf dans un même `(system, message)`), tous les labels dans
+    le groupe sont **mutuellement distincts** et portent un suffixe
+    `(…)`.
+  - Non-régression : `param` reste le path complet (inchangé) pour que
+    `/dict/params?path=<param>` continue de matcher la DB.
+
+### Écarts ouverts
+- **Attribution operator/band NR** : TEST2 ne porte pas de SIB1 NR
+  (0 ligne dans `stg_event`). Le `"non attribué"` NR est **légitime**,
+  pas un bug. La re-vérification réelle de la chaîne SIB1 NR →
+  `_build_sib1_index` → `_resolve_context` requiert une capture NMF 5G
+  outdoor avec BCCH-DL-SCH NR. À déclarer lors de la prochaine ingestion
+  5G outdoor.
+
+## 0.22.2 — 2026-10-15 (patch) — Sandbox LLM pour G18/G19/G21 (Agent BC1)
+
+> Fix : les gardes `G18`/`G19`/`G21` **mutaient** `settings_llm` et
+> leur « cleanup » (`api_key:""` + `enabled:false`) **détruisait**
+> silencieusement la config LLM de l'utilisateur quand les scripts
+> tournaient contre l'API live. Un test ne doit JAMAIS laisser un état
+> partagé pire qu'il ne l'a trouvé — surtout une config contenant un
+> secret (ici chiffré) qui n'est pas récupérable sans le re-poster.
+
+### Modifié
+- `tests/conftest.py` :
+  - Ajout du context manager `_snapshot_llm_state()` : `SELECT`
+    direct des 7 colonnes de `settings_llm WHERE id=1`, `UPDATE` de
+    restauration dans un `finally`. La sauvegarde se fait **au niveau
+    du cipher** — l'API ne renvoyant jamais la clé en clair, c'est
+    la seule façon fiable de restaurer **exactement** la clé Fernet.
+  - Nouvelle fixture `llm_state_sandbox` (scope `module`) qui wrap
+    les tests d'un module de tests dans ce context manager.
+- `tests/test_g18_llm_assistant.py`, `test_g19_llm_probe.py`,
+  `test_g21_assistant_context.py` :
+  - `pytestmark = pytest.mark.usefixtures("llm_state_sandbox")`
+  - Suppression des tests `test_*_cleanup_clears_key` qui étaient
+    une tentative de cleanup explicite — supplantés par le sandbox
+    (robuste aux crashs intermédiaires, le `finally` toujours exécuté).
+
+### Smoke de non-régression (vérifié dans ce lot)
+Scénario : clé réelle en DB (`provider=openrouter`, cipher Fernet,
+`enabled=true`) ; sandbox ouvert ; mutation destructrice au milieu
+(`cipher=NULL`, `enabled=false`, `provider='nuked'`) ; sortie sandbox.
+**Résultat** : état parfaitement restauré, cipher inclus.
+```
+IN sandbox : ('nuked', None, False)
+AFTER      : ('openrouter', 'gAAAAA-fake-sentinel', True)
+```
+
+### Écart ouvert
+- Aucun autre module ne mute `settings_llm` aujourd'hui. Si un futur
+  lot l'ajoute (ex. tests `/assistant` qui changent la config pour
+  tester un enchaînement), appliquer le même pattern
+  `pytestmark = pytest.mark.usefixtures("llm_state_sandbox")`.
+
+## 0.22.0 — 2026-10-15 (minor) — Assistant : contexte factuel enrichi (MP + RRC) (Agent BC1)
+
+> Bump **minor** : `/projects/{id}/assistant` injecte maintenant dans
+> le prompt LLM **toutes** les sources factuelles disponibles —
+> métadonnées projet (operators/technologies/bands), agrégats
+> `measurement_points` ET `param_occurrence` (RRC décodé). Un projet
+> ingéré sans MP (ex. TEST2 avec 98k occurrences RRC) devient
+> **interrogeable** au lieu de dire « 0 points » en boucle.
+> **Non-breaking** côté front : le shape `AssistantResponse` est
+> conservé, un claim OBSERVED supplémentaire est ajouté SI le projet
+> a du RRC, et une Evidence `rrc_events` est ajoutée SI pertinent.
+> Garde **G21**.
+
+### Ajouté
+- Service **`app/services/assistant_context.py`** :
+  - `build_context_facts(db, project, filters) → (facts, meta)`.
+  - Section `[MP]` (toujours émise) : `n`, top opérateurs, top bandes.
+  - Section `[RRC]` (toujours émise) : `n`, top 5 messages, top 10
+    paramètres (`path`), opérateurs et bandes présents.
+  - Métadonnées projet (`operators`, `technologies`, `bands`,
+    `operators_plmn`) préfixées « Projet.* » — toujours lues.
+  - **Garde-fou LLM** : si `mp_count == 0 ET rrc_count == 0`, une ligne
+    `ATTENTION: aucune mesure ni occurrence RRC disponible … refuse-la`
+    est injectée pour couper court à toute invention.
+- Route `/assistant` branchée sur le helper, avec ajout conditionnel :
+  - Un deuxième claim OBSERVED « Dictionnaire RRC : N occurrences »
+    quand `rrc_count > 0`.
+  - Une `Evidence { source_type: "rrc_events" }` quand `rrc_count > 0`.
+  - Un deuxième `SummaryItem` « Occurrences RRC décodées » idem.
+  - `scenario` passe à `"b2_enriched_context"` quand RRC > 0, sinon
+    `"b2_sample_count"` (ex `"b0_sample_count"` renommé).
+
+### Non-breaking vs 0.17.x
+- Le shape `AssistantResponse` est inchangé — les additions sont des
+  éléments déjà typés (`Claim`, `Evidence`, `SummaryItem`) dans des
+  listes existantes.
+- Le front 1.11.0 affiche naturellement les deux claims OBSERVED et le
+  deuxième item d'agrégats sans modification UI.
+
+### Garde (G21)
+- **G21** (`scripts/g21_assistant_context.sh` +
+  `tests/test_g21_assistant_context.py`) :
+  - Projet avec `param_occurrence > 0` → scenario `b2_enriched_context`,
+    au moins 2 claims OBSERVED (un « Dictionnaire RRC »), Evidence
+    `rrc_events` présente.
+  - Projet seedé (mp>0, rrc=0) → scenario `b2_sample_count`, 1 claim
+    OBSERVED, Evidence `rrc_events` absente.
+  - `build_context_facts` direct : contient `[MP]`, `[RRC]`, et une
+    `ATTENTION` quand filtres impossibles (tout à zéro).
+
+### Non-objectifs (écarts ouverts)
+- Pas d'intégration des agrégats `/overview` (débits DL/UL, RSRP p50/p95,
+  taux de setup) : à ajouter dans un lot 0.23.0 « context_facts v2 ».
+- Pas de tableaux croisés paramètre × valeur dans le contexte (déjà
+  servi par `/dict/params`, mais trop verbeux pour le prompt). Si le
+  LLM reçoit la question « distribution de rsrpResult », le front
+  l'enverra côté UI, pas via le LLM.
+
+## 0.21.0 — 2026-10-15 (minor) — `value_matrix` sur `/dict/params` (value × operator × band)
+
+> Bump **minor** : chaque élément de `params[]` dans la réponse
+> `GET /projects/{id}/dict/params?system=…` expose maintenant un champ
+> `value_matrix: list[ValueMatrixCell]` — table croisée
+> `(value_raw, value_converted, operator, band) → count`. Le front
+> (grouping.ts) utilisait l'absence de ce champ comme signal pour
+> désactiver le « regroupement par opérateur × bande » (message UI
+> « Regroupement indisponible ») ; il est désormais activé. Non-breaking :
+> Zod `.object()` sans `.strict()` ignore les champs supplémentaires,
+> cf. non-régression sur `value_distribution` (0.15.0). Rebase : au
+> moment du run, BC1 avait successivement posé `0.17.1`, `0.18.0`,
+> `0.19.0`, `0.20.0`, `0.20.1` (lot LLM : settings persistées,
+> assistant branché, probe `/settings/llm/test`). On prend donc la
+> prochaine minor libre `0.21.0`. Garde **G20**.
+
+### Ajouté
+- Fonction **`compute_value_matrix(db, project_id, system, path, message,
+  operator, band)`** dans `app/dict/queries.py`. Retourne
+  `list[dict]` avec les clés `value_raw`, `value_converted`,
+  `operator`, `band`, `count`. Tri `count DESC, value_raw, operator,
+  band`. Filtres `operator`/`band`/`message` propagés — même périmètre
+  que `buckets` et `value_distribution`.
+- Constante **`UNASSIGNED_LABEL = "non attribué"`** (publique dans
+  `app/dict/queries.py`) — libellé explicite pour les occurrences dont
+  `operator` OU `band` est `NULL` en base. 30.5% des occurrences
+  TEST2 sont dans ce cas (events sans SIB1 avant / sans match
+  `(freq, pci)`) et doivent apparaître.
+- Schéma Pydantic **`ValueMatrixCell`** dans `app/schemas/dictionary.py`
+  (`value_raw`, `value_converted`, `operator`, `band`, `count`).
+- Champ **`value_matrix: list[ValueMatrixCell]`** sur `ParamRow`
+  (default `[]`, non-breaking côté front).
+
+### Modifié
+- **`_build_param_list_v2`** (`app/routes/dictionary.py`) : la requête
+  SQL `buckets (op × band)` applique maintenant
+  `COALESCE(operator, 'non attribué')` et `COALESCE(band, 'non attribué')`
+  sur operator ET band. Avant 0.18.0, les events `NULL` étaient
+  silencieusement **omis** du GROUP BY (filtre implicite car
+  `NULL = NULL → NULL`, exclu). On ne retire pas les buckets existants,
+  on les étend pour couvrir 100% des occurrences. Les filtres explicites
+  (`?operator=Orange`) continuent de restreindre normalement (puisque
+  `operator = 'Orange'` ignore les NULL).
+
+### Garde (G20)
+- **G20** (`scripts/g20_value_matrix.sh` + `tests/test_g20_value_matrix.py`) :
+  - `GET /dict/params?system=LTE` renvoie, pour chaque paramètre, le
+    champ `value_matrix` (nouveau 0.18.0).
+  - Pour `rsrpResult` : `value_matrix` **non vide**, et
+    `sum(cell.count) == row.count` (cohérence avec `value_distribution`
+    déjà testé en G16).
+  - Pour TEST2 : **au moins 1 cellule** `operator="non attribué"` ou
+    `band="non attribué"` existe quelque part (confirme que le COALESCE
+    s'est appliqué sur les 30.5% d'occurrences NULL).
+  - Filtre `operator=Orange` → `value_matrix` ne contient PLUS QUE des
+    cellules avec `operator == "Orange"`. Jamais un bucket inventé.
+  - Formule 3GPP préservée : pour `rsrpResult`, chaque cellule a
+    `value_converted == str(int(value_raw) - 141)`. Non-régression G16.
+  - Non-régression `buckets` : le champ reste présent, et inclut
+    maintenant un bucket `"non attribué"` quand il y a des NULL (c'est
+    le changement de 0.18.0 — alignement avec `value_matrix`).
+
+### Écarts (ouverts explicites)
+- **Interaction avec le binning de `value_distribution`** : quand
+  `value_distribution_mode == "binned"` (plus de 100 valeurs numériques
+  distinctes), `value_matrix` reste **exact** (une cellule par
+  `(value_raw, operator, band)`) — on ne binne PAS la matrice. Rationale :
+  le binning sert à borner le payload de la distribution 1D ; la matrice
+  est déjà naturellement bornée par la combinatoire
+  `(operator × band)` (max ~4×30 ≈ 120 par valeur ; en pratique bien
+  moins). Si le payload devient trop lourd sur un path pathologique, un
+  seuil `VALUE_MATRIX_MAX_CELLS` + fallback sera ajouté — déclaré ouvert.
+- **Pas de `avg_converted` dans `ValueMatrixCell`** : `buckets` continue
+  d'exposer la moyenne par `(op, band)` ; la cellule matrix donne juste
+  le `count`. Le front n'avait pas demandé la moyenne par cellule — à
+  rajouter si besoin dans un lot ultérieur.
+
+## 0.17.1 — 2026-10-15 (patch) — Probe `/settings/llm/test`
+
+> Bump **patch** : nouvel endpoint utilitaire sans breaking change —
+> permet à la UI « Tester la connexion » d'arrêter de simuler et de
+> faire un vrai ping chat completions. Garde **G19**.
+
+### Ajouté
+- Fonction **`probe_llm(db)`** dans `app/services/llm_client.py` :
+  chat completion `max_tokens=1` avec timeout court (10s). Retourne
+  `(ok, model, latency_ms, err_message)`. Jamais d'exception propagée,
+  jamais la clé dans `err_message` (scrub hérité de `call_llm`).
+- Paramètre **`max_tokens_override`** sur `call_llm` : écrase (NE
+  combine pas) le `max_tokens` DB — garantit un probe borné à 1 token
+  quel que soit l'état de la config.
+- Schéma Pydantic **`LlmTestResult`** (`ok`, `model`, `latency_ms`,
+  `message`).
+- Route **`POST /settings/llm/test`** (admin-only, 403/401 standard).
+  Toujours 200 (succès OU erreur dans `ok:false` + `message`), jamais 5xx.
+
+### Garde (G19)
+- **G19** (`scripts/g19_llm_probe.sh` + `tests/test_g19_llm_probe.py`) :
+  - Sans Bearer → 401, ingénieur → 403.
+  - `enabled=false` → `{ok:false, message:"LLM désactivé…"}`.
+  - `base_url=http://127.0.0.1:1/v1` + `enabled=true` + clé Fernet-chiffrée
+    → `{ok:false, latency_ms≥0, message:"erreur réseau…"}`, jamais 5xx,
+    jamais la clé en clair dans le JSON (`FAKE_KEY not in dumps(body)`).
+  - Cleanup : `api_key:""` + `enabled:false` en fin de garde.
+
+### Non-objectifs
+- Pas de test de succès LLM réel dans la garde (coûte des crédits).
+  Un smoke manuel reste requis depuis la UI après `PUT /settings/llm`.
+
+## 0.17.0 — 2026-10-15 (minor) — Assistant branché au LLM (OpenAI-compat)
+
+> Bump **minor** : `/projects/{id}/assistant` effectue maintenant un
+> **appel HTTP réel** au LLM configuré (via `/settings/llm` ou env
+> `BC4_LLM_*`, précédence DB > env). Non-breaking côté front : la
+> réponse garde le même shape (`blocks`/`claims`/`evidence`/`warnings`)
+> et la UI 1.8.x affiche naturellement le texte LLM comme un claim
+> `INTERPRETED` dans le bloc « Résumé ». Garde **G18**.
+
+### Ajouté
+- Service **`app/services/llm_client.py`** :
+  - `call_llm(db, user_question, context_facts, timeout=12.0)` →
+    `str | None`. `None` = LLM désactivé ou config incomplète (pas une
+    erreur). `LlmInvocationError` sur timeout / 401 / 429 / 4xx-5xx /
+    réponse malformée. Le message d'erreur est **safe** (scrub de la
+    clé en clair même si httpx l'injecte dans un `str(exc)`).
+  - Wire format : **chat completions OpenAI-compat** (OpenAI, Mistral,
+    Together, Groq, OpenRouter, « custom »). Provider inconnu → erreur
+    explicite plutôt qu'invention de format.
+  - Prompt système fixe : « Tu ne cites AUCUN chiffre qui n'apparaît
+    pas dans le contexte factuel. Si une donnée manque, dis-le, ne
+    l'invente JAMAIS. » Les faits (projet, période, filtres, N) sont
+    injectés dans le `user` message, PAS en langage naturel inventé.
+- Route **`POST /projects/{id}/assistant`** branchée :
+  - Appelle `call_llm`. Succès → claim `INTERPRETED` avec le texte
+    renvoyé (jamais retouché, jamais mélangé avec un chiffre maison).
+  - Échec `LlmInvocationError` → claim `UNAVAILABLE` avec le message
+    safe, `warnings` enrichi (« LLM invoked but failed — fallback aux
+    observations. »). **La route renvoie TOUJOURS 200** quand le LLM
+    tombe — un 5xx ferait planter le chat côté UI pour une raison
+    externe à notre back.
+  - `None` (disabled / config incomplète) → claim `UNAVAILABLE`
+    explicite (`« LLM désactivé »` / `« config LLM incomplète »`).
+  - Les blocs OBSERVED (`sample_count`) restent présents dans tous les
+    cas — le LLM augmente, il ne remplace pas la base factuelle.
+- Logger `logging.getLogger('app.routes.assistant')` : niveau WARNING
+  sur échec LLM, message safe (clé déjà scrubbée par `call_llm`).
+
+### Garde (G18)
+- **G18** (`scripts/g18_llm_assistant.sh` + `tests/test_g18_llm_assistant.py`) :
+  - **Disabled** : PUT `enabled: false` → `/assistant` → 200 + claim
+    UNAVAILABLE « désactivé / non configuré ». Pas de call HTTP.
+  - **Unreachable** : PUT provider=openai, `base_url=http://127.0.0.1:1/v1`,
+    `enabled=true`, `api_key=<fake>` → `/assistant` → **200** (jamais 500)
+    + claim UNAVAILABLE qui mentionne « indisponible / réseau / timeout ».
+  - **Pas de fuite** : la clé en clair n'apparaît NI dans le JSON de
+    réponse (`FAKE_KEY not in json.dumps(body)`) NI dans la DB
+    (`settings_llm.api_key_cipher` reste préfixé `gAAAAA` — non-régression G17).
+  - **Traçabilité** : `warnings` populé quand le LLM a échoué ; vide
+    sinon.
+  - **Nettoyage** : la clé de test est vidée en fin de garde
+    (`api_key: ""` → `api_key_set=false`).
+
+### Non-objectifs (écarts ouverts explicites)
+- **Pas de test de succès LLM réel** : exigerait un provider live avec
+  facturation. Un smoke manuel (`PUT /settings/llm` + `POST /assistant`)
+  est documenté dans le README.
+- **Pas de rate-limit ni de cost cap** côté serveur : un utilisateur
+  peut appeler `/assistant` en boucle et consommer son quota provider.
+  À traiter dans un lot « quotas » séparé (sentinelle Redis + budget
+  par rôle). Déclaré ouvert.
+- **Pas de streaming (SSE)** : la réponse est synchrone. Les scénarios
+  qui tirent sur `max_tokens` élevés dépasseront le `timeout=12s` et
+  basculeront en UNAVAILABLE. L'évolution SSE est aussi un lot séparé.
+- **Pas de rotation Fernet** (hérité du 0.16.0) : si
+  `BC4_LLM_SECRET_KEY` change, le cipher stocké devient illisible
+  (`LlmInvocationError: config LLM illisible`) — procédure : PUT
+  `api_key: ""` puis PUT nouvelle clé.
+
+## 0.16.0 — 2026-10-15 (minor) — Settings LLM persistées + chiffrées
+
+> Bump **minor** : nouvelle table + nouvelles routes
+> `GET`/`PUT /settings/llm` (admin). La clé LLM est **chiffrée au repos**
+> (Fernet) — jamais lue en clair ailleurs que dans `llm_crypto.decrypt_key`,
+> jamais loggée, jamais renvoyée. L'env `BC4_LLM_*` sert de **fallback**
+> quand la DB est vide (précédence DB > env). Garde **G17**.
+
+### Ajouté
+- Dépendance **`cryptography==43.0.3`** (Fernet symétrique).
+- Migration **`0009_llm_settings`** : table `settings_llm` (singleton
+  `id=1`) avec `provider`, `base_url`, `model`, `api_key_cipher` (Text,
+  base64 Fernet), `enabled`, `temperature`, `max_tokens`, `updated_at`.
+  Seed `INSERT INTO settings_llm (id) VALUES (1)` dans l'upgrade — pas
+  de création à la volée côté runtime, pas de « ghost row ».
+- Env **`BC4_LLM_SECRET_KEY`** (clé Fernet) + `BC4_LLM_PROVIDER`,
+  `BC4_LLM_BASE_URL`, `BC4_LLM_MODEL`, `BC4_LLM_API_KEY`,
+  `BC4_LLM_ENABLED`. `BC4_LLM_SECRET_KEY` est OBLIGATOIRE pour un
+  PUT de clé — un garde qui s'auto-skippe sans secret ne garde rien.
+- Modèle **`LlmSettingsRow`** (`app/models/base.py`).
+- Service **`app/services/llm_crypto.py`** :
+  - `encrypt_key(plain) → cipher` (Fernet).
+  - `decrypt_key(cipher) → plain` (Fernet, `InvalidToken` → fail fast).
+  - `get_row(db)` : récupère le singleton (safety net si seed migré
+    manquant).
+  - `get_effective_llm_config(db) → dict` : précédence DB > env, api_key
+    déchiffré uniquement dans la stack frame appelante (jamais sérialisé).
+- Schémas Pydantic **`LlmSettings`** (réponse — `api_key_set: bool`, JAMAIS
+  `api_key`) et **`LlmSettingsInput`** (requête — `api_key` optionnel ;
+  `None` = untouched, `""` = clear, non-vide = chiffrer+stocker).
+- Routes **`GET /settings/llm`** (admin → 200, sinon 403/401) et
+  **`PUT /settings/llm`** (admin → 200 ; chiffre la clé via Fernet ;
+  si `BC4_LLM_SECRET_KEY` absent → 400 `LLM_CRYPTO` plutôt que stocker
+  en clair déguisé).
+- `/projects/{id}/assistant` lit maintenant la config effective
+  (`get_effective_llm_config`) et émet un `Claim UNAVAILABLE` adapté :
+  « LLM non configuré » OU « LLM configuré (<provider>/<model>) —
+  scénarios complets reportés au lot B2 ». La clé n'apparaît NI dans la
+  réponse NI dans les logs.
+
+### Garde (G17)
+- **G17** (`scripts/g17_llm_settings.sh` + `tests/test_g17_llm_settings.py`) :
+  - GET sans Bearer → 401 ; GET pour ingénieur → 403 ; GET admin → 200
+    + shape attendue, **pas** de champ `api_key`.
+  - PUT ingénieur → 403.
+  - PUT admin pose `provider`/`model`/`api_key` → `api_key_set=true`,
+    la clé en clair n'est PAS dans la réponse (`FAKE_KEY not in body`),
+    et la DB stocke un cipher Fernet (`gAAAAA…`), JAMAIS la clé en clair.
+  - PUT avec `api_key=""` → cipher nullifié (`api_key_set=false`).
+  - PUT sans `BC4_LLM_SECRET_KEY` → 400 `LLM_CRYPTO` (test skippé si
+    secret présent côté process — on ne monkeypatche pas l'env API).
+
+### Non-objectifs (écarts ouverts explicites)
+- Pas d'appel LLM effectif depuis `/assistant` dans ce lot : la route
+  continue de produire ses blocs OBSERVED à partir des mesures en DB.
+  L'intégration client HTTP (OpenAI/Anthropic) est reportée au lot
+  assistant B2 — ce lot livre uniquement la **config persistée + chiffrée**
+  qui alimentera ce client.
+- Pas de rotation de clé Fernet : si `BC4_LLM_SECRET_KEY` change, les
+  ciphers existants deviennent illisibles (DecryptError → 400 à l'usage).
+  Procédure : PUT `api_key: ""` puis PUT nouvelle clé. Déclaré ouvert.
+
 ## 0.15.0 — 2026-10-15 (minor) — `value_distribution` sur `/dict/params`
 
 > Bump **minor** : ajout d'un champ au contrat API. **Non-breaking**

@@ -50,8 +50,13 @@ from app.schemas.dictionary import (
     ParamMapV2,
     ParamRow,
     ValueBucket,
+    ValueMatrixCell,
 )
-from app.dict.queries import compute_value_distribution
+from app.dict.queries import (
+    UNASSIGNED_LABEL,
+    compute_value_distribution,
+    compute_value_matrix,
+)
 from app.services.dict_service import (
     build_dict_project,
     build_dict_tree,
@@ -113,9 +118,81 @@ def get_dict_project(project_id: str, db: Session = Depends(get_db)) -> DictProj
 # --------------------------------------------------------------------- #
 
 
+def _disambiguate_leaf_labels(paths: list[str]) -> list[str]:
+    """Désambigüise les feuilles au sein d'un groupe `(system, message)`.
+
+    Chaque entrée de `paths` est un path complet
+    (ex. `"measurementReport/.../measResultPCell/rsrpResult"`). Retourne
+    une liste `labels` de même longueur :
+
+    - Si la feuille (`seg[-1]`) est unique dans `paths` → `label = feuille`
+      (ex. `"q-RxLevMin"`, `"a3-Offset"`).
+    - Sinon → `label = "<feuille> (<ancêtres distinctifs>)"`. Les
+      ancêtres sont choisis en remontant depuis la feuille jusqu'à
+      obtenir une signature unique dans le groupe de collision. Le plus
+      souvent 1 segment suffit (ex. `"rsrpResult (measResultPCell)"` vs
+      `"rsrpResult (measResult)"`). Si deux paths colliders partagent
+      aussi le même parent direct (cas `release` sous deux
+      `ue-TransmitAntennaSelection` différents sous
+      `antennaInfo/explicitValue` vs `antennaInfo-r10/explicitValue-r10`),
+      on remonte jusqu'à ce que la signature diverge.
+
+    Dérivé 100% du path — jamais inventé. Si deux paths sont strictement
+    identiques (impossible dans `param_occurrence` grâce à l'UNIQUE
+    `(project_id, stg_event_id, path)` + GROUP BY path), on retombe sur
+    le path complet entre parenthèses pour prévenir la coïncidence
+    silencieuse.
+    """
+    segs = [p.split("/") for p in paths]
+    buckets: dict[str, list[int]] = defaultdict(list)
+    for i, s in enumerate(segs):
+        buckets[s[-1]].append(i)
+    labels: list[str] = [""] * len(paths)
+    for leaf, idxs in buckets.items():
+        if len(idxs) == 1:
+            labels[idxs[0]] = leaf
+            continue
+        # Collision — remonter depuis seg[-2] jusqu'à obtenir une
+        # signature unique par path dans le groupe.
+        depth = 1
+        max_depth = max(len(segs[i]) - 1 for i in idxs)
+        resolved = False
+        while depth <= max_depth and not resolved:
+            keys: dict[tuple[str, ...], list[int]] = defaultdict(list)
+            for i in idxs:
+                s = segs[i]
+                start = max(0, len(s) - 1 - depth)
+                ctx = tuple(s[start:-1])
+                keys[ctx].append(i)
+            if all(len(v) == 1 for v in keys.values()):
+                for ctx, [i] in keys.items():
+                    # Un path collider sans ancêtres (feuille à la racine
+                    # du message) → sentinelle `(racine)` : on garde
+                    # l'invariant « tous les colliders portent un suffixe
+                    # entre parenthèses, mutuellement distincts ».
+                    suffix = "/".join(ctx) if ctx else "racine"
+                    labels[i] = f"{leaf} ({suffix})"
+                resolved = True
+            else:
+                depth += 1
+        if not resolved:
+            # Deux paths colliders avec la MÊME chaîne d'ancêtres —
+            # impossible après le GROUP BY ci-dessus (clé unique). Filet
+            # de sécurité : suffixer par le path parent complet.
+            for i in idxs:
+                suffix = "/".join(segs[i][:-1])
+                labels[i] = f"{leaf} ({suffix})" if suffix else leaf
+    return labels
+
+
 def _build_tree_v2(db: Session, project_id: str) -> DictTreeV2:
     """Arbre à 2 branches racines (LTE / NR) depuis `param_occurrence`.
     `count` à chaque niveau = COUNT(*) agrégé.
+
+    0.22.3 — chaque `param` porte en plus un `label` désambigué (feuille
+    seule si unique, feuille + ancêtre distinctif sinon). Front n'a qu'à
+    préférer `label` à `leafOf(param)` quand disponible — non-breaking,
+    Zod additif.
     """
     rows = db.execute(
         text(
@@ -146,7 +223,12 @@ def _build_tree_v2(db: Session, project_id: str) -> DictTreeV2:
         messages: list[DictTreeMessage] = []
         total_sys = 0
         for msg_name, paths in nested[sys_name].items():
-            params = [DictTreeParam(param=p, count=c) for p, c in paths]
+            path_strs = [p for p, _ in paths]
+            labels = _disambiguate_leaf_labels(path_strs)
+            params = [
+                DictTreeParam(param=p, label=lbl, count=c)
+                for (p, c), lbl in zip(paths, labels)
+            ]
             total_msg = sum(c for _, c in paths)
             messages.append(
                 DictTreeMessage(message=msg_name, count=total_msg, params=params)
@@ -227,20 +309,29 @@ def _build_param_list_v2(
         return ParamListV2(params=[])
 
     # Buckets (operator, band) par (system, message, path).
+    # 0.18.0 — `COALESCE('non attribué')` sur operator ET band : les events
+    # sans SIB1 avant (operator NULL) OU sans band résolue étaient
+    # silencieusement omis des buckets. On les expose maintenant sous un
+    # bucket explicite — alignement avec `value_matrix`.
+    bucket_params = {**params, "unassigned": UNASSIGNED_LABEL}
     bucket_rows = db.execute(
         text(
             f"""
-            SELECT system, message, path, operator, band,
+            SELECT system, message, path,
+                   COALESCE(operator, :unassigned) AS operator,
+                   COALESCE(band, :unassigned) AS band,
                    COUNT(*) AS n,
                    AVG(NULLIF(regexp_replace(value_converted, '[^0-9eE\\.\\-+]', '', 'g'), '')::float)
                      FILTER (WHERE value_converted IS NOT NULL) AS avg_c
             FROM param_occurrence
             WHERE {where}
-            GROUP BY system, message, path, operator, band
+            GROUP BY system, message, path,
+                     COALESCE(operator, :unassigned),
+                     COALESCE(band, :unassigned)
             ORDER BY system, message, path, operator, band
             """
         ),
-        params,
+        bucket_params,
     ).all()
     buckets_by_key: dict[tuple[str, str, str], list[ParamBucket]] = defaultdict(list)
     for b in bucket_rows:
@@ -267,6 +358,18 @@ def _build_param_list_v2(
             operator=operator,
             band=band,
         )
+        # 0.18.0 — table croisée value × operator × band (NULL → "non
+        # attribué", jamais inventé). Même périmètre de filtres que
+        # buckets / value_distribution.
+        vm_items = compute_value_matrix(
+            db,
+            project_id=project_id,
+            system=system,
+            path=r.path,
+            message=r.message,
+            operator=operator,
+            band=band,
+        )
         out.append(
             ParamRow(
                 system=r.system,  # type: ignore[arg-type]
@@ -277,6 +380,7 @@ def _build_param_list_v2(
                 buckets=buckets_by_key.get((r.system, r.message, r.path), []),
                 value_distribution=[ValueBucket(**item) for item in vd_items],
                 value_distribution_mode=vd_mode,  # type: ignore[arg-type]
+                value_matrix=[ValueMatrixCell(**item) for item in vm_items],
             )
         )
     return ParamListV2(params=out)

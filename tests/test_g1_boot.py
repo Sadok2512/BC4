@@ -6,4 +6,4 @@ def test_health(client):
     assert r.status_code == 200, r.text
     body = r.json()
     assert body["status"] == "ok"
-    assert body["version"] == "0.15.0"
+    assert body["version"] == "0.34.0"

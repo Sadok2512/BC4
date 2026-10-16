@@ -14,6 +14,20 @@ Règles :
   binnés exposent `value_raw = value_converted = "[lo, hi)"`.
 - **Enum** (unit_converted null) : tri alpha ascendant sur `value_raw`.
 - **0 occurrence** → liste vide, `mode = "exact"`. Aucune invention.
+
+0.18.0 — `compute_value_matrix` : table croisée
+`(value_raw, value_converted, operator, band) → count` pour un
+paramètre. Permet au front d'offrir le regroupement visuel « par
+opérateur × bande » qui était désactivé auparavant faute de données
+exposées côté API. Les filtres (`operator`, `band`, `message`)
+RESTREIGNENT la requête — même périmètre que `buckets` /
+`value_distribution`.
+
+Règle dure : `NULL → "non attribué"` (COALESCE SQL). On n'invente
+JAMAIS un opérateur depuis `operators_plmn` ni une heuristique
+`freq`/`pci`. 30.5% des occurrences TEST2 ont `operator = NULL` (events
+sans SIB1 avant, ou PCI/freq non catalogué) — elles sortent
+explicitement en `"non attribué"`.
 """
 from __future__ import annotations
 
@@ -174,3 +188,84 @@ def _fmt_bin(lo: float, hi: float) -> str:
             return str(int(x))
         return f"{x:g}"
     return f"[{fmt(lo)}, {fmt(hi)})"
+
+
+# --------------------------------------------------------------------- #
+# 0.18.0 — Value matrix (value × operator × band)
+# --------------------------------------------------------------------- #
+
+# Libellé explicite pour les occurrences dont `operator` ou `band` est
+# NULL en base. Jamais inventé — c'est l'étiquette publique de
+# « colonne NULL ». 30.5% des occurrences TEST2 sont NULL (events sans
+# SIB1 avant / sans match (freq, pci)) et doivent apparaître.
+UNASSIGNED_LABEL = "non attribué"
+
+
+def compute_value_matrix(
+    db: Session,
+    project_id: str,
+    system: str,
+    path: str,
+    message: str | None,
+    operator: str | None,
+    band: str | None,
+) -> list[dict]:
+    """Calcule la table croisée (value_raw, value_converted, operator, band).
+
+    Retourne une liste de cellules :
+    `[{"value_raw": str, "value_converted": str|None,
+       "operator": str, "band": str, "count": int}, ...]`
+    triée par `count DESC, value_raw, operator, band`.
+
+    `NULL → "non attribué"` (COALESCE). Aucune invention d'opérateur
+    depuis une table tierce — si la colonne est NULL en base, elle
+    sort en `"non attribué"`.
+    """
+    conds = [
+        "project_id = :pid",
+        "system = :sys",
+        "path = :path",
+    ]
+    params: dict[str, Any] = {"pid": project_id, "sys": system, "path": path}
+    if message:
+        conds.append("message = :msg")
+        params["msg"] = message
+    if operator:
+        conds.append("operator = :op")
+        params["op"] = operator
+    if band:
+        conds.append("band = :band")
+        params["bnd"] = band
+    where = " AND ".join(conds)
+
+    rows = db.execute(
+        text(
+            f"""
+            SELECT value AS value_raw,
+                   value_converted,
+                   COALESCE(operator, :unassigned) AS operator,
+                   COALESCE(band, :unassigned) AS band,
+                   COUNT(*) AS n
+            FROM param_occurrence
+            WHERE {where}
+            GROUP BY value, value_converted, COALESCE(operator, :unassigned),
+                     COALESCE(band, :unassigned)
+            ORDER BY n DESC, value, operator, band
+            """
+        ),
+        {**params, "unassigned": UNASSIGNED_LABEL},
+    ).all()
+
+    out: list[dict] = []
+    for r in rows:
+        raw = r.value_raw if r.value_raw is not None else ""
+        out.append(
+            {
+                "value_raw": str(raw),
+                "value_converted": r.value_converted,
+                "operator": r.operator,
+                "band": r.band,
+                "count": int(r.n),
+            }
+        )
+    return out
