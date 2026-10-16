@@ -2,6 +2,55 @@
 
 Versions SemVer. Type de bump: `patch` / `minor` / `major`. Un écart se ferme ou se déclare ouvert, jamais expliqué par hypothèse.
 
+## 0.42.0 — 2026-10-16 (minor) — Fix décodeur ASN.1 : BIT STRING long + MCC/MNC concaténés (Agent BC1)
+
+> Fermeture de l'écart décodeur OUVERT dans 0.41.0 : le walker ASN.1
+> (`app/dict/decode.py:walk`) émettait les BIT STRING longs sous forme
+> de descripteur de longueur (`"bits(28)"` pour cellIdentity) et les
+> listes de digits MCC/MNC digit par digit → l'`UniqueConstraint
+> (project_id, stg_event_id, path)` n'en gardait qu'un (`"2"` au lieu
+> de `"208"`). Résultat : `_populate_ecgi` 0.41.0 trouvait 153 SIB1
+> mais reconstruisait 0 ECGI. Ce lot fixe le walker, bump
+> ``bc4-decoder-asn1`` dans le CHANGELOG, et ajoute la route
+> `POST /projects/{id}/kpi/_rebuild_param_occurrence` pour re-décoder
+> un projet existant.
+
+### Fix walker (``app/dict/decode.py``)
+
+- **BIT STRING > 16 bits** : désormais émet la valeur entière en
+  décimal (``str(v[0])``) au lieu du descripteur de longueur. Les
+  BIT STRING courts (≤ 16 bits) continuent de sortir en binaire texte
+  ``"0b..."`` (ex. `trackingAreaCode`, inchangé).
+- **Liste de chiffres 0..9** (MCC / MNC pycrate) : désormais émise
+  comme UNE chaîne concaténée (ex. `[2,0,8]` → `"208"`). Garantit
+  qu'une seule ligne par path existe → l'UniqueConstraint ne
+  perd plus de digit. Les autres listes continuent d'être walkées
+  élément par élément (comportement inchangé).
+
+### Nouvelle route de re-décodage
+
+- ``POST /projects/{pid}/kpi/_rebuild_param_occurrence`` (admin) :
+  purge + ré-exécute ``populate_param_occurrence`` sur un projet
+  existant. Nécessaire pour que les projets déjà ingérés bénéficient
+  du walker fixé (sinon seuls les nouveaux imports NMF ont le fix).
+- ``POST /projects/{pid}/kpi/_populate_ecgi`` inchangé : relancer
+  **après** rebuild_param_occurrence pour voir ``distinct_ecgi > 0``.
+
+### Garde manuelle (REF, après rebuild + rebuild_param_occurrence +
+### populate_ecgi)
+
+1. ``SELECT value FROM param_occurrence WHERE path LIKE
+   '%cellIdentity' LIMIT 3`` → trois entiers décimaux distincts
+   (pas ``"bits(28)"``).
+2. ``SELECT value FROM param_occurrence WHERE path LIKE '%plmn-Identity/mcc'
+   LIMIT 3`` → ``"208"`` (France) pour chaque occurrence (pas
+   ``"2"``).
+3. ``POST /_populate_ecgi`` sur REF → ``distinct_ecgi >= 1``,
+   ``mp_with_ecgi > 0``, ``sample_cell`` complet (ecgi, enb_id,
+   local_cell_id, pci, earfcn, tac, operator PLMN).
+4. ``GET /kpi/filters`` → ``dr/plaque/dor/arcep/commune/insee``
+   available avec les valeurs correspondantes aux cell_ref uploadées.
+
 ## 0.41.0 — 2026-10-16 (minor) — group_by operator/band + ECGI SIB1 + upload cell_ref géo (Agent BC1)
 
 > Trois chantiers câblés en une passe :

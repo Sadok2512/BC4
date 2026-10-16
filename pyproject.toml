@@ -1,7 +1,7 @@
 [project]
 name = "bc4-back"
-version = "0.41.0"
-description = "BC4 backend FastAPI — group_by operator/band + ECGI propagé (SIB1) + upload cell_ref géo"
+version = "0.42.0"
+description = "BC4 backend FastAPI — fix décodeur ASN.1 : BIT STRING long + MCC/MNC concaténés → ECGI reconstructible"
 requires-python = ">=3.10"
 
 [tool.pytest.ini_options]

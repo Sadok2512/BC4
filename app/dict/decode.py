@@ -91,6 +91,14 @@ def walk(v: Any, path: list[str], out: list[tuple[list[str], Any]]) -> None:
             else:
                 walk(v[1], path + [v[0]], out)
     elif isinstance(v, list):
+        # 0.42.0 — PLMN MCC/MNC = SEQUENCE SIZE (3) OF MCC-MNC-Digit.
+        # Pycrate renvoie une liste d'entiers 0..9 ; on la concatène en
+        # UNE chaîne (ex. [2,0,8] → "208"), sinon l'`UniqueConstraint
+        # (project_id, stg_event_id, path)` ne garde que le premier digit
+        # et on perd l'identité PLMN (bug 0.41.0, exposé par l'audit SIB1).
+        if v and all(isinstance(x, int) and 0 <= x <= 9 for x in v):
+            out.append((path, "".join(str(x) for x in v)))
+            return
         for x in v:
             walk(x, path, out)
     elif isinstance(v, (bytes, bytearray)):
@@ -101,7 +109,13 @@ def walk(v: Any, path: list[str], out: list[tuple[list[str], Any]]) -> None:
             if v[1] <= 16:
                 out.append((path, "0b" + format(v[0], "0%db" % v[1])))
             else:
-                out.append((path, "bits(%d)" % v[1]))
+                # 0.42.0 — Pour les BIT STRING longs (ex. cellIdentity
+                # 28 bits, newUE-Identity 48 bits), on émet désormais la
+                # VALEUR entière en décimal — pas seulement la longueur.
+                # Permet la reconstruction ECGI aval sans ambiguïté.
+                # L'ancien descripteur "bits(n)" était un faux positif
+                # applicatif (ligne présente, valeur inutilisable).
+                out.append((path, str(v[0])))
         else:
             out.append((path, str(v)))
     elif v is None:

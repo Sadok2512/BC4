@@ -327,28 +327,48 @@ def _propagate_to_mp(
     db: Session, project_id: str, cells: list[EcgiCell],
 ) -> int:
     """Pour chaque mp du projet, assigne ``ecgi`` depuis la dernière
-    cellule SIB1 **de la même capture** avec même ``(pci, earfcn)``.
+    cellule SIB1 **de la même capture**. Préférence au match
+    ``(capture_id, pci, earfcn)`` quand pci+earfcn sont connus ;
+    sinon fallback sur ``capture_id`` uniquement (une capture =
+    une cellule serving globalement sur REF, les HO intra-capture
+    sont rares en drive-test urbain).
+
     Retourne le nombre de mp mis à jour.
     """
-    # Index : (capture_id, pci, earfcn) → ecgi (dernière vue)
-    key_to_ecgi: dict[tuple[str, int, int], str] = {}
+    # Dernière cellule par capture (ordre first_capture → last_capture).
+    last_cell_by_cap: dict[str, EcgiCell] = {}
+    for c in cells:
+        for cap in (c.first_capture, c.last_capture):
+            if cap is None:
+                continue
+            last_cell_by_cap[cap] = c
+
+    total = 0
+    # Pass 1 — match précis (capture, pci, earfcn) quand connu.
     for c in cells:
         if c.pci is None or c.earfcn is None:
             continue
         for cap in (c.first_capture, c.last_capture):
             if cap is None:
                 continue
-            key_to_ecgi[(cap, c.pci, c.earfcn)] = c.ecgi
-    if not key_to_ecgi:
-        return 0
+            r = db.execute(
+                text(
+                    """
+                    UPDATE measurement_points
+                    SET ecgi = :ecgi
+                    WHERE project_id = :pid
+                      AND capture_id = :cap
+                      AND earfcn = :earfcn
+                      AND ecgi IS NULL
+                    """
+                ),
+                {"ecgi": c.ecgi, "pid": project_id, "cap": cap, "earfcn": c.earfcn},
+            )
+            total += r.rowcount or 0
 
-    # On remonte en lot via un VALUES virtuel.
-    updates = []
-    for (cap, pci, earfcn), ecgi in key_to_ecgi.items():
-        updates.append({"cap": cap, "pci": pci, "earfcn": earfcn, "ecgi": ecgi, "pid": project_id})
-
-    total = 0
-    for u in updates:
+    # Pass 2 — fallback par capture pour tout mp sans ecgi (une
+    # capture = une cellule serving, matché par le dernier SIB1 vu).
+    for cap, cell in last_cell_by_cap.items():
         r = db.execute(
             text(
                 """
@@ -356,13 +376,13 @@ def _propagate_to_mp(
                 SET ecgi = :ecgi
                 WHERE project_id = :pid
                   AND capture_id = :cap
-                  AND earfcn = :earfcn
                   AND ecgi IS NULL
                 """
             ),
-            u,
+            {"ecgi": cell.ecgi, "pid": project_id, "cap": cap},
         )
         total += r.rowcount or 0
+
     return total
 
 
@@ -432,7 +452,16 @@ def _plmn_mismatch_scan(
     db: Session, project_id: str, cells: list[EcgiCell],
 ) -> tuple[int, list[dict[str, Any]]]:
     """Compte les captures où l'opérateur dérivé du PLMN SIB1 diffère
-    de l'opérateur Nemo (``nmf_file.dl``)."""
+    de l'opérateur Nemo (``nmf_file.dl``). Les abréviations Nemo
+    ``OFR/BYT/FREE/SFR`` sont normalisées vers les noms canoniques
+    avant comparaison — jamais une différence orthographique n'est
+    comptée comme vrai mismatch."""
+    nemo_alias = {
+        "OFR": "Orange", "ORANGE": "Orange", "Orange": "Orange",
+        "BYT": "Bouygues", "BOUYGUES": "Bouygues", "Bouygues": "Bouygues",
+        "SFR": "SFR",
+        "FREE": "Free", "Free": "Free",
+    }
     rows = db.execute(
         text(
             """
@@ -445,7 +474,10 @@ def _plmn_mismatch_scan(
         ),
         {"pid": project_id},
     ).fetchall()
-    dl_by_cap = {r[0]: (r[1] or "").strip() for r in rows}
+    dl_by_cap: dict[str, str] = {}
+    for r in rows:
+        dl_raw = (r[1] or "").strip()
+        dl_by_cap[r[0]] = nemo_alias.get(dl_raw, dl_raw)
     op_by_cap: dict[str, str] = {}
     for c in cells:
         for cap in (c.first_capture, c.last_capture):

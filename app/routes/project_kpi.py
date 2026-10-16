@@ -73,6 +73,26 @@ def kpi_filters(project_id: str, db: Session = Depends(get_db)) -> dict:
     return build_filters_v2(db, project_id)
 
 
+@router.post("/{project_id}/kpi/_rebuild_param_occurrence")
+def kpi_rebuild_param_occurrence(
+    project_id: str,
+    actor: Actor = Depends(get_actor),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Admin — re-décode tous les events RRC du projet (purge + repopulate
+    ``param_occurrence``). À appeler après un release du walker ASN.1
+    (ex. 0.42.0 — BIT STRING long + MCC/MNC concaténés)."""
+    require_role(actor, "admin")
+    _require_project(db, project_id)
+    from app.dict.populate import populate_param_occurrence
+    stats = populate_param_occurrence(db, project_id, purge=True)
+    db.commit()
+    return {
+        "project_id": project_id,
+        "stats":      stats,
+    }
+
+
 @router.post("/{project_id}/kpi/_populate_ecgi")
 def kpi_populate_ecgi(
     project_id: str,
