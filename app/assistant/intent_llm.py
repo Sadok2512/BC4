@@ -34,6 +34,7 @@ from app.assistant.intent import IntentPlan, parse_intent
 from app.assistant.metrics import CATALOG
 from app.services.llm_client import LlmInvocationError, call_llm_with_usage
 from app.services.llm_crypto import LlmCryptoError, get_effective_llm_config
+from app.services.skills import ALLOWED_TOOLS, extract_defaults, load_active_skills
 
 
 logger = logging.getLogger(__name__)
@@ -88,8 +89,15 @@ _INTENT_SYSTEM_PROMPT = (
     "  \"comparison_dim\": \"operator\" | null,\n"
     "  \"filters\": [{\"dim\": \"operator\"|\"band\"|\"system\", \"op\": \"eq\"|\"in\", \"value\"?: str, \"values\"?: [str]}],\n"
     "  \"needs_clarification\": true | false,\n"
-    "  \"reason\": \"string | null (si needs_clarification)\"\n"
+    "  \"reason\": \"string | null (si needs_clarification)\",\n"
+    "  \"skill_slug\": \"<slug_skill_actif>\" | null\n"
     "}\n\n"
+    "SKILLS ACTIFS (0.38.0) : si la liste `SKILLS_ACTIFS` ci-dessous n'est pas vide, tu PEUX\n"
+    "sélectionner UN seul skill dont les `triggers` collent sémantiquement à la question.\n"
+    "`skill_slug` = le slug choisi, ou `null` si aucun ne colle. Un skill GUIDE l'exécution\n"
+    "(outils autorisés, procédure déclarative) ; il NE REMPLACE PAS les règles ci-dessus et\n"
+    "ne change JAMAIS `metric_key`/`operation` extraits de la question. Si la question est\n"
+    "ambiguë, préfère `skill_slug=null` à inventer.\n\n"
     "RÈGLES ABSOLUES :\n"
     "- `metric_key` DOIT être EXACTEMENT une clé du catalogue ci-dessous, ou null.\n"
     "  Mapper les synonymes français (ex. « puissance reçue » → rsrpServing, « débit » → throughputDL, « bandes » → band_count).\n"
@@ -145,12 +153,34 @@ _INTENT_SYSTEM_PROMPT = (
     "A: {\"operation\":\"conversation\",\"metric_key\":null,\"dimensions\":[],\"comparison_dim\":null,\"filters\":[],\"needs_clarification\":false,\"reason\":null}\n\n"
     "CATALOGUE AUTORISÉ :\n"
     "{catalog_card}\n\n"
+    "SKILLS_ACTIFS :\n"
+    "{skills_card}\n\n"
     "Rends UNIQUEMENT le JSON (pas de ```, pas de commentaire)."
 )
 
 
-def _format_system_prompt() -> str:
-    return _INTENT_SYSTEM_PROMPT.replace("{catalog_card}", _catalog_card())
+def _skills_card(skills: list) -> str:
+    """Carte publique des skills actifs (slug, name, description,
+    triggers tronqués). Pas de body ni Procédure — c'est au pipeline
+    d'injecter la Procédure si le skill est retenu."""
+    if not skills:
+        return "(aucun skill actif)"
+    lines = []
+    for s in skills:
+        tr = ", ".join((s.triggers or [])[:6])
+        lines.append(
+            f"- slug={s.slug} | version={s.version} | name={s.name} | "
+            f"description={s.description} | triggers=[{tr}]"
+        )
+    return "\n".join(lines)
+
+
+def _format_system_prompt(skills: list | None = None) -> str:
+    return (
+        _INTENT_SYSTEM_PROMPT
+        .replace("{catalog_card}", _catalog_card())
+        .replace("{skills_card}", _skills_card(skills or []))
+    )
 
 
 def _ensure_list(x: Any) -> list:
@@ -176,9 +206,14 @@ def _parse_llm_json(txt: str) -> dict[str, Any] | None:
         return None
 
 
-def _to_intent_plan(data: dict[str, Any], raw_q: str) -> IntentPlan | None:
+def _to_intent_plan(
+    data: dict[str, Any],
+    raw_q: str,
+    active_skills: list | None = None,
+) -> IntentPlan | None:
     """Transforme la sortie LLM en `IntentPlan` validé contre le catalogue.
     Retourne None si le JSON est hors contrat (clé metric inventée, etc.)."""
+    active_skills = active_skills or []
     op = data.get("operation")
     if op not in ("conversation", "list", "distribution", "compare", "map", "trend", "describe"):
         return None
@@ -301,6 +336,100 @@ def _to_intent_plan(data: dict[str, Any], raw_q: str) -> IntentPlan | None:
                 metric_key,
             )
 
+    # 0.38.0 — Skills : si le LLM a sélectionné un skill, on vérifie
+    # qu'il appartient à la liste ACTIVE (pas de slug inventé) et on
+    # narrow sa liste d'outils à `tools_allowed ∩ ALLOWED_TOOLS`
+    # (jamais un outil hors moteur).
+    chosen = data.get("skill_slug")
+    match: Any = None
+    if isinstance(chosen, str) and chosen:
+        match = next((s for s in active_skills if s.slug == chosen), None)
+        if match is None:
+            logger.warning(
+                "intent_llm: skill_slug %r inconnu dans les skills actifs — ignoré",
+                chosen,
+            )
+
+    # 0.38.0 — Fallback déterministe : si le LLM n'a pas sélectionné un
+    # skill (ou a sélectionné un slug inconnu), on scanne les triggers
+    # ACTIFS par CONTENU dans la question. Insensible à la casse. Le
+    # premier skill dont un trigger apparaît en substring dans la
+    # question est retenu. Cette garde évite de dépendre de la
+    # fiabilité du modèle sur le champ optionnel `skill_slug`.
+    if match is None and active_skills:
+        qlow = (raw_q or "").lower()
+        for s in active_skills:
+            for t in s.triggers or []:
+                tl = str(t).strip().lower()
+                if tl and tl in qlow:
+                    match = s
+                    logger.info(
+                        "intent_llm: skill picked by deterministic trigger "
+                        "match: slug=%s trigger=%r",
+                        s.slug, tl,
+                    )
+                    break
+            if match is not None:
+                break
+
+    if match is not None:
+        plan.skill_slug = match.slug
+        plan.skill_version = match.version
+        # Intersection stricte avec la liste blanche du moteur.
+        plan.skill_tools_allowed = sorted(
+            set(match.tools_allowed or []) & ALLOWED_TOOLS
+        )
+
+        # 0.38.0 — Si le skill déclare un `default_metric` /
+        # `default_operation` dans son frontmatter, on les applique
+        # UNIQUEMENT quand l'extracteur LLM n'a pas bindé la métrique
+        # (metric_key=null) OU est resté sur `describe` par défaut.
+        # Le skill GUIDE : il ne peut PAS écraser une métrique déjà
+        # bindée par la question (invariant « par le contenu »).
+        default_metric, default_operation = extract_defaults(match.body_md)
+        if default_metric and default_metric in CATALOG and plan.metric_key is None:
+            plan.metric_key = default_metric
+            # Si on vient de binder une métrique, on lève le flag
+            # needs_clarification posé par le safety-net plus haut.
+            if plan.needs_clarification and plan.reason.startswith("Aucune métrique canonique"):
+                plan.needs_clarification = False
+                plan.reason = ""
+            logger.info(
+                "intent_llm: skill %s default_metric=%s appliqué (LLM avait metric=null)",
+                match.slug, default_metric,
+            )
+        if default_operation and plan.operation in ("describe",):
+            plan.operation = default_operation  # type: ignore[assignment]
+            logger.info(
+                "intent_llm: skill %s default_operation=%s appliqué (LLM avait op=describe)",
+                match.slug, default_operation,
+            )
+
+        # Si la combinaison résultante est compare sur une métrique de
+        # paramètre (nature config/measurement) sans dims valeur, on
+        # applique la même garde que 0.37.0 — pivot operator × value.
+        if plan.operation == "compare" and plan.metric_key:
+            m2 = CATALOG.get(plan.metric_key)
+            if m2 is not None and m2.nature in ("config", "measurement"):
+                if not any(d in plan.dimensions for d in ("value_raw", "value_converted")):
+                    new_dims = list(plan.dimensions)
+                    if "operator" not in new_dims:
+                        new_dims = ["operator", *new_dims]
+                    for extra in ("value_raw", "value_converted"):
+                        if extra not in new_dims:
+                            new_dims.append(extra)
+                    plan.dimensions = new_dims
+                    plan.comparison_dim = plan.comparison_dim or "operator"
+                    logger.info(
+                        "intent_llm: skill post-fix compare dims=%s",
+                        plan.dimensions,
+                    )
+
+        logger.info(
+            "intent_llm: skill_used slug=%s version=%s tools_allowed=%s",
+            plan.skill_slug, plan.skill_version, plan.skill_tools_allowed,
+        )
+
     return plan
 
 
@@ -363,6 +492,18 @@ def extract_intent(
         logger.warning("intent_llm: path=fallback-budget-cap (spent=%.4f$ cap=%.4f$)", spent, cap or 0.0)
         return _apply_antifallback(parse_intent(q))
 
+    # 0.38.0 — Charge les skills actifs pour les exposer au LLM.
+    try:
+        active_skills = load_active_skills(db)
+    except Exception as exc:
+        logger.warning("intent_llm: load_active_skills failed (%s), continuer sans skills", exc)
+        active_skills = []
+    if active_skills:
+        logger.info(
+            "intent_llm: %d skill(s) actif(s) exposé(s) au LLM: %s",
+            len(active_skills), [s.slug for s in active_skills],
+        )
+
     # Appel LLM court et borné, avec extraction des `usage` tokens.
     logger.info("intent_llm: path=llm, calling %s (q=%r)", cfg.get("model"), q[:80])
     try:
@@ -370,7 +511,7 @@ def extract_intent(
             db,
             user_question=q,
             context_facts="",  # le prompt système contient tout
-            system_prompt=_format_system_prompt(),
+            system_prompt=_format_system_prompt(active_skills),
             max_tokens_override=350,
             timeout=15.0,
         )
@@ -415,7 +556,7 @@ def extract_intent(
         logger.warning("intent_llm: path=fallback-json-parse")
         return _apply_antifallback(parse_intent(q))
 
-    plan = _to_intent_plan(data, q)
+    plan = _to_intent_plan(data, q, active_skills=active_skills)
     if plan is None:
         logger.warning("intent_llm: path=fallback-contract-violation")
         return _apply_antifallback(parse_intent(q))

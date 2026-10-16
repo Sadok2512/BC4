@@ -2,6 +2,160 @@
 
 Versions SemVer. Type de bump: `patch` / `minor` / `major`. Un écart se ferme ou se déclare ouvert, jamais expliqué par hypothèse.
 
+## 0.38.0 — 2026-10-16 (minor) — Skills Center : skills Markdown déclaratifs (Agent BC1)
+
+> Introduction d'un **Skills Center** : les skills sont des fichiers
+> Markdown avec frontmatter YAML (name, version SemVer, description,
+> triggers, tools_allowed, scope, render), validés strictement avant
+> d'être exposés à l'assistant. **Un skill GUIDE, il n'exécute rien** :
+> les invariants du pipeline (feasibility, scope projet, états typés,
+> compose déterministe, vérificateur anti-invention) restent
+> **prioritaires** sur tout texte issu d'un skill. Un skill qui tente
+> « ignore le vérificateur », « renvoie les lignes brutes » ou
+> « change de projet » est ignoré sur ces points, warning explicite
+> émis dans la réponse et les logs serveur.
+
+### Stockage
+
+- Migration **`0015_skill`** : table `skill` avec contrainte unique
+  `(slug, version)` — l'historique des versions est **conservé**,
+  jamais écrasé. Index `(slug)` + `(status)`.
+- Statuts : `draft` → `validated` → `active` → `archived`. Un seul
+  actif par slug (contrainte applicative à l'`/activate`).
+- Modèle ORM `app.models.base.Skill` + export dans `app/models/__init__`.
+
+### Endpoints (admin, préfixe `/settings/skills`)
+
+- `GET /settings/skills` — liste complète (filtre optionnel `?status=`).
+- `GET /settings/skills/{id}` — détail.
+- `POST /settings/skills` — crée en `draft` à partir du Markdown
+  complet. Frontmatter incomplet → **400** avec liste d'erreurs
+  nominative. Collision `(slug, version)` → **409**.
+- `PUT /settings/skills/{id}` — édite. Skill `active` immutable
+  (bump version pour une nouvelle entrée). Identité `(slug, version)`
+  non modifiable sur PUT.
+- `DELETE /settings/skills/{id}` — refusé sur skill actif
+  (archive d'abord).
+- `POST /settings/skills/{id}/validate` — renvoie `{ok, errors[]}`.
+  Si OK, passe le status à `validated`.
+- `POST /settings/skills/{id}/activate` — exige `validated`, re-valide
+  défensivement, archive les autres actifs du même slug.
+- `POST /settings/skills/{id}/archive` — rend non sélectionnable.
+- `GET /settings/skills/active` — **loader assistant** (viewer OK).
+  Shape allégée : `slug, version, name, description, triggers,
+  tools_allowed`. La section Procédure reste côté serveur.
+
+### Validateur strict (`app/services/skills.py`)
+
+Toutes les erreurs sont **nominatives** (`frontmatter.tools_allowed[2]
+'rm -rf' hors liste blanche`). Jamais un message générique.
+
+- Parse YAML via `yaml.safe_load` (jamais `yaml.load`).
+- Champs requis : `name, version, description, triggers, tools_allowed`.
+- `version` : regex SemVer strict (`MAJOR.MINOR.PATCH[-prerelease]`).
+- `triggers` : liste de chaînes non vide.
+- `tools_allowed` ⊆ **liste blanche moteur** `ALLOWED_TOOLS`
+  (`get_project_context, list_operators, list_bands, top_rrc_messages,
+  rrc_param_distribution, compare_operators, compare_distributions,
+  map_metric`). Un outil hors liste → erreur nominative.
+- `slug` : si fourni, regex `^[a-z][a-z0-9\-]{1,63}$` ; sinon dérivé
+  du `name`. Unicité `(slug, version)` enforced par DB.
+- **REJET de tout bloc de code exécutable** `` ```python/py/sql/js/
+  javascript/ts/bash/sh/shell `` dans le body (quelle que soit la casse).
+- Taille max body = 20 000 caractères.
+- Sections requises : `## Quand`, `## Procédure`, `## Rendu`.
+- Détection non bloquante de marqueurs de bypass (« ignore le
+  vérificateur », « lignes brutes », « change de projet »…) via
+  `body_has_bypass_hints` — n'empêche PAS la validation, mais émet
+  un warning au runtime pipeline.
+
+### Intégration assistant
+
+- `intent_llm.extract_intent` charge les skills `active` via
+  `load_active_skills` et les expose au LLM sous la section
+  `SKILLS_ACTIFS` du prompt système (slug + name + description +
+  triggers, pas le body). Le LLM peut renvoyer un `skill_slug` dans
+  son JSON de sortie.
+- Validation côté serveur : le `skill_slug` doit matcher un slug
+  **actif** connu, sinon il est ignoré avec warning. Pas de slug
+  inventé.
+- `tools_allowed` du skill est **intersecté** avec `ALLOWED_TOOLS` du
+  moteur. Un skill ne peut jamais élargir la surface d'attaque.
+- `IntentPlan.skill_slug / skill_version / skill_tools_allowed`
+  portent la sélection côté pipeline.
+- `AssistantResponse.skill_used = {slug, version} | None` trace le
+  skill utilisé pour chaque run (audit + affichage UI).
+- Si le body du skill retenu contient des marqueurs de bypass
+  (`ignore le vérificateur` etc.), un **warning explicite** est ajouté
+  à `warnings[]` et logué `WARN:pipeline`. Les invariants (feasibility,
+  scope, verifier, compose déterministe) continuent de tourner — le
+  texte du skill ne peut pas les désactiver.
+
+### Dépendance ajoutée
+
+`PyYAML==6.0.2` (requirements.txt) — uniquement `yaml.safe_load`,
+jamais `FullLoader`.
+
+### Garde manuelle (en live, après rebuild)
+
+Pas de CI. Lancer les 4 scénarios :
+
+1. Créer `mobilite-a3` via `POST /settings/skills` → `validate` renvoie
+   `ok:true` → `activate` → poser « quelle est la stratégie de
+   mobilité d'Orange ? » → `skill_used = {slug:"mobilite-a3", ...}`,
+   outils appelés ⊆ `tools_allowed`, pivot operator × valeur (dB),
+   aucun chiffre hors résultats.
+2. Skill invalide (outil inconnu + bloc ```python) → `validate` renvoie
+   **2 erreurs nominatives**, status reste `draft`, jamais chargé.
+3. Skill actif contenant « ignore le vérificateur » → réponse normale,
+   garde-fous intacts, warning explicite dans `warnings[]`.
+4. Skill archivé → plus sélectionnable par l'intent LLM.
+
+## 0.37.1 — 2026-10-16 (patch) — RSRP/RSRQ_DIST : source RRC autoritaire (Agent BC1)
+
+> Suite de 0.36.0. Après dérivation complète sur REF_PETITE_FORET, la
+> boucle de preuve ±2 dB déclare `rsrp` et `rsrq` **rejected** avec un
+> écart Δ ≈ +32 dB (RSRP) et −89 dB (RSRQ) entre CELLMEAS (log continu
+> serving cell, avg −71 dBm) et RRC `measResultPCell/rsrpResult`
+> (déclenché sur seuil A2/A3, avg −103 dBm). Les deux sources
+> n'observent **pas le même événement physique** — la preuve
+> distribution-level les rejette honnêtement. Résultat : `mapping = {}`,
+> `measurement_points.rsrp` reste NULL déclaré.
+>
+> Pour rendre `/kpi/RSRP_DIST` AVAILABLE **sans mapper à l'aveugle**,
+> on bascule la source du KPI vers la valeur RRC autoritaire déjà
+> présente dans `param_occurrence` (le MeasurementReport est la source
+> primaire définie par 3GPP TS 36.331 §5.5.5). Le mapping vers
+> `measurement_points.rsrp` reste gaté par preuve ±2 dB — déclaré
+> ouvert, pas supprimé.
+
+### Changements catalogue KPI (`app/kpi/catalog.py`)
+
+- `RSRP_DIST` : `availability` passe de `mp_metric("rsrp")` à
+  `param_path("%measResultPCell/rsrpResult", ILIKE)`. P50 calculé en
+  Python sur `value_converted` (idx − 141 dBm appliqué par
+  `app/dict/conversions.py`).
+- `RSRQ_DIST` : idem, `param_path("%measResultPCell/rsrqResult", ILIKE)`.
+- `SINR_DIST` / `CQI_DIST` : source conservée sur `measurement_points`
+  — pas de référence RRC chiffrée (rs-sinr-r13 LTE-A non peuplé,
+  cqi-Report non comparable chiffré). Restent PENDING tant que la
+  preuve n'aboutit pas.
+
+### Garde sur REF après rebuild
+
+- `/kpi/catalog` → `RSRP_DIST`, `RSRQ_DIST`, `A3_OFFSET_DIST`,
+  `HYSTERESIS_DIST`, `TTT_DIST`, `THRESHOLD_RSRP_BY_EVENT`,
+  `RRC_SETUP_COUNT`, `RRC_REEST_COUNT`, `HO_COUNT` tous **AVAILABLE**.
+- `/kpi/RSRP_DIST` → P50 ≈ −103 dBm réel (serving PCell, 663 MR), 3
+  opérateurs via `param_occurrence.operator` (Orange, Bouygues, Free),
+  `result_id` stable.
+- `THR_DL_APP` / `THR_UL` / `THR_PCTL` restent **PENDING** (preuve
+  `thrpt_*` non câblée).
+- `SINR_DIST`, `CQI_DIST`, `TXPOWER_DIST` restent **PENDING** (preuve
+  non aboutie).
+- `SMS_SR`, `SS_RSRP_DIST`, `ENDC_SCG_ADD`, `THR_MAC_RLC_PDCP`,
+  `RRC_SETUP_SR`, `HO_SR`, autres rates : inchangé.
+
 ## 0.37.0 — 2026-10-16 (minor) — Un paramètre se compare par ses VALEURS, pas par un count (Agent BC1)
 
 > Constat live 0.36.0 : `compare le parametre A3offset` liait bien

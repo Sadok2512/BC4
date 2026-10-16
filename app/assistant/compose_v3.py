@@ -66,6 +66,16 @@ def compose_pipeline_response(run: PipelineRun, *, project, filters) -> dict:
             "scenario": "conversation",
         }
 
+    # 0.38.0 — Même sur les outcomes courts (clarif / unavailable), on
+    # expose le `skill_used` si l'intent LLM a sélectionné un skill —
+    # c'est la trace que le mécanisme a tourné.
+    _early_skill_used = None
+    if run.intent.skill_slug and run.intent.skill_version:
+        _early_skill_used = {
+            "slug": run.intent.skill_slug,
+            "version": run.intent.skill_version,
+        }
+
     if run.outcome == "NEEDS_CLARIFICATION":
         blocks.append(
             BlockText(
@@ -83,6 +93,7 @@ def compose_pipeline_response(run: PipelineRun, *, project, filters) -> dict:
             "evidence": [],
             "warnings": warnings,
             "scenario": "v3_needs_clarification",
+            "skill_used": _early_skill_used,
         }
 
     if run.outcome == "UNAVAILABLE":
@@ -104,6 +115,7 @@ def compose_pipeline_response(run: PipelineRun, *, project, filters) -> dict:
             "evidence": [],
             "warnings": warnings,
             "scenario": "v3_unavailable",
+            "skill_used": _early_skill_used,
         }
 
     # ---------- OUTCOME = OK ----------
@@ -269,9 +281,15 @@ def compose_pipeline_response(run: PipelineRun, *, project, filters) -> dict:
     #    (évidence : opérateur hors projet jamais rendu « 0 »).
     #    Il est déjà cité dans observed[] si applicable.
 
+    # 0.38.0 — Expose le skill_used si l'intent LLM en a sélectionné un.
+    skill_used = None
+    if run.intent.skill_slug and run.intent.skill_version:
+        skill_used = {"slug": run.intent.skill_slug, "version": run.intent.skill_version}
+
     return {
         "blocks": blocks,
         "evidence": evidence,
         "warnings": warnings,
         "scenario": f"v3_{run.intent.operation}",
+        "skill_used": skill_used,
     }

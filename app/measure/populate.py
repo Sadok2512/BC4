@@ -235,6 +235,23 @@ def populate_measurement_points(
         "mapping": {},
     }
 
+    # 0.37.1 — Nettoyage des `tech` fantômes BC1 (GSM / codes bruts type
+    # '2', '3' hérités d'un skeleton non 2.0.0). La valeur canonique est
+    # `rat` (via `rat_from_code`, cf. CONTENU), posée en même temps par
+    # l'UPDATE ci-dessous. Idempotent : seul tech ∉ {LTE, NR} est NULL-é.
+    db.execute(
+        text(
+            """
+            UPDATE measurement_points
+            SET tech = NULL
+            WHERE project_id = :pid
+              AND tech IS NOT NULL
+              AND tech NOT IN ('LTE', 'NR')
+            """
+        ),
+        {"pid": project_id},
+    )
+
     # 0.33.0 — Preuve ±2 dB AVANT tout mapping. ``MEASUREMENT_MAPPING`` ne
     # contient QUE les candidats prouvés contre param_occurrence. Les
     # rejetés restent NULL déclaré à l'aval. Le rapport de preuve chiffré
@@ -417,7 +434,11 @@ def populate_measurement_points(
                     "lat": float(lat_v),
                     "lng": float(lon_v),
                     "operator": operator,
-                    "tech": r.system,
+                    # 0.37.1 — tech par le CONTENU : `rat_from_code(rat_code)`
+                    # d'abord ; sinon `stg_event_raw.system` SI c'est LTE/NR.
+                    # Jamais de 'GSM', '2', '3' etc. laissés fuiter d'un code
+                    # ambigu (plafond fantôme BC1 déjà rencontré sur REF).
+                    "tech": tech_value,
                     "band": None,  # band non prouvée hors CELLMEAS
                     "service": None,
                     "dep": None,

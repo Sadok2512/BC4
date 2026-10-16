@@ -667,6 +667,35 @@ def run_pipeline(db: Session, project: Project, question: str, *, conversation_i
     # (robuste au phrasé). Fallback heuristique si LLM indisponible.
     intent = extract_intent(db, question, conversation_id=conversation_id)
 
+    # 0.38.0 — Si un skill a été retenu, détecter les marqueurs de
+    # bypass et émettre un WARNING loggé (jamais une exception).
+    # Les invariants (feasibility, scope, verifier, compose) tournent
+    # EN PRIORITÉ sur le texte du skill — c'est le point dur du contrat.
+    skill_warning: str | None = None
+    if intent.skill_slug:
+        try:
+            from app.models import Skill as _Skill
+            from app.services.skills import body_has_bypass_hints as _bypass
+            row = (
+                db.query(_Skill)
+                .filter(
+                    _Skill.slug == intent.skill_slug,
+                    _Skill.version == intent.skill_version,
+                )
+                .one_or_none()
+            )
+            if row is not None:
+                hints = _bypass(row.body_md)
+                if hints:
+                    skill_warning = (
+                        f"Skill {intent.skill_slug}@{intent.skill_version} contient "
+                        f"des marqueurs de bypass {hints!r} — IGNORÉS : feasibility, "
+                        "scope, vérificateur et compose déterministe restent prioritaires."
+                    )
+                    logger.warning("pipeline: %s", skill_warning)
+        except Exception as exc:
+            logger.warning("pipeline: bypass-hints check failed (non-fatal): %s", exc)
+
     if intent.operation == "conversation":
         return PipelineRun(outcome="CONVERSATION", intent=intent)
 
@@ -720,6 +749,8 @@ def run_pipeline(db: Session, project: Project, question: str, *, conversation_i
     )
 
     warnings: list[str] = list(primary.warnings)
+    if skill_warning:
+        warnings.append(skill_warning)
     if not ok_budget:
         warnings.append(
             f"Budget LLM du jour atteint ({spent:.2f} $ / {cap:.2f} $). "

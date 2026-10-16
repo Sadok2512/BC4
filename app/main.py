@@ -16,6 +16,7 @@ from app.routes import (
     projects,
     reference,
     settings as settings_routes,
+    settings_skills,
 )
 
 # 0.34.1 — Logger `app.*` au niveau INFO par défaut. Nécessaire pour que
@@ -25,7 +26,7 @@ from app.routes import (
 logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(name)s:%(message)s")
 logging.getLogger("app").setLevel(logging.INFO)
 
-app = FastAPI(title="bc4-back", version="0.37.0")
+app = FastAPI(title="bc4-back", version="0.38.0")
 
 # CORS (B2 / P1-1) : origines PILOTÉES par `BC4_CORS_ORIGINS` (jamais en
 # dur), méthodes/en-têtes explicites pour les uploads multipart
@@ -48,7 +49,7 @@ app.add_middleware(
 def health() -> dict[str, str]:
     with engine.connect() as conn:
         conn.execute(text("SELECT 1"))
-    return {"status": "ok", "env": settings.env, "version": "0.37.0"}
+    return {"status": "ok", "env": settings.env, "version": "0.38.0"}
 
 
 app.include_router(auth.router)
@@ -58,5 +59,6 @@ app.include_router(kpi.router)
 app.include_router(dictionary.router)
 app.include_router(assistant.router)
 app.include_router(settings_routes.router)
+app.include_router(settings_skills.router)
 app.include_router(reference.router)
 app.include_router(measurements.router)

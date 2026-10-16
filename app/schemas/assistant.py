@@ -129,6 +129,14 @@ class AssistantError(BaseModel):
     message: str
 
 
+class SkillUsed(BaseModel):
+    """Trace du skill utilisé (0.38.0). ``None`` quand aucun skill
+    n'a été sélectionné par l'intent LLM."""
+
+    slug: str
+    version: str
+
+
 class AssistantResponse(BaseModel):
     conversation_id: str
     message_id: str
@@ -149,6 +157,11 @@ class AssistantResponse(BaseModel):
     # qui en dépend ; la UI (1.11.2+) n'affiche la pilule « Données
     # démo » que si `demo === True`.
     demo: bool = True
+    # 0.38.0 — Skills Center : trace de quel skill a guidé ce run (ou
+    # ``None`` si aucun skill actif n'a matché). N'altère JAMAIS le
+    # verdict ni la narration — c'est une simple étiquette portée pour
+    # audit et affichage UI.
+    skill_used: SkillUsed | None = None
 
 
 class UserMessage(BaseModel):

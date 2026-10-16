@@ -18,5 +18,9 @@ pycrate==0.8.1
 # 0.16.0 : chiffrement symétrique Fernet de la clé LLM stockée en base
 # (jamais relue en clair, jamais loggée).
 cryptography==43.0.3
+# 0.38.0 — Skills Center. Les skills Markdown portent un frontmatter YAML
+# validé via `yaml.safe_load` (jamais `load`). Pas de FullLoader, pas de
+# désérialisation d'objets Python.
+PyYAML==6.0.2
 pytest==8.3.4
 pytest-asyncio==0.24.0

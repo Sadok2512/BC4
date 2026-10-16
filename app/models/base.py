@@ -610,3 +610,50 @@ class ParamOccurrence(Base):
     band: Mapped[str | None] = mapped_column(String, nullable=True)
     lat: Mapped[float | None] = mapped_column(Float, nullable=True)
     lon: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+
+class Skill(Base):
+    """Skill déclaratif (Markdown + frontmatter YAML) stocké en base
+    (0.38.0 — Skills Center).
+
+    Le skill ne contient JAMAIS de code exécutable. Il est validé par
+    ``app.services.skills.validate_skill`` avant toute activation.
+    Historique : ``(slug, version)`` unique ; les anciennes versions
+    du même slug restent en base (status=``archived``), jamais
+    écrasées silencieusement.
+    """
+
+    __tablename__ = "skill"
+    __table_args__ = (
+        UniqueConstraint("slug", "version", name="uq_skill_slug_version"),
+        Index("ix_skill_slug", "slug"),
+        Index("ix_skill_status", "status"),
+    )
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    slug: Mapped[str] = mapped_column(String, nullable=False)
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    version: Mapped[str] = mapped_column(String, nullable=False)
+    description: Mapped[str] = mapped_column(String, nullable=False)
+    triggers: Mapped[list] = mapped_column(JSON, nullable=False)
+    tools_allowed: Mapped[list] = mapped_column(JSON, nullable=False)
+    scope: Mapped[str | None] = mapped_column(String, nullable=True)
+    render: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    body_md: Mapped[str] = mapped_column(Text, nullable=False)
+    # draft | validated | active | archived
+    status: Mapped[str] = mapped_column(String, nullable=False, default="draft")
+    created_by: Mapped[str | None] = mapped_column(
+        ForeignKey("app_user.id", ondelete="SET NULL"), nullable=True
+    )
+    validated_by: Mapped[str | None] = mapped_column(
+        ForeignKey("app_user.id", ondelete="SET NULL"), nullable=True
+    )
+    validated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=datetime.utcnow
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=datetime.utcnow
+    )

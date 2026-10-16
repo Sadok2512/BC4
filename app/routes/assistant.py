@@ -165,6 +165,12 @@ def post_assistant(
     run_v3 = run_pipeline(db, project, body.question, conversation_id=body.conversation_id)
     composed = compose_pipeline_response(run_v3, project=project, filters=body.filters)
     message_id = str(uuid.uuid4())
+    # 0.38.0 — skill_used (si l'intent LLM a sélectionné un skill actif).
+    skill_used = composed.get("skill_used")
+    skill_used_schema = None
+    if skill_used:
+        from app.schemas.assistant import SkillUsed
+        skill_used_schema = SkillUsed(slug=skill_used["slug"], version=skill_used["version"])
     return AssistantResponse(
         conversation_id=body.conversation_id,
         message_id=message_id,
@@ -182,6 +188,7 @@ def post_assistant(
         ],
         execution_steps=_load_steps(db),
         warnings=composed["warnings"],
+        skill_used=skill_used_schema,
     )
 
 

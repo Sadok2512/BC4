@@ -49,6 +49,14 @@ class IntentPlan:
     ambiguous_candidates: list[str] = field(default_factory=list)  # candidats pour chaque terme
     needs_clarification: bool = False
     reason: str = ""
+    # 0.38.0 — Skills Center. Si l'intent LLM a sélectionné un skill
+    # ACTIF, on garde ici son `(slug, version)`. Le pipeline s'en sert
+    # pour (a) tagguer la réponse, (b) narrower la liste blanche
+    # d'outils à `tools_allowed ∩ moteur`. Les invariants pipeline
+    # restent prioritaires sur le texte du skill.
+    skill_slug: str | None = None
+    skill_version: str | None = None
+    skill_tools_allowed: list[str] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------

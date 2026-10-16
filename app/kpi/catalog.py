@@ -312,12 +312,16 @@ CATALOG: tuple[KpiDef, ...] = (
         techno="LTE",
         nature="distribution",
         unit="dBm",
-        source="measurement_points.rsrp (décodé depuis rsrpResult, idx - 141 dBm)",
-        formula="percentile_cont(0.10|0.50|0.90) WITHIN GROUP (ORDER BY rsrp)",
-        definition="Distribution RSRP servant (dBm) — mesure canonique.",
-        availability="mp_metric",
-        availability_arg="rsrp",
-        unavailable_reason="measurement_points.rsrp NULL — rsrpResult non décodé par la chaîne",
+        source="param_occurrence.measResultPCell/rsrpResult (RRC MeasurementReport, idx - 141 dBm)",
+        formula="percentile_cont sur value_converted des param_occurrence (serving PCell)",
+        definition=(
+            "Distribution RSRP servant (dBm) décodée depuis les MeasurementReport "
+            "RRC — source authoritative. Le mapping vers measurement_points.rsrp "
+            "(candidat CELLMEAS) reste gaté par preuve ±2 dB ; non prouvé = NULL."
+        ),
+        availability="param_path",
+        availability_arg="%measResultPCell/rsrpResult",
+        availability_op="ilike",
     ),
     KpiDef(
         code="RSRQ_DIST",
@@ -326,12 +330,12 @@ CATALOG: tuple[KpiDef, ...] = (
         techno="LTE",
         nature="distribution",
         unit="dB",
-        source="measurement_points.rsrq (décodé depuis rsrqResult, idx/2 - 20 dB)",
-        formula="percentile_cont(0.10|0.50|0.90) WITHIN GROUP (ORDER BY rsrq)",
-        definition="Distribution RSRQ servant (dB).",
-        availability="mp_metric",
-        availability_arg="rsrq",
-        unavailable_reason="measurement_points.rsrq NULL",
+        source="param_occurrence.measResultPCell/rsrqResult (RRC MeasurementReport, idx/2 - 20 dB)",
+        formula="percentile_cont sur value_converted des param_occurrence (serving PCell)",
+        definition="Distribution RSRQ servant (dB) décodée depuis MeasurementReport RRC.",
+        availability="param_path",
+        availability_arg="%measResultPCell/rsrqResult",
+        availability_op="ilike",
     ),
     KpiDef(
         code="SINR_DIST",
@@ -340,12 +344,16 @@ CATALOG: tuple[KpiDef, ...] = (
         techno="LTE/NR",
         nature="distribution",
         unit="dB",
-        source="measurement_points.sinr",
+        source="measurement_points.sinr (preuve ±2 dB vs rs-sinr-r13)",
         formula="percentile_cont(0.10|0.50|0.90) WITHIN GROUP (ORDER BY sinr)",
-        definition="Distribution SINR (dB).",
+        definition=(
+            "Distribution SINR (dB). rs-sinr-r13 est LTE-A non peuplé "
+            "systématiquement — reste PENDING tant que la preuve ±2 dB "
+            "n'aboutit pas pour le projet."
+        ),
         availability="mp_metric",
         availability_arg="sinr",
-        unavailable_reason="measurement_points.sinr NULL",
+        unavailable_reason="measurement_points.sinr NULL — rs-sinr-r13 absent du corpus / preuve non aboutie",
     ),
     KpiDef(
         code="CQI_DIST",
@@ -354,12 +362,16 @@ CATALOG: tuple[KpiDef, ...] = (
         techno="LTE/NR",
         nature="distribution",
         unit="indice 0..15",
-        source="measurement_points.cqi",
+        source="measurement_points.cqi (preuve ±2 dB vs cqi-Report)",
         formula="percentile_cont(0.10|0.50|0.90) WITHIN GROUP (ORDER BY cqi)",
-        definition="Distribution CQI (indice 3GPP).",
+        definition=(
+            "Distribution CQI (indice 3GPP). Pas de référence RRC chiffrée "
+            "comparable sur le corpus LTE Rel-8 — reste PENDING tant que la "
+            "preuve n'aboutit pas."
+        ),
         availability="mp_metric",
         availability_arg="cqi",
-        unavailable_reason="measurement_points.cqi NULL",
+        unavailable_reason="measurement_points.cqi NULL — pas de référence RRC chiffrée pour preuve ±2 dB",
     ),
     KpiDef(
         code="TXPOWER_DIST",
