@@ -1,7 +1,7 @@
 [project]
 name = "bc4-back"
-version = "0.42.1"
-description = "BC4 backend FastAPI — export/import CSV référentiel cellule + purge géo test"
+version = "0.43.0"
+description = "BC4 backend FastAPI — DICT section Identité cellule (SIB1 LTE/NR, dérivés, aliases, compteurs)"
 requires-python = ">=3.10"
 
 [tool.pytest.ini_options]

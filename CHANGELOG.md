@@ -2,6 +2,102 @@
 
 Versions SemVer. Type de bump: `patch` / `minor` / `major`. Un écart se ferme ou se déclare ouvert, jamais expliqué par hypothèse.
 
+## 0.43.0 — 2026-10-16 (minor) — DICT « Identité cellule » (lot D du audit G0-G11) (Agent BC1)
+
+> Lot livré **D uniquement** : la section « Identité cellule » du
+> dictionnaire. Les autres anomalies levées par l'audit G0-G11
+> (RSRP profiling, mp.ecgi_source, cellmeas_profile, ingest
+> sérialisation, Pydantic response_model /kpi/*, walker BIT STRING)
+> sont **documentées dans le rapport ci-dessous** et laissées en lots
+> séparés — pas de dev hors D dans ce lot.
+
+### Nouveau — `GET /projects/{project_id}/dict/identity`
+
+- `app/routes/dict_identity.py` : nouveau routeur, auth lecteur.
+- **Response Pydantic typée** (visible dans `/openapi.json`) :
+  `ProjectIdentityDict{project_id, sections[], counters, search_aliases[]}`.
+- Sections LTE + NR, chacune `IdentitySection{techno, status, reason,
+  leaves[], pscell?}`.
+- Feuilles LTE (7) : 4 natives SIB1 (`mcc`, `mnc`, `cellIdentity`,
+  `trackingAreaCode`) + 3 dérivées (`ECGI`, `enb_id`, `local_cell_id`)
+  marquées `kind="dérivé SIB1"`.
+- Feuilles NR : exposées si `sib1_nr > 0`. Sinon section
+  `status="ABSENT_DU_PERIMETRE"` + raison
+  `"EN-DC : PSCell = PCI NR + ARFCN ; NCGI en SA seulement"` +
+  `pscell={topN_pscell:[{pci_nr, arfcn_nr, n_events}], note}`.
+- Compteurs : `sib1_lte` + `sib1_nr` (DISTINCT stg_event_id sur
+  param_occurrence), `ecgi_distinct` (mp.ecgi), `pscell_distinct`
+  (pci_nr × arfcn_nr sur stg_event_raw).
+- Aliases de recherche : `ecgi, eci, enb, enodeb, cell id, cellid,
+  cell identity, tac, trackingareacode, plmn, mcc, mnc, ncgi, gnb,
+  gnb id, pscell`.
+
+### Audit G0-G11 — écarts déclarés (lots séparés)
+
+| G | Observation | Lot requis |
+|---|---|---|
+| G0 | `cell0_rsrq_db` passe la preuve ±2 dB (med\|Δ\|=1.5, n=2182) ; `cell0_c7` échoue (med\|Δ\|=5.6, n=842). Mais `profile_cellmeas` retient `cell0_c7`. | Fix `profile_cellmeas` : choisir par verdict `prove_rsrp_per_event`, pas heuristique avg. |
+| G1 | `mp.system` **n'existe pas** (query spec supposait un champ absent). `tech` dérivé de `rat_code` 7/9. `rat_code=5` (62) et `=1` (6) non mappés. | Doc clarifiant source `tech`. |
+| G2 | `prove_rsrp_per_event` écrit mais `_oneshot_populate_mp_ref.py` affiche encore `run_proof` legacy. | Remplacer dans script oneshot. |
+| G3 | DSUMMARY **par intervalle** (strictly_increasing=35 / decreasing=37). Témoin 44M bytes en ~10s → thrpt ≈ 34 Mbit/s cohérent. | — (OK) |
+| G4 | Transferts n=79 proven : P10=3.61, **P50=15.15**, P90=87.70 Mbit/s. Pondération sur `transfers`, pas sur `mp.dl`. | Catalog KPI à câbler sur table transferts. |
+| G5 | Table `cellmeas_profile` n'existe pas. | Créer + versionner par capture + verrou G2. |
+| G6 | Catalogue v2 : 194 canoniques + 14 alias (OK). `response_model` Pydantic **absent** sur `/kpi/*` → forme invisible dans `/openapi.json`. | Ajouter `response_model=` sur les 3 handlers KPI. |
+| G7 | `nmf_count=9/18` (9 restants). Sérialisation populate manquante. | Lot ingest : `with db.begin()` par fichier + file-lock. |
+| G8 | `mp.ecgi = 100%` ; **`mp.ecgi_source` absent** → la méthode d'attribution est opaque. 100% non prouvé. | Ajouter colonne + marquer `inféré` tout fallback hors « même capture, même (pci,earfcn) ». |
+| G9 | **2319 lignes** avec `value LIKE '0b…'` ou `bits(`. TAC = `0b0001011100011001` littéral (devrait être entier décodé). | Walker ASN.1 à durcir : BIT STRING → `int(bits, 2)`. |
+| G10 | `plmn-IdentityList=459, interFreqCarrierFreqList=983, cellReselectionPriority=494, neighCellConfig=541` — à comparer après rebuild walker (G9). | Déclarer n avant/après fix walker. |
+| G11 | `/kpi/LTE_RF_RSRP?group_by=operator_band` : `n_groups=7, sum=1573, d.n=1573`, **0 N/D**. mp.rsrp sans band = **0**. Les 4205 attendus par la spec sont la différence entre `COUNT(rsrp) mp` (5778) et `d.n` (1573) → la route sert param_occurrence RRC pas mp.rsrp. Clarifier source. | Doc source du KPI dans la réponse Pydantic. |
+
+## 0.42.2 — 2026-10-16 (patch) — KPI opérationnels LTE_ECGI / NR_NCGI dans l'arbre Mobilité (Agent BC1)
+
+> L'ECGI n'est pas un path RRC émis par le décodeur (c'est un **composite
+> dérivé** `PLMN + cellIdentity` construit en Python). Il n'apparaissait
+> donc pas dans le dictionnaire ``/dict/*`` (listant les paths ASN.1
+> bruts). Ce patch l'expose comme un **KPI opérationnel** dans l'arbre
+> ``/kpi/catalog`` LTE + NR, famille Mobilité, pour qu'il soit découvrable
+> aux côtés des 208 KPI du xlsx autoritaire.
+
+### Nouvelles entrées catalogue (dérivées, hors xlsx)
+
+- ``LTE_ECGI`` — Compteur, famille Mobilité, techno LTE.
+  * Formule : ``COUNT(DISTINCT measurement_points.ecgi)``.
+  * Source : ``measurement_points.ecgi`` (dérivé SIB1 : PLMN + cellIdentity,
+    3GPP TS 36.401 §6.2.1), propagé par ``populate_ecgi`` en ordre
+    ``(capture_id, seq)``.
+  * Statut REF : **AVAILABLE** (value = nombre de cellules distinctes vues).
+  * ``source_type: "operational"`` → traçable comme hors-xlsx.
+- ``NR_NCGI`` — Compteur, famille Mobilité, techno NR.
+  * Formule : ``COUNT(DISTINCT measurement_points.ecgi WHERE tech='NR')``.
+  * Source : SIB1-NR (PLMN + NCI 36 bits, 3GPP TS 38.413 §9.3.1.7) ;
+    propagation NR non livrée tant qu'aucun NMF NR n'est ingéré.
+  * Statut : **UNAVAILABLE** avec raison technologie absente du corpus.
+
+### Infra
+
+- ``scripts/import_kpi_catalog_v2.py`` : nouvelle fonction
+  ``_operational_extras()`` ajoutée **après** les entrées xlsx (traçable
+  via ``source_type="operational"``) + ``operational_count`` dans la
+  métadata du JSON.
+- ``app/kpi/service_v2.py`` :
+  * Nouveau kind ``available_check = "mp_ecgi_distinct"`` consommé par
+    ``compute_status_v2`` + ``compute_kpi_v2``.
+  * Groupes par operator/band supportés (``COUNT(DISTINCT ecgi)`` par
+    groupe + ``n_mp`` points avec ECGI dans le groupe).
+- Comptes catalogue : 194 canonical xlsx + 2 operational = **196
+  canonical total** (comptes par statut inchangés sur les 194 xlsx).
+
+### Garde manuelle (REF, après rebuild)
+
+- ``GET /projects/{id}/kpi/catalog`` → arbre LTE/Mobilité contient
+  ``LTE_ECGI`` (AVAILABLE, n = 20 sur REF), arbre NR/Mobilité contient
+  ``NR_NCGI`` (UNAVAILABLE avec raison).
+- ``GET /projects/{id}/kpi/LTE_ECGI`` → ``status=AVAILABLE``, ``value=20``
+  (cellules distinctes), ``n_mp_with_ecgi=73091``.
+- ``GET /projects/{id}/kpi/LTE_ECGI?group_by=operator`` → groupes
+  Orange / Bouygues / Free avec ``n = cellules distinctes par
+  opérateur``.
+
 ## 0.42.1 — 2026-10-16 (patch) — Export/import CSV cell_ref + purge géo test (Agent BC1)
 
 > Boucle opérateur fermée : chaque projet exporte son référentiel

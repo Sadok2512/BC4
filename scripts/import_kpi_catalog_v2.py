@@ -515,6 +515,70 @@ def _sha256(path: Path) -> str:
     return h.hexdigest()
 
 
+def _operational_extras() -> list[dict[str, Any]]:
+    """KPI opérationnels **dérivés** (hors xlsx), ajoutés après le
+    catalogue xlsx. Chaque entrée est explicitement marquée
+    ``source_type = "operational"`` pour la traçabilité : ils ne font
+    pas partie des 208 lignes xlsx autoritaires, mais apparaissent dans
+    l'arbre LTE/NR pour exposer les dimensions non-RRC du système.
+
+    0.42.2 — Ajout de ``LTE_ECGI`` + ``NR_NCGI`` (identifiant global
+    cellule). Dérivés depuis SIB1 ``cellIdentity`` + ``plmn-Identity``
+    (``populate_ecgi``), peuplés sur ``measurement_points.ecgi``.
+    """
+    return [
+        {
+            "code":    "LTE_ECGI",
+            "name":    "LTE ECGI — Cellules distinctes observées",
+            "techno":  "LTE",
+            "nature":  "Compteur",
+            "family":  "Mobilité",
+            "aliases": [],
+            "formula": "COUNT(DISTINCT measurement_points.ecgi)",
+            "source":  (
+                "measurement_points.ecgi — dérivé SIB1 (PLMN + cellIdentity, "
+                "3GPP TS 36.401 §6.2.1), propagé par populate_ecgi en ordre "
+                "(capture_id, seq)."
+            ),
+            "unit":    "cellules",
+            "available_check": {
+                "kind": "mp_ecgi_distinct",
+                "reason_if_null": (
+                    "measurement_points.ecgi NULL partout — SIB1 non "
+                    "décodé ou populate_ecgi pas exécuté."
+                ),
+            },
+            "service_scope": [],
+            "source_type":   "operational",
+        },
+        {
+            "code":    "NR_NCGI",
+            "name":    "NR NCGI — Cellules 5G distinctes observées",
+            "techno":  "NR",
+            "nature":  "Compteur",
+            "family":  "Mobilité",
+            "aliases": [],
+            "formula": "COUNT(DISTINCT measurement_points.ecgi WHERE tech='NR')",
+            "source":  (
+                "measurement_points.ecgi — dérivé SIB1-NR (PLMN + NCI 36 "
+                "bits, 3GPP TS 38.413 §9.3.1.7). Propagation NR non "
+                "livrée tant qu'aucun NMF NR n'est ingéré."
+            ),
+            "unit":    "cellules",
+            "available_check": {
+                "kind": "always_unavailable",
+                "reason": (
+                    "aucun NMF NR ingéré avec succès dans le corpus "
+                    "actuel (REF = LTE uniquement) ; propagation NCGI "
+                    "attend un release du décodeur NR."
+                ),
+            },
+            "service_scope": [],
+            "source_type":   "operational",
+        },
+    ]
+
+
 def build(xlsx_path: Path) -> dict[str, Any]:
     raw = _load_xlsx(xlsx_path)
 
@@ -574,6 +638,13 @@ def build(xlsx_path: Path) -> dict[str, Any]:
         if canon in entries_by_code and a["alias"] != canon:
             entries_by_code[canon]["aliases"].append(a["alias"])
 
+    # 0.42.2 — Ajout des KPI opérationnels dérivés (hors xlsx). Chaque
+    # entrée porte ``source_type="operational"`` pour la traçabilité ;
+    # elle apparaît dans l'arbre LTE/NR aux côtés des 208 lignes xlsx.
+    operational = _operational_extras()
+    for e in operational:
+        entries_by_code[e["code"]] = e
+
     return {
         "catalog_version":      "2.0.0",
         "source_xlsx":          xlsx_path.name,
@@ -582,6 +653,7 @@ def build(xlsx_path: Path) -> dict[str, Any]:
         "total_input_rows":     len(raw),
         "canonical_count":      len(entries_by_code),
         "aliases_count":        len(aliases_report),
+        "operational_count":    len(operational),
         "normalizations":       normalizations,
         "aliases":              aliases_report,
         "entries":              sorted(entries_by_code.values(), key=lambda e: e["code"]),

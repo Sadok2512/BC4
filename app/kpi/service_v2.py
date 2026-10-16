@@ -174,6 +174,24 @@ def compute_status_v2(
             or f"measurement_points.{col} NULL partout",
         )
 
+    # 0.42.2 — Compteur ECGI distincts (mp_ecgi_distinct).
+    if kind == "mp_ecgi_distinct":
+        row = db.execute(
+            text(
+                "SELECT COUNT(DISTINCT ecgi) FROM measurement_points "
+                "WHERE project_id = :pid AND ecgi IS NOT NULL"
+            ),
+            {"pid": project_id},
+        ).first()
+        n = int(row[0]) if row and row[0] is not None else 0
+        if n > 0:
+            return KpiStatusV2("AVAILABLE", None)
+        return KpiStatusV2(
+            "PENDING",
+            check.get("reason_if_null")
+            or "measurement_points.ecgi NULL partout",
+        )
+
     if kind == "param_message_eq":
         msg = check.get("arg") or ""
         if _message_present(db, project_id, msg):
@@ -863,6 +881,54 @@ def compute_kpi_v2(
                 "value": total, "n": total, "by_operator": by_op,
                 "groups": groups, "table": groups,
                 "comparability": _comparability(groups)}
+
+    # 0.42.2 — Compteur ECGI (identifiant cellule globale dérivé SIB1).
+    if kind == "mp_ecgi_distinct":
+        row = db.execute(
+            text(
+                "SELECT COUNT(DISTINCT ecgi) AS n_cells, "
+                "       COUNT(*) FILTER (WHERE ecgi IS NOT NULL) AS n_mp "
+                "FROM measurement_points WHERE project_id = :pid"
+            ),
+            {"pid": project_id},
+        ).first()
+        n_cells = int(row[0]) if row and row[0] is not None else 0
+        n_mp    = int(row[1]) if row and row[1] is not None else 0
+        if n_cells == 0:
+            return {**base, "status": "PENDING",
+                    "reason": check.get("reason_if_null"),
+                    "value": None, "n": 0, "n_mp_with_ecgi": 0}
+        # Groupes : par opérateur et/ou par bande, COUNT(DISTINCT ecgi).
+        sel = ", ".join(group_cols)
+        rows = db.execute(
+            text(
+                f"SELECT {sel}, COUNT(DISTINCT ecgi) AS n_cells, "
+                f"       COUNT(*) FILTER (WHERE ecgi IS NOT NULL) AS n_mp "
+                f"FROM measurement_points WHERE project_id = :pid "
+                f"GROUP BY {sel} ORDER BY {sel}"
+            ),
+            {"pid": project_id},
+        ).fetchall()
+        groups_raw: list[dict[str, Any]] = []
+        for r in rows:
+            row_d: dict[str, Any] = {}
+            for i, c in enumerate(group_cols):
+                row_d[c] = r[i]
+            row_d["n"]       = int(r[len(group_cols)])
+            row_d["n_mp"]    = int(r[len(group_cols) + 1])
+            groups_raw.append(row_d)
+        groups = _decorate_groups(groups_raw, group_cols, expected_ops)
+        return {
+            **base,
+            "status":         "AVAILABLE",
+            "reason":         None,
+            "value":          n_cells,
+            "n":              n_cells,
+            "n_mp_with_ecgi": n_mp,
+            "groups":         groups,
+            "table":          groups,
+            "comparability":  _comparability(groups),
+        }
 
     if kind == "mp_metric":
         col = check.get("arg") or ""

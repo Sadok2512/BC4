@@ -4,8 +4,9 @@
   "source_xlsx_sha256": "6869c001c1b61009fe4570241775d3ede9df78320a142c096eb8a0a6b347833d",
   "generated_from": "scripts/import_kpi_catalog_v2.py",
   "total_input_rows": 208,
-  "canonical_count": 194,
+  "canonical_count": 196,
   "aliases_count": 14,
+  "operational_count": 2,
   "normalizations": [
     "'EN-DC_' → 'ENDC_' (EN-DC_LAT_RTT)",
     "'EN-DC_' → 'ENDC_' (EN-DC_LAT_HTTP_RESPONSE)",
@@ -1034,6 +1035,23 @@
         "HTTP_DOWNLOAD",
         "HTTP_UPLOAD"
       ]
+    },
+    {
+      "code": "LTE_ECGI",
+      "name": "LTE ECGI — Cellules distinctes observées",
+      "techno": "LTE",
+      "nature": "Compteur",
+      "family": "Mobilité",
+      "aliases": [],
+      "formula": "COUNT(DISTINCT measurement_points.ecgi)",
+      "source": "measurement_points.ecgi — dérivé SIB1 (PLMN + cellIdentity, 3GPP TS 36.401 §6.2.1), propagé par populate_ecgi en ordre (capture_id, seq).",
+      "unit": "cellules",
+      "available_check": {
+        "kind": "mp_ecgi_distinct",
+        "reason_if_null": "measurement_points.ecgi NULL partout — SIB1 non décodé ou populate_ecgi pas exécuté."
+      },
+      "service_scope": [],
+      "source_type": "operational"
     },
     {
       "code": "LTE_EPS_ATTACH_SR",
@@ -2920,6 +2938,23 @@
         "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
       },
       "service_scope": []
+    },
+    {
+      "code": "NR_NCGI",
+      "name": "NR NCGI — Cellules 5G distinctes observées",
+      "techno": "NR",
+      "nature": "Compteur",
+      "family": "Mobilité",
+      "aliases": [],
+      "formula": "COUNT(DISTINCT measurement_points.ecgi WHERE tech='NR')",
+      "source": "measurement_points.ecgi — dérivé SIB1-NR (PLMN + NCI 36 bits, 3GPP TS 38.413 §9.3.1.7). Propagation NR non livrée tant qu'aucun NMF NR n'est ingéré.",
+      "unit": "cellules",
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement) ; propagation NCGI attend un release du décodeur NR."
+      },
+      "service_scope": [],
+      "source_type": "operational"
     },
     {
       "code": "NR_PDU_SESSION_ATTEMPTS",
