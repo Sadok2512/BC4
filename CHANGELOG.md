@@ -86,6 +86,24 @@ timeout 15 s) par question d'analyse. Zéro coût sur smalltalk
 (court-circuit regex). Le modèle `loop_cheap` est suffisant — le cache
 Anthropic réutilise le prompt système (identique à chaque appel).
 
+### Traçabilité live (ajout fin de lot)
+
+- `app/services/llm_client.py:call_llm_with_usage` : variante de
+  `call_llm` qui retourne `(text, prompt_tokens, completion_tokens,
+  model)` à partir du champ `usage` de la réponse OpenAI-compat.
+- `app/assistant/intent_llm.py:extract_intent` log désormais
+  `INFO: intent_llm: path=llm | path=quick-conversation |
+  path=fallback-*` à chaque extraction, et insère une ligne dans
+  `llm_usage` (step=`-1` pour distinguer de la narration step∈[0..N]).
+  Preuve directe depuis `docker logs bc4-api-1` + requête
+  `SELECT * FROM llm_usage WHERE step=-1` que la V3 live passe bien par
+  l'extracteur LLM (et pas uniquement par le fallback heuristique).
+- `app/main.py` : `logging.basicConfig(level=INFO)` + `app.*=INFO`
+  pour que ces traces atteignent `docker logs` (le défaut Python est
+  WARNING et masquait tout le chemin).
+- `pipeline.run_pipeline` propage `conversation_id` à `extract_intent`
+  pour que la ligne `llm_usage` soit rattachable au thread de chat.
+
 ## 0.33.0 — 2026-10-15 (minor) — Gating par preuve ±2 dB + fix `env` + post-RRC populate (Agent BC4)
 
 > Finition stricte du lot 0.32.0, pas de nouveau schéma. Trois corrections

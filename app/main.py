@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
@@ -14,6 +16,13 @@ from app.routes import (
     reference,
     settings as settings_routes,
 )
+
+# 0.34.1 — Logger `app.*` au niveau INFO par défaut. Nécessaire pour que
+# `intent_llm` publie son `path=llm | fallback-*` dans `docker logs`
+# (sans ça, le niveau effectif racine reste WARNING et on perd la
+# preuve du chemin pris par l'extracteur d'intention).
+logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(name)s:%(message)s")
+logging.getLogger("app").setLevel(logging.INFO)
 
 app = FastAPI(title="bc4-back", version="0.34.0")
 

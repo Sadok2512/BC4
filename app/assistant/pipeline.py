@@ -665,7 +665,7 @@ def run_pipeline(db: Session, project: Project, question: str, *, conversation_i
     """Orchestration V3 complète. Jamais 5xx : toute erreur est capturée."""
     # 0.33.0 — Étage 1 : extraction d'intention par LLM structured output
     # (robuste au phrasé). Fallback heuristique si LLM indisponible.
-    intent = extract_intent(db, question)
+    intent = extract_intent(db, question, conversation_id=conversation_id)
 
     if intent.operation == "conversation":
         return PipelineRun(outcome="CONVERSATION", intent=intent)

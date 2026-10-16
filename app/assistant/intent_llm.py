@@ -29,10 +29,10 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from app.assistant.budget import check_budget
+from app.assistant.budget import check_budget, log_usage
 from app.assistant.intent import IntentPlan, parse_intent
 from app.assistant.metrics import CATALOG
-from app.services.llm_client import LlmInvocationError, call_llm
+from app.services.llm_client import LlmInvocationError, call_llm_with_usage
 from app.services.llm_crypto import LlmCryptoError, get_effective_llm_config
 
 
@@ -248,39 +248,53 @@ def _apply_antifallback(plan: IntentPlan) -> IntentPlan:
     return plan
 
 
-def extract_intent(db: Session, question: str) -> IntentPlan:
+def extract_intent(
+    db: Session,
+    question: str,
+    *,
+    conversation_id: str | None = None,
+) -> IntentPlan:
     """Point d'entrée public : extrait l'intention de la question.
 
     Court-circuit salutation → heuristique rapide (zéro LLM).
     Sinon → appel LLM structured. Fallback heuristique si LLM down.
+
+    0.34.1 — Trace `INFO` systématique du chemin pris (`llm`, `fallback-*`,
+    `conversation`) + ligne `llm_usage` quand le LLM a répondu, pour
+    prouver depuis les logs & la DB que la V3 live passe bien par le
+    LLM d'extraction (pas uniquement par le détecteur Python).
     """
     q = (question or "").strip()
     if not q:
+        logger.info("intent_llm: path=empty-question")
         return parse_intent(q)
 
     # Court-circuit salutation / smalltalk sans coût LLM.
     if _QUICK_CONVERSATION.match(q):
+        logger.info("intent_llm: path=quick-conversation (zero LLM) q=%r", q[:80])
         return parse_intent(q)
 
     # LLM disponible ?
     try:
         cfg = get_effective_llm_config(db)
     except LlmCryptoError as exc:
-        logger.warning("intent_llm: config LLM illisible, fallback heuristique: %s", exc)
+        logger.warning("intent_llm: path=fallback-crypto, cfg indispo: %s", exc)
         return _apply_antifallback(parse_intent(q))
 
     enabled = cfg.get("enabled") and cfg.get("api_key") and cfg.get("provider") and cfg.get("base_url")
     if not enabled:
+        logger.info("intent_llm: path=fallback-disabled (LLM off ou config incomplète)")
         return _apply_antifallback(parse_intent(q))
 
-    ok_budget, _spent, _cap = check_budget(db, cfg.get("daily_cap_usd"))
+    ok_budget, spent, cap = check_budget(db, cfg.get("daily_cap_usd"))
     if not ok_budget:
-        logger.warning("intent_llm: budget cap atteint, fallback heuristique")
+        logger.warning("intent_llm: path=fallback-budget-cap (spent=%.4f$ cap=%.4f$)", spent, cap or 0.0)
         return _apply_antifallback(parse_intent(q))
 
-    # Appel LLM court et borné.
+    # Appel LLM court et borné, avec extraction des `usage` tokens.
+    logger.info("intent_llm: path=llm, calling %s (q=%r)", cfg.get("model"), q[:80])
     try:
-        txt = call_llm(
+        result = call_llm_with_usage(
             db,
             user_question=q,
             context_facts="",  # le prompt système contient tout
@@ -289,19 +303,53 @@ def extract_intent(db: Session, question: str) -> IntentPlan:
             timeout=15.0,
         )
     except LlmInvocationError as exc:
-        logger.warning("intent_llm: appel LLM failed, fallback heuristique: %s", exc)
+        logger.warning("intent_llm: path=fallback-llm-error (%s)", exc)
         return _apply_antifallback(parse_intent(q))
+
+    if result is None:
+        logger.info("intent_llm: path=fallback-llm-none (config partielle en pleine extraction)")
+        return _apply_antifallback(parse_intent(q))
+
+    txt, pt, ct, model = result
+
+    # 0.34.1 — Trace comptable : chaque appel d'extraction LLM apparaît
+    # désormais dans `llm_usage` (step=-1 pour distinguer la narration
+    # qui utilise step∈[0..N]).
+    try:
+        cost = log_usage(
+            db,
+            model=model,
+            prompt_tokens=pt,
+            completion_tokens=ct,
+            conversation_id=conversation_id,
+            step=-1,
+        )
+        db.commit()
+        logger.info(
+            "intent_llm: path=llm-ok pt=%d ct=%d cost≈%.6f$ txt_len=%d",
+            pt, ct, cost, len(txt),
+        )
+    except Exception as exc:
+        # Un échec de logging ne doit JAMAIS casser l'extraction. On note
+        # et on continue avec le plan — le vrai signal est le JSON parsé.
+        logger.warning("intent_llm: log_usage failed (non-fatal): %s", exc)
+        db.rollback()
 
     if not txt:
         return _apply_antifallback(parse_intent(q))
 
     data = _parse_llm_json(txt)
     if data is None:
-        logger.warning("intent_llm: JSON parse failed, fallback heuristique")
+        logger.warning("intent_llm: path=fallback-json-parse")
         return _apply_antifallback(parse_intent(q))
 
     plan = _to_intent_plan(data, q)
     if plan is None:
+        logger.warning("intent_llm: path=fallback-contract-violation")
         return _apply_antifallback(parse_intent(q))
 
+    logger.info(
+        "intent_llm: extracted op=%r metric=%r nc=%s",
+        plan.operation, plan.metric_key, plan.needs_clarification,
+    )
     return plan

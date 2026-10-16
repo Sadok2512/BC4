@@ -162,6 +162,105 @@ def call_llm(
     return text.strip()
 
 
+def call_llm_with_usage(
+    db: Session,
+    user_question: str,
+    context_facts: str,
+    *,
+    system_prompt: str | None = None,
+    timeout: float = DEFAULT_TIMEOUT_S,
+    max_tokens_override: int | None = None,
+) -> tuple[str, int, int, str] | None:
+    """Variante de `call_llm` qui retourne `(text, prompt_tokens,
+    completion_tokens, model)` — nécessaire pour `log_usage` (0.34.1).
+
+    Retourne `None` si la config LLM est désactivée / incomplète (même
+    sémantique que `call_llm`). Lève `LlmInvocationError` sur erreur
+    réseau/provider. Si le provider ne renvoie pas de bloc `usage`
+    (certains proxies), les deux compteurs retombent sur 0 (le coût
+    estimé sera 0 — c'est un signal, pas un chiffre inventé).
+    """
+    try:
+        cfg = get_effective_llm_config(db)
+    except LlmCryptoError as exc:
+        raise LlmInvocationError(f"config LLM illisible: {exc}") from None
+
+    if not cfg["enabled"]:
+        return None
+    if not (cfg["provider"] and cfg["model"] and cfg["api_key"] and cfg["base_url"]):
+        return None
+
+    provider = (cfg["provider"] or "").strip().lower()
+    if provider not in _OPENAI_COMPAT:
+        raise LlmInvocationError(
+            f"provider '{cfg['provider']}' non supporté — endpoint OpenAI-compat requis"
+        )
+
+    api_key: str = cfg["api_key"]
+    base_url = cfg["base_url"].rstrip("/")
+    url = f"{base_url}/chat/completions"
+    model = cfg["model"]
+
+    system_msg = system_prompt or _DEFAULT_ANALYSIS_SYSTEM_PROMPT
+    user_msg = (
+        f"Contexte factuel (source DB, immuable):\n{context_facts}\n\n"
+        f"Question utilisateur: {user_question}"
+        if context_facts
+        else user_question
+    )
+
+    body: dict[str, Any] = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": system_msg},
+            {"role": "user", "content": user_msg},
+        ],
+    }
+    if cfg["temperature"] is not None:
+        body["temperature"] = cfg["temperature"]
+    effective_max_tokens = (
+        max_tokens_override if max_tokens_override is not None else cfg["max_tokens"]
+    )
+    if effective_max_tokens is not None:
+        body["max_tokens"] = effective_max_tokens
+
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+
+    try:
+        with httpx.Client(timeout=timeout) as client:
+            resp = client.post(url, headers=headers, json=body)
+    except httpx.TimeoutException:
+        raise LlmInvocationError(f"timeout après {timeout}s") from None
+    except httpx.HTTPError as exc:
+        raise LlmInvocationError(
+            f"erreur réseau: {_scrub(str(exc), api_key)}"
+        ) from None
+
+    if resp.status_code == 401:
+        raise LlmInvocationError("provider refuse les identifiants (401)")
+    if resp.status_code == 429:
+        raise LlmInvocationError("provider en rate-limit (429)")
+    if resp.status_code >= 400:
+        raise LlmInvocationError(f"provider HTTP {resp.status_code}")
+
+    try:
+        data = resp.json()
+        text = data["choices"][0]["message"]["content"]
+    except (KeyError, IndexError, TypeError, ValueError):
+        raise LlmInvocationError("réponse provider malformée") from None
+
+    if not isinstance(text, str) or not text.strip():
+        raise LlmInvocationError("réponse provider vide")
+
+    usage = data.get("usage") or {}
+    pt = int(usage.get("prompt_tokens") or 0)
+    ct = int(usage.get("completion_tokens") or 0)
+    return text.strip(), pt, ct, model
+
+
 def probe_llm(db: Session, *, timeout: float = 10.0) -> tuple[bool, str, int, str | None]:
     """Probe « ping » du LLM configuré : chat completion `max_tokens=1`.
 
