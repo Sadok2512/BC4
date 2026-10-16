@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.assistant.metrics import CATALOG
 from app.assistant.compose import (
     _compose_bar,
     _compose_bar_grouped,
@@ -163,8 +164,18 @@ def compose_pipeline_response(run: PipelineRun, *, project, filters) -> dict:
             }
             new_blocks = _compose_map("map_metric", rid, map_result)
         # 0.29.0 — Compare opérateur × valeur : bar GROUPÉ + table.
+        # 0.37.0 — Titre « <param> — valeurs par opérateur (<unité>) »
+        # pour que l'UI nomme clairement ce qu'elle montre (plus de
+        # titre générique « Distribution par opérateur — <key> »).
         elif run.intent.operation == "compare" and "operator" in dims and has_value_dim:
-            heading = f"Distribution par opérateur — {run.intent.metric_key or 'count'}"
+            mk = run.intent.metric_key
+            mcat = CATALOG.get(mk) if mk else None
+            display = mcat.display.split(" (")[0] if mcat else (mk or "paramètre")
+            unit = mcat.unit if mcat and mcat.unit else ""
+            heading = (
+                f"{display} — valeurs par opérateur ({unit})"
+                if unit else f"{display} — valeurs par opérateur"
+            )
             # Choix de la série : préfère value_converted (unités 3GPP),
             # fallback value_raw.
             series_dim = "value_converted" if "value_converted" in dims else "value_raw"
@@ -192,12 +203,42 @@ def compose_pipeline_response(run: PipelineRun, *, project, filters) -> dict:
                 {"plan": plan, "rows": rows},
             )
         elif "operator" in dims or "band" in dims or "message" in dims:
-            new_blocks = _compose_bar(
-                "list_operators" if "operator" in dims
-                else ("list_bands" if "band" in dims else "top_rrc_messages"),
-                rid,
-                {"plan": plan, "rows": rows},
-            )
+            # 0.37.0 — Si l'opération est un count explicite sur un
+            # paramètre RRC (op=list, metric=<param nature=config|measurement>,
+            # dims=[operator]), on garde le count PAR OPÉRATEUR mais on
+            # titre explicitement « <param> — occurrences par opérateur »
+            # pour ne pas réutiliser le libellé générique « Opérateurs
+            # présents » qui vient de list_operators.
+            mk = run.intent.metric_key
+            mcat = CATALOG.get(mk) if mk else None
+            if (
+                run.intent.operation == "list"
+                and "operator" in dims
+                and mcat is not None
+                and mcat.nature in ("config", "measurement")
+            ):
+                display = mcat.display.split(" (")[0]
+                heading = f"{display} — occurrences par opérateur"
+                bar = _compose_bar(
+                    "list_operators",
+                    rid,
+                    {"plan": plan, "rows": rows},
+                )
+                # _compose_bar renvoie 1..2 blocs ; on force le heading
+                # du premier (le bar) sans toucher à la table associée.
+                if bar:
+                    try:
+                        bar[0].heading = heading  # type: ignore[attr-defined]
+                    except Exception:
+                        pass
+                new_blocks = bar
+            else:
+                new_blocks = _compose_bar(
+                    "list_operators" if "operator" in dims
+                    else ("list_bands" if "band" in dims else "top_rrc_messages"),
+                    rid,
+                    {"plan": plan, "rows": rows},
+                )
         else:
             new_blocks = _compose_default("table", rid, {"plan": plan, "rows": rows})
 

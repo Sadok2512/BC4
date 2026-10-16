@@ -39,6 +39,16 @@ from app.services.llm_crypto import LlmCryptoError, get_effective_llm_config
 logger = logging.getLogger(__name__)
 
 
+# 0.37.0 — Marqueur « l'utilisateur veut un count ». Permet de reconnaître
+# que « combien d'occurrences a3-Offset par opérateur » doit sortir un
+# count (74/40/18) alors que « compare a3-Offset » doit sortir la
+# distribution de ses VALEURS. Par le CONTENU — jamais sur l'étiquette.
+_WANTS_COUNT = re.compile(
+    r"\b(combien|nombre\s+d['e]|nb\s+d['e]|count|compte|occurrence)",
+    re.IGNORECASE,
+)
+
+
 # Court-circuit : les salutations/smalltalk vraiment courts ne vont
 # pas au LLM (gain latence + coût).
 _QUICK_CONVERSATION = re.compile(
@@ -93,7 +103,19 @@ _INTENT_SYSTEM_PROMPT = (
     "- JAMAIS de chiffre numérique dans ta réponse (pas de 'Orange a 1000', pas de pourcentage).\n"
     "- Si le texte est une salutation ou un smalltalk → operation=conversation, metric_key=null, needs_clarification=false, dimensions=[].\n"
     "- Si tu doutes, préfère needs_clarification=true à inventer. **Pas de fallback silencieux vers operator_count.**\n"
-    "- CASSE et MOTS DE REMPLISSAGE sans importance : « RSRP », « Rsrp », « rsrp » → même métrique. « montre moi », « donne moi », « affiche », « j'aimerais voir » → verbes de requête, pas de la sémantique.\n\n"
+    "- CASSE et MOTS DE REMPLISSAGE sans importance : « RSRP », « Rsrp », « rsrp » → même métrique. « montre moi », « donne moi », « affiche », « j'aimerais voir » → verbes de requête, pas de la sémantique.\n"
+    "- NORMALISATION DES NOMS DE PARAMÈTRES RRC (insensible casse / tirets / espaces) :\n"
+    "  « a3offset », « A3offset », « a3 offset », « A3 Offset », « a3-offset » → clé catalogue `a3Offset`.\n"
+    "  « a5threshold1 », « a5 threshold1 » → `a5Threshold1`.\n"
+    "  « thresholdRSRP », « threshold rsrp » → à mapper si la clé existe au catalogue ; sinon metric_key=null + needs_clarification.\n"
+    "  « TTT », « timeToTrigger », « time to trigger » → à mapper si clé catalogue existe ; sinon needs_clarification.\n"
+    "- RÈGLE DURE SUR LES PARAMÈTRES RRC (`nature=config` OU `nature=measurement`) :\n"
+    "  « compare le paramètre X », « X par opérateur », « compare X entre opérateurs » → operation=compare,\n"
+    "  metric_key=<clé catalogue de X>, dimensions=[\"operator\",\"value_raw\",\"value_converted\"],\n"
+    "  comparison_dim=\"operator\". JAMAIS un count d'occurrences par opérateur en résultat principal\n"
+    "  pour un paramètre : un paramètre se compare par SES VALEURS.\n"
+    "- EXCEPTION — l'utilisateur demande EXPLICITEMENT un count : « combien d'occurrences X », « nombre de X »,\n"
+    "  « compte X par opérateur » → operation=list, dimensions=[\"operator\"], count d'occurrences.\n\n"
     "EXEMPLES (few-shot — reproduis strictement la forme JSON) :\n"
     "Q: « montre moi la distribution RSRP »\n"
     "A: {\"operation\":\"distribution\",\"metric_key\":\"rsrpServing\",\"dimensions\":[\"value_raw\",\"value_converted\"],\"comparison_dim\":null,\"filters\":[],\"needs_clarification\":false,\"reason\":null}\n"
@@ -107,6 +129,16 @@ _INTENT_SYSTEM_PROMPT = (
     "A: {\"operation\":\"distribution\",\"metric_key\":\"rsrpServing\",\"dimensions\":[\"value_raw\",\"value_converted\"],\"comparison_dim\":null,\"filters\":[],\"needs_clarification\":false,\"reason\":null}\n"
     "Q: « montre les débits »\n"
     "A: {\"operation\":\"distribution\",\"metric_key\":\"throughputDL\",\"dimensions\":[\"value_raw\",\"value_converted\"],\"comparison_dim\":null,\"filters\":[],\"needs_clarification\":false,\"reason\":null}\n"
+    "Q: « compare a3-Offset »\n"
+    "A: {\"operation\":\"compare\",\"metric_key\":\"a3Offset\",\"dimensions\":[\"operator\",\"value_raw\",\"value_converted\"],\"comparison_dim\":\"operator\",\"filters\":[],\"needs_clarification\":false,\"reason\":null}\n"
+    "Q: « compare le parametre A3offset »\n"
+    "A: {\"operation\":\"compare\",\"metric_key\":\"a3Offset\",\"dimensions\":[\"operator\",\"value_raw\",\"value_converted\"],\"comparison_dim\":\"operator\",\"filters\":[],\"needs_clarification\":false,\"reason\":null}\n"
+    "Q: « A3offset par opérateur »\n"
+    "A: {\"operation\":\"compare\",\"metric_key\":\"a3Offset\",\"dimensions\":[\"operator\",\"value_raw\",\"value_converted\"],\"comparison_dim\":\"operator\",\"filters\":[],\"needs_clarification\":false,\"reason\":null}\n"
+    "Q: « compare a3 offset entre opérateurs »\n"
+    "A: {\"operation\":\"compare\",\"metric_key\":\"a3Offset\",\"dimensions\":[\"operator\",\"value_raw\",\"value_converted\"],\"comparison_dim\":\"operator\",\"filters\":[],\"needs_clarification\":false,\"reason\":null}\n"
+    "Q: « combien d'occurrences a3-Offset par opérateur »\n"
+    "A: {\"operation\":\"list\",\"metric_key\":\"a3Offset\",\"dimensions\":[\"operator\"],\"comparison_dim\":null,\"filters\":[],\"needs_clarification\":false,\"reason\":null}\n"
     "Q: « quel temps fait-il »\n"
     "A: {\"operation\":\"list\",\"metric_key\":null,\"dimensions\":[],\"comparison_dim\":null,\"filters\":[],\"needs_clarification\":true,\"reason\":\"Aucune métrique radio liée au catalogue dans la question. Précise une grandeur mesurée (rsrp, rsrq, sinr, débit) ou un paramètre RRC (a3-Offset…).\"}\n"
     "Q: « hello »\n"
@@ -228,6 +260,46 @@ def _to_intent_plan(data: dict[str, Any], raw_q: str) -> IntentPlan | None:
     # Si distribution a bindé une métrique mais oublié les dims valeur :
     if op == "distribution" and metric_key and not any(d in dims for d in ("value_raw", "value_converted")):
         plan.dimensions = ["value_raw", "value_converted", *dims]
+
+    # 0.37.0 — Un paramètre se compare par ses VALEURS, jamais par un
+    # count d'occurrences. Si le LLM a rendu `compare` sur un paramètre
+    # (`nature=config` OU `nature=measurement`) sans injecter de dim
+    # valeur, on la force. Garde l'`operator` déjà présent (le pivot
+    # compose exige operator × value).
+    #
+    # Exception explicite : si la question demande un count (regex
+    # local « combien|nombre d'occurrences|compte »), on bascule
+    # `compare → list` sans dim valeur — c'est le seul chemin où un
+    # count par opérateur est le résultat légitime.
+    if op == "compare" and metric_key:
+        m = CATALOG.get(metric_key)
+        nature = getattr(m, "nature", None)
+        wants_count = bool(_WANTS_COUNT.search(raw_q or ""))
+        if nature in ("config", "measurement") and not wants_count:
+            if not any(d in plan.dimensions for d in ("value_raw", "value_converted")):
+                # Insère les dims valeur APRÈS operator pour conserver
+                # l'intuition « par opérateur, voici les valeurs ».
+                new_dims = list(plan.dimensions)
+                if "operator" not in new_dims:
+                    new_dims = ["operator", *new_dims]
+                for extra in ("value_raw", "value_converted"):
+                    if extra not in new_dims:
+                        new_dims.append(extra)
+                plan.dimensions = new_dims
+                logger.info(
+                    "intent_llm: compare on %s nature=%s → force value_* dims=%s",
+                    metric_key, nature, plan.dimensions,
+                )
+        elif wants_count:
+            # Count explicitement demandé : on redescend sur `list` et
+            # on ne garde que `operator` comme dim.
+            plan.operation = "list"
+            plan.comparison_dim = None
+            plan.dimensions = ["operator"]
+            logger.info(
+                "intent_llm: count-explicit on %s → op=list dims=[operator]",
+                metric_key,
+            )
 
     return plan
 

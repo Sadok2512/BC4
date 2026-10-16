@@ -366,6 +366,13 @@ def populate_measurement_points(
         # ------------------------------------------------------------
         # UPDATE si skeleton BC1 a déjà créé la ligne.
         # ------------------------------------------------------------
+        # 0.36.0 — `tech` **par le contenu** (rat_code via rat_from_code),
+        # jamais depuis une étiquette fichier. `rat` reste la source primaire ;
+        # `r.system` (stg_event_raw) sert de secours quand `rat_code` manque
+        # dans la catégorie courante (ex. cmdreq). Un `tech` fantôme laissé
+        # par le skeleton BC1 (ex. 'GSM') est **écrasé** par cette source.
+        tech_value = rat or (r.system if r.system in ("LTE", "NR") else None)
+
         updates.append(
             {
                 "pid": project_id,
@@ -381,6 +388,7 @@ def populate_measurement_points(
                 "phase": phase,
                 "env": env,
                 "rat": rat,
+                "tech": tech_value,
                 "earfcn": earfcn,
                 "rsrp": rsrp,
                 "rsrq": rsrq,
@@ -455,6 +463,7 @@ def populate_measurement_points(
                         phase = :phase,
                         env = :env,
                         rat = :rat,
+                        tech = :tech,
                         earfcn = COALESCE(:earfcn, earfcn),
                         rsrp = COALESCE(:rsrp, rsrp),
                         rsrq = COALESCE(:rsrq, rsrq),

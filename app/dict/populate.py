@@ -202,6 +202,55 @@ def _value_to_text(val: Any) -> str | None:
 BATCH_SIZE = 1000
 
 
+# 0.36.0 — Backfill `stg_event.system` par le CONTENU
+# ---------------------------------------------------------------------------
+# Certains décodages (NMF anciens, décodeur 2.0.0 en amont d'un patch
+# ultérieur) laissent `stg_event.system IS NULL` sur des RRCSM dont le
+# message + canal sont pourtant typés sans ambiguïté. Sans correctif, le
+# filtre `system IN ('LTE','NR')` ci-dessous les écarte → param_occurrence
+# reste vide pour ce projet. On déduit la techno DU MESSAGE (pas de
+# l'étiquette fichier) et on backfill in-place avant le scan. Idempotent.
+#
+# Règles (par le CONTENU) :
+# - Suffixe ` message` ou ` IE` ou prefix `RadioBearerConfig` → NR
+#   (convention du décodeur BC4 pour les messages/IE NR aplatis).
+# - Prefix `RRCConnection*` → LTE (nommage LTE Rel-8 strict).
+# - Prefix `SystemInformation` → LTE (NR utilise `SIB1`/`SIB2` directement).
+# - Messages partagés LTE/NR mais présents dans un corpus manifestement
+#   LTE (Paging, MeasurementReport sans suffixe, SecurityModeCommand,
+#   UECapabilityInformation) → LTE par défaut.
+# - Sinon : on ne touche pas (reste NULL, sera skippé par populate).
+_BACKFILL_SYSTEM_SQL = """
+UPDATE stg_event
+SET system = CASE
+    WHEN message LIKE '%% message'       THEN 'NR'
+    WHEN message LIKE '%% IE'            THEN 'NR'
+    WHEN message LIKE 'RadioBearerConfig%%' THEN 'NR'
+    WHEN message LIKE 'RRCConnection%%'  THEN 'LTE'
+    WHEN message LIKE 'SystemInformation%%' THEN 'LTE'
+    WHEN message IN (
+        'Paging', 'MeasurementReport',
+        'SecurityModeCommand', 'UECapabilityInformation'
+    ) THEN 'LTE'
+    ELSE system
+END
+WHERE project_id = :pid
+  AND event_code = 'RRCSM'
+  AND system IS NULL
+  AND message IS NOT NULL
+"""
+
+
+def _backfill_stg_event_system(db: Session, project_id: str) -> int:
+    """Déduit `stg_event.system` depuis `message` quand il est NULL. Retourne
+    le nombre de lignes mises à jour (0 si rien à faire — idempotent)."""
+    res = db.execute(text(_BACKFILL_SYSTEM_SQL), {"pid": project_id})
+    n = res.rowcount or 0
+    if n:
+        db.commit()
+    return n
+
+
 def populate_param_occurrence(
     db: Session,
     project_id: str,
@@ -247,6 +296,9 @@ def populate_param_occurrence(
             {"pid": project_id},
         )
         db.commit()
+
+    # 0.36.0 — Backfill `system` NULL avant scan. Déclaré via `stats`.
+    stats["system_backfilled"] = _backfill_stg_event_system(db, project_id)
 
     # Lecture complète des events RRCSM du projet, ordre canonique.
     rows = db.execute(

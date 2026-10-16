@@ -1,7 +1,7 @@
 [project]
 name = "bc4-back"
-version = "0.34.0"
-description = "BC4 backend FastAPI — extraction d'intention LLM structuré (robuste phrasé)"
+version = "0.37.0"
+description = "BC4 backend FastAPI — compare paramètre RRC = ses valeurs (fix régression 0.29→0.36)"
 requires-python = ">=3.10"
 
 [tool.pytest.ini_options]

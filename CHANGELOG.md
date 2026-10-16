@@ -2,6 +2,251 @@
 
 Versions SemVer. Type de bump: `patch` / `minor` / `major`. Un écart se ferme ou se déclare ouvert, jamais expliqué par hypothèse.
 
+## 0.37.0 — 2026-10-16 (minor) — Un paramètre se compare par ses VALEURS, pas par un count (Agent BC1)
+
+> Constat live 0.36.0 : `compare le parametre A3offset` liait bien
+> `metric_key=a3Offset` mais rendait `v3_list` avec un count d'occurrences
+> par opérateur (74/40/18) sous le titre « Opérateurs présents ».
+> Régression vs 0.29.0 : la dimension VALEUR avait été écrasée au niveau
+> de l'extraction d'intention — l'étage compose avait pourtant encore
+> le pivot operator × value prêt (`compose_v3._compose_bar_grouped`),
+> mais la condition `has_value_dim` ne se déclenchait jamais parce que
+> le LLM 0.34.0 ne retournait que `dimensions=[operator]` sur un
+> `compare`.
+
+### Règle dure (0.37.0)
+
+- `operation ∈ {compare, distribution}` sur une métrique de
+  `nature ∈ {config, measurement}` → la **mesure est la distribution
+  de ses valeurs** (`value_converted` + unité catalogue), group_by
+  `operator × value`, chart groupé, titre
+  `« <param> — valeurs par opérateur (<unité>) »`.
+- **INTERDIT** comme résultat principal pour un paramètre RRC : un
+  count d'occurrences par opérateur. Seule exception : la question
+  demande explicitement un count (« combien d'occurrences », « nombre
+  de », « compte », « occurrence ») — alors `op=list`, `dims=[operator]`,
+  titre `« <param> — occurrences par opérateur »` (pas « Opérateurs
+  présents »).
+
+### Changements
+
+- `app/assistant/intent_llm.py` :
+  - Few-shot ajoutés : « compare a3-Offset », « compare le parametre A3offset »,
+    « A3offset par opérateur », « compare a3 offset entre opérateurs »
+    → tous `op=compare`, `metric_key=a3Offset`,
+    `dimensions=["operator","value_raw","value_converted"]`.
+  - Few-shot inverse : « combien d'occurrences a3-Offset par opérateur »
+    → `op=list`, `dims=[operator]`.
+  - Prompt système durci sur la normalisation des noms de paramètres
+    (insensible casse/tirets/espaces, alias `a3offset|A3offset|a3 offset|
+    A3 Offset|a3-offset → a3Offset`, `TTT|timeToTrigger → clé catalogue
+    si existante sinon clarification`).
+  - Post-processing `_to_intent_plan` (déterministe) :
+    - `op=compare` + metric `nature in {config, measurement}` + pas de
+      dim valeur → injection auto de `operator, value_raw, value_converted`.
+    - Regex `_WANTS_COUNT` sur la question originale → bascule
+      `compare → list` + `dims=[operator]` quand le count est demandé.
+    - Log INFO explicite du chemin pris (visible dans `docker logs`).
+- `app/assistant/intent.py` (fallback heuristique) : même règle appliquée
+  à toute métrique `nature in {config, measurement}` (pas seulement
+  `a3Offset` en dur). La parité LLM/heuristique est maintenue.
+- `app/assistant/compose_v3.py` :
+  - Titre `« <display> — valeurs par opérateur (<unit>) »` (ex.
+    `« a3-Offset — valeurs par opérateur (dB) »`) sur le pivot
+    operator × value.
+  - Count explicite sur un paramètre : titre
+    `« <display> — occurrences par opérateur »` (plus de « Opérateurs
+    présents » générique).
+  - Import `CATALOG` (nécessaire pour résoudre `display` et `unit`).
+
+### Garde manuelle (en live, après rebuild)
+
+Ces 4 formulations doivent rendre **le même** résultat (pivot
+operator × value, 2 dB / 2.5 dB / 3 dB en séries, titre
+`« a3-Offset — valeurs par opérateur (dB) »`) :
+
+  - `compare a3-Offset`
+  - `compare le parametre A3offset`
+  - `A3offset par opérateur`
+  - `compare a3 offset entre opérateurs`
+
+Et la 5ᵉ, `combien d'occurrences a3-Offset par opérateur`, doit rendre
+le count 74 / 40 / 18 avec le titre `« a3-Offset — occurrences par
+opérateur »` — seul cas où le count est le résultat principal.
+
+## 0.36.0 — 2026-10-16 (minor) — Dérivation complète : param_occurrence + measurement_points (Agent BC1)
+
+> Constat 0.35.0 : staging REF_PETITE_FORET plein (`stg_event_raw` 195 k,
+> `stg_event` 8 967 signalling) MAIS `param_occurrence = 0 ligne` et
+> `measurement_points.*` tous NULL (toutes métriques + `tech` fantôme
+> `GSM` sur 9 lignes). Diagnostic : la chaîne 2.0.0 est câblée dans
+> `ingest_upload` depuis 0.33.0, mais deux filtres mangeaient
+> silencieusement REF.
+
+### Fix 1 — `app/dict/populate.py` : backfill `stg_event.system` par le CONTENU
+
+Les 8 770 RRCSM de REF portent `system IS NULL` (défaut de décodage amont
+2.0.0). Le filtre `WHERE system IN ('LTE','NR')` les écartait entièrement.
+Correctif :
+
+- Ajout de `_backfill_stg_event_system(db, project_id)` : `UPDATE stg_event
+  SET system = CASE … END` par **inférence sur le `message`**, pas sur
+  une étiquette fichier. Règles :
+  - suffixe ` message` / ` IE` / préfixe `RadioBearerConfig` → `NR` (convention bc4-decoder NR)
+  - préfixe `RRCConnection*` → `LTE` (nommage LTE Rel-8 strict)
+  - préfixe `SystemInformation*` → `LTE`
+  - partagés `Paging` / `MeasurementReport` / `SecurityModeCommand` / `UECapabilityInformation` sans suffixe → `LTE`
+  - sinon : non touché, event skippé explicitement.
+- Idempotent (seul `system IS NULL` est modifié).
+- Appelé en tête de `populate_param_occurrence` + nouvelle clé
+  `stats["system_backfilled"]`.
+
+### Fix 2 — `app/measure/populate.py` : `tech` câblé par le contenu
+
+- La requête UPDATE ne mettait PAS à jour `measurement_points.tech`, qui
+  gardait des valeurs héritées du skeleton BC1 (`GSM` sur 9 lignes de
+  REF, cf. garde 0.35.0). Correctif :
+  - calcul `tech_value = rat or (r.system if r.system in {LTE,NR} else None)`,
+    où `rat` provient de `rat_from_code(raw_fields.rat_code)` — par le
+    CONTENU (`7→LTE`, `9→NR`), jamais par l'étiquette ;
+  - ajout de `tech = :tech` dans le `UPDATE` et de la clé `"tech"` dans
+    la dict `updates[]`.
+- Les `GSM` fantômes du skeleton sont **écrasés** par la source rat_code
+  réelle au prochain `populate_measurement_points` (idempotent).
+
+### Inchangé mais vérifié bout-en-bout sur REF
+
+- `populate_param_occurrence` (0.12.0) : décode RRCSM via pycrate, applique
+  deny-list identité (DENY regex + path-check), rattache operator/band
+  via le dernier SIB1 PLMN précédent (ordre `(capture_id, seq)` strict),
+  insère dans `param_occurrence` avec `ON CONFLICT DO NOTHING`.
+- `app.measure.proof.run_proof` (0.33.0) : preuve chiffrée ±2 dB,
+  `cell0_rsrp_dbm` ↔ `measResultPCell/rsrpResult$`, `cell0_rsrq_db` ↔
+  `measResultPCell/rsrqResult$`. Verdict `proven` ⇒ `MEASUREMENT_MAPPING[metric]`.
+  `cell0_sinr_db` reste `rejected: no_rrc_sample` sur LTE Rel-8 (pas de
+  référence `rs-sinr-r13` chiffrée dans le corpus) → `sinr` NULL déclaré.
+  `cqi` / `tx_power` / `thrpt_dl` / `thrpt_ul` : `no_rrc_reference` → NULL
+  déclaré.
+- `operator` AUTORITAIRE depuis `nmf_file.dl` via `operator_from_dl` ;
+  mismatch avec le dernier SIB1 PLMN précédent → `operator_mismatch=True`
+  + `operator_source` déclaré.
+- `ingest_upload` 0.33.0 : populate_param_occurrence + populate_measurement_points
+  **sont déjà** câblés en fin de batch. Les nouveaux projets reçoivent
+  la dérivation complète automatiquement. Pour REF (ingéré avant ce
+  patch), re-lancer `scripts/populate_dict_for_all_projects.py` et le
+  re-run `populate_measurement_points` déclenchent la dérivation
+  rétroactive (opérations idempotentes).
+
+### Rebuild obligatoire — `/health` → `0.36.0`
+
+- `app/main.py` : `FastAPI(version="0.36.0")`, `/health` renvoie
+  `{"status":"ok", "env":…, "version":"0.36.0"}`.
+- `pyproject.toml` : `version = "0.36.0"`.
+- Rebuild + redémarrage container : `docker compose build api && docker
+  compose up -d api`.
+
+### Garde manuelle — sorties brutes rapportées en discussion
+
+Scope : REF_PETITE_FORET (id `7e656b8c6c19`). Après populate :
+`/kpi/catalog` doit montrer `RSRP_DIST` et `A3_OFFSET_DIST` **AVAILABLE** ;
+`/kpi/RSRP_DIST` doit renvoyer P50 réel + 3 opérateurs ; `/kpi/filters`
+doit lister `operators=[Orange,Bouygues,Free]`, `rats=[LTE]`,
+`service_types=[HTTP_DL, VOICE…]`, `bands` non vides ; tableau de
+preuve ±2 dB joint. Grep identité (IMSI/IMEI/MSISDN) sur
+`param_occurrence.path` et `.value` : zéro ligne.
+
+## 0.35.0 — 2026-10-16 (minor) — Catalogue KPI versionné + endpoints projet (Agent BC1)
+
+> La page KPI du front avait besoin d'une surface serveur **déterministe**
+> (sans LLM) pour afficher l'arbre des KPI avec leur statut par projet,
+> les filtres réellement disponibles, et le détail agrégé d'un KPI (P50
+> + percentiles, by_operator, distribution, trend). Ce lot livre ces
+> trois endpoints en réutilisant `execute_analytical_query` /
+> `validate_comparison` / `compute_result_id` — jamais un chiffre sans
+> sa requête, jamais un rate calculé tant que le contrat n'est pas
+> certifié, jamais une métrique mesure déclarée AVAILABLE si
+> `measurement_points.<col>` est NULL (statut PENDING au lieu).
+
+### Nouveau — `app/kpi/` (catalogue + service)
+
+- `app/kpi/catalog.py` : table `CATALOG = tuple[KpiDef, …]` versionnée en
+  code (pas en DB). Chaque KPI porte `{code, name, family, techno,
+  nature ∈ distribution|count|rate, unit, source, formula, definition,
+  availability}` + raison UNAVAILABLE/UNVALIDATED pré-écrite.
+  Familles livrées : **Accessibilité, Rétention, Mobilité, Débit,
+  Qualité radio, Voix, NR/EN-DC** (26 KPI au total).
+- `app/kpi/service.py` : `compute_status(db, project_id, kpi)` applique
+  la règle `availability` par KPI :
+  - `param_message` / `param_message_ilike` / `param_path` → `AVAILABLE`
+    si `param_occurrence` a ≥ 1 ligne qui matche pour ce projet, sinon
+    `UNAVAILABLE(raison)`.
+  - `mp_metric` → `AVAILABLE` si `measurement_points.<col>` a ≥ 1 ligne
+    non-NULL, sinon **`PENDING(raison)`** (jamais UNAVAILABLE : le
+    mapping Phase 1 est en attente, pas une absence définitive).
+  - `always_unvalidated` → `UNVALIDATED` figé (rates : contrat
+    tentative/réussite non certifié par le décodeur, jamais inventé).
+  - `always_unavailable` → `UNAVAILABLE(raison)` (SMS, NR/EN-DC sans
+    event mesure cartographié).
+- `compute_kpi(...)` : dispatch par (nature, source). Distribution sur
+  `measurement_points` → `percentile_cont(0.10|0.50|0.90)` Postgres.
+  Distribution sur `param_occurrence.value_converted` → percentiles
+  continus Python sur `(valeur, poids)` (interpolation linéaire alignée
+  Postgres), avec `n` = occurrences numériques parsables (lignes non
+  parsables ignorées **déclaré**).
+- Trend bucket = **date de capture** dérivée de `nmf_file.start_at` via
+  join `measurement_points`→`stg_event`→`nmf_file`. Jamais un ordre
+  `ts` inter-capture. Un seul jour → `period_unique=true`.
+- `comparability` : appel direct à `validate_comparison` sur les
+  sous-groupes `by_operator` (≥ 2 opérateurs). Verdict pris de
+  `app.assistant.proof` (COMPARABLE / COMPARABLE_WITH_LIMITATIONS /
+  NOT_COMPARABLE), inchangé par ce lot.
+- `result_id` stable via `compute_result_id({"kpi": code, "filters": …},
+  project_id)` — mêmes filtres sur le même projet ⇒ même `result_id`.
+
+### Nouveau — endpoints projet (`app/routes/project_kpi.py`)
+
+- `GET /projects/{project_id}/kpi/catalog` →
+  `{project_id, catalog_version, families: [{name, kpis: [{code, name,
+  techno, nature, unit, source, formula, definition, status, reason}]}]}`.
+  Un round-trip de statut par KPI (LIMIT 1 sur index) ; acceptable à
+  l'échelle du catalogue (26 KPI, 26 vérifications ponctuelles).
+- `GET /projects/{project_id}/kpi/filters` →
+  `{operators, rats, bands, service_types, envs, period:{min,max},
+  geo:{available, cell_ref_rows, reason?}}`. Valeurs réelles tirées
+  de `measurement_points` ∪ `param_occurrence` ∪ `nmf_file`. `geo`
+  déclaré indisponible si `cell_ref` est vide (raison explicite).
+- `GET /projects/{project_id}/kpi/{code}?operator[]&rat[]&band[]&`
+  `service_type[]&env[]&from&to` → `{code, name, family, nature, unit,
+  formula, source, status, reason, value, p10, p90, n, technologies[],
+  period, by_operator[{operator,value,n}], distribution[{bucket,count,pct}],
+  trend[{date,value,n}], period_unique, filters_applied, comparability,
+  result_id}`. `value` = P50 pour distribution, total pour count,
+  `null` pour rate (statut UNVALIDATED).
+
+### Discipline (inchangée, mais rappelée)
+
+- `project_id` injecté serveur depuis l'URL path, **jamais** depuis le
+  body. 404 `{code:"NOT_FOUND", message:"Projet introuvable"}` si
+  absent.
+- Zéro ligne brute, zéro SQL exposé au front — tous les retours sont
+  des agrégats ou des listes de buckets déjà groupées.
+- Routes sous auth lecteur minimale (`dependencies=[Depends(get_current_user)]`).
+
+### Rebuild obligatoire — `/health` → version
+
+- `app/main.py` : `FastAPI(title=…, version="0.35.0")` + `/health`
+  renvoie `{"status":"ok", "env":…, "version":"0.35.0"}`.
+- `pyproject.toml` : `version = "0.35.0"`.
+- Rebuild + redémarrage container `api` nécessaire pour que le nouveau
+  code soit chargé (`docker compose build api && docker compose up -d api`).
+
+### Garde manuelle — à exécuter sur `REF_PETITE_FORET` après rebuild
+
+Scope : voir ligne par ligne la spec du lot. Les résultats bruts sont
+rapportés dans la discussion (jamais inventés : si `param_occurrence`
+est vide ou `measurement_points.<col>` est NULL, les statuts le
+reflètent, pas une valeur par défaut).
+
 ## 0.34.0 — 2026-10-16 (minor) — Extraction d'intention par LLM structuré (robuste phrasé) (Agent BC1)
 
 > Le détecteur d'intention Python par mots-clés était trop étroit :

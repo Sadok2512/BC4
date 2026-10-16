@@ -226,9 +226,14 @@ def parse_intent(question: str) -> IntentPlan:
         # comparison_dim : si l'utilisateur n'a pas précisé, défaut EXPLICITE = operator.
         plan.comparison_dim = "operator"
         plan.dimensions = ["operator"]
-        if metric_key == "a3Offset":
-            # Pour a3-Offset on veut la distribution → compare × distribution
-            plan.dimensions = ["operator", "value_raw", "value_converted"]
+        # 0.37.0 — Un paramètre RRC (`nature=config` ou `measurement`) se
+        # compare par SES VALEURS. Jamais par un count d'occurrences, sauf
+        # demande explicite (« combien … » → traité en amont par le LLM
+        # côté intent_llm, pas ici).
+        if metric_key is not None:
+            m = CATALOG.get(metric_key)
+            if m is not None and m.nature in ("config", "measurement"):
+                plan.dimensions = ["operator", "value_raw", "value_converted"]
     elif op == "map":
         plan.dimensions = []  # map_metric a sa propre grille interne
         if metric_key is None:
