@@ -2,6 +2,117 @@
 
 Versions SemVer. Type de bump: `patch` / `minor` / `major`. Un écart se ferme ou se déclare ouvert, jamais expliqué par hypothèse.
 
+## 0.41.0 — 2026-10-16 (minor) — group_by operator/band + ECGI SIB1 + upload cell_ref géo (Agent BC1)
+
+> Trois chantiers câblés en une passe :
+> **A**. ``GET /projects/{pid}/kpi/{code}?group_by={operator|band|
+> operator_band}`` → ``groups[]`` + ``table[]`` + ``comparability``
+> + couleurs opérateur/bande. **B**. Propagation ``mp.ecgi`` depuis
+> le SIB1 (``cellIdentity`` + ``plmn-Identity`` + ``trackingAreaCode``
+> déjà en ``param_occurrence``, audit ✓) via
+> ``POST /projects/{pid}/kpi/_populate_ecgi`` + enrichissement
+> ``cell_ref`` depuis les logs. **C**. Référentiel géo :
+> ``POST /settings/cell-ref/upload`` (CSV), filtres ``dr/plaque/dor/
+> arcep/commune/insee`` joints via ``mp.ecgi → cell_ref.eci``,
+> ``/kpi/filters`` déclare ``available/reason/values`` par dimension.
+
+### A — Agrégations operator / band / operator_band
+
+- ``app/kpi/service_v2.py`` :
+    - ``compute_kpi_v2(..., group_by: GroupBy = "operator")`` admet
+      ``operator | band | operator_band``.
+    - Pour ``mp_metric`` AVAILABLE → percentiles **par groupe** sur
+      ``measurement_points.<col>`` (jamais de mean-of-means).
+    - Pour ``param_path_ilike`` Métrique mesurée (RSRP/RSRQ RRC) →
+      percentiles **par groupe** sur ``param_occurrence.value_converted``.
+    - Pour ``param_message_eq`` / ``param_path_ilike`` Compteur →
+      COUNT(DISTINCT stg_event_id) **par groupe**.
+    - Pour ``AGG_DMS_*`` → taux ``100 × count(≥seuil) / count(non-null)``
+      **par groupe** (chaque groupe calcule son propre taux, jamais
+      une moyenne agrégée).
+    - Chaque ligne porte ``status ∈ {PRESENT, ZERO_REEL,
+      ABSENT_DU_PERIMETRE}`` + ``reason`` + ``operator_color`` /
+      ``band_color`` servis par le back (palette fixe : Orange #FF7900,
+      Bouygues #1E6EC1, Free #CD1F2A, SFR #E2001A, N/D #888888).
+    - ``comparability ∈ {NO_DATA, SINGLE_GROUP, COMPARABLE,
+      COMPARABLE_WITH_LIMITATIONS}``.
+
+### B — ECGI (SIB1 autoritaire)
+
+- Migration **``0016_mp_ecgi_cell_ref_geo``** :
+    - ``measurement_points.ecgi`` (varchar, indexé).
+    - ``cell_ref.commune`` + ``cell_ref.insee`` (indexé).
+    - Additive stricte, downgrade propre.
+- Nouveau module ``app/measure/ecgi.py`` :
+    - Lit SIB1 par capture dans ``param_occurrence`` (``cellIdentity``,
+      ``plmn-Identity/{mcc,mnc}``, ``trackingAreaCode`` prouvés par
+      l'audit 2026-10-16).
+    - Construit ``EcgiCell = {ecgi, plmn, cell_identity, enb_id =
+      cellIdentity>>8, local_cell_id = cellIdentity & 0xFF, tac, pci,
+      earfcn, band_derived, operator (PLMN FR → Orange/SFR/Bouygues/Free),
+      first_capture, last_capture}``.
+    - Propage ``mp.ecgi`` par ``(capture_id, earfcn)`` — ordre
+      ``(capture_id, seq)``, **jamais ``ts``**. Après HO sans SIB1 relu
+      → ``NULL`` (pas d'invention de l'ancien).
+    - Upsert ``cell_ref`` par ``(eci=ecgi)`` avec enb_id, pci, earfcn,
+      band, techno LTE, snapshot_date = first_capture.
+    - Compte le mismatch PLMN ↔ ``nmf_file.dl`` (opérateur SIB1 vs
+      Nemo) et expose jusqu'à 10 exemples.
+- Route ``POST /projects/{pid}/kpi/_populate_ecgi`` (admin) qui
+  invoque ``populate_ecgi_for_project`` et renvoie le rapport chiffré
+  (``sib1_cells, distinct_ecgi, mp_pct_with_ecgi, plmn_mismatch,
+  sample_cell, warnings``).
+
+### C — Référentiel géo + filtres
+
+- ``build_filters_v2`` étendu : chaque dimension porte désormais
+  ``{available: bool, reason: str|null, values: [...]}``. Les
+  dimensions **référentiel** (``dr``, ``plaque``, ``dor``, ``arcep``,
+  ``commune``, ``insee``) joignent ``mp.ecgi → cell_ref.eci`` ; si
+  l'ECGI n'est pas propagé → ``available=false`` + reason
+  ``« ECGI non propagé : n/N points »``. Si l'ECGI est propagé mais
+  le référentiel vide → ``available=false`` + reason
+  ``« référentiel non chargé : cell_ref.{col} vide pour les n
+  points ECGI »``.
+- Nouveau endpoint ``POST /settings/cell-ref/upload`` (admin,
+  multipart CSV) :
+    - Reconnaît ``eci|ecgi|enodebid|enb_id`` + ``dr|plaque|dor|
+      arcep[_zone]|commune|insee`` (headers insensibles à la casse).
+    - Appariement par ``eci`` d'abord, fallback ``enodebid``. Match
+      unique → UPDATE … COALESCE (préserve les colonnes non envoyées).
+      0 match → INSERT. ``> 1`` match → ``ambiguous`` tracé, pas de
+      modification.
+    - Rapport : ``{processed, matched, inserted, updated, rejected[],
+      ambiguous[], reference_id, sha256}``.
+    - Persiste la trace dans ``reference_import`` (filename + sha256
+      + rapport JSON) ; le blob n'est **PAS** stocké.
+    - xlsx reporté au lot suivant (seul CSV accepté dans 0.41.0).
+
+### Discipline (invariants)
+
+- ``(capture_id, seq)`` jamais ``ts``.
+- Opérateur = PLMN autoritaire (table ``_PLMN_TO_OPERATOR`` 3GPP TS
+  23.003) croisé avec ``nmf_file.dl`` ; mismatch exposé.
+- Un groupe sans donnée est **typé** (``ZERO_REEL`` /
+  ``ABSENT_DU_PERIMETRE``), **jamais omis**.
+- Pas de mean-of-means : percentiles sur mesures, groupés par la
+  dimension demandée.
+- Aucun chiffre sans sa requête.
+
+### Garde manuelle (REF, projet 7e656b8c6c19)
+
+1. ``GET /kpi/LTE_RF_RSRP?group_by=operator_band`` → ``groups[]`` avec
+   lignes Orange×B3/B7/B20, Bouygues×…, Free×… + colors + status +
+   ``comparability``. ``sum(groups[].n) == top.n``.
+2. ``POST /kpi/_populate_ecgi`` → report {sib1_cells>0,
+   mp_pct_with_ecgi>0, sample_cell complet (ecgi, enb_id,
+   local_cell_id, pci, earfcn, tac, operator)}.
+3. ``GET /kpi/filters`` → ``dr/plaque/dor/arcep/commune/insee``
+   available=false + reason « référentiel non chargé » avant upload.
+4. ``POST /settings/cell-ref/upload`` avec CSV test 3 cellules →
+   ``matched >= 3``, puis ``GET /kpi/filters`` → ``dr`` available=true,
+   values renseignées.
+
 ## 0.40.0 — 2026-10-16 (minor) — Catalogue KPI v2 (xlsx utilisateur, 208 entrées) + filtre service_type (Agent BC1)
 
 > Le catalogue KPI 0.35.0 (28 entrées codées en dur) est remplacé par

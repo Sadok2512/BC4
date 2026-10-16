@@ -23,13 +23,15 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.db import get_db
-from app.deps import get_current_user
+from app.deps import get_actor, get_current_user, require_role
 from app.kpi.service_v2 import (
     build_catalog_v2_response,
     build_filters_v2,
     compute_kpi_v2,
 )
+from app.measure.ecgi import populate_ecgi_for_project
 from app.models import Project
+from app.schemas.settings import Actor
 
 
 router = APIRouter(
@@ -71,6 +73,35 @@ def kpi_filters(project_id: str, db: Session = Depends(get_db)) -> dict:
     return build_filters_v2(db, project_id)
 
 
+@router.post("/{project_id}/kpi/_populate_ecgi")
+def kpi_populate_ecgi(
+    project_id: str,
+    actor: Actor = Depends(get_actor),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Admin — déclenche la propagation ECGI pour ce projet.
+
+    Lit SIB1 depuis ``param_occurrence``, construit la liste des
+    cellules observées, propage ``measurement_points.ecgi`` par
+    ``(capture_id, earfcn)`` et alimente ``cell_ref`` depuis les logs.
+    """
+    require_role(actor, "admin")
+    _require_project(db, project_id)
+    report = populate_ecgi_for_project(db, project_id)
+    return {
+        "project_id":            report.project_id,
+        "sib1_cells":            report.sib1_cells,
+        "distinct_ecgi":         report.distinct_ecgi,
+        "mp_total":              report.mp_total,
+        "mp_with_ecgi":          report.mp_with_ecgi,
+        "mp_pct_with_ecgi":      round(report.mp_pct_with_ecgi, 2),
+        "plmn_mismatch":         report.plmn_mismatch,
+        "plmn_mismatch_examples": report.plmn_mismatch_examples,
+        "sample_cell":           report.sample_cell,
+        "warnings":              report.warnings,
+    }
+
+
 @router.get("/{project_id}/kpi/{code}")
 def kpi_detail(
     project_id: str,
@@ -78,9 +109,19 @@ def kpi_detail(
     operator: list[str] = Query(default_factory=list),
     service_type: list[str] = Query(default_factory=list),
     phase: list[str] = Query(default_factory=list),
+    group_by: str = Query(default="operator"),
     db: Session = Depends(get_db),
 ) -> dict:
     _require_project(db, project_id)
+    if group_by not in ("operator", "band", "operator_band"):
+        raise HTTPException(
+            400,
+            {
+                "code": "GROUP_BY_UNKNOWN",
+                "message": f"group_by {group_by!r} invalide. "
+                "Valeurs admises : operator | band | operator_band.",
+            },
+        )
     return compute_kpi_v2(
         db,
         project_id,
@@ -88,4 +129,5 @@ def kpi_detail(
         operators=tuple(operator),
         services=tuple(service_type),
         phases=tuple(phase),
+        group_by=group_by,  # type: ignore[arg-type]
     )

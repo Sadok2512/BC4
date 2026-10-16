@@ -1,4 +1,4 @@
-"""Service KPI v2 (0.40.0).
+"""Service KPI v2 (0.40.0, étendu 0.41.0).
 
 Calcule le statut par projet de chaque entrée du catalogue v2 à partir
 de sa règle ``available_check``. Expose :
@@ -7,20 +7,27 @@ de sa règle ``available_check``. Expose :
 - ``build_catalog_v2_response(db, project_id, services)`` → shape pour
   ``GET /projects/{pid}/kpi/catalog``.
 - ``build_filters_v2(db, project_id)`` → services + phases + opérateurs
-  réels (depuis ``measurement_points``).
+  réels (depuis ``measurement_points``), chaque dimension portant
+  ``available/reason/values`` (0.41.0 — pour les dimensions référentiel
+  géo encore non chargées).
+- ``compute_kpi_v2(db, project_id, code, group_by=…)`` → valeur + stats
+  par groupe (operator | band | operator_band) + table[] + couleurs.
 
 Discipline :
 - Aucun chiffre fabriqué. Les règles ``always_unvalidated`` renvoient
   toujours ``UNVALIDATED`` ; ``always_unavailable`` → ``UNAVAILABLE``.
 - Un KPI hors de son ``service_scope`` vis-à-vis des services demandés
   → ``NOT_APPLICABLE`` déclaré (pas un ``n=0`` muet).
-- Ordre d'affichage : Techno → Famille → KPI (voir ``catalog_v2.FAMILIES_ORDER``).
+- Un groupe sans donnée n'est **jamais omis** : il porte un ``status``
+  typé (``ZERO_REEL`` ou ``ABSENT_DU_PERIMETRE``) + raison.
+- Pas de ``mean-of-means`` : les percentiles sont calculés sur les
+  mesures elles-mêmes, groupées par la dimension demandée.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Iterable
+from typing import Any, Iterable, Literal
 
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -56,6 +63,47 @@ class KpiStatusV2:
 
 _MP_COLS = {"rsrp", "rsrq", "sinr", "cqi", "dl", "thrpt_ul", "tx_power",
             "latency", "rssi"}
+
+
+# 0.41.0 — Palette couleurs opérateur / bande, servie par le back pour
+# éviter que la UI invente ou dérive une couleur depuis un hash
+# arbitraire. Les 4 MNO FR + un gris explicite pour les N/D.
+_OPERATOR_COLORS: dict[str, str] = {
+    "Orange":   "#FF7900",
+    "SFR":      "#E2001A",
+    "Bouygues": "#1E6EC1",
+    "Free":     "#CD1F2A",
+    "N/D":      "#888888",
+}
+_BAND_COLORS: dict[str, str] = {
+    # LTE
+    "B1":  "#4F46E5",
+    "B3":  "#059669",
+    "B7":  "#DC2626",
+    "B20": "#D97706",
+    "B28": "#7C3AED",
+    "B38": "#0891B2",
+    # NR
+    "n78": "#DB2777",
+    "n1":  "#2563EB",
+    "n28": "#A855F7",
+    # Fallback
+    "N/D": "#888888",
+}
+
+
+def operator_color(op: str | None) -> str:
+    return _OPERATOR_COLORS.get(op or "N/D", "#555555")
+
+
+def band_color(band: str | None) -> str:
+    return _BAND_COLORS.get(band or "N/D", "#555555")
+
+
+# 0.41.0 — Expected operator set (used for ABSENT_DU_PERIMETRE on
+# group_by=operator*). Lu depuis la col operator de param_occurrence
+# OU mp selon la source. Les 4 MNO FR sont la référence.
+_EXPECTED_OPERATORS = ("Orange", "SFR", "Bouygues", "Free")
 
 
 def _mp_metric_available(db: Session, project_id: str, col: str) -> bool:
@@ -263,18 +311,92 @@ def _distinct(db: Session, project_id: str, column: str) -> list[str]:
 def build_filters_v2(db: Session, project_id: str) -> dict[str, Any]:
     """Filtres réels issus de ``measurement_points`` du projet.
 
-    Expose ``service_types``, ``phases``, ``operators``, ``rats``,
-    ``bands``, ``envs``, ``deps``.
+    0.41.0 — Chaque dimension porte ``{available, reason, values}`` :
+    - ``available=False`` quand le référentiel n'est pas chargé OU que
+      l'ECGI n'est pas propagé.
+    - ``reason`` décrit explicitement l'écart.
+    - ``values[]`` est la liste des valeurs réelles observées (vide
+      si available=False).
     """
+    # Dimensions directes depuis measurement_points.
+    def _dim(col: str) -> dict[str, Any]:
+        vals = _distinct(db, project_id, col)
+        return {
+            "available": bool(vals),
+            "reason":    None if vals else f"aucune valeur distincte pour measurement_points.{col}",
+            "values":    vals,
+        }
+
+    # ECGI propagé ? (prérequis pour les filtres référentiel géo)
+    mp_total = db.execute(
+        text("SELECT COUNT(*) FROM measurement_points WHERE project_id = :pid"),
+        {"pid": project_id},
+    ).scalar() or 0
+    mp_with_ecgi = db.execute(
+        text(
+            "SELECT COUNT(*) FROM measurement_points "
+            "WHERE project_id = :pid AND ecgi IS NOT NULL"
+        ),
+        {"pid": project_id},
+    ).scalar() or 0
+    ecgi_pct = (100.0 * mp_with_ecgi / mp_total) if mp_total else 0.0
+
+    # Référentiel chargé ? (cell_ref.dr/plaque/dor/arcep/commune renseignés
+    # pour les ECGI du projet)
+    def _geo_dim(col: str) -> dict[str, Any]:
+        if not mp_with_ecgi:
+            return {
+                "available": False,
+                "reason": (
+                    f"ECGI non propagé : {mp_with_ecgi}/{mp_total} points. "
+                    "Lancer POST /projects/{id}/kpi/_populate_ecgi."
+                ),
+                "values": [],
+            }
+        rows = db.execute(
+            text(
+                f"SELECT DISTINCT cr.{col} FROM measurement_points mp "
+                f"JOIN cell_ref cr ON cr.eci = mp.ecgi "
+                f"WHERE mp.project_id = :pid AND cr.{col} IS NOT NULL"
+            ),
+            {"pid": project_id},
+        ).fetchall()
+        values = sorted({r[0] for r in rows if r[0] is not None})
+        if not values:
+            return {
+                "available": False,
+                "reason": (
+                    f"référentiel non chargé : cell_ref.{col} vide pour les "
+                    f"{mp_with_ecgi} points ECGI. Upload via "
+                    "POST /settings/cell-ref/upload."
+                ),
+                "values": [],
+            }
+        return {"available": True, "reason": None, "values": values}
+
     return {
         "project_id":    project_id,
-        "service_types": _distinct(db, project_id, "service_type"),
-        "phases":        _distinct(db, project_id, "phase"),
-        "operators":     _distinct(db, project_id, "operator"),
-        "rats":          _distinct(db, project_id, "tech"),
-        "bands":         _distinct(db, project_id, "band"),
-        "envs":          _distinct(db, project_id, "env"),
-        "deps":          _distinct(db, project_id, "dep"),
+        "operators":     _dim("operator"),
+        "bands":         _dim("band"),
+        "rats":          _dim("tech"),
+        "service_types": _dim("service_type"),
+        "phases":        _dim("phase"),
+        "envs":          _dim("env"),
+        "deps":          _dim("dep"),
+        "ecgi": {
+            "available":    bool(mp_with_ecgi),
+            "mp_total":     int(mp_total),
+            "mp_with_ecgi": int(mp_with_ecgi),
+            "pct":          round(ecgi_pct, 2),
+            "reason":       None if mp_with_ecgi else "ECGI non encore propagé",
+        },
+        # Dimensions référentiel géo — join mp.ecgi → cell_ref.<col>.
+        "dr":       _geo_dim("dr"),
+        "plaque":   _geo_dim("plaque"),
+        "dor":      _geo_dim("dor"),
+        "arcep":    _geo_dim("arcep_zone"),
+        "commune":  _geo_dim("commune"),
+        "insee":    _geo_dim("insee"),
     }
 
 
@@ -401,6 +523,216 @@ def _dist_param_path(
     }
 
 
+# ---------------------------------------------------------------------------
+# Group_by aggregation helpers (0.41.0)
+# ---------------------------------------------------------------------------
+
+
+GroupBy = Literal["operator", "band", "operator_band"]
+
+
+def _group_cols(group_by: GroupBy) -> list[str]:
+    if group_by == "operator":
+        return ["operator"]
+    if group_by == "band":
+        return ["band"]
+    return ["operator", "band"]
+
+
+def _group_key(row: dict[str, Any], cols: list[str]) -> dict[str, Any]:
+    return {c: row.get(c) for c in cols}
+
+
+def _tag_group(row: dict[str, Any], expected_operators_in_project: set[str]) -> tuple[str, str | None]:
+    """Un groupe sans donnée n'est JAMAIS omis. On lui attribue :
+    - ``PRESENT`` : n > 0.
+    - ``ZERO_REEL`` : n == 0 mais la combinaison existe dans les
+      dimensions du projet (opérateur attendu, bande utilisée).
+    - ``ABSENT_DU_PERIMETRE`` : la combinaison n'existe pas dans le
+      périmètre du projet.
+    """
+    n = int(row.get("n") or 0)
+    if n > 0:
+        return "PRESENT", None
+    op = row.get("operator")
+    if op is not None and op not in expected_operators_in_project:
+        return (
+            "ABSENT_DU_PERIMETRE",
+            f"opérateur {op!r} hors périmètre projet",
+        )
+    return "ZERO_REEL", "n = 0 sur ce périmètre"
+
+
+def _project_distinct(db: Session, project_id: str, table: str, col: str) -> set[str]:
+    rows = db.execute(
+        text(f"SELECT DISTINCT {col} FROM {table} WHERE project_id = :pid"),
+        {"pid": project_id},
+    ).fetchall()
+    return {r[0] for r in rows if r[0] is not None}
+
+
+def _grouped_mp(
+    db: Session, project_id: str, mp_col: str, group_cols: list[str],
+    *, operators: tuple[str, ...] = (),
+) -> list[dict[str, Any]]:
+    """Group-by percentile sur ``measurement_points.<col>``.
+
+    Les percentiles sont calculés PAR GROUPE sur les mesures du groupe —
+    jamais une moyenne de moyennes.
+    """
+    sel = ", ".join(group_cols)
+    params: dict[str, Any] = {"pid": project_id}
+    where = f"project_id = :pid AND {mp_col} IS NOT NULL"
+    if operators:
+        placeholders = ", ".join(f":op{i}" for i in range(len(operators)))
+        where += f" AND operator IN ({placeholders})"
+        for i, op in enumerate(operators):
+            params[f"op{i}"] = op
+    rows = db.execute(
+        text(
+            f"SELECT {sel}, COUNT({mp_col}) AS n, "
+            f"       percentile_cont(0.10) WITHIN GROUP (ORDER BY {mp_col}) AS p10, "
+            f"       percentile_cont(0.50) WITHIN GROUP (ORDER BY {mp_col}) AS p50, "
+            f"       percentile_cont(0.90) WITHIN GROUP (ORDER BY {mp_col}) AS p90 "
+            f"FROM measurement_points WHERE {where} GROUP BY {sel} ORDER BY {sel}"
+        ),
+        params,
+    ).fetchall()
+    out: list[dict[str, Any]] = []
+    for r in rows:
+        row: dict[str, Any] = {}
+        for i, c in enumerate(group_cols):
+            row[c] = r[i]
+        row["n"]   = int(r[len(group_cols)])
+        row["p10"] = float(r[len(group_cols)+1]) if r[len(group_cols)+1] is not None else None
+        row["p50"] = float(r[len(group_cols)+2]) if r[len(group_cols)+2] is not None else None
+        row["p90"] = float(r[len(group_cols)+3]) if r[len(group_cols)+3] is not None else None
+        out.append(row)
+    return out
+
+
+def _grouped_param_path(
+    db: Session, project_id: str, pattern: str, group_cols: list[str],
+    *, operators: tuple[str, ...] = (),
+) -> list[dict[str, Any]]:
+    """Group-by percentile sur ``param_occurrence.value_converted`` filtré
+    ``path ILIKE pattern``. Pour RSRP/RSRQ serving (RRC autoritaire)."""
+    sel = ", ".join(group_cols)
+    params: dict[str, Any] = {"pid": project_id, "pat": pattern}
+    where = (
+        "project_id = :pid AND path ILIKE :pat "
+        "AND value_converted ~ '^-?[0-9]+(\\.[0-9]+)?$'"
+    )
+    if operators:
+        placeholders = ", ".join(f":op{i}" for i in range(len(operators)))
+        where += f" AND operator IN ({placeholders})"
+        for i, op in enumerate(operators):
+            params[f"op{i}"] = op
+    rows = db.execute(
+        text(
+            f"SELECT {sel}, COUNT(*) AS n, "
+            f"       percentile_cont(0.10) WITHIN GROUP (ORDER BY CAST(value_converted AS DOUBLE PRECISION)) AS p10, "
+            f"       percentile_cont(0.50) WITHIN GROUP (ORDER BY CAST(value_converted AS DOUBLE PRECISION)) AS p50, "
+            f"       percentile_cont(0.90) WITHIN GROUP (ORDER BY CAST(value_converted AS DOUBLE PRECISION)) AS p90 "
+            f"FROM param_occurrence WHERE {where} GROUP BY {sel} ORDER BY {sel}"
+        ),
+        params,
+    ).fetchall()
+    out: list[dict[str, Any]] = []
+    for r in rows:
+        row: dict[str, Any] = {}
+        for i, c in enumerate(group_cols):
+            row[c] = r[i]
+        row["n"]   = int(r[len(group_cols)])
+        row["p10"] = float(r[len(group_cols)+1]) if r[len(group_cols)+1] is not None else None
+        row["p50"] = float(r[len(group_cols)+2]) if r[len(group_cols)+2] is not None else None
+        row["p90"] = float(r[len(group_cols)+3]) if r[len(group_cols)+3] is not None else None
+        out.append(row)
+    return out
+
+
+def _grouped_param_count(
+    db: Session, project_id: str, group_cols: list[str],
+    *, message: str | None = None, path_ilike: str | None = None,
+    operators: tuple[str, ...] = (),
+) -> list[dict[str, Any]]:
+    """Group-by COUNT(DISTINCT stg_event_id) sur ``param_occurrence``."""
+    sel = ", ".join(group_cols)
+    params: dict[str, Any] = {"pid": project_id}
+    where_parts = ["project_id = :pid"]
+    if message is not None:
+        where_parts.append("message = :msg")
+        params["msg"] = message
+    if path_ilike is not None:
+        where_parts.append("path ILIKE :pat")
+        params["pat"] = path_ilike
+    if operators:
+        placeholders = ", ".join(f":op{i}" for i in range(len(operators)))
+        where_parts.append(f"operator IN ({placeholders})")
+        for i, op in enumerate(operators):
+            params[f"op{i}"] = op
+    where = " AND ".join(where_parts)
+    rows = db.execute(
+        text(
+            f"SELECT {sel}, COUNT(DISTINCT stg_event_id) AS n "
+            f"FROM param_occurrence WHERE {where} GROUP BY {sel} ORDER BY {sel}"
+        ),
+        params,
+    ).fetchall()
+    out: list[dict[str, Any]] = []
+    for r in rows:
+        row: dict[str, Any] = {}
+        for i, c in enumerate(group_cols):
+            row[c] = r[i]
+        row["n"] = int(r[len(group_cols)])
+        out.append(row)
+    return out
+
+
+def _comparability(groups: list[dict[str, Any]]) -> str:
+    """Verdict de comparabilité d'un groupement.
+
+    - ``NO_DATA`` : zéro groupe avec n>0.
+    - ``SINGLE_GROUP`` : 1 seul groupe avec n>0 (rien à comparer).
+    - ``COMPARABLE`` : ≥ 2 groupes avec n>0 et chaque groupe a au
+      moins 30 mesures (seuil pragmatique « petits échantillons »).
+    - ``COMPARABLE_WITH_LIMITATIONS`` : ≥ 2 groupes mais au moins un
+      a n < 30 (comparaison possible mais échantillons déséquilibrés).
+    """
+    with_data = [g for g in groups if (g.get("n") or 0) > 0]
+    if not with_data:
+        return "NO_DATA"
+    if len(with_data) == 1:
+        return "SINGLE_GROUP"
+    if any((g.get("n") or 0) < 30 for g in with_data):
+        return "COMPARABLE_WITH_LIMITATIONS"
+    return "COMPARABLE"
+
+
+def _decorate_groups(
+    groups: list[dict[str, Any]],
+    group_cols: list[str],
+    expected_operators: set[str],
+) -> list[dict[str, Any]]:
+    """Ajoute colors + status + reason sur chaque ligne groupée."""
+    out: list[dict[str, Any]] = []
+    for g in groups:
+        status, reason = _tag_group(g, expected_operators)
+        row = dict(g)
+        row["status"] = status
+        row["reason"] = reason
+        if "operator" in group_cols:
+            row["operator_color"] = operator_color(g.get("operator"))
+        if "band" in group_cols:
+            row["band_color"] = band_color(g.get("band"))
+        out.append(row)
+    # Tri déterministe : operator ASC, band ASC
+    out.sort(key=lambda r: (
+        str(r.get("operator") or "~"), str(r.get("band") or "~")
+    ))
+    return out
+
+
 def compute_kpi_v2(
     db: Session,
     project_id: str,
@@ -409,6 +741,7 @@ def compute_kpi_v2(
     operators: tuple[str, ...] = (),
     services: tuple[str, ...] = (),
     phases: tuple[str, ...] = (),
+    group_by: GroupBy = "operator",
 ) -> dict[str, Any]:
     """Calcule la valeur du KPI ``code`` pour un projet.
 
@@ -451,7 +784,18 @@ def compute_kpi_v2(
         "services_requested": list(services),
         "operators_requested": list(operators),
         "phases_requested":   list(phases),
+        "group_by":          group_by,
     }
+    group_cols = _group_cols(group_by)
+    expected_ops = set(_EXPECTED_OPERATORS) & _project_distinct(
+        db, project_id, "measurement_points", "operator"
+    )
+    # Si le projet n'a pas peuplé mp (ex. REF partiellement), on retombe
+    # sur param_occurrence pour les opérateurs attendus.
+    if not expected_ops:
+        expected_ops = set(_EXPECTED_OPERATORS) & _project_distinct(
+            db, project_id, "param_occurrence", "operator"
+        )
 
     # service_scope filter
     if services and not is_in_service_scope(entry, services):
@@ -474,30 +818,51 @@ def compute_kpi_v2(
     if kind == "param_message_eq":
         msg = check.get("arg") or ""
         total, by_op = _count_param_message(db, project_id, msg, operators=operators)
+        groups_raw = _grouped_param_count(
+            db, project_id, group_cols, message=msg, operators=operators,
+        )
+        groups = _decorate_groups(groups_raw, group_cols, expected_ops)
         if total == 0:
             return {**base, "status": "UNAVAILABLE",
                     "reason": check.get("reason_if_absent"), "value": None,
-                    "n": 0, "by_operator": []}
+                    "n": 0, "by_operator": [], "groups": [], "table": [],
+                    "comparability": "NO_DATA"}
         return {**base, "status": "AVAILABLE", "reason": None,
-                "value": total, "n": total, "by_operator": by_op}
+                "value": total, "n": total, "by_operator": by_op,
+                "groups": groups, "table": groups,
+                "comparability": _comparability(groups)}
 
     if kind == "param_path_ilike":
         pat = check.get("arg") or ""
         if entry["nature"] == "Métrique mesurée":
             d = _dist_param_path(db, project_id, pat, operators=operators)
+            groups_raw = _grouped_param_path(
+                db, project_id, pat, group_cols, operators=operators,
+            )
+            groups = _decorate_groups(groups_raw, group_cols, expected_ops)
             if d["n"] == 0:
                 return {**base, "status": "UNAVAILABLE",
                         "reason": check.get("reason_if_absent"),
-                        **d}
-            return {**base, "status": "AVAILABLE", "reason": None, **d}
+                        **d, "groups": [], "table": [],
+                        "comparability": "NO_DATA"}
+            return {**base, "status": "AVAILABLE", "reason": None, **d,
+                    "groups": groups, "table": groups,
+                    "comparability": _comparability(groups)}
         # Compteur sur path (ex. HO_COUNT via mobilityControlInfo).
         total, by_op = _count_param_path_ilike(db, project_id, pat, operators=operators)
+        groups_raw = _grouped_param_count(
+            db, project_id, group_cols, path_ilike=pat, operators=operators,
+        )
+        groups = _decorate_groups(groups_raw, group_cols, expected_ops)
         if total == 0:
             return {**base, "status": "UNAVAILABLE",
                     "reason": check.get("reason_if_absent"),
-                    "value": None, "n": 0, "by_operator": []}
+                    "value": None, "n": 0, "by_operator": [],
+                    "groups": [], "table": [], "comparability": "NO_DATA"}
         return {**base, "status": "AVAILABLE", "reason": None,
-                "value": total, "n": total, "by_operator": by_op}
+                "value": total, "n": total, "by_operator": by_op,
+                "groups": groups, "table": groups,
+                "comparability": _comparability(groups)}
 
     if kind == "mp_metric":
         col = check.get("arg") or ""
@@ -522,6 +887,29 @@ def compute_kpi_v2(
             denom = int(r[0]) if r else 0
             num = int(r[1]) if r else 0
             value = (100.0 * num / denom) if denom else None
+            # Groupes DMS = taux par groupe (jamais mean-of-means).
+            sel = ", ".join(group_cols)
+            grouped = db.execute(
+                text(
+                    f"SELECT {sel}, COUNT({col}) AS denom, "
+                    f"       COUNT(*) FILTER (WHERE {col} >= :t) AS num "
+                    f"FROM measurement_points WHERE project_id = :pid "
+                    f"AND {col} IS NOT NULL GROUP BY {sel} ORDER BY {sel}"
+                ),
+                {"pid": project_id, "t": float(threshold)},
+            ).fetchall()
+            groups_raw: list[dict[str, Any]] = []
+            for gr in grouped:
+                row: dict[str, Any] = {}
+                for i, c in enumerate(group_cols):
+                    row[c] = gr[i]
+                d = int(gr[len(group_cols)])
+                nnum = int(gr[len(group_cols) + 1])
+                row["n"]       = d
+                row["n_above"] = nnum
+                row["value"]   = (100.0 * nnum / d) if d else None
+                groups_raw.append(row)
+            groups = _decorate_groups(groups_raw, group_cols, expected_ops)
             return {
                 **base,
                 "status":    "AVAILABLE",
@@ -530,6 +918,9 @@ def compute_kpi_v2(
                 "n_total":   denom,
                 "n_above":   num,
                 "value":     value,
+                "groups":    groups,
+                "table":     groups,
+                "comparability": _comparability(groups),
             }
         # Métrique mesurée AVAILABLE : percentile_cont sur mp.<col>
         row = db.execute(
@@ -542,6 +933,8 @@ def compute_kpi_v2(
             ),
             {"pid": project_id},
         ).first()
+        groups_raw = _grouped_mp(db, project_id, col, group_cols, operators=operators)
+        groups = _decorate_groups(groups_raw, group_cols, expected_ops)
         return {
             **base,
             "status": "AVAILABLE",
@@ -551,6 +944,9 @@ def compute_kpi_v2(
             "p10":    float(row[1]) if row and row[1] is not None else None,
             "p50":    float(row[2]) if row and row[2] is not None else None,
             "p90":    float(row[3]) if row and row[3] is not None else None,
+            "groups": groups,
+            "table":  groups,
+            "comparability": _comparability(groups),
         }
 
     return {**base, "status": "UNAVAILABLE",

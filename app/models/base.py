@@ -291,6 +291,10 @@ class MeasurementPoint(Base):
     env: Mapped[str | None] = mapped_column(String, nullable=True)
     rat: Mapped[str | None] = mapped_column(String, nullable=True)
     earfcn: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # 0.41.0 — ECGI serving propagé par le populate_ecgi : dernier SIB1
+    # de la capture avec même (pci, earfcn) en ordre (capture_id, seq).
+    # Après HO sans SIB1 relu → NULL (jamais l'ancien).
+    ecgi: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
 
 
 class DictMessage(Base):
@@ -486,6 +490,11 @@ class CellRef(Base):
     # LITTÉRALEMENT depuis `cat_arcep_code` (11 catégories réelles) ou NULL
     # si la source vaut `""` / `"(null)"`. Jamais `"(null)"` en base.
     arcep_zone: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    # 0.41.0 — Enrichissement géo (upload opérateur). ``commune`` libellé
+    # textuel, ``insee`` code INSEE 5 chiffres (jamais invent é — vient
+    # de l'upload du référentiel).
+    commune: Mapped[str | None] = mapped_column(String, nullable=True)
+    insee: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     reference_import_id: Mapped[str | None] = mapped_column(String, nullable=True)
     # `geom` is PostGIS GEOMETRY(POINT, 4326) — not mapped as ORM column to
     # keep the model free of GeoAlchemy2 at runtime; the ingestion service

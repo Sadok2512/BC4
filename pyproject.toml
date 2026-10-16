@@ -1,7 +1,7 @@
 [project]
 name = "bc4-back"
-version = "0.40.0"
-description = "BC4 backend FastAPI — Catalogue KPI v2 (208 entrées xlsx utilisateur, dédoublons tracés) + filtre service_type"
+version = "0.41.0"
+description = "BC4 backend FastAPI — group_by operator/band + ECGI propagé (SIB1) + upload cell_ref géo"
 requires-python = ">=3.10"
 
 [tool.pytest.ini_options]
