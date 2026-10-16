@@ -1,7 +1,7 @@
 [project]
 name = "bc4-back"
-version = "0.38.0"
-description = "BC4 backend FastAPI — Skills Center : skills Markdown déclaratifs, validés, chargés par l'assistant"
+version = "0.40.0"
+description = "BC4 backend FastAPI — Catalogue KPI v2 (208 entrées xlsx utilisateur, dédoublons tracés) + filtre service_type"
 requires-python = ">=3.10"
 
 [tool.pytest.ini_options]

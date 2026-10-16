@@ -2,6 +2,227 @@
 
 Versions SemVer. Type de bump: `patch` / `minor` / `major`. Un écart se ferme ou se déclare ouvert, jamais expliqué par hypothèse.
 
+## 0.40.0 — 2026-10-16 (minor) — Catalogue KPI v2 (xlsx utilisateur, 208 entrées) + filtre service_type (Agent BC1)
+
+> Le catalogue KPI 0.35.0 (28 entrées codées en dur) est remplacé par
+> un **catalogue v2 généré** depuis le xlsx utilisateur
+> ``catalog/BC4_Catalogue_KPI_LTE_NR_ENDC_Agreges.xlsx``
+> (sha256 `6869c001c1b61009fe4570241775d3ede9df78320a142c096eb8a0a6b347833d`).
+> 208 lignes xlsx → **194 KPI canoniques + 14 alias** après dédoublonnage
+> tracé. Les routes projet exposent le filtre ``service_type[]`` : un
+> KPI hors de son scope est **déclaré NOT_APPLICABLE**, pas filtré en
+> silence.
+
+### Import offline — ``scripts/import_kpi_catalog_v2.py``
+
+- Lit le xlsx (``openpyxl``) ; parse ``Catégorie`` = ``<Nature>/<Famille>``.
+- Normalise ``EN-DC_`` → ``ENDC_`` (3 codes LAT_* concernés, tracés
+  dans ``normalizations``).
+- Dédoublons déterministes (14 au total, tracés dans ``aliases``) :
+  ``LTE_RRC_SR`` → ``LTE_RRC_SETUP_SR``, ``*_INTRA/INTER/IRAT_FREQUENCY_HANDOVER_SR``
+  → ``*_HO_{INTRA,INTER,IRAT}_SR``, ``*_DL/UL_DATA_SR`` → ``*_HTTP_DL/UL_TRANSFER_SR``,
+  ``*_RACH_SR`` → ``*_RACH_ACCESS_SR``.
+- Enrichissement mécanique par Nature + suffixe du code :
+    - **Compteur** adossé à un event RRC prouvé (``RRCConnectionSetup``,
+      ``RRCConnectionReestablishment``, ``mobilityControlInfo``…)
+      → ``available_check.kind = param_message_eq | param_path_ilike``.
+      Compteurs non prouvés par le décodeur 2.0.0 (RACH/E-RAB/DATA_*
+      et HO par type intra/inter/irat) → ``always_unavailable`` avec
+      raison explicite (écarts 0.24.0 / 0.33.0 déclarés).
+    - **Métrique mesurée** RRC autoritaire (RF_RSRP, RF_RSRQ) → source
+      ``param_occurrence`` ``path LIKE '%measResultPCell/{rsrp,rsrq}Result'``
+      (0.37.1). Autres mesures adossées à ``measurement_points`` →
+      ``mp_metric`` avec colonne, PENDING tant que la colonne est NULL.
+    - **KPI calculé** (rates) → ``always_unvalidated`` : « le contrat
+      tentative/réussite n'est pas certifié par le décodeur ». DMS
+      ``AGG_DMS_{DL,UL}_*`` → formule ``100 × count(mp.{dl,thrpt_ul}
+      ≥ seuil) / count(…NOT NULL)``, PENDING tant que la colonne est
+      NULL.
+- Génère ``app/kpi/catalog_v2.json`` avec ``source_xlsx_sha256``,
+  ``total_input_rows``, ``canonical_count``, ``aliases_count``, et
+  l'ensemble des entrées enrichies.
+
+### Nouveaux modules runtime
+
+- ``app/kpi/catalog_v2.py`` — charge le JSON au démarrage (openpyxl
+  pas requis en runtime), expose ``CATALOG_V2``, ``ALIAS_TO_CANONICAL``,
+  ``resolve``, ``get``, ``sorted_entries``, ``is_in_service_scope``,
+  ``not_applicable_reason``, ``FAMILIES_ORDER``, ``TECHNO_ORDER``.
+- ``app/kpi/service_v2.py`` — ``compute_status_v2``,
+  ``build_catalog_v2_response`` (arbre Techno → Famille → KPI avec
+  comptes par statut), ``build_filters_v2`` (services, phases,
+  opérateurs, rats, bands, envs, deps réels depuis mp), ``compute_kpi_v2``
+  (COUNT ou percentile_cont ou PENDING/UNVALIDATED/UNAVAILABLE/NOT_APPLICABLE
+  selon la règle).
+
+### Routes mises à jour (``app/routes/project_kpi.py``)
+
+- ``GET /projects/{pid}/kpi/catalog?service_type=HTTP_DOWNLOAD&service_type=…``
+  → arbre v2, 208 entrées (194 KPI + 14 alias), ``counts_by_status``
+  + ``counts_by_techno``. Un KPI hors scope → statut ``NOT_APPLICABLE``
+  **visible** dans l'arbre (pas filtré en silence).
+- ``GET /projects/{pid}/kpi/filters`` → ``service_types``, ``phases``,
+  ``operators``, ``rats``, ``bands``, ``envs``, ``deps`` réels.
+- ``GET /projects/{pid}/kpi/{code}?service_type=…&operator=…`` → résout
+  l'alias, applique le scope, délègue par ``available_check.kind``.
+  ``value=null`` sauf AVAILABLE.
+
+### Garde manuelle REF (post-rebuild)
+
+1. ``/kpi/catalog`` → ``canonical_count=194``, ``aliases_count=14``,
+   ``total_input_rows=208`` ; comptes par statut et par techno.
+2. ``LTE_RRC_SETUP_COUNT`` → AVAILABLE (source ``stg_event
+   message=RRCConnectionSetup``, value=n).
+3. ``LTE_HO_COUNT`` → AVAILABLE (``param_occurrence`` ``path LIKE
+   '%mobilityControlInfo%'``).
+4. ``LTE_RF_RSRP`` → AVAILABLE (``param_occurrence
+   measResultPCell/rsrpResult``), P10/P50/P90.
+5. ``LTE_RRC_SR`` (alias → ``LTE_RRC_SETUP_SR``) → UNVALIDATED
+   ``value=null``.
+6. ``LTE_DL_APPLICATION_THR`` → PENDING (``mp.dl NULL partout``, lot
+   0.39.0 en cours).
+7. ``AGG_DMS_DL_30_MBPS`` → PENDING (``mp.dl NULL``).
+8. ``NR_RF_RSRP`` → UNAVAILABLE (hors xlsx) / ou code NR → UNAVAILABLE
+   avec raison « aucun NMF NR ingéré ».
+9. ``service_type=HTTP_DOWNLOAD`` : un KPI data (``LTE_DL_APPLICATION_THR``)
+   est applicable ; un KPI voix (``LTE_VOLTE_CALL_SETUP_SR``) → statut
+   ``NOT_APPLICABLE`` déclaré avec reason.
+
+### Dépendance ajoutée
+
+``openpyxl==3.1.5`` (dans ``requirements.txt``) — nécessaire **à
+l'import** du xlsx. Le runtime ne l'importe pas (seul le script le
+charge pour régénérer ``catalog_v2.json``).
+
+## 0.39.0 — 2026-10-16 (minor) — measurement_points réel : CELLMEAS par CONTENU + débits DSUMMARY + band/tech (Agent BC1)
+
+> Audit 0.38.0 : `measurement_points` restait vide côté métriques
+> (0/66409 rsrp/rsrq/sinr, 0/66409 band, 2323/66409 tech dont 919
+> fantômes GSM/'2'/'3'), 37 transferts HTTP non calculés, 5 NMF/18
+> ingérés. La ±2 dB sur CELLMEAS avait tout rejeté — à juste titre :
+> le mapping décodeur Nemo nommait `cell0_rsrp_dbm` un champ qui tient
+> en fait du **RSSI** (avg −68 dBm), et `cell0_rsrq_db` tenait le vrai
+> **RSRP** (avg −100 dBm, cohérent à 1 dB près avec RRC rsrpResult).
+> La chaîne de dérivation marchait, elle lisait juste les mauvaises
+> colonnes.
+
+### Nouveau — `app/measure/ranges.py` : plages 3GPP physiques
+
+Table de vérité :
+
+| grandeur | plage | unité | ref 3GPP |
+|---|---|---|---|
+| RSSI | [−120, −20] | dBm | TS 36.214 §5.1.3, drive |
+| RSRP | [−140, −44] | dBm | TS 36.133 §9.1.4 (idx 0..97) |
+| RSRQ | [−20, −3] | dB | TS 36.133 §9.1.7 (idx 0..34) |
+| SINR | [−20, +30] | dB | TS 36.214 §5.1.4 (RS-SINR r13 ±marge) |
+| CQI | [0, 15] | indice | TS 36.213 Table 7.2.3-1 |
+| TX_POWER UE | [−40, +23] | dBm | TS 36.101 §6.2.5 (Power Class 3) |
+| THRPT app | [0, 300] | Mbit/s | pratique drive LTE CA |
+
+Fonction `is_placeholder(v)` : masque les artefacts décodeur (`> +50`
+ou `< −200`) — ex. le `650400` observé sur REF, les codes `50001..50010`.
+
+### Nouveau — `app/measure/profiling.py` : mapping CELLMEAS par le CONTENU
+
+`profile_cellmeas(db, project_id)` scanne les champs candidats
+(`cell0_rsrp_dbm`, `cell0_rsrq_db`, `cell0_sinr_db`, `cell0_c7..c10`)
+et affecte, pour chaque métrique radio, le champ dont la plus grande
+fraction de valeurs valides tombe dans la plage 3GPP correspondante.
+Ordre d'affectation : RSRQ (plage la plus étroite) → SINR → RSRP →
+RSSI, chaque champ verrouillé pour les suivantes. Fraction minimale
+50 % ; sinon métrique **déclarée** indisponible pour ce projet (NULL
+à l'aval). Jamais mappé à l'aveugle.
+
+Résultat chiffré sur REF (6 532 CELLMEAS, hors placeholders) :
+
+| field | % RSSI | % RSRP | % RSRQ | % SINR | affecté à |
+|---|---|---|---|---|---|
+| `cell0_rsrp_dbm` | 82 % | 82 % | 0 % | 0 % | **RSSI** (avg −68 dBm) |
+| `cell0_rsrq_db` | 82 % | 82 % | 0 % | 0 % | **RSRP** (avg −100 dBm) |
+| `cell0_sinr_db` | 0 % | 0 % | 82 % | 99 % | **RSRQ** (avg −11 dB) |
+| `cell0_c9` | 0 % | 0 % | 1 % | 84 % | **SINR** (avg +12 dB) |
+
+### Nouveau — `app/measure/throughput.py` : débits par DSUMMARY
+
+Pas de référence RRC pour un débit (plage 3GPP radio ≠ débit app).
+On calcule depuis le dict Nemo : CMDREQ `StartHTTPTransfer` /
+`StopHTTPTransfer` encadrent un transfert dans une capture, DSUMMARY
+émet `bytes_transferred` cumulés entre, et `Δt = t_stop − t_start`.
+Débit = `8 × bytes / Δt / 1e6` (Mbit/s). Plage physique 0..300
+Mbit/s ; hors plage → `rejected: thrpt_out_of_range` **déclaré**.
+Attribution côté `measurement_points` : UPDATE `dl` ou `thrpt_ul` sur
+toutes les lignes mp dont `(capture_id, seq ∈ [seq_start, seq_stop])`.
+
+### Nouveau — `app/measure/proof.py::prove_rsrp_per_event`
+
+Preuve ±2 dB **par événement** (vs distribution-level de 0.33.0) :
+appariement CELLMEAS ↔ MeasurementReport RRC le plus proche de la
+même `capture_id`, fenêtre `±100` sur `seq`. Verdict `proven` ssi
+`median(|Δ|) ≤ 2 dB`. Robuste aux outliers que l'ancienne moyenne
+sur `measResultListEUTRA` neighbours faussait.
+
+### Changé — `app/measure/populate.py`
+
+- Appel `profile_cellmeas()` + `prove_rsrp_per_event()` en tête, joints
+  à `report['cellmeas_mapping']` + `report['per_event_proof_rsrp']`.
+- Lectures CELLMEAS/CQI/TX_POWER **range-gatées** via les `Range`
+  publiques — jamais un `nan` ou un `650400` qui passe.
+- UPDATE écrit `rsrp = :rsrp` (pas COALESCE) : les lignes qui ne sont
+  **plus** porteuses de la métrique passent à NULL — correction propre
+  d'une attribution précédente erronée. Idempotent.
+- INSERT restreint à `cellmeas / cqi / tx_power / data_summary` ; les
+  events `other / lock / gps / cmdreq` sont **retirés** du corpus mp
+  (ils propagent `service_action` / `env` via l'index courant, pas via
+  une ligne). Nettoyage DB :
+  ```
+  DELETE FROM measurement_points
+  WHERE event_code NOT IN ('CELLMEAS','CQI','TXPC','DSUMMARY')
+  ```
+  en tête de `populate_measurement_points` — idempotent.
+- `band` câblé par le CONTENU : `band_from_earfcn(cell0_earfcn)` sur
+  les CELLMEAS.
+- `tech` idem par `rat_from_code(rat_code)`.
+- Call `compute_transfers()` + `apply_transfers_to_measurement_points()`
+  en fin de passe — remplit `mp.dl` / `mp.thrpt_ul` pour chaque
+  transfert prouvé.
+
+### Changé — `app/kpi/catalog.py`
+
+- `KPI_CATALOG_VERSION = "0.39.0"`.
+- `RSRP_DIST` → **source back = `measurement_points.rsrp`** (couverture
+  L1 continue CELLMEAS). AVAILABLE dès que la preuve par-événement
+  passe pour le projet. Clarifié dans la définition : à ne pas
+  confondre avec le RRC MR.
+- **Nouveau KPI** `RSRP_AT_MR` → distribution sur
+  `param_occurrence.measResultPCell/rsrpResult` (RRC, biais A2/A3).
+  Les deux cohabitent — l'un n'est pas l'autre.
+- `RSRQ_DIST` → même bascule sur `measurement_points.rsrq`.
+- `THR_DL_APP` → inchangé (`mp_metric(dl)`), AVAILABLE dès que
+  `apply_transfers_to_measurement_points` renseigne `dl`.
+
+### Rebuild + /health
+
+- `app/main.py` : `FastAPI(version="0.39.0")`, `/health` renvoie
+  `version=0.39.0`.
+- `pyproject.toml` : `version = "0.39.0"`.
+- Rebuild obligatoire : `docker compose build api && up -d api`.
+
+### Garde manuelle — sorties brutes rapportées en discussion
+
+1. Tableau de mapping (CELLMEAS par CONTENU + per-event proof RSRP) +
+   verdict `proven` ± Δ dB sur n_pairs.
+2. `mp.rsrp/rsrq/sinr` non NULL après re-populate, plages respectées,
+   zéro `650400`.
+3. 37 transferts HTTP → `thrpt_dl` rempli sur les fenêtres `seq`,
+   plage OK, verdict proven.
+4. `band` et `tech` remplis sur mp (CELLMEAS→B1/B3/B7, LTE/NR).
+5. 13 NMF witness-nmf ingérés → `nmf_count = 18`.
+6. `/kpi/RSRP_DIST` → source `measurement_points`, P50 réel, AVAILABLE.
+7. `/kpi/THR_DL_APP` → AVAILABLE avec valeur.
+8. `/kpi/filters.bands` = bandes réelles observées via mp.
+9. Grep identité abonné → 0 occurrence (deny-list dict RRC inchangée).
+
 ## 0.38.0 — 2026-10-16 (minor) — Skills Center : skills Markdown déclaratifs (Agent BC1)
 
 > Introduction d'un **Skills Center** : les skills sont des fichiers

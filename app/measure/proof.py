@@ -303,6 +303,140 @@ def mapping_from_proof(rows: list[ProofRow]) -> dict[str, dict[str, str]]:
     return out
 
 
+# ---------------------------------------------------------------------------
+# 0.39.0 — Preuve ±2 dB **par événement** (appariement capture/seq).
+# ---------------------------------------------------------------------------
+# Nouvelle méthode : au lieu de comparer les distributions globales
+# (`run_proof`), on apparie chaque CELLMEAS avec le MeasurementReport
+# RRC le plus proche de la même capture dans une fenêtre `seq` glissante.
+# On calcule Δ **par paire**, puis la médiane |Δ|. Preuve `proven` ssi
+# `median(|Δ|) ≤ tol`.
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class PerEventProof:
+    metric: str
+    candidate_field: str
+    tolerance_db: float
+    n_pairs: int
+    median_abs_delta: float | None
+    mean_delta: float | None
+    verdict: str
+    reason: str
+    sample: list[dict[str, Any]]  # 10 paires au max pour trace
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "metric": self.metric,
+            "candidate_field": self.candidate_field,
+            "tolerance_db": self.tolerance_db,
+            "n_pairs": self.n_pairs,
+            "median_abs_delta": self.median_abs_delta,
+            "mean_delta": self.mean_delta,
+            "verdict": self.verdict,
+            "reason": self.reason,
+            "sample": self.sample,
+        }
+
+
+def prove_rsrp_per_event(
+    db: Session,
+    project_id: str,
+    candidate_field: str,
+    tolerance_db: float = DELTA_DB_TOLERANCE,
+    seq_window: int = 100,
+) -> PerEventProof:
+    """Apparie chaque CELLMEAS avec le MeasurementReport (RRC) le plus
+    proche de la même capture dans une fenêtre `±seq_window` sur `seq`.
+
+    `median(|Δ|) ≤ tolerance_db` → `verdict='proven'`. Jamais averaged
+    (sensible aux outliers de la liste RRC qui mélange serving + neighbours).
+    """
+    pair_rows = db.execute(
+        text(
+            """
+            WITH cm AS (
+                SELECT capture_id, seq,
+                       (raw_fields ->> :f)::float AS cm_val
+                FROM stg_event_raw
+                WHERE project_id = :pid AND event_code = 'CELLMEAS'
+                  AND raw_fields ->> :f IS NOT NULL
+            ),
+            mr AS (
+                SELECT se.capture_id AS capture_id, se.seq AS seq,
+                       po.value_converted::float AS rrc_val
+                FROM param_occurrence po
+                JOIN stg_event se ON se.id = po.stg_event_id
+                WHERE po.project_id = :pid
+                  AND po.path LIKE '%measResultPCell/rsrpResult'
+                  AND po.value_converted IS NOT NULL
+            )
+            SELECT cm.capture_id, cm.seq AS seq_cm, cm.cm_val,
+                   (SELECT mr.seq FROM mr
+                    WHERE mr.capture_id = cm.capture_id
+                      AND abs(mr.seq - cm.seq) <= :win
+                    ORDER BY abs(mr.seq - cm.seq) LIMIT 1) AS seq_mr,
+                   (SELECT mr.rrc_val FROM mr
+                    WHERE mr.capture_id = cm.capture_id
+                      AND abs(mr.seq - cm.seq) <= :win
+                    ORDER BY abs(mr.seq - cm.seq) LIMIT 1) AS rrc_val
+            FROM cm
+            """
+        ),
+        {"pid": project_id, "f": candidate_field, "win": seq_window},
+    ).mappings().all()
+
+    paired = [
+        {
+            "capture_id": r["capture_id"],
+            "seq_cm": r["seq_cm"],
+            "seq_mr": r["seq_mr"],
+            "cm_val": r["cm_val"],
+            "rrc_val": r["rrc_val"],
+            "delta": r["cm_val"] - r["rrc_val"],
+        }
+        for r in pair_rows
+        if r["cm_val"] is not None
+        and r["rrc_val"] is not None
+        and -200 < r["cm_val"] < 50
+        and -200 < r["rrc_val"] < 50
+    ]
+    if not paired:
+        return PerEventProof(
+            metric="rsrp",
+            candidate_field=candidate_field,
+            tolerance_db=tolerance_db,
+            n_pairs=0,
+            median_abs_delta=None,
+            mean_delta=None,
+            verdict="rejected",
+            reason="no_pairs",
+            sample=[],
+        )
+    deltas = [p["delta"] for p in paired]
+    abs_deltas = sorted(abs(d) for d in deltas)
+    median_abs = abs_deltas[len(abs_deltas) // 2]
+    mean_d = statistics.fmean(deltas)
+    verdict = "proven" if median_abs <= tolerance_db else "rejected"
+    reason = (
+        ""
+        if verdict == "proven"
+        else f"median_abs_delta={median_abs:.2f}dB > tol={tolerance_db:.1f}dB"
+    )
+    return PerEventProof(
+        metric="rsrp",
+        candidate_field=candidate_field,
+        tolerance_db=tolerance_db,
+        n_pairs=len(paired),
+        median_abs_delta=median_abs,
+        mean_delta=mean_d,
+        verdict=verdict,
+        reason=reason,
+        sample=paired[:10],
+    )
+
+
 def format_proof_table(rows: list[ProofRow]) -> str:
     """Formate le rapport en table ASCII (pour G24 + CHANGELOG)."""
     headers = [

@@ -1,14 +1,20 @@
-"""Endpoints KPI scopés projet (0.35.0).
+"""Endpoints KPI scopés projet — catalogue v2 (0.40.0).
 
 Trois routes publiques (auth lecteur mini, injectée par le router) :
-  - GET /projects/{project_id}/kpi/catalog
+  - GET /projects/{project_id}/kpi/catalog     (+ ?service_type[])
   - GET /projects/{project_id}/kpi/filters
-  - GET /projects/{project_id}/kpi/{code}  (+ query filtres)
+  - GET /projects/{project_id}/kpi/{code}      (+ query filtres)
 
-Scope `project_id` injecté SERVEUR via le path (jamais depuis le body).
+Scope ``project_id`` injecté SERVEUR via le path (jamais depuis le body).
 Zéro ligne brute, zéro SQL exposé — tout agrégé. Jamais de valeur
 inventée : si une source est indisponible, le statut est renseigné
-(UNVALIDATED | PENDING | UNAVAILABLE) et `value` reste `null`.
+(UNVALIDATED | PENDING | UNAVAILABLE | NOT_APPLICABLE) et ``value``
+reste ``null``.
+
+0.40.0 — Les routes consomment désormais ``catalog_v2`` (194 KPI
+canoniques + 14 alias, soit 208 entrées xlsx) et exposent le filtre
+``service_type[]`` pour déclarer ``NOT_APPLICABLE`` sur un KPI hors
+scope de service (pas un ``n=0`` muet).
 """
 
 from __future__ import annotations
@@ -18,12 +24,10 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.deps import get_current_user
-from app.kpi import KPI_BY_CODE
-from app.kpi.service import (
-    KpiFilters,
-    build_catalog_tree,
-    build_filters,
-    compute_kpi,
+from app.kpi.service_v2 import (
+    build_catalog_v2_response,
+    build_filters_v2,
+    compute_kpi_v2,
 )
 from app.models import Project
 
@@ -45,47 +49,43 @@ def _require_project(db: Session, project_id: str) -> Project:
 
 
 @router.get("/{project_id}/kpi/catalog")
-def kpi_catalog(project_id: str, db: Session = Depends(get_db)) -> dict:
+def kpi_catalog(
+    project_id: str,
+    service_type: list[str] = Query(default_factory=list),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Catalogue v2 : 194 canoniques + 14 alias (208 input xlsx).
+
+    Si ``service_type[]`` est fourni, les KPI hors scope sont marqués
+    ``NOT_APPLICABLE`` dans l'arbre (jamais filtrés silencieusement).
+    """
     _require_project(db, project_id)
-    return build_catalog_tree(db, project_id)
+    return build_catalog_v2_response(
+        db, project_id, services=tuple(service_type),
+    )
 
 
 @router.get("/{project_id}/kpi/filters")
 def kpi_filters(project_id: str, db: Session = Depends(get_db)) -> dict:
     _require_project(db, project_id)
-    return build_filters(db, project_id)
+    return build_filters_v2(db, project_id)
 
 
 @router.get("/{project_id}/kpi/{code}")
 def kpi_detail(
     project_id: str,
     code: str,
-    # Multi-value filters : FastAPI gère `?operator=A&operator=B` ou `operator[]=A`.
     operator: list[str] = Query(default_factory=list),
-    rat: list[str] = Query(default_factory=list),
-    band: list[str] = Query(default_factory=list),
     service_type: list[str] = Query(default_factory=list),
-    env: list[str] = Query(default_factory=list),
-    date_from: str | None = Query(default=None, alias="from"),
-    date_to: str | None = Query(default=None, alias="to"),
+    phase: list[str] = Query(default_factory=list),
     db: Session = Depends(get_db),
 ) -> dict:
     _require_project(db, project_id)
-    if code not in KPI_BY_CODE:
-        raise HTTPException(
-            404,
-            {
-                "code": "KPI_UNKNOWN",
-                "message": f"KPI inconnu : {code!r} (voir /kpi/catalog pour la liste)",
-            },
-        )
-    filters = KpiFilters(
-        operator=tuple(operator),
-        rat=tuple(rat),
-        band=tuple(band),
-        service_type=tuple(service_type),
-        env=tuple(env),
-        date_from=date_from,
-        date_to=date_to,
+    return compute_kpi_v2(
+        db,
+        project_id,
+        code,
+        operators=tuple(operator),
+        services=tuple(service_type),
+        phases=tuple(phase),
     )
-    return compute_kpi(db, project_id=project_id, code=code, filters=filters)

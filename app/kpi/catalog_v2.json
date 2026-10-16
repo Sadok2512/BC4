@@ -1,0 +1,3522 @@
+{
+  "catalog_version": "2.0.0",
+  "source_xlsx": "BC4_Catalogue_KPI_LTE_NR_ENDC_Agreges.xlsx",
+  "source_xlsx_sha256": "6869c001c1b61009fe4570241775d3ede9df78320a142c096eb8a0a6b347833d",
+  "generated_from": "scripts/import_kpi_catalog_v2.py",
+  "total_input_rows": 208,
+  "canonical_count": 194,
+  "aliases_count": 14,
+  "normalizations": [
+    "'EN-DC_' → 'ENDC_' (EN-DC_LAT_RTT)",
+    "'EN-DC_' → 'ENDC_' (EN-DC_LAT_HTTP_RESPONSE)",
+    "'EN-DC_' → 'ENDC_' (EN-DC_LAT_TRANSFER_SETUP)"
+  ],
+  "aliases": [
+    {
+      "alias": "LTE_INTRA_FREQUENCY_HANDOVER_SR",
+      "canonical": "LTE_HO_INTRA_SR",
+      "reason": "même KPI, deux dénominations dans le xlsx"
+    },
+    {
+      "alias": "LTE_INTER_FREQUENCY_HANDOVER_SR",
+      "canonical": "LTE_HO_INTER_SR",
+      "reason": "même KPI, deux dénominations dans le xlsx"
+    },
+    {
+      "alias": "LTE_INTER_RAT_HANDOVER_SR",
+      "canonical": "LTE_HO_IRAT_SR",
+      "reason": "même KPI, deux dénominations dans le xlsx"
+    },
+    {
+      "alias": "NR_INTRA_FREQUENCY_HANDOVER_SR",
+      "canonical": "NR_HO_INTRA_SR",
+      "reason": "même KPI, deux dénominations dans le xlsx"
+    },
+    {
+      "alias": "NR_INTER_FREQUENCY_HANDOVER_SR",
+      "canonical": "NR_HO_INTER_SR",
+      "reason": "même KPI, deux dénominations dans le xlsx"
+    },
+    {
+      "alias": "NR_INTER_RAT_HANDOVER_SR",
+      "canonical": "NR_HO_IRAT_SR",
+      "reason": "même KPI, deux dénominations dans le xlsx"
+    },
+    {
+      "alias": "LTE_DL_DATA_SR",
+      "canonical": "LTE_HTTP_DL_TRANSFER_SR",
+      "reason": "même KPI, deux dénominations dans le xlsx"
+    },
+    {
+      "alias": "LTE_UL_DATA_SR",
+      "canonical": "LTE_HTTP_UL_TRANSFER_SR",
+      "reason": "même KPI, deux dénominations dans le xlsx"
+    },
+    {
+      "alias": "NR_DL_DATA_SR",
+      "canonical": "NR_HTTP_DL_TRANSFER_SR",
+      "reason": "même KPI, deux dénominations dans le xlsx"
+    },
+    {
+      "alias": "NR_UL_DATA_SR",
+      "canonical": "NR_HTTP_UL_TRANSFER_SR",
+      "reason": "même KPI, deux dénominations dans le xlsx"
+    },
+    {
+      "alias": "LTE_RACH_SR",
+      "canonical": "LTE_RACH_ACCESS_SR",
+      "reason": "même KPI, deux dénominations dans le xlsx"
+    },
+    {
+      "alias": "LTE_RRC_SR",
+      "canonical": "LTE_RRC_SETUP_SR",
+      "reason": "même KPI, deux dénominations dans le xlsx"
+    },
+    {
+      "alias": "NR_RACH_SR",
+      "canonical": "NR_RACH_ACCESS_SR",
+      "reason": "même KPI, deux dénominations dans le xlsx"
+    },
+    {
+      "alias": "NR_RRC_SR",
+      "canonical": "NR_RRC_SETUP_SR",
+      "reason": "même KPI, deux dénominations dans le xlsx"
+    }
+  ],
+  "entries": [
+    {
+      "code": "AGG_APP_DL_THR",
+      "name": "Débit APP DL agrégé",
+      "techno": "AGGREGATE",
+      "nature": "Métrique mesurée",
+      "family": "Débit applicatif",
+      "aliases": [],
+      "formula": "percentile_cont sur measurement_points.dl (tous opérateurs)",
+      "source": "measurement_points.dl (DSUMMARY-derived)",
+      "unit": "Mbit/s",
+      "available_check": {
+        "kind": "mp_metric",
+        "arg": "dl",
+        "reason_if_null": "measurement_points.dl NULL partout — mapping DSUMMARY non prouvé (lot 0.39.0 en cours)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "AGG_APP_LATENCY",
+      "name": "Latence applicative",
+      "techno": "AGGREGATE",
+      "nature": "Métrique mesurée",
+      "family": "Latence",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : règle non définie)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "métrique mesurée AGG_APP_LATENCY sans mapping prouvé côté décodeur."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "AGG_APP_UL_THR",
+      "name": "Débit APP UL agrégé",
+      "techno": "AGGREGATE",
+      "nature": "Métrique mesurée",
+      "family": "Débit applicatif",
+      "aliases": [],
+      "formula": "percentile_cont sur measurement_points.thrpt_ul (tous opérateurs)",
+      "source": "measurement_points.thrpt_ul (DSUMMARY-derived)",
+      "unit": "Mbit/s",
+      "available_check": {
+        "kind": "mp_metric",
+        "arg": "thrpt_ul",
+        "reason_if_null": "measurement_points.thrpt_ul NULL partout — mapping DSUMMARY non prouvé (lot 0.39.0 en cours)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "AGG_DMS_DL_30_MBPS",
+      "name": "DMS DL 30 Mbit/s",
+      "techno": "AGGREGATE",
+      "nature": "KPI calculé",
+      "family": "DMS DL",
+      "aliases": [],
+      "formula": "100 × count(measurement_points.dl ≥ 30) / count(measurement_points.dl IS NOT NULL)",
+      "source": "measurement_points.dl (Mbit/s)",
+      "unit": "%",
+      "available_check": {
+        "kind": "mp_metric",
+        "arg": "dl",
+        "reason_if_null": "measurement_points.dl NULL partout — mapping DSUMMARY non prouvé (écart 0.24.0, lot 0.39.0 en cours)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "AGG_DMS_DL_3_MBPS",
+      "name": "DMS DL 3 Mbit/s",
+      "techno": "AGGREGATE",
+      "nature": "KPI calculé",
+      "family": "DMS DL",
+      "aliases": [],
+      "formula": "100 × count(measurement_points.dl ≥ 3) / count(measurement_points.dl IS NOT NULL)",
+      "source": "measurement_points.dl (Mbit/s)",
+      "unit": "%",
+      "available_check": {
+        "kind": "mp_metric",
+        "arg": "dl",
+        "reason_if_null": "measurement_points.dl NULL partout — mapping DSUMMARY non prouvé (écart 0.24.0, lot 0.39.0 en cours)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "AGG_DMS_DL_8_MBPS",
+      "name": "DMS DL 8 Mbit/s",
+      "techno": "AGGREGATE",
+      "nature": "KPI calculé",
+      "family": "DMS DL",
+      "aliases": [],
+      "formula": "100 × count(measurement_points.dl ≥ 8) / count(measurement_points.dl IS NOT NULL)",
+      "source": "measurement_points.dl (Mbit/s)",
+      "unit": "%",
+      "available_check": {
+        "kind": "mp_metric",
+        "arg": "dl",
+        "reason_if_null": "measurement_points.dl NULL partout — mapping DSUMMARY non prouvé (écart 0.24.0, lot 0.39.0 en cours)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "AGG_DMS_UL_1_MBPS",
+      "name": "DMS UL 1 Mbit/s",
+      "techno": "AGGREGATE",
+      "nature": "KPI calculé",
+      "family": "DMS UL",
+      "aliases": [],
+      "formula": "100 × count(measurement_points.thrpt_ul ≥ 1) / count(measurement_points.thrpt_ul IS NOT NULL)",
+      "source": "measurement_points.thrpt_ul (Mbit/s)",
+      "unit": "%",
+      "available_check": {
+        "kind": "mp_metric",
+        "arg": "thrpt_ul",
+        "reason_if_null": "measurement_points.thrpt_ul NULL partout — mapping DSUMMARY non prouvé (écart 0.24.0, lot 0.39.0 en cours)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "AGG_DMS_UL_3_MBPS",
+      "name": "DMS UL 3 Mbit/s",
+      "techno": "AGGREGATE",
+      "nature": "KPI calculé",
+      "family": "DMS UL",
+      "aliases": [],
+      "formula": "100 × count(measurement_points.thrpt_ul ≥ 3) / count(measurement_points.thrpt_ul IS NOT NULL)",
+      "source": "measurement_points.thrpt_ul (Mbit/s)",
+      "unit": "%",
+      "available_check": {
+        "kind": "mp_metric",
+        "arg": "thrpt_ul",
+        "reason_if_null": "measurement_points.thrpt_ul NULL partout — mapping DSUMMARY non prouvé (écart 0.24.0, lot 0.39.0 en cours)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "ENDC_DL_DATA_ATTEMPTS",
+      "name": "EN-DC DL Data Transfer Attempts",
+      "techno": "ENDC",
+      "nature": "Compteur",
+      "family": "DL",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF ENDC ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "ENDC_DL_DATA_FAILURES",
+      "name": "EN-DC DL Data Transfer Failures",
+      "techno": "ENDC",
+      "nature": "Compteur",
+      "family": "DL",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF ENDC ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "ENDC_DL_DATA_SR",
+      "name": "EN-DC DL Data Transfer Success Rate",
+      "techno": "ENDC",
+      "nature": "KPI calculé",
+      "family": "DL",
+      "aliases": [],
+      "formula": "100 × SUCCESS / ATTEMPTS (frères Compteur du catalogue)",
+      "source": "(compteurs frères — contrat non certifié)",
+      "unit": "%",
+      "available_check": {
+        "kind": "always_unvalidated",
+        "reason": "le contrat tentative/réussite/échec n'est pas certifié par le décodeur 2.0.0 ; un taux n'est pas calculé tant que ses frères ne sont pas prouvés."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "ENDC_DL_DATA_SUCCESS",
+      "name": "EN-DC DL Data Transfer Success",
+      "techno": "ENDC",
+      "nature": "Compteur",
+      "family": "DL",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF ENDC ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "ENDC_DL_DATA_VOLUME",
+      "name": "EN-DC DL Application Data Volume",
+      "techno": "ENDC",
+      "nature": "Métrique mesurée",
+      "family": "DL",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF ENDC ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "ENDC_LAT_HTTP_RESPONSE",
+      "name": "EN-DC HTTP Response Time",
+      "techno": "ENDC",
+      "nature": "Métrique mesurée",
+      "family": "Latence",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF ENDC ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "ENDC_LAT_RTT",
+      "name": "EN-DC Round Trip Time",
+      "techno": "ENDC",
+      "nature": "Métrique mesurée",
+      "family": "Latence",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF ENDC ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "ENDC_LAT_TRANSFER_SETUP",
+      "name": "EN-DC Data Transfer Setup Time",
+      "techno": "ENDC",
+      "nature": "Métrique mesurée",
+      "family": "Latence",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF ENDC ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "ENDC_LTE_CONTRIBUTION",
+      "name": "EN-DC LTE Contribution",
+      "techno": "ENDC",
+      "nature": "Métrique mesurée",
+      "family": "Data",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF ENDC ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "ENDC_MCG_MOBILITY",
+      "name": "EN-DC MCG Mobility Rate",
+      "techno": "ENDC",
+      "nature": "KPI calculé",
+      "family": "Mobilité",
+      "aliases": [],
+      "formula": "100 × SUCCESS / ATTEMPTS (frères Compteur du catalogue)",
+      "source": "(compteurs frères — contrat non certifié)",
+      "unit": "%",
+      "available_check": {
+        "kind": "always_unvalidated",
+        "reason": "le contrat tentative/réussite/échec n'est pas certifié par le décodeur 2.0.0 ; un taux n'est pas calculé tant que ses frères ne sont pas prouvés."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "ENDC_NR_CONTRIBUTION",
+      "name": "EN-DC NR Contribution",
+      "techno": "ENDC",
+      "nature": "Métrique mesurée",
+      "family": "Data",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF ENDC ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "ENDC_NR_USAGE_RATIO",
+      "name": "EN-DC NR Usage Ratio Rate",
+      "techno": "ENDC",
+      "nature": "KPI calculé",
+      "family": "Usage",
+      "aliases": [],
+      "formula": "100 × SUCCESS / ATTEMPTS (frères Compteur du catalogue)",
+      "source": "(compteurs frères — contrat non certifié)",
+      "unit": "%",
+      "available_check": {
+        "kind": "always_unvalidated",
+        "reason": "le contrat tentative/réussite/échec n'est pas certifié par le décodeur 2.0.0 ; un taux n'est pas calculé tant que ses frères ne sont pas prouvés."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "ENDC_PSCELL_CHANGE",
+      "name": "EN-DC PSCell Change Rate",
+      "techno": "ENDC",
+      "nature": "KPI calculé",
+      "family": "Mobilité",
+      "aliases": [],
+      "formula": "100 × SUCCESS / ATTEMPTS (frères Compteur du catalogue)",
+      "source": "(compteurs frères — contrat non certifié)",
+      "unit": "%",
+      "available_check": {
+        "kind": "always_unvalidated",
+        "reason": "le contrat tentative/réussite/échec n'est pas certifié par le décodeur 2.0.0 ; un taux n'est pas calculé tant que ses frères ne sont pas prouvés."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "ENDC_SCG_ACTIVE_TIME",
+      "name": "EN-DC SCG Active Time",
+      "techno": "ENDC",
+      "nature": "Métrique mesurée",
+      "family": "Usage",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF ENDC ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "ENDC_SCG_ADDITION",
+      "name": "EN-DC SCG Addition Rate",
+      "techno": "ENDC",
+      "nature": "KPI calculé",
+      "family": "SCG",
+      "aliases": [],
+      "formula": "100 × SUCCESS / ATTEMPTS (frères Compteur du catalogue)",
+      "source": "(compteurs frères — contrat non certifié)",
+      "unit": "%",
+      "available_check": {
+        "kind": "always_unvalidated",
+        "reason": "le contrat tentative/réussite/échec n'est pas certifié par le décodeur 2.0.0 ; un taux n'est pas calculé tant que ses frères ne sont pas prouvés."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "ENDC_SCG_FAILURE",
+      "name": "EN-DC SCG Failure Rate",
+      "techno": "ENDC",
+      "nature": "KPI calculé",
+      "family": "SCG",
+      "aliases": [],
+      "formula": "100 × SUCCESS / ATTEMPTS (frères Compteur du catalogue)",
+      "source": "(compteurs frères — contrat non certifié)",
+      "unit": "%",
+      "available_check": {
+        "kind": "always_unvalidated",
+        "reason": "le contrat tentative/réussite/échec n'est pas certifié par le décodeur 2.0.0 ; un taux n'est pas calculé tant que ses frères ne sont pas prouvés."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "ENDC_SCG_MOBILITY",
+      "name": "EN-DC SCG Mobility Rate",
+      "techno": "ENDC",
+      "nature": "KPI calculé",
+      "family": "Mobilité",
+      "aliases": [],
+      "formula": "100 × SUCCESS / ATTEMPTS (frères Compteur du catalogue)",
+      "source": "(compteurs frères — contrat non certifié)",
+      "unit": "%",
+      "available_check": {
+        "kind": "always_unvalidated",
+        "reason": "le contrat tentative/réussite/échec n'est pas certifié par le décodeur 2.0.0 ; un taux n'est pas calculé tant que ses frères ne sont pas prouvés."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "ENDC_SCG_RELEASE",
+      "name": "EN-DC SCG Release Rate",
+      "techno": "ENDC",
+      "nature": "KPI calculé",
+      "family": "SCG",
+      "aliases": [],
+      "formula": "100 × SUCCESS / ATTEMPTS (frères Compteur du catalogue)",
+      "source": "(compteurs frères — contrat non certifié)",
+      "unit": "%",
+      "available_check": {
+        "kind": "always_unvalidated",
+        "reason": "le contrat tentative/réussite/échec n'est pas certifié par le décodeur 2.0.0 ; un taux n'est pas calculé tant que ses frères ne sont pas prouvés."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "ENDC_SPLIT_BEARER_USAGE",
+      "name": "EN-DC Split Bearer Usage Rate",
+      "techno": "ENDC",
+      "nature": "KPI calculé",
+      "family": "Usage",
+      "aliases": [],
+      "formula": "100 × SUCCESS / ATTEMPTS (frères Compteur du catalogue)",
+      "source": "(compteurs frères — contrat non certifié)",
+      "unit": "%",
+      "available_check": {
+        "kind": "always_unvalidated",
+        "reason": "le contrat tentative/réussite/échec n'est pas certifié par le décodeur 2.0.0 ; un taux n'est pas calculé tant que ses frères ne sont pas prouvés."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "ENDC_TOTAL_THROUGHPUT",
+      "name": "EN-DC Total Throughput",
+      "techno": "ENDC",
+      "nature": "Métrique mesurée",
+      "family": "Data",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF ENDC ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "ENDC_UL_DATA_ATTEMPTS",
+      "name": "EN-DC UL Data Transfer Attempts",
+      "techno": "ENDC",
+      "nature": "Compteur",
+      "family": "UL",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF ENDC ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "ENDC_UL_DATA_FAILURES",
+      "name": "EN-DC UL Data Transfer Failures",
+      "techno": "ENDC",
+      "nature": "Compteur",
+      "family": "UL",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF ENDC ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "ENDC_UL_DATA_SR",
+      "name": "EN-DC UL Data Transfer Success Rate",
+      "techno": "ENDC",
+      "nature": "KPI calculé",
+      "family": "UL",
+      "aliases": [],
+      "formula": "100 × SUCCESS / ATTEMPTS (frères Compteur du catalogue)",
+      "source": "(compteurs frères — contrat non certifié)",
+      "unit": "%",
+      "available_check": {
+        "kind": "always_unvalidated",
+        "reason": "le contrat tentative/réussite/échec n'est pas certifié par le décodeur 2.0.0 ; un taux n'est pas calculé tant que ses frères ne sont pas prouvés."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "ENDC_UL_DATA_SUCCESS",
+      "name": "EN-DC UL Data Transfer Success",
+      "techno": "ENDC",
+      "nature": "Compteur",
+      "family": "UL",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF ENDC ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "ENDC_UL_DATA_VOLUME",
+      "name": "EN-DC UL Application Data Volume",
+      "techno": "ENDC",
+      "nature": "Métrique mesurée",
+      "family": "UL",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF ENDC ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "LTE_CALL_DROP_SR",
+      "name": "LTE Call Drop Success Rate",
+      "techno": "LTE",
+      "nature": "KPI calculé",
+      "family": "Voix",
+      "aliases": [],
+      "formula": "100 × SUCCESS / ATTEMPTS (frères Compteur du catalogue)",
+      "source": "(compteurs frères — contrat non certifié)",
+      "unit": "%",
+      "available_check": {
+        "kind": "always_unvalidated",
+        "reason": "le contrat tentative/réussite/échec n'est pas certifié par le décodeur 2.0.0 ; un taux n'est pas calculé tant que ses frères ne sont pas prouvés."
+      },
+      "service_scope": [
+        "VOICE"
+      ]
+    },
+    {
+      "code": "LTE_CA_CA_ACTIVE_RATIO",
+      "name": "LTE CA Active Ratio",
+      "techno": "LTE",
+      "nature": "Métrique mesurée",
+      "family": "Carrier Aggregation",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : règle non définie)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "métrique mesurée LTE_CA_CA_ACTIVE_RATIO sans mapping prouvé côté décodeur."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "LTE_CA_CA_BAND_COMBINATIONS",
+      "name": "LTE CA Band Combinations",
+      "techno": "LTE",
+      "nature": "Métrique mesurée",
+      "family": "Carrier Aggregation",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : règle non définie)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "métrique mesurée LTE_CA_CA_BAND_COMBINATIONS sans mapping prouvé côté décodeur."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "LTE_CA_CA_CONFIGURED",
+      "name": "LTE CA Configured",
+      "techno": "LTE",
+      "nature": "Métrique mesurée",
+      "family": "Carrier Aggregation",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : règle non définie)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "métrique mesurée LTE_CA_CA_CONFIGURED sans mapping prouvé côté décodeur."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "LTE_CA_COMPONENT_CARRIERS",
+      "name": "LTE Component Carriers",
+      "techno": "LTE",
+      "nature": "Métrique mesurée",
+      "family": "Carrier Aggregation",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : règle non définie)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "métrique mesurée LTE_CA_COMPONENT_CARRIERS sans mapping prouvé côté décodeur."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "LTE_CA_PCELL_SCELL_THROUGHPUT",
+      "name": "LTE PCell / SCell Throughput",
+      "techno": "LTE",
+      "nature": "Métrique mesurée",
+      "family": "Carrier Aggregation",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : règle non définie)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "métrique mesurée LTE_CA_PCELL_SCELL_THROUGHPUT sans mapping prouvé côté décodeur."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "LTE_CELL_RESELECTION_SR",
+      "name": "LTE Cell Reselection Success Rate",
+      "techno": "LTE",
+      "nature": "KPI calculé",
+      "family": "Mobilité",
+      "aliases": [],
+      "formula": "100 × SUCCESS / ATTEMPTS (frères Compteur du catalogue)",
+      "source": "(compteurs frères — contrat non certifié)",
+      "unit": "%",
+      "available_check": {
+        "kind": "always_unvalidated",
+        "reason": "le contrat tentative/réussite/échec n'est pas certifié par le décodeur 2.0.0 ; un taux n'est pas calculé tant que ses frères ne sont pas prouvés."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "LTE_DL_APPLICATION_THR",
+      "name": "LTE DL Application Throughput",
+      "techno": "LTE",
+      "nature": "Métrique mesurée",
+      "family": "DL",
+      "aliases": [],
+      "formula": "percentile_cont sur measurement_points.dl",
+      "source": "measurement_points.dl",
+      "unit": "Mbit/s",
+      "available_check": {
+        "kind": "mp_metric",
+        "arg": "dl",
+        "reason_if_null": "measurement_points.dl NULL partout — mapping décodeur non prouvé (écart 0.24.0 / 0.25.0, lot 0.39.0 en cours)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "LTE_DL_BLER",
+      "name": "LTE DL BLER",
+      "techno": "LTE",
+      "nature": "Métrique mesurée",
+      "family": "DL",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : règle non définie)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "métrique mesurée LTE_DL_BLER sans mapping prouvé côté décodeur."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "LTE_DL_DATA_ATTEMPTS",
+      "name": "LTE DL Data Transfer Attempts",
+      "techno": "LTE",
+      "nature": "Compteur",
+      "family": "DL",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : event / position non prouvée)",
+      "unit": "occurrences",
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "compteur DL_DATA_ATTEMPTS non adossé à un event prouvé par le décodeur 2.0.0 (écarts 0.24.0 / 0.33.0 : RACH/E-RAB/DATA_* et HO par type intra/inter/irat sans distinction certifiée)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "LTE_DL_DATA_FAILURES",
+      "name": "LTE DL Data Transfer Failures",
+      "techno": "LTE",
+      "nature": "Compteur",
+      "family": "DL",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : event / position non prouvée)",
+      "unit": "occurrences",
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "compteur DL_DATA_FAILURES non adossé à un event prouvé par le décodeur 2.0.0 (écarts 0.24.0 / 0.33.0 : RACH/E-RAB/DATA_* et HO par type intra/inter/irat sans distinction certifiée)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "LTE_DL_DATA_SUCCESS",
+      "name": "LTE DL Data Transfer Success",
+      "techno": "LTE",
+      "nature": "Compteur",
+      "family": "DL",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : event / position non prouvée)",
+      "unit": "occurrences",
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "compteur DL_DATA_SUCCESS non adossé à un event prouvé par le décodeur 2.0.0 (écarts 0.24.0 / 0.33.0 : RACH/E-RAB/DATA_* et HO par type intra/inter/irat sans distinction certifiée)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "LTE_DL_DATA_VOLUME",
+      "name": "LTE DL Application Data Volume",
+      "techno": "LTE",
+      "nature": "Métrique mesurée",
+      "family": "DL",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : règle non définie)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "métrique mesurée LTE_DL_DATA_VOLUME sans mapping prouvé côté décodeur."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "LTE_DL_MAC_THR",
+      "name": "LTE DL MAC Throughput",
+      "techno": "LTE",
+      "nature": "Métrique mesurée",
+      "family": "DL",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : règle non définie)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "métrique mesurée LTE_DL_MAC_THR sans mapping prouvé côté décodeur."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "LTE_DL_MCS",
+      "name": "LTE DL MCS",
+      "techno": "LTE",
+      "nature": "Métrique mesurée",
+      "family": "DL",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : règle non définie)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "métrique mesurée LTE_DL_MCS sans mapping prouvé côté décodeur."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "LTE_DL_PDCP_THR",
+      "name": "LTE DL PDCP Throughput",
+      "techno": "LTE",
+      "nature": "Métrique mesurée",
+      "family": "DL",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : règle non définie)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "métrique mesurée LTE_DL_PDCP_THR sans mapping prouvé côté décodeur."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "LTE_DL_PHY_THR",
+      "name": "LTE DL PHY Throughput",
+      "techno": "LTE",
+      "nature": "Métrique mesurée",
+      "family": "DL",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : règle non définie)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "métrique mesurée LTE_DL_PHY_THR sans mapping prouvé côté décodeur."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "LTE_DL_PRB_UTILIZATION",
+      "name": "LTE DL PRB Utilization",
+      "techno": "LTE",
+      "nature": "Métrique mesurée",
+      "family": "DL",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : règle non définie)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "métrique mesurée LTE_DL_PRB_UTILIZATION sans mapping prouvé côté décodeur."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "LTE_DL_RLC_THR",
+      "name": "LTE DL RLC Throughput",
+      "techno": "LTE",
+      "nature": "Métrique mesurée",
+      "family": "DL",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : règle non définie)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "métrique mesurée LTE_DL_RLC_THR sans mapping prouvé côté décodeur."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "LTE_EPS_ATTACH_SR",
+      "name": "LTE EPS Attach Success Rate",
+      "techno": "LTE",
+      "nature": "KPI calculé",
+      "family": "Accessibilité",
+      "aliases": [],
+      "formula": "100 × SUCCESS / ATTEMPTS (frères Compteur du catalogue)",
+      "source": "(compteurs frères — contrat non certifié)",
+      "unit": "%",
+      "available_check": {
+        "kind": "always_unvalidated",
+        "reason": "le contrat tentative/réussite/échec n'est pas certifié par le décodeur 2.0.0 ; un taux n'est pas calculé tant que ses frères ne sont pas prouvés."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "LTE_ERAB_ATTEMPTS",
+      "name": "LTE RAB / E-RAB Setup Attempts",
+      "techno": "LTE",
+      "nature": "Compteur",
+      "family": "Bearers",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : event / position non prouvée)",
+      "unit": "occurrences",
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "compteur ERAB_ATTEMPTS non adossé à un event prouvé par le décodeur 2.0.0 (écarts 0.24.0 / 0.33.0 : RACH/E-RAB/DATA_* et HO par type intra/inter/irat sans distinction certifiée)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "LTE_ERAB_FAILURES",
+      "name": "LTE RAB / E-RAB Setup Failures",
+      "techno": "LTE",
+      "nature": "Compteur",
+      "family": "Bearers",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : event / position non prouvée)",
+      "unit": "occurrences",
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "compteur ERAB_FAILURES non adossé à un event prouvé par le décodeur 2.0.0 (écarts 0.24.0 / 0.33.0 : RACH/E-RAB/DATA_* et HO par type intra/inter/irat sans distinction certifiée)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "LTE_ERAB_LATENCY",
+      "name": "LTE RAB / E-RAB Setup Latency",
+      "techno": "LTE",
+      "nature": "Métrique mesurée",
+      "family": "Bearers",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : règle non définie)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "métrique mesurée LTE_ERAB_LATENCY sans mapping prouvé côté décodeur."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "LTE_ERAB_SR",
+      "name": "LTE RAB / E-RAB Setup Success Rate",
+      "techno": "LTE",
+      "nature": "KPI calculé",
+      "family": "Bearers",
+      "aliases": [],
+      "formula": "100 × SUCCESS / ATTEMPTS (frères Compteur du catalogue)",
+      "source": "(compteurs frères — contrat non certifié)",
+      "unit": "%",
+      "available_check": {
+        "kind": "always_unvalidated",
+        "reason": "le contrat tentative/réussite/échec n'est pas certifié par le décodeur 2.0.0 ; un taux n'est pas calculé tant que ses frères ne sont pas prouvés."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "LTE_ERAB_SUCCESS",
+      "name": "LTE RAB / E-RAB Setup Success",
+      "techno": "LTE",
+      "nature": "Compteur",
+      "family": "Bearers",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : event / position non prouvée)",
+      "unit": "occurrences",
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "compteur ERAB_SUCCESS non adossé à un event prouvé par le décodeur 2.0.0 (écarts 0.24.0 / 0.33.0 : RACH/E-RAB/DATA_* et HO par type intra/inter/irat sans distinction certifiée)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "LTE_HANDOVER_EXECUTION_TIME_TIME",
+      "name": "LTE Handover Execution Time",
+      "techno": "LTE",
+      "nature": "KPI calculé",
+      "family": "Mobilité",
+      "aliases": [],
+      "formula": "100 × SUCCESS / ATTEMPTS (frères Compteur du catalogue)",
+      "source": "(compteurs frères — contrat non certifié)",
+      "unit": "%",
+      "available_check": {
+        "kind": "always_unvalidated",
+        "reason": "le contrat tentative/réussite/échec n'est pas certifié par le décodeur 2.0.0 ; un taux n'est pas calculé tant que ses frères ne sont pas prouvés."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "LTE_HO_COUNT",
+      "name": "LTE Handover Count",
+      "techno": "LTE",
+      "nature": "Compteur",
+      "family": "Mobilité",
+      "aliases": [],
+      "formula": "COUNT(DISTINCT stg_event_id) WHERE path LIKE '%mobilityControlInfo%'",
+      "source": "param_occurrence (path LIKE %mobilityControlInfo%)",
+      "unit": "occurrences",
+      "available_check": {
+        "kind": "param_path_ilike",
+        "arg": "%mobilityControlInfo%",
+        "reason_if_absent": "aucun handover décodé dans ce projet"
+      },
+      "service_scope": []
+    },
+    {
+      "code": "LTE_HO_INTER_ATTEMPTS",
+      "name": "LTE Inter-frequency HO Attempts",
+      "techno": "LTE",
+      "nature": "Compteur",
+      "family": "Mobilité",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : event / position non prouvée)",
+      "unit": "occurrences",
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "compteur HO_INTER_ATTEMPTS non adossé à un event prouvé par le décodeur 2.0.0 (écarts 0.24.0 / 0.33.0 : RACH/E-RAB/DATA_* et HO par type intra/inter/irat sans distinction certifiée)."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "LTE_HO_INTER_FAILURES",
+      "name": "LTE Inter-frequency HO Failures",
+      "techno": "LTE",
+      "nature": "Compteur",
+      "family": "Mobilité",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : event / position non prouvée)",
+      "unit": "occurrences",
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "compteur HO_INTER_FAILURES non adossé à un event prouvé par le décodeur 2.0.0 (écarts 0.24.0 / 0.33.0 : RACH/E-RAB/DATA_* et HO par type intra/inter/irat sans distinction certifiée)."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "LTE_HO_INTER_LATENCY",
+      "name": "LTE Inter-frequency HO Execution Latency",
+      "techno": "LTE",
+      "nature": "Métrique mesurée",
+      "family": "Mobilité",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : règle non définie)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "métrique mesurée LTE_HO_INTER_LATENCY sans mapping prouvé côté décodeur."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "LTE_HO_INTER_SR",
+      "name": "LTE Inter-frequency HO Success Rate",
+      "techno": "LTE",
+      "nature": "KPI calculé",
+      "family": "Mobilité",
+      "aliases": [
+        "LTE_INTER_FREQUENCY_HANDOVER_SR"
+      ],
+      "formula": "100 × SUCCESS / ATTEMPTS (frères Compteur du catalogue)",
+      "source": "(compteurs frères — contrat non certifié)",
+      "unit": "%",
+      "available_check": {
+        "kind": "always_unvalidated",
+        "reason": "le contrat tentative/réussite/échec n'est pas certifié par le décodeur 2.0.0 ; un taux n'est pas calculé tant que ses frères ne sont pas prouvés."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "LTE_HO_INTER_SUCCESS",
+      "name": "LTE Inter-frequency HO Success",
+      "techno": "LTE",
+      "nature": "Compteur",
+      "family": "Mobilité",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : event / position non prouvée)",
+      "unit": "occurrences",
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "compteur HO_INTER_SUCCESS non adossé à un event prouvé par le décodeur 2.0.0 (écarts 0.24.0 / 0.33.0 : RACH/E-RAB/DATA_* et HO par type intra/inter/irat sans distinction certifiée)."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "LTE_HO_INTRA_ATTEMPTS",
+      "name": "LTE Intra-frequency HO Attempts",
+      "techno": "LTE",
+      "nature": "Compteur",
+      "family": "Mobilité",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : event / position non prouvée)",
+      "unit": "occurrences",
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "compteur HO_INTRA_ATTEMPTS non adossé à un event prouvé par le décodeur 2.0.0 (écarts 0.24.0 / 0.33.0 : RACH/E-RAB/DATA_* et HO par type intra/inter/irat sans distinction certifiée)."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "LTE_HO_INTRA_FAILURES",
+      "name": "LTE Intra-frequency HO Failures",
+      "techno": "LTE",
+      "nature": "Compteur",
+      "family": "Mobilité",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : event / position non prouvée)",
+      "unit": "occurrences",
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "compteur HO_INTRA_FAILURES non adossé à un event prouvé par le décodeur 2.0.0 (écarts 0.24.0 / 0.33.0 : RACH/E-RAB/DATA_* et HO par type intra/inter/irat sans distinction certifiée)."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "LTE_HO_INTRA_LATENCY",
+      "name": "LTE Intra-frequency HO Execution Latency",
+      "techno": "LTE",
+      "nature": "Métrique mesurée",
+      "family": "Mobilité",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : règle non définie)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "métrique mesurée LTE_HO_INTRA_LATENCY sans mapping prouvé côté décodeur."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "LTE_HO_INTRA_SR",
+      "name": "LTE Intra-frequency HO Success Rate",
+      "techno": "LTE",
+      "nature": "KPI calculé",
+      "family": "Mobilité",
+      "aliases": [
+        "LTE_INTRA_FREQUENCY_HANDOVER_SR"
+      ],
+      "formula": "100 × SUCCESS / ATTEMPTS (frères Compteur du catalogue)",
+      "source": "(compteurs frères — contrat non certifié)",
+      "unit": "%",
+      "available_check": {
+        "kind": "always_unvalidated",
+        "reason": "le contrat tentative/réussite/échec n'est pas certifié par le décodeur 2.0.0 ; un taux n'est pas calculé tant que ses frères ne sont pas prouvés."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "LTE_HO_INTRA_SUCCESS",
+      "name": "LTE Intra-frequency HO Success",
+      "techno": "LTE",
+      "nature": "Compteur",
+      "family": "Mobilité",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : event / position non prouvée)",
+      "unit": "occurrences",
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "compteur HO_INTRA_SUCCESS non adossé à un event prouvé par le décodeur 2.0.0 (écarts 0.24.0 / 0.33.0 : RACH/E-RAB/DATA_* et HO par type intra/inter/irat sans distinction certifiée)."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "LTE_HO_IRAT_ATTEMPTS",
+      "name": "LTE Inter-RAT HO Attempts",
+      "techno": "LTE",
+      "nature": "Compteur",
+      "family": "Mobilité",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : event / position non prouvée)",
+      "unit": "occurrences",
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "compteur HO_IRAT_ATTEMPTS non adossé à un event prouvé par le décodeur 2.0.0 (écarts 0.24.0 / 0.33.0 : RACH/E-RAB/DATA_* et HO par type intra/inter/irat sans distinction certifiée)."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "LTE_HO_IRAT_FAILURES",
+      "name": "LTE Inter-RAT HO Failures",
+      "techno": "LTE",
+      "nature": "Compteur",
+      "family": "Mobilité",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : event / position non prouvée)",
+      "unit": "occurrences",
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "compteur HO_IRAT_FAILURES non adossé à un event prouvé par le décodeur 2.0.0 (écarts 0.24.0 / 0.33.0 : RACH/E-RAB/DATA_* et HO par type intra/inter/irat sans distinction certifiée)."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "LTE_HO_IRAT_LATENCY",
+      "name": "LTE Inter-RAT HO Execution Latency",
+      "techno": "LTE",
+      "nature": "Métrique mesurée",
+      "family": "Mobilité",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : règle non définie)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "métrique mesurée LTE_HO_IRAT_LATENCY sans mapping prouvé côté décodeur."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "LTE_HO_IRAT_SR",
+      "name": "LTE Inter-RAT HO Success Rate",
+      "techno": "LTE",
+      "nature": "KPI calculé",
+      "family": "Mobilité",
+      "aliases": [
+        "LTE_INTER_RAT_HANDOVER_SR"
+      ],
+      "formula": "100 × SUCCESS / ATTEMPTS (frères Compteur du catalogue)",
+      "source": "(compteurs frères — contrat non certifié)",
+      "unit": "%",
+      "available_check": {
+        "kind": "always_unvalidated",
+        "reason": "le contrat tentative/réussite/échec n'est pas certifié par le décodeur 2.0.0 ; un taux n'est pas calculé tant que ses frères ne sont pas prouvés."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "LTE_HO_IRAT_SUCCESS",
+      "name": "LTE Inter-RAT HO Success",
+      "techno": "LTE",
+      "nature": "Compteur",
+      "family": "Mobilité",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : event / position non prouvée)",
+      "unit": "occurrences",
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "compteur HO_IRAT_SUCCESS non adossé à un event prouvé par le décodeur 2.0.0 (écarts 0.24.0 / 0.33.0 : RACH/E-RAB/DATA_* et HO par type intra/inter/irat sans distinction certifiée)."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "LTE_HTTP_DL_TRANSFER_SR",
+      "name": "LTE HTTP DL Transfer Success Rate",
+      "techno": "LTE",
+      "nature": "KPI calculé",
+      "family": "Data",
+      "aliases": [
+        "LTE_DL_DATA_SR"
+      ],
+      "formula": "100 × SUCCESS / ATTEMPTS (frères Compteur du catalogue)",
+      "source": "(compteurs frères — contrat non certifié)",
+      "unit": "%",
+      "available_check": {
+        "kind": "always_unvalidated",
+        "reason": "le contrat tentative/réussite/échec n'est pas certifié par le décodeur 2.0.0 ; un taux n'est pas calculé tant que ses frères ne sont pas prouvés."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "LTE_HTTP_UL_TRANSFER_SR",
+      "name": "LTE HTTP UL Transfer Success Rate",
+      "techno": "LTE",
+      "nature": "KPI calculé",
+      "family": "Data",
+      "aliases": [
+        "LTE_UL_DATA_SR"
+      ],
+      "formula": "100 × SUCCESS / ATTEMPTS (frères Compteur du catalogue)",
+      "source": "(compteurs frères — contrat non certifié)",
+      "unit": "%",
+      "available_check": {
+        "kind": "always_unvalidated",
+        "reason": "le contrat tentative/réussite/échec n'est pas certifié par le décodeur 2.0.0 ; un taux n'est pas calculé tant que ses frères ne sont pas prouvés."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "LTE_LAT_HTTP_RESPONSE",
+      "name": "LTE HTTP Response Time",
+      "techno": "LTE",
+      "nature": "Métrique mesurée",
+      "family": "Latence",
+      "aliases": [],
+      "formula": "percentile_cont sur measurement_points.latency",
+      "source": "measurement_points.latency (si DAA/DCOMP mappés)",
+      "unit": "ms",
+      "available_check": {
+        "kind": "mp_metric",
+        "arg": "latency",
+        "reason_if_null": "measurement_points.latency NULL partout — latence pas encore extraite des events data_* (écart 0.24.0)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "LTE_LAT_RTT",
+      "name": "LTE Round Trip Time",
+      "techno": "LTE",
+      "nature": "Métrique mesurée",
+      "family": "Latence",
+      "aliases": [],
+      "formula": "percentile_cont sur measurement_points.latency",
+      "source": "measurement_points.latency (si DAA/DCOMP mappés)",
+      "unit": "ms",
+      "available_check": {
+        "kind": "mp_metric",
+        "arg": "latency",
+        "reason_if_null": "measurement_points.latency NULL partout — latence pas encore extraite des events data_* (écart 0.24.0)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "LTE_LAT_TRANSFER_SETUP",
+      "name": "LTE Data Transfer Setup Time",
+      "techno": "LTE",
+      "nature": "Métrique mesurée",
+      "family": "Latence",
+      "aliases": [],
+      "formula": "percentile_cont sur measurement_points.latency",
+      "source": "measurement_points.latency (si DAA/DCOMP mappés)",
+      "unit": "ms",
+      "available_check": {
+        "kind": "mp_metric",
+        "arg": "latency",
+        "reason_if_null": "measurement_points.latency NULL partout — latence pas encore extraite des events data_* (écart 0.24.0)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "LTE_MIMO_MIMO_LAYERS",
+      "name": "LTE MIMO Layers",
+      "techno": "LTE",
+      "nature": "Métrique mesurée",
+      "family": "MIMO",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : règle non définie)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "métrique mesurée LTE_MIMO_MIMO_LAYERS sans mapping prouvé côté décodeur."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "LTE_MIMO_MODULATION_DISTRIBUTION",
+      "name": "LTE Modulation Distribution",
+      "techno": "LTE",
+      "nature": "Métrique mesurée",
+      "family": "MIMO",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : règle non définie)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "métrique mesurée LTE_MIMO_MODULATION_DISTRIBUTION sans mapping prouvé côté décodeur."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "LTE_MIMO_RI_DISTRIBUTION",
+      "name": "LTE RI Distribution",
+      "techno": "LTE",
+      "nature": "Métrique mesurée",
+      "family": "MIMO",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : règle non définie)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "métrique mesurée LTE_MIMO_RI_DISTRIBUTION sans mapping prouvé côté décodeur."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "LTE_MIMO_SPECTRAL_EFFICIENCY",
+      "name": "LTE Spectral Efficiency",
+      "techno": "LTE",
+      "nature": "Métrique mesurée",
+      "family": "MIMO",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : règle non définie)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "métrique mesurée LTE_MIMO_SPECTRAL_EFFICIENCY sans mapping prouvé côté décodeur."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "LTE_RACH_ACCESS_SR",
+      "name": "LTE RACH Access Success Rate",
+      "techno": "LTE",
+      "nature": "KPI calculé",
+      "family": "Accessibilité",
+      "aliases": [
+        "LTE_RACH_SR"
+      ],
+      "formula": "100 × SUCCESS / ATTEMPTS (frères Compteur du catalogue)",
+      "source": "(compteurs frères — contrat non certifié)",
+      "unit": "%",
+      "available_check": {
+        "kind": "always_unvalidated",
+        "reason": "le contrat tentative/réussite/échec n'est pas certifié par le décodeur 2.0.0 ; un taux n'est pas calculé tant que ses frères ne sont pas prouvés."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "LTE_RACH_ATTEMPTS",
+      "name": "LTE RACH Attempts",
+      "techno": "LTE",
+      "nature": "Compteur",
+      "family": "Accessibilité",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : event / position non prouvée)",
+      "unit": "occurrences",
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "compteur RACH_ATTEMPTS non adossé à un event prouvé par le décodeur 2.0.0 (écarts 0.24.0 / 0.33.0 : RACH/E-RAB/DATA_* et HO par type intra/inter/irat sans distinction certifiée)."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "LTE_RACH_FAILURES",
+      "name": "LTE RACH Failures",
+      "techno": "LTE",
+      "nature": "Compteur",
+      "family": "Accessibilité",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : event / position non prouvée)",
+      "unit": "occurrences",
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "compteur RACH_FAILURES non adossé à un event prouvé par le décodeur 2.0.0 (écarts 0.24.0 / 0.33.0 : RACH/E-RAB/DATA_* et HO par type intra/inter/irat sans distinction certifiée)."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "LTE_RACH_SUCCESS",
+      "name": "LTE RACH Success",
+      "techno": "LTE",
+      "nature": "Compteur",
+      "family": "Accessibilité",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : event / position non prouvée)",
+      "unit": "occurrences",
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "compteur RACH_SUCCESS non adossé à un event prouvé par le décodeur 2.0.0 (écarts 0.24.0 / 0.33.0 : RACH/E-RAB/DATA_* et HO par type intra/inter/irat sans distinction certifiée)."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "LTE_RADIO_LINK_FAILURE_SR",
+      "name": "LTE Radio Link Failure Success Rate",
+      "techno": "LTE",
+      "nature": "KPI calculé",
+      "family": "Rétention",
+      "aliases": [],
+      "formula": "100 × SUCCESS / ATTEMPTS (frères Compteur du catalogue)",
+      "source": "(compteurs frères — contrat non certifié)",
+      "unit": "%",
+      "available_check": {
+        "kind": "always_unvalidated",
+        "reason": "le contrat tentative/réussite/échec n'est pas certifié par le décodeur 2.0.0 ; un taux n'est pas calculé tant que ses frères ne sont pas prouvés."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "LTE_RF_CQI",
+      "name": "LTE CQI",
+      "techno": "LTE",
+      "nature": "Métrique mesurée",
+      "family": "Qualité radio",
+      "aliases": [],
+      "formula": "percentile_cont sur measurement_points.cqi",
+      "source": "measurement_points.cqi",
+      "unit": "indice",
+      "available_check": {
+        "kind": "mp_metric",
+        "arg": "cqi",
+        "reason_if_null": "measurement_points.cqi NULL partout — mapping décodeur non prouvé (écart 0.24.0 / 0.25.0, lot 0.39.0 en cours)."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "LTE_RF_RSRP",
+      "name": "LTE RSRP",
+      "techno": "LTE",
+      "nature": "Métrique mesurée",
+      "family": "Qualité radio",
+      "aliases": [],
+      "formula": "percentile_cont sur CAST(value_converted AS DOUBLE PRECISION) filtré par path LIKE '%measResultPCell/rsrpResult'",
+      "source": "param_occurrence (path LIKE '%measResultPCell/rsrpResult', message='MeasurementReport' — RRC autoritaire, idx − 141 dBm (3GPP TS 36.133 §9.1.4))",
+      "unit": "dBm",
+      "available_check": {
+        "kind": "param_path_ilike",
+        "arg": "%measResultPCell/rsrpResult",
+        "reason_if_absent": "aucune occurrence RRC pour path LIKE '%measResultPCell/rsrpResult'"
+      },
+      "service_scope": []
+    },
+    {
+      "code": "LTE_RF_RSRQ",
+      "name": "LTE RSRQ",
+      "techno": "LTE",
+      "nature": "Métrique mesurée",
+      "family": "Qualité radio",
+      "aliases": [],
+      "formula": "percentile_cont sur CAST(value_converted AS DOUBLE PRECISION) filtré par path LIKE '%measResultPCell/rsrqResult'",
+      "source": "param_occurrence (path LIKE '%measResultPCell/rsrqResult', message='MeasurementReport' — RRC autoritaire, (idx / 2) − 20 dB (3GPP TS 36.133 §9.1.7))",
+      "unit": "dB",
+      "available_check": {
+        "kind": "param_path_ilike",
+        "arg": "%measResultPCell/rsrqResult",
+        "reason_if_absent": "aucune occurrence RRC pour path LIKE '%measResultPCell/rsrqResult'"
+      },
+      "service_scope": []
+    },
+    {
+      "code": "LTE_RF_RSSI",
+      "name": "LTE RSSI",
+      "techno": "LTE",
+      "nature": "Métrique mesurée",
+      "family": "Qualité radio",
+      "aliases": [],
+      "formula": "percentile_cont sur measurement_points.rssi",
+      "source": "measurement_points.rssi",
+      "unit": "dBm",
+      "available_check": {
+        "kind": "mp_metric",
+        "arg": "rssi",
+        "reason_if_null": "measurement_points.rssi NULL partout — mapping décodeur non prouvé (écart 0.24.0 / 0.25.0, lot 0.39.0 en cours)."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "LTE_RF_SINR",
+      "name": "LTE SINR",
+      "techno": "LTE",
+      "nature": "Métrique mesurée",
+      "family": "Qualité radio",
+      "aliases": [],
+      "formula": "percentile_cont sur measurement_points.sinr",
+      "source": "measurement_points.sinr",
+      "unit": "dB",
+      "available_check": {
+        "kind": "mp_metric",
+        "arg": "sinr",
+        "reason_if_null": "measurement_points.sinr NULL partout — mapping décodeur non prouvé (écart 0.24.0 / 0.25.0, lot 0.39.0 en cours)."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "LTE_RRC_ABNORMAL_RELEASE_SR",
+      "name": "LTE RRC Abnormal Release Success Rate",
+      "techno": "LTE",
+      "nature": "KPI calculé",
+      "family": "Rétention",
+      "aliases": [],
+      "formula": "100 × SUCCESS / ATTEMPTS (frères Compteur du catalogue)",
+      "source": "(compteurs frères — contrat non certifié)",
+      "unit": "%",
+      "available_check": {
+        "kind": "always_unvalidated",
+        "reason": "le contrat tentative/réussite/échec n'est pas certifié par le décodeur 2.0.0 ; un taux n'est pas calculé tant que ses frères ne sont pas prouvés."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "LTE_RRC_ATTEMPTS",
+      "name": "LTE RRC Connection Attempts",
+      "techno": "LTE",
+      "nature": "Compteur",
+      "family": "Accessibilité",
+      "aliases": [],
+      "formula": "COUNT(DISTINCT stg_event.id) WHERE message = 'RRCConnectionRequest'",
+      "source": "stg_event (message=RRCConnectionRequest)",
+      "unit": "occurrences",
+      "available_check": {
+        "kind": "param_message_eq",
+        "arg": "RRCConnectionRequest",
+        "reason_if_absent": "aucune occurrence RRC pour message='RRCConnectionRequest'"
+      },
+      "service_scope": []
+    },
+    {
+      "code": "LTE_RRC_FAILURES",
+      "name": "LTE RRC Connection Failures",
+      "techno": "LTE",
+      "nature": "Compteur",
+      "family": "Accessibilité",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : règle non définie)",
+      "unit": "occurrences",
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "compteur LTE_RRC_FAILURES sans règle de rattachement événementielle."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "LTE_RRC_REESTABLISHMENT_SR",
+      "name": "LTE RRC Reestablishment Success Rate",
+      "techno": "LTE",
+      "nature": "KPI calculé",
+      "family": "Rétention",
+      "aliases": [],
+      "formula": "100 × SUCCESS / ATTEMPTS (frères Compteur du catalogue)",
+      "source": "(compteurs frères — contrat non certifié)",
+      "unit": "%",
+      "available_check": {
+        "kind": "always_unvalidated",
+        "reason": "le contrat tentative/réussite/échec n'est pas certifié par le décodeur 2.0.0 ; un taux n'est pas calculé tant que ses frères ne sont pas prouvés."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "LTE_RRC_SETUP_COUNT",
+      "name": "LTE RRC Setup Count",
+      "techno": "LTE",
+      "nature": "Compteur",
+      "family": "Accessibilité",
+      "aliases": [],
+      "formula": "COUNT(DISTINCT stg_event.id) WHERE message = 'RRCConnectionSetup'",
+      "source": "stg_event (message=RRCConnectionSetup)",
+      "unit": "occurrences",
+      "available_check": {
+        "kind": "param_message_eq",
+        "arg": "RRCConnectionSetup",
+        "reason_if_absent": "aucune occurrence RRC pour message='RRCConnectionSetup'"
+      },
+      "service_scope": []
+    },
+    {
+      "code": "LTE_RRC_SETUP_LATENCY",
+      "name": "LTE RRC Setup Latency",
+      "techno": "LTE",
+      "nature": "Métrique mesurée",
+      "family": "Accessibilité",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : règle non définie)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "métrique mesurée LTE_RRC_SETUP_LATENCY sans mapping prouvé côté décodeur."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "LTE_RRC_SETUP_SR",
+      "name": "LTE RRC Setup Success Rate",
+      "techno": "LTE",
+      "nature": "KPI calculé",
+      "family": "Accessibilité",
+      "aliases": [
+        "LTE_RRC_SR"
+      ],
+      "formula": "100 × SUCCESS / ATTEMPTS (frères Compteur du catalogue)",
+      "source": "(compteurs frères — contrat non certifié)",
+      "unit": "%",
+      "available_check": {
+        "kind": "always_unvalidated",
+        "reason": "le contrat tentative/réussite/échec n'est pas certifié par le décodeur 2.0.0 ; un taux n'est pas calculé tant que ses frères ne sont pas prouvés."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "LTE_RRC_SUCCESS",
+      "name": "LTE RRC Connection Success",
+      "techno": "LTE",
+      "nature": "Compteur",
+      "family": "Accessibilité",
+      "aliases": [],
+      "formula": "COUNT(DISTINCT stg_event.id) WHERE message = 'RRCConnectionSetupComplete'",
+      "source": "stg_event (message=RRCConnectionSetupComplete)",
+      "unit": "occurrences",
+      "available_check": {
+        "kind": "param_message_eq",
+        "arg": "RRCConnectionSetupComplete",
+        "reason_if_absent": "aucune occurrence RRC pour message='RRCConnectionSetupComplete'"
+      },
+      "service_scope": []
+    },
+    {
+      "code": "LTE_UL_APPLICATION_THR",
+      "name": "LTE UL Application Throughput",
+      "techno": "LTE",
+      "nature": "Métrique mesurée",
+      "family": "UL",
+      "aliases": [],
+      "formula": "percentile_cont sur measurement_points.thrpt_ul",
+      "source": "measurement_points.thrpt_ul",
+      "unit": "Mbit/s",
+      "available_check": {
+        "kind": "mp_metric",
+        "arg": "thrpt_ul",
+        "reason_if_null": "measurement_points.thrpt_ul NULL partout — mapping décodeur non prouvé (écart 0.24.0 / 0.25.0, lot 0.39.0 en cours)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "LTE_UL_BLER",
+      "name": "LTE UL BLER",
+      "techno": "LTE",
+      "nature": "Métrique mesurée",
+      "family": "UL",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : règle non définie)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "métrique mesurée LTE_UL_BLER sans mapping prouvé côté décodeur."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "LTE_UL_DATA_ATTEMPTS",
+      "name": "LTE UL Data Transfer Attempts",
+      "techno": "LTE",
+      "nature": "Compteur",
+      "family": "UL",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : event / position non prouvée)",
+      "unit": "occurrences",
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "compteur UL_DATA_ATTEMPTS non adossé à un event prouvé par le décodeur 2.0.0 (écarts 0.24.0 / 0.33.0 : RACH/E-RAB/DATA_* et HO par type intra/inter/irat sans distinction certifiée)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "LTE_UL_DATA_FAILURES",
+      "name": "LTE UL Data Transfer Failures",
+      "techno": "LTE",
+      "nature": "Compteur",
+      "family": "UL",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : event / position non prouvée)",
+      "unit": "occurrences",
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "compteur UL_DATA_FAILURES non adossé à un event prouvé par le décodeur 2.0.0 (écarts 0.24.0 / 0.33.0 : RACH/E-RAB/DATA_* et HO par type intra/inter/irat sans distinction certifiée)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "LTE_UL_DATA_SUCCESS",
+      "name": "LTE UL Data Transfer Success",
+      "techno": "LTE",
+      "nature": "Compteur",
+      "family": "UL",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : event / position non prouvée)",
+      "unit": "occurrences",
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "compteur UL_DATA_SUCCESS non adossé à un event prouvé par le décodeur 2.0.0 (écarts 0.24.0 / 0.33.0 : RACH/E-RAB/DATA_* et HO par type intra/inter/irat sans distinction certifiée)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "LTE_UL_DATA_VOLUME",
+      "name": "LTE UL Application Data Volume",
+      "techno": "LTE",
+      "nature": "Métrique mesurée",
+      "family": "UL",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : règle non définie)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "métrique mesurée LTE_UL_DATA_VOLUME sans mapping prouvé côté décodeur."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "LTE_UL_MAC_THR",
+      "name": "LTE UL MAC Throughput",
+      "techno": "LTE",
+      "nature": "Métrique mesurée",
+      "family": "UL",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : règle non définie)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "métrique mesurée LTE_UL_MAC_THR sans mapping prouvé côté décodeur."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "LTE_UL_MCS",
+      "name": "LTE UL MCS",
+      "techno": "LTE",
+      "nature": "Métrique mesurée",
+      "family": "UL",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : règle non définie)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "métrique mesurée LTE_UL_MCS sans mapping prouvé côté décodeur."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "LTE_UL_PDCP_THR",
+      "name": "LTE UL PDCP Throughput",
+      "techno": "LTE",
+      "nature": "Métrique mesurée",
+      "family": "UL",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : règle non définie)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "métrique mesurée LTE_UL_PDCP_THR sans mapping prouvé côté décodeur."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "LTE_UL_PHY_THR",
+      "name": "LTE UL PHY Throughput",
+      "techno": "LTE",
+      "nature": "Métrique mesurée",
+      "family": "UL",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : règle non définie)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "métrique mesurée LTE_UL_PHY_THR sans mapping prouvé côté décodeur."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "LTE_UL_PRB_UTILIZATION",
+      "name": "LTE UL PRB Utilization",
+      "techno": "LTE",
+      "nature": "Métrique mesurée",
+      "family": "UL",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : règle non définie)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "métrique mesurée LTE_UL_PRB_UTILIZATION sans mapping prouvé côté décodeur."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "LTE_UL_RLC_THR",
+      "name": "LTE UL RLC Throughput",
+      "techno": "LTE",
+      "nature": "Métrique mesurée",
+      "family": "UL",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : règle non définie)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "métrique mesurée LTE_UL_RLC_THR sans mapping prouvé côté décodeur."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "LTE_VOLTE_CALL_SETUP_SR",
+      "name": "LTE VoLTE Call Setup Success Rate",
+      "techno": "LTE",
+      "nature": "KPI calculé",
+      "family": "Voix",
+      "aliases": [],
+      "formula": "100 × SUCCESS / ATTEMPTS (frères Compteur du catalogue)",
+      "source": "(compteurs frères — contrat non certifié)",
+      "unit": "%",
+      "available_check": {
+        "kind": "always_unvalidated",
+        "reason": "le contrat tentative/réussite/échec n'est pas certifié par le décodeur 2.0.0 ; un taux n'est pas calculé tant que ses frères ne sont pas prouvés."
+      },
+      "service_scope": [
+        "VOICE"
+      ]
+    },
+    {
+      "code": "NR_5G_REGISTRATION_SR",
+      "name": "NR 5G Registration Success Rate",
+      "techno": "NR",
+      "nature": "KPI calculé",
+      "family": "Accessibilité",
+      "aliases": [],
+      "formula": "100 × SUCCESS / ATTEMPTS (frères Compteur du catalogue)",
+      "source": "(compteurs frères — contrat non certifié)",
+      "unit": "%",
+      "available_check": {
+        "kind": "always_unvalidated",
+        "reason": "le contrat tentative/réussite/échec n'est pas certifié par le décodeur 2.0.0 ; un taux n'est pas calculé tant que ses frères ne sont pas prouvés."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "NR_CALL_DROP_SR",
+      "name": "NR Call Drop Success Rate",
+      "techno": "NR",
+      "nature": "KPI calculé",
+      "family": "Voix",
+      "aliases": [],
+      "formula": "100 × SUCCESS / ATTEMPTS (frères Compteur du catalogue)",
+      "source": "(compteurs frères — contrat non certifié)",
+      "unit": "%",
+      "available_check": {
+        "kind": "always_unvalidated",
+        "reason": "le contrat tentative/réussite/échec n'est pas certifié par le décodeur 2.0.0 ; un taux n'est pas calculé tant que ses frères ne sont pas prouvés."
+      },
+      "service_scope": [
+        "VOICE"
+      ]
+    },
+    {
+      "code": "NR_CA_CA_ACTIVE_RATIO",
+      "name": "NR CA Active Ratio",
+      "techno": "NR",
+      "nature": "Métrique mesurée",
+      "family": "Carrier Aggregation",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "NR_CA_CA_BAND_COMBINATIONS",
+      "name": "NR CA Band Combinations",
+      "techno": "NR",
+      "nature": "Métrique mesurée",
+      "family": "Carrier Aggregation",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "NR_CA_CA_CONFIGURED",
+      "name": "NR CA Configured",
+      "techno": "NR",
+      "nature": "Métrique mesurée",
+      "family": "Carrier Aggregation",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "NR_CA_COMPONENT_CARRIERS",
+      "name": "NR Component Carriers",
+      "techno": "NR",
+      "nature": "Métrique mesurée",
+      "family": "Carrier Aggregation",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "NR_CA_PCELL_SCELL_THROUGHPUT",
+      "name": "NR PCell / SCell Throughput",
+      "techno": "NR",
+      "nature": "Métrique mesurée",
+      "family": "Carrier Aggregation",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "NR_CELL_RESELECTION_SR",
+      "name": "NR Cell Reselection Success Rate",
+      "techno": "NR",
+      "nature": "KPI calculé",
+      "family": "Mobilité",
+      "aliases": [],
+      "formula": "100 × SUCCESS / ATTEMPTS (frères Compteur du catalogue)",
+      "source": "(compteurs frères — contrat non certifié)",
+      "unit": "%",
+      "available_check": {
+        "kind": "always_unvalidated",
+        "reason": "le contrat tentative/réussite/échec n'est pas certifié par le décodeur 2.0.0 ; un taux n'est pas calculé tant que ses frères ne sont pas prouvés."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "NR_DL_APPLICATION_THR",
+      "name": "NR DL Application Throughput",
+      "techno": "NR",
+      "nature": "Métrique mesurée",
+      "family": "DL",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "NR_DL_BLER",
+      "name": "NR DL BLER",
+      "techno": "NR",
+      "nature": "Métrique mesurée",
+      "family": "DL",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "NR_DL_DATA_ATTEMPTS",
+      "name": "NR DL Data Transfer Attempts",
+      "techno": "NR",
+      "nature": "Compteur",
+      "family": "DL",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "NR_DL_DATA_FAILURES",
+      "name": "NR DL Data Transfer Failures",
+      "techno": "NR",
+      "nature": "Compteur",
+      "family": "DL",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "NR_DL_DATA_SUCCESS",
+      "name": "NR DL Data Transfer Success",
+      "techno": "NR",
+      "nature": "Compteur",
+      "family": "DL",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "NR_DL_DATA_VOLUME",
+      "name": "NR DL Application Data Volume",
+      "techno": "NR",
+      "nature": "Métrique mesurée",
+      "family": "DL",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "NR_DL_MAC_THR",
+      "name": "NR DL MAC Throughput",
+      "techno": "NR",
+      "nature": "Métrique mesurée",
+      "family": "DL",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "NR_DL_MCS",
+      "name": "NR DL MCS",
+      "techno": "NR",
+      "nature": "Métrique mesurée",
+      "family": "DL",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "NR_DL_PDCP_THR",
+      "name": "NR DL PDCP Throughput",
+      "techno": "NR",
+      "nature": "Métrique mesurée",
+      "family": "DL",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "NR_DL_PHY_THR",
+      "name": "NR DL PHY Throughput",
+      "techno": "NR",
+      "nature": "Métrique mesurée",
+      "family": "DL",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "NR_DL_PRB_UTILIZATION",
+      "name": "NR DL PRB Utilization",
+      "techno": "NR",
+      "nature": "Métrique mesurée",
+      "family": "DL",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "NR_DL_RLC_THR",
+      "name": "NR DL RLC Throughput",
+      "techno": "NR",
+      "nature": "Métrique mesurée",
+      "family": "DL",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "NR_HANDOVER_EXECUTION_TIME_TIME",
+      "name": "NR Handover Execution Time",
+      "techno": "NR",
+      "nature": "KPI calculé",
+      "family": "Mobilité",
+      "aliases": [],
+      "formula": "100 × SUCCESS / ATTEMPTS (frères Compteur du catalogue)",
+      "source": "(compteurs frères — contrat non certifié)",
+      "unit": "%",
+      "available_check": {
+        "kind": "always_unvalidated",
+        "reason": "le contrat tentative/réussite/échec n'est pas certifié par le décodeur 2.0.0 ; un taux n'est pas calculé tant que ses frères ne sont pas prouvés."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "NR_HO_INTER_ATTEMPTS",
+      "name": "NR Inter-frequency HO Attempts",
+      "techno": "NR",
+      "nature": "Compteur",
+      "family": "Mobilité",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "NR_HO_INTER_FAILURES",
+      "name": "NR Inter-frequency HO Failures",
+      "techno": "NR",
+      "nature": "Compteur",
+      "family": "Mobilité",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "NR_HO_INTER_LATENCY",
+      "name": "NR Inter-frequency HO Execution Latency",
+      "techno": "NR",
+      "nature": "Métrique mesurée",
+      "family": "Mobilité",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "NR_HO_INTER_SR",
+      "name": "NR Inter-frequency HO Success Rate",
+      "techno": "NR",
+      "nature": "KPI calculé",
+      "family": "Mobilité",
+      "aliases": [
+        "NR_INTER_FREQUENCY_HANDOVER_SR"
+      ],
+      "formula": "100 × SUCCESS / ATTEMPTS (frères Compteur du catalogue)",
+      "source": "(compteurs frères — contrat non certifié)",
+      "unit": "%",
+      "available_check": {
+        "kind": "always_unvalidated",
+        "reason": "le contrat tentative/réussite/échec n'est pas certifié par le décodeur 2.0.0 ; un taux n'est pas calculé tant que ses frères ne sont pas prouvés."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "NR_HO_INTER_SUCCESS",
+      "name": "NR Inter-frequency HO Success",
+      "techno": "NR",
+      "nature": "Compteur",
+      "family": "Mobilité",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "NR_HO_INTRA_ATTEMPTS",
+      "name": "NR Intra-frequency HO Attempts",
+      "techno": "NR",
+      "nature": "Compteur",
+      "family": "Mobilité",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "NR_HO_INTRA_FAILURES",
+      "name": "NR Intra-frequency HO Failures",
+      "techno": "NR",
+      "nature": "Compteur",
+      "family": "Mobilité",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "NR_HO_INTRA_LATENCY",
+      "name": "NR Intra-frequency HO Execution Latency",
+      "techno": "NR",
+      "nature": "Métrique mesurée",
+      "family": "Mobilité",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "NR_HO_INTRA_SR",
+      "name": "NR Intra-frequency HO Success Rate",
+      "techno": "NR",
+      "nature": "KPI calculé",
+      "family": "Mobilité",
+      "aliases": [
+        "NR_INTRA_FREQUENCY_HANDOVER_SR"
+      ],
+      "formula": "100 × SUCCESS / ATTEMPTS (frères Compteur du catalogue)",
+      "source": "(compteurs frères — contrat non certifié)",
+      "unit": "%",
+      "available_check": {
+        "kind": "always_unvalidated",
+        "reason": "le contrat tentative/réussite/échec n'est pas certifié par le décodeur 2.0.0 ; un taux n'est pas calculé tant que ses frères ne sont pas prouvés."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "NR_HO_INTRA_SUCCESS",
+      "name": "NR Intra-frequency HO Success",
+      "techno": "NR",
+      "nature": "Compteur",
+      "family": "Mobilité",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "NR_HO_IRAT_ATTEMPTS",
+      "name": "NR Inter-RAT HO Attempts",
+      "techno": "NR",
+      "nature": "Compteur",
+      "family": "Mobilité",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "NR_HO_IRAT_FAILURES",
+      "name": "NR Inter-RAT HO Failures",
+      "techno": "NR",
+      "nature": "Compteur",
+      "family": "Mobilité",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "NR_HO_IRAT_LATENCY",
+      "name": "NR Inter-RAT HO Execution Latency",
+      "techno": "NR",
+      "nature": "Métrique mesurée",
+      "family": "Mobilité",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "NR_HO_IRAT_SR",
+      "name": "NR Inter-RAT HO Success Rate",
+      "techno": "NR",
+      "nature": "KPI calculé",
+      "family": "Mobilité",
+      "aliases": [
+        "NR_INTER_RAT_HANDOVER_SR"
+      ],
+      "formula": "100 × SUCCESS / ATTEMPTS (frères Compteur du catalogue)",
+      "source": "(compteurs frères — contrat non certifié)",
+      "unit": "%",
+      "available_check": {
+        "kind": "always_unvalidated",
+        "reason": "le contrat tentative/réussite/échec n'est pas certifié par le décodeur 2.0.0 ; un taux n'est pas calculé tant que ses frères ne sont pas prouvés."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "NR_HO_IRAT_SUCCESS",
+      "name": "NR Inter-RAT HO Success",
+      "techno": "NR",
+      "nature": "Compteur",
+      "family": "Mobilité",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "NR_HTTP_DL_TRANSFER_SR",
+      "name": "NR HTTP DL Transfer Success Rate",
+      "techno": "NR",
+      "nature": "KPI calculé",
+      "family": "Data",
+      "aliases": [
+        "NR_DL_DATA_SR"
+      ],
+      "formula": "100 × SUCCESS / ATTEMPTS (frères Compteur du catalogue)",
+      "source": "(compteurs frères — contrat non certifié)",
+      "unit": "%",
+      "available_check": {
+        "kind": "always_unvalidated",
+        "reason": "le contrat tentative/réussite/échec n'est pas certifié par le décodeur 2.0.0 ; un taux n'est pas calculé tant que ses frères ne sont pas prouvés."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "NR_HTTP_UL_TRANSFER_SR",
+      "name": "NR HTTP UL Transfer Success Rate",
+      "techno": "NR",
+      "nature": "KPI calculé",
+      "family": "Data",
+      "aliases": [
+        "NR_UL_DATA_SR"
+      ],
+      "formula": "100 × SUCCESS / ATTEMPTS (frères Compteur du catalogue)",
+      "source": "(compteurs frères — contrat non certifié)",
+      "unit": "%",
+      "available_check": {
+        "kind": "always_unvalidated",
+        "reason": "le contrat tentative/réussite/échec n'est pas certifié par le décodeur 2.0.0 ; un taux n'est pas calculé tant que ses frères ne sont pas prouvés."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "NR_LAT_HTTP_RESPONSE",
+      "name": "NR HTTP Response Time",
+      "techno": "NR",
+      "nature": "Métrique mesurée",
+      "family": "Latence",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "NR_LAT_RTT",
+      "name": "NR Round Trip Time",
+      "techno": "NR",
+      "nature": "Métrique mesurée",
+      "family": "Latence",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "NR_LAT_TRANSFER_SETUP",
+      "name": "NR Data Transfer Setup Time",
+      "techno": "NR",
+      "nature": "Métrique mesurée",
+      "family": "Latence",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "NR_MIMO_MIMO_LAYERS",
+      "name": "NR MIMO Layers",
+      "techno": "NR",
+      "nature": "Métrique mesurée",
+      "family": "MIMO",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "NR_MIMO_MODULATION_DISTRIBUTION",
+      "name": "NR Modulation Distribution",
+      "techno": "NR",
+      "nature": "Métrique mesurée",
+      "family": "MIMO",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "NR_MIMO_RI_DISTRIBUTION",
+      "name": "NR RI Distribution",
+      "techno": "NR",
+      "nature": "Métrique mesurée",
+      "family": "MIMO",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "NR_MIMO_SPECTRAL_EFFICIENCY",
+      "name": "NR Spectral Efficiency",
+      "techno": "NR",
+      "nature": "Métrique mesurée",
+      "family": "MIMO",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "NR_PDU_SESSION_ATTEMPTS",
+      "name": "NR PDU Session Establishment Attempts",
+      "techno": "NR",
+      "nature": "Compteur",
+      "family": "Sessions",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "NR_PDU_SESSION_FAILURES",
+      "name": "NR PDU Session Establishment Failures",
+      "techno": "NR",
+      "nature": "Compteur",
+      "family": "Sessions",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "NR_PDU_SESSION_SR",
+      "name": "NR PDU Session Establishment Success Rate",
+      "techno": "NR",
+      "nature": "KPI calculé",
+      "family": "Sessions",
+      "aliases": [],
+      "formula": "100 × SUCCESS / ATTEMPTS (frères Compteur du catalogue)",
+      "source": "(compteurs frères — contrat non certifié)",
+      "unit": "%",
+      "available_check": {
+        "kind": "always_unvalidated",
+        "reason": "le contrat tentative/réussite/échec n'est pas certifié par le décodeur 2.0.0 ; un taux n'est pas calculé tant que ses frères ne sont pas prouvés."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "NR_PDU_SESSION_SUCCESS",
+      "name": "NR PDU Session Establishment Success",
+      "techno": "NR",
+      "nature": "Compteur",
+      "family": "Sessions",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "NR_RACH_ACCESS_SR",
+      "name": "NR RACH Access Success Rate",
+      "techno": "NR",
+      "nature": "KPI calculé",
+      "family": "Accessibilité",
+      "aliases": [
+        "NR_RACH_SR"
+      ],
+      "formula": "100 × SUCCESS / ATTEMPTS (frères Compteur du catalogue)",
+      "source": "(compteurs frères — contrat non certifié)",
+      "unit": "%",
+      "available_check": {
+        "kind": "always_unvalidated",
+        "reason": "le contrat tentative/réussite/échec n'est pas certifié par le décodeur 2.0.0 ; un taux n'est pas calculé tant que ses frères ne sont pas prouvés."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "NR_RACH_ATTEMPTS",
+      "name": "NR RACH Attempts",
+      "techno": "NR",
+      "nature": "Compteur",
+      "family": "Accessibilité",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "NR_RACH_FAILURES",
+      "name": "NR RACH Failures",
+      "techno": "NR",
+      "nature": "Compteur",
+      "family": "Accessibilité",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "NR_RACH_SUCCESS",
+      "name": "NR RACH Success",
+      "techno": "NR",
+      "nature": "Compteur",
+      "family": "Accessibilité",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "NR_RADIO_LINK_FAILURE_SR",
+      "name": "NR Radio Link Failure Success Rate",
+      "techno": "NR",
+      "nature": "KPI calculé",
+      "family": "Rétention",
+      "aliases": [],
+      "formula": "100 × SUCCESS / ATTEMPTS (frères Compteur du catalogue)",
+      "source": "(compteurs frères — contrat non certifié)",
+      "unit": "%",
+      "available_check": {
+        "kind": "always_unvalidated",
+        "reason": "le contrat tentative/réussite/échec n'est pas certifié par le décodeur 2.0.0 ; un taux n'est pas calculé tant que ses frères ne sont pas prouvés."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "NR_RF_CQI",
+      "name": "NR CQI",
+      "techno": "NR",
+      "nature": "Métrique mesurée",
+      "family": "Qualité radio",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "NR_RF_CSI_RSRP",
+      "name": "NR CSI-RSRP",
+      "techno": "NR",
+      "nature": "Métrique mesurée",
+      "family": "Qualité radio",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "NR_RF_SS_RSRP",
+      "name": "NR SS-RSRP",
+      "techno": "NR",
+      "nature": "Métrique mesurée",
+      "family": "Qualité radio",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "NR_RF_SS_RSRQ",
+      "name": "NR SS-RSRQ",
+      "techno": "NR",
+      "nature": "Métrique mesurée",
+      "family": "Qualité radio",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "NR_RF_SS_SINR",
+      "name": "NR SS-SINR",
+      "techno": "NR",
+      "nature": "Métrique mesurée",
+      "family": "Qualité radio",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "NR_RRC_ABNORMAL_RELEASE_SR",
+      "name": "NR RRC Abnormal Release Success Rate",
+      "techno": "NR",
+      "nature": "KPI calculé",
+      "family": "Rétention",
+      "aliases": [],
+      "formula": "100 × SUCCESS / ATTEMPTS (frères Compteur du catalogue)",
+      "source": "(compteurs frères — contrat non certifié)",
+      "unit": "%",
+      "available_check": {
+        "kind": "always_unvalidated",
+        "reason": "le contrat tentative/réussite/échec n'est pas certifié par le décodeur 2.0.0 ; un taux n'est pas calculé tant que ses frères ne sont pas prouvés."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "NR_RRC_ATTEMPTS",
+      "name": "NR RRC Connection Attempts",
+      "techno": "NR",
+      "nature": "Compteur",
+      "family": "Accessibilité",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "NR_RRC_FAILURES",
+      "name": "NR RRC Connection Failures",
+      "techno": "NR",
+      "nature": "Compteur",
+      "family": "Accessibilité",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "NR_RRC_REESTABLISHMENT_SR",
+      "name": "NR RRC Reestablishment Success Rate",
+      "techno": "NR",
+      "nature": "KPI calculé",
+      "family": "Rétention",
+      "aliases": [],
+      "formula": "100 × SUCCESS / ATTEMPTS (frères Compteur du catalogue)",
+      "source": "(compteurs frères — contrat non certifié)",
+      "unit": "%",
+      "available_check": {
+        "kind": "always_unvalidated",
+        "reason": "le contrat tentative/réussite/échec n'est pas certifié par le décodeur 2.0.0 ; un taux n'est pas calculé tant que ses frères ne sont pas prouvés."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "NR_RRC_SETUP_LATENCY",
+      "name": "NR RRC Setup Latency",
+      "techno": "NR",
+      "nature": "Métrique mesurée",
+      "family": "Accessibilité",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "NR_RRC_SETUP_SR",
+      "name": "NR RRC Setup Success Rate",
+      "techno": "NR",
+      "nature": "KPI calculé",
+      "family": "Accessibilité",
+      "aliases": [
+        "NR_RRC_SR"
+      ],
+      "formula": "100 × SUCCESS / ATTEMPTS (frères Compteur du catalogue)",
+      "source": "(compteurs frères — contrat non certifié)",
+      "unit": "%",
+      "available_check": {
+        "kind": "always_unvalidated",
+        "reason": "le contrat tentative/réussite/échec n'est pas certifié par le décodeur 2.0.0 ; un taux n'est pas calculé tant que ses frères ne sont pas prouvés."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "NR_RRC_SUCCESS",
+      "name": "NR RRC Connection Success",
+      "techno": "NR",
+      "nature": "Compteur",
+      "family": "Accessibilité",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "NR_UL_APPLICATION_THR",
+      "name": "NR UL Application Throughput",
+      "techno": "NR",
+      "nature": "Métrique mesurée",
+      "family": "UL",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "NR_UL_BLER",
+      "name": "NR UL BLER",
+      "techno": "NR",
+      "nature": "Métrique mesurée",
+      "family": "UL",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "NR_UL_DATA_ATTEMPTS",
+      "name": "NR UL Data Transfer Attempts",
+      "techno": "NR",
+      "nature": "Compteur",
+      "family": "UL",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "NR_UL_DATA_FAILURES",
+      "name": "NR UL Data Transfer Failures",
+      "techno": "NR",
+      "nature": "Compteur",
+      "family": "UL",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "NR_UL_DATA_SUCCESS",
+      "name": "NR UL Data Transfer Success",
+      "techno": "NR",
+      "nature": "Compteur",
+      "family": "UL",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "NR_UL_DATA_VOLUME",
+      "name": "NR UL Application Data Volume",
+      "techno": "NR",
+      "nature": "Métrique mesurée",
+      "family": "UL",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "NR_UL_MAC_THR",
+      "name": "NR UL MAC Throughput",
+      "techno": "NR",
+      "nature": "Métrique mesurée",
+      "family": "UL",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "NR_UL_MCS",
+      "name": "NR UL MCS",
+      "techno": "NR",
+      "nature": "Métrique mesurée",
+      "family": "UL",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "NR_UL_PDCP_THR",
+      "name": "NR UL PDCP Throughput",
+      "techno": "NR",
+      "nature": "Métrique mesurée",
+      "family": "UL",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "NR_UL_PHY_THR",
+      "name": "NR UL PHY Throughput",
+      "techno": "NR",
+      "nature": "Métrique mesurée",
+      "family": "UL",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "NR_UL_PRB_UTILIZATION",
+      "name": "NR UL PRB Utilization",
+      "techno": "NR",
+      "nature": "Métrique mesurée",
+      "family": "UL",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "NR_UL_RLC_THR",
+      "name": "NR UL RLC Throughput",
+      "techno": "NR",
+      "nature": "Métrique mesurée",
+      "family": "UL",
+      "aliases": [],
+      "formula": null,
+      "source": "(indisponible : technologie absente du corpus)",
+      "unit": null,
+      "available_check": {
+        "kind": "always_unavailable",
+        "reason": "aucun NMF NR ingéré avec succès dans le corpus actuel (REF = LTE uniquement)."
+      },
+      "service_scope": [
+        "HTTP_DOWNLOAD",
+        "HTTP_UPLOAD"
+      ]
+    },
+    {
+      "code": "NR_VONR_CALL_SETUP_SR",
+      "name": "NR VoNR Call Setup Success Rate",
+      "techno": "NR",
+      "nature": "KPI calculé",
+      "family": "Voix",
+      "aliases": [],
+      "formula": "100 × SUCCESS / ATTEMPTS (frères Compteur du catalogue)",
+      "source": "(compteurs frères — contrat non certifié)",
+      "unit": "%",
+      "available_check": {
+        "kind": "always_unvalidated",
+        "reason": "le contrat tentative/réussite/échec n'est pas certifié par le décodeur 2.0.0 ; un taux n'est pas calculé tant que ses frères ne sont pas prouvés."
+      },
+      "service_scope": [
+        "VOICE"
+      ]
+    }
+  ]
+}

@@ -29,7 +29,7 @@ from typing import Literal
 
 # Version du catalogue — bumpée à chaque PR qui ajoute/retire/modifie un
 # KPI ou une règle de statut. Exposée via /kpi/catalog pour tracer le lot.
-KPI_CATALOG_VERSION = "0.35.0"
+KPI_CATALOG_VERSION = "0.39.0"
 
 Nature = Literal["distribution", "count", "rate"]
 Status = Literal["AVAILABLE", "PENDING", "UNVALIDATED", "UNAVAILABLE"]
@@ -307,17 +307,38 @@ CATALOG: tuple[KpiDef, ...] = (
     # -------- Qualité radio --------
     KpiDef(
         code="RSRP_DIST",
-        name="RSRP — distribution",
+        name="RSRP — distribution (couverture L1)",
         family="Qualité radio",
         techno="LTE",
         nature="distribution",
         unit="dBm",
-        source="param_occurrence.measResultPCell/rsrpResult (RRC MeasurementReport, idx - 141 dBm)",
-        formula="percentile_cont sur value_converted des param_occurrence (serving PCell)",
+        source="measurement_points.rsrp (CELLMEAS, source Nemo, mapping prouvé ±2 dB vs RRC)",
+        formula="percentile_cont(0.10|0.50|0.90) WITHIN GROUP (ORDER BY rsrp)",
         definition=(
-            "Distribution RSRP servant (dBm) décodée depuis les MeasurementReport "
-            "RRC — source authoritative. Le mapping vers measurement_points.rsrp "
-            "(candidat CELLMEAS) reste gaté par preuve ±2 dB ; non prouvé = NULL."
+            "Distribution RSRP serving (dBm) sur la couverture L1 — toutes "
+            "les mesures continues du drive, sampling CELLMEAS. Le mapping "
+            "`cell0_* → rsrp` est choisi par le CONTENU (plage 3GPP) et "
+            "validé par appariement ±2 dB avec `measResultPCell/rsrpResult`."
+        ),
+        availability="mp_metric",
+        availability_arg="rsrp",
+        unavailable_reason="measurement_points.rsrp NULL — mapping CELLMEAS non prouvé pour ce projet",
+    ),
+    KpiDef(
+        code="RSRP_AT_MR",
+        name="RSRP — aux MeasurementReport (RRC)",
+        family="Qualité radio",
+        techno="LTE",
+        nature="distribution",
+        unit="dBm",
+        source="param_occurrence.measResultPCell/rsrpResult (RRC MeasurementReport, idx − 141 dBm)",
+        formula="percentile_cont sur value_converted (serving PCell, A2/A3 trigger)",
+        definition=(
+            "Distribution RSRP servant **telle que rapportée dans les "
+            "MeasurementReport RRC** (déclenchés sur seuils A2/A3). "
+            "Biais statistique vs couverture L1 : les MR cristallisent "
+            "typiquement des conditions de faible signal — à ne PAS "
+            "confondre avec `RSRP_DIST` (couverture L1 continue)."
         ),
         availability="param_path",
         availability_arg="%measResultPCell/rsrpResult",
@@ -325,17 +346,20 @@ CATALOG: tuple[KpiDef, ...] = (
     ),
     KpiDef(
         code="RSRQ_DIST",
-        name="RSRQ — distribution",
+        name="RSRQ — distribution (couverture L1)",
         family="Qualité radio",
         techno="LTE",
         nature="distribution",
         unit="dB",
-        source="param_occurrence.measResultPCell/rsrqResult (RRC MeasurementReport, idx/2 - 20 dB)",
-        formula="percentile_cont sur value_converted des param_occurrence (serving PCell)",
-        definition="Distribution RSRQ servant (dB) décodée depuis MeasurementReport RRC.",
-        availability="param_path",
-        availability_arg="%measResultPCell/rsrqResult",
-        availability_op="ilike",
+        source="measurement_points.rsrq (CELLMEAS, source Nemo, plage 3GPP [-20,-3])",
+        formula="percentile_cont(0.10|0.50|0.90) WITHIN GROUP (ORDER BY rsrq)",
+        definition=(
+            "Distribution RSRQ serving (dB). Le mapping `cell0_* → rsrq` "
+            "est choisi par la plage 3GPP (−20..−3 dB)."
+        ),
+        availability="mp_metric",
+        availability_arg="rsrq",
+        unavailable_reason="measurement_points.rsrq NULL",
     ),
     KpiDef(
         code="SINR_DIST",

@@ -22,5 +22,10 @@ cryptography==43.0.3
 # validé via `yaml.safe_load` (jamais `load`). Pas de FullLoader, pas de
 # désérialisation d'objets Python.
 PyYAML==6.0.2
+# 0.40.0 — Catalogue KPI v2 importé depuis un xlsx utilisateur (208 KPI).
+# L'import est OFFLINE : il tourne au build (ou à la demande) et génère
+# `app/kpi/catalog_v2.json`. Le runtime ne charge PAS openpyxl au reload
+# de l'app — seul l'importer en a besoin.
+openpyxl==3.1.5
 pytest==8.3.4
 pytest-asyncio==0.24.0
