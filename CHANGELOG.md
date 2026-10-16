@@ -2,6 +2,74 @@
 
 Versions SemVer. Type de bump: `patch` / `minor` / `major`. Un écart se ferme ou se déclare ouvert, jamais expliqué par hypothèse.
 
+## 0.42.1 — 2026-10-16 (patch) — Export/import CSV cell_ref + purge géo test (Agent BC1)
+
+> Boucle opérateur fermée : chaque projet exporte son référentiel
+> cellule pré-rempli depuis les logs (``GET /projects/{id}/cell-ref/
+> export.csv``, UTF-8 BOM + ``;``), l'opérateur remplit les colonnes
+> géo dans Excel, et le réimporte via le même endpoint existant
+> ``POST /settings/cell-ref/upload`` qui accepte désormais la clé
+> ``enb_id`` pour appliquer en une ligne à toutes les cellules de
+> l'eNB. Purge des 9 lignes de test (DR-IDF Paris / Lyon ZTR injectées
+> pendant les démos 0.41 → 0.42) qui polluaient les filtres de REF
+> (le projet est en forêt dans le Nord — valeurs incompatibles).
+
+### Export CSV — ``GET /projects/{id}/cell-ref/export.csv``
+
+- Une ligne par ECGI distinct observé dans ``measurement_points.ecgi``
+  pour le projet (scope strict).
+- Colonnes pré-remplies depuis les logs (``cell_ref`` + agrégation
+  ``mp``) : ``ecgi, plmn, operator, enb_id, local_cell_id, tac, pci,
+  earfcn, band, n_points, first_capture``.
+- Colonnes à remplir vides : ``dr, plaque, dor, arcep_zone, commune,
+  insee``.
+- Encodage **UTF-8 BOM** + séparateur **``;``** (Excel FR ouvre
+  correctement sans import wizard).
+- ``operator`` dérivé du PLMN FR (``20801=Orange, 20815=Free,
+  20820=Bouygues, 20810=SFR``).
+
+### Upload — ``POST /settings/cell-ref/upload`` (patch)
+
+- ``enb_id`` matché sur plusieurs cell_ref → **UPDATE EN LOT sur
+  toutes les cellules de l'eNB** (plus de ``ambiguous`` sur enb_id).
+  Permet le flux « 1 ligne CSV enb_id = toute la station remplie ».
+  La clé ``eci|ecgi`` reste prioritaire pour un ciblage cellule.
+- Validation **ARCEP** : ``arcep_zone ∈ {ZTD, ZMD, ZPD}`` (3 zones
+  autoritaires ARCEP). Toute autre valeur (sauf vide) → ligne rejetée
+  nominativement avec les 3 valeurs attendues citées. Les anciennes
+  valeurs ``ZTR`` injectées en démo tombaient précisément dans ce cas.
+- Rapport étendu : ``{processed, matched, cells_affected (nb de
+  cell_ref écrites, parfois > matched si enb_id multi-apply),
+  inserted, updated_lines, skipped_empty, rejected, ambiguous}``.
+  Les lignes CSV vides (aucune colonne géo) deviennent
+  ``skipped_empty`` (plus ``rejected``) — attendu si l'opérateur
+  n'a pas rempli toutes les cellules.
+
+### Purge données test (one-shot SQL, non répétable)
+
+```sql
+DELETE FROM cell_ref WHERE eci IN ('208010001','208010002','208010003');
+UPDATE cell_ref SET dr=NULL, plaque=NULL, dor=NULL,
+                    arcep_zone=NULL, commune=NULL, insee=NULL
+WHERE dr IS NOT NULL OR plaque IS NOT NULL OR dor IS NOT NULL
+   OR arcep_zone IS NOT NULL OR commune IS NOT NULL OR insee IS NOT NULL;
+```
+3 lignes synthétiques supprimées + 6 cellules réelles ECGI logs purgées
+de leur géo invalide. Après : 20 cell_ref, 0 géo. Les filtres REF
+redeviennent honnêtes (available=false avec reason correcte avant
+upload opérateur réel).
+
+### Garde manuelle (REF, après rebuild)
+
+1. ``GET /projects/{id}/cell-ref/export.csv`` → 20 lignes, 0 géo
+   rempli (colonnes vides), ``operator`` dérivé du PLMN, ``n_points``
+   correct par ECGI.
+2. Upload d'un CSV avec 20 lignes remplies → ``matched=20``,
+   ``cells_affected ≥ 20``.
+3. ``GET /kpi/filters`` → ``dr/plaque/dor/arcep/commune/insee``
+   ``available=true`` avec les valeurs cohérentes (Nord/Petite-Forêt
+   et non plus Paris/Lyon).
+
 ## 0.42.0 — 2026-10-16 (minor) — Fix décodeur ASN.1 : BIT STRING long + MCC/MNC concaténés (Agent BC1)
 
 > Fermeture de l'écart décodeur OUVERT dans 0.41.0 : le walker ASN.1

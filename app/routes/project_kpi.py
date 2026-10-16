@@ -19,7 +19,11 @@ scope de service (pas un ``n=0`` muet).
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+import csv
+import io
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.db import get_db
@@ -150,4 +154,136 @@ def kpi_detail(
         services=tuple(service_type),
         phases=tuple(phase),
         group_by=group_by,  # type: ignore[arg-type]
+    )
+
+
+# ---------------------------------------------------------------------------
+# 0.42.1 — Export CSV du référentiel cellule du projet
+# ---------------------------------------------------------------------------
+
+
+_EXPORT_HEADERS: tuple[str, ...] = (
+    "ecgi", "plmn", "operator", "enb_id", "local_cell_id", "tac",
+    "pci", "earfcn", "band", "n_points", "first_capture",
+    # Vides à remplir par l'opérateur :
+    "dr", "plaque", "dor", "arcep_zone", "commune", "insee",
+)
+
+
+@router.get("/{project_id}/cell-ref/export.csv")
+def cell_ref_export_csv(
+    project_id: str,
+    db: Session = Depends(get_db),
+) -> Response:
+    """Export CSV du référentiel cellule du projet (0.42.1).
+
+    Une ligne par ECGI distinct observé dans ``measurement_points.ecgi``,
+    enrichie des colonnes connues (depuis ``cell_ref``) ET du nombre
+    de points mesurés par cellule (``n_points``) + le ``first_capture``
+    où elle apparaît en ordre ``(capture_id, seq)``. Les colonnes
+    opérateur (dr, plaque, dor, arcep_zone, commune, insee) sont
+    volontairement vides si non chargées — pré-remplies seulement si
+    déjà présentes dans ``cell_ref``.
+
+    Format : UTF-8 BOM + séparateur ``;`` (Excel FR).
+
+    Scope strict : seuls les ECGI du projet sont exportés.
+    """
+    _require_project(db, project_id)
+
+    # 0.42.1 — Scope projet = UNION
+    # (a) cellules dont au moins un mp.ecgi existe (serving actif), ET
+    # (b) cellules observées en SIB1 pendant les captures du projet
+    #     (cell_ref.snapshot_date ∈ captures-du-projet).
+    # Les cellules (b) sans mesure serving sortent avec n_points=0 —
+    # elles sont néanmoins DU projet (vues en SIB1), donc exposées pour
+    # permettre à l'opérateur de les géo-tagger via l'upload retour.
+    rows = db.execute(
+        text(
+            """
+            WITH mp_agg AS (
+                SELECT ecgi, COUNT(*) AS n_points
+                FROM measurement_points
+                WHERE project_id = :pid AND ecgi IS NOT NULL
+                GROUP BY ecgi
+            ),
+            project_captures AS (
+                SELECT DISTINCT capture_id
+                FROM stg_event WHERE project_id = :pid
+            ),
+            scope AS (
+                SELECT DISTINCT cr.eci
+                FROM cell_ref cr
+                WHERE cr.eci LIKE '%-%'
+                  AND cr.snapshot_date IN (SELECT capture_id FROM project_captures)
+                UNION
+                SELECT ecgi AS eci FROM mp_agg
+            )
+            SELECT s.eci,
+                   cr.enodebid,
+                   cr.pci,
+                   cr.earfcn,
+                   cr.band_3gpp,
+                   cr.snapshot_date       AS first_capture,
+                   cr.dr, cr.plaque, cr.dor, cr.arcep_zone,
+                   cr.commune, cr.insee,
+                   COALESCE(mp_agg.n_points, 0) AS n_points
+            FROM scope s
+            LEFT JOIN cell_ref cr ON cr.eci = s.eci
+            LEFT JOIN mp_agg ON mp_agg.ecgi = s.eci
+            ORDER BY s.eci
+            """
+        ),
+        {"pid": project_id},
+    ).fetchall()
+
+    # Lookup opérateur depuis le PLMN (préfixe avant '-')
+    plmn_to_operator = {
+        "20801": "Orange", "20802": "Orange",
+        "20810": "SFR",    "20811": "SFR",    "20813": "SFR",
+        "20820": "Bouygues","20821": "Bouygues","20888": "Bouygues",
+        "20815": "Free",   "20816": "Free",
+    }
+
+    out = io.StringIO()
+    writer = csv.writer(out, delimiter=";", lineterminator="\r\n")
+    writer.writerow(_EXPORT_HEADERS)
+    for r in rows:
+        ecgi = r[0] or ""
+        plmn = ""
+        cell_identity = None
+        if "-" in ecgi:
+            plmn, _, ci_str = ecgi.partition("-")
+            try:
+                cell_identity = int(ci_str)
+            except (TypeError, ValueError):
+                cell_identity = None
+        operator = plmn_to_operator.get(plmn, "")
+        enb_id = r[1] or ""
+        local_cell_id = (cell_identity & 0xFF) if cell_identity is not None else ""
+        tac = ""  # tac n'est pas persisté dans cell_ref — vide à l'export
+        pci = "" if r[2] is None else str(r[2])
+        earfcn = "" if r[3] is None else str(r[3])
+        band = r[4] or ""
+        first_capture = r[5] or ""
+        n_points = int(r[12]) if r[12] is not None else 0
+        dr      = r[6]  or ""
+        plaque  = r[7]  or ""
+        dor     = r[8]  or ""
+        arcep   = r[9]  or ""
+        commune = r[10] or ""
+        insee   = r[11] or ""
+        writer.writerow([
+            ecgi, plmn, operator, enb_id, local_cell_id, tac,
+            pci, earfcn, band, n_points, first_capture,
+            dr, plaque, dor, arcep, commune, insee,
+        ])
+    # BOM UTF-8 pour Excel FR
+    body = "﻿" + out.getvalue()
+    return Response(
+        content=body,
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": f"attachment; filename=cell-ref-{project_id}.csv",
+        },
     )
