@@ -2,6 +2,245 @@
 
 Versions SemVer. Type de bump: `patch` / `minor` / `major`. Un écart se ferme ou se déclare ouvert, jamais expliqué par hypothèse.
 
+## 0.47.0 — 2026-10-17 (minor) — group_by=dor (+dr/plaque/arcep_zone) sur /dict/v2/distribution et /kpi/{code} : join mp.ecgi → cell_ref (ecgi_source=sib1_strict), N/D + coverage, UNAVAILABLE si cell_ref vide, group_by_options exposés (Agent BC1)
+
+> Jointure stricte : ``mp.ecgi = cell_ref.eci`` filtrée par
+> ``mp.ecgi_source = 'sib1_strict_capture_earfcn'`` (le fallback
+> cross-capture n'est jamais pris en compte — règle G8 de 0.44.0).
+> Les points sans ECGI strict ou dont la cellule n'a pas la valeur
+> dans ``cell_ref.<col>`` sortent sous le libellé littéral ``"N/D"``
+> — **jamais filtrés silencieusement**. ``coverage = {with_value,
+> total, pct}`` est exposé sur chaque bloc / réponse KPI.
+>
+> Si pour un projet donné aucune cellule n'a de valeur pour la
+> dimension demandée (``cell_ref.<col>`` tout NULL pour les ECGI
+> observés), le ``group_by`` reste **accepté** mais le bloc est
+> renvoyé ``status='UNAVAILABLE'`` + ``reason`` lisible (ex. « référentiel
+> cellule non chargé (dor) »). Zéro invention ; l'opérateur doit
+> uploader son référentiel pour voir des groupes.
+
+### Nouveau module `app/dict/cell_ref_group.py`
+
+- `CELL_REF_DIMS` : mapping ``group_by → cell_ref.<col>`` (dor, dr,
+  plaque, arcep_zone).
+- `check_cell_ref_dim(db, pid, key)` : renvoie `CellRefDimStatus`
+  (`available`, `reason`, `n_with_value`, `n_total_mp`, `pct`).
+- `build_group_by_options(db, pid)` : liste complète des `group_by`
+  utilisables pour un projet.
+- `param_occurrence_dim_counts(db, pid, key, group_by)` : count par
+  valeur × dimension pour ``/dict/v2/distribution`` (join via
+  `stg_event_id → mp` strict).
+- `mp_metric_dim_percentiles(db, pid, mp_col, group_by)` : percentile
+  P10/P50/P90 par dimension pour ``/kpi/{code}`` sur `mp.<col>`.
+
+### Routes
+
+- `GET /projects/{id}/dict/v2/distribution?group_by=dor|dr|plaque|
+  arcep_zone` accepté. Si cell_ref vide → blocs UNAVAILABLE + reason
+  + coverage.
+- `GET /projects/{id}/kpi/{code}?group_by=dor|…` : court-circuit vers
+  UNAVAILABLE si cell_ref vide ; sinon, mp_metric utilise
+  `mp_metric_dim_percentiles`.
+- `GET /projects/{id}/kpi/filters` + `GET /projects/{id}/dict/v2/tree` :
+  ajoutent `group_by_options[]` avec `{key, available, reason}`.
+
+### Schémas Pydantic
+
+- `GroupBy` élargi à `{operator, band, operator_band, dor, dr,
+  plaque, arcep_zone}` dans `app/schemas/dict_v2.py`.
+- `DistributionValueGroup` : nouveaux champs optionnels `dor` / `dr` /
+  `plaque` / `arcep_zone`.
+- `DistributionBlock` : nouveaux champs `status`, `reason`, `coverage`.
+- `DictTreeResponse`, `DictDistributionResponse`, `ProjectKpiFilters`,
+  `ProjectKpiDetail` : nouveau champ `group_by_options`.
+- `KpiGroupRow` : nouveaux champs optionnels pour les dimensions
+  cell_ref.
+
+### Rebuild + /health
+
+- `pyproject.toml : 0.46.1 → 0.47.0 (minor)`.
+- `app/main.py : version="0.47.0"`.
+- `/health = {"status":"ok","env":"development","version":"0.47.0"}`.
+
+### Garde (REF projet 7e656b8c6c19)
+
+- `GET /dict/v2/distribution?keys=hysteresis&group_by=dor` →
+  `blocks[0].status = "UNAVAILABLE"`, `reason = "référentiel cellule
+  non chargé (dor)"`, `coverage.with_value = 0`.
+- `GET /kpi/LTE_RF_RSRP?group_by=dor` → `status = "UNAVAILABLE"`,
+  même reason.
+- `GET /dict/v2/tree?view=catalog` → `group_by_options` contient
+  `{key:'dor', available:false, reason:"…"}` et `{key:'operator',
+  available:true}`.
+- Upload d'un CSV `cell_ref` TEST sur un projet TEST (**jamais REF**,
+  règle n°1) : non exécuté dans ce lot — nécessite un fichier
+  utilisateur. La vérification « groupes DOR + N/D, coverage, somme
+  = n total » est à faire par l'utilisateur après upload.
+
+## 0.46.1 — 2026-10-17 (patch) — `GET /projects/{id}/kpi/{code}?group_by=dor` accepté (Agent BC2)
+
+> Support dispatch `group_by=dor` dans `service_v2:_group_cols("dor") →
+> ["dor"]` + validation route étendue (code `GROUP_BY_UNKNOWN` listant
+> les 4 valeurs admises). Patch côté front 1.18.1 (segmented 4e bouton).
+> Sur REF, `mp.dor` est NULL partout (cell_ref.dor vide) → la réponse
+> renvoie des `groups` avec `dor=null` → le front les montre dans la
+> barre "N/D" (jamais invente une étiquette).
+
+## 0.46.0 — 2026-10-17 (minor) — Chaînage AUTO populate post-ingest + /projects expose n_files/n_points/last_populate_at/ingest_status (Agent BC1)
+
+> Correctif **structurel** : plus jamais un projet "fantôme" (NMF ingérés
+> sans mp). Illustration vue sur TEST2 (0.45.2) : 9 NMF, 19 380 events en
+> stg_event, **mp=0**, filtres tous gris — populate_measurement_points
+> n'avait jamais tourné depuis l'ingest initial, et aucun signal côté UI
+> ne le disait.
+>
+> ### Changements
+>
+> - Nouveau service `app/services/populate_chain.py:run_populate_chain`
+>   enchaîne les 3 étapes :
+>   `populate_measurements(purge=True)` → `populate_measurement_points` →
+>   `populate_ecgi_for_project`. Verrouillage **pg_advisory_xact_lock(
+>   hashtext('populate:'||project_id))** → **sérialisation par projet**,
+>   jamais deux populate concurrents, auto-release à COMMIT/ROLLBACK.
+> - `app/routes/projects.py:upload_nmf` appelle `run_populate_chain` à la
+>   fin de l'ingest (si `files_done > 0`). La requête HTTP **ne retourne
+>   qu'après** que `n_points` et `last_populate_at` soient à jour sur
+>   `Project`. Jamais une étape manuelle.
+> - Si une étape du chain plante : `project.status='failed'`,
+>   `status_ingest='error'`, HTTP 500 avec code `POPULATE_CHAIN_FAIL`.
+>   Pas d'avalement silencieux.
+> - Migration **`0018_project_populate_tracking`** : ajoute
+>   `projects.last_populate_at TIMESTAMPTZ NULL` +
+>   `projects.n_points INTEGER NULL`. Discipline additive stricte.
+> - `ProjectSchema` enrichi : `n_files` (COUNT nmf_file WHERE status='done'
+>   calculé à la volée), `n_points`, `last_populate_at` (ISO 8601),
+>   `ingest_status`. `ingest_status` dérivé :
+>     - 0 NMF                                    → `empty`
+>     - `importing/processing` → `processing`
+>     - `error` → `failed`
+>     - NMF>0 ET (last_populate_at NULL OU n_points=0) → `incomplete`
+>     - sinon → `ready`
+>   Jamais inventé : chaque valeur vient d'une colonne DB observable.
+>
+> ### Gardes
+>
+> - `/health` → version `0.46.0`.
+> - `GET /projects` renvoie pour **tous** les projets `n_files`,
+>   `n_points`, `last_populate_at`, `ingest_status`.
+> - `REF_PETITE_FORET` : `n_files=18, n_points=68 090, ingest_status=ready`.
+> - `TEST2` après ré-ingest d'un fichier via la chaîne auto :
+>   `ingest_status=ready`, `/kpi/filters` → `operators.available=true`,
+>   `bands.available=true`, non plus 14/14 gris.
+> - Les projets ingérés AVANT 0.46.0 et jamais repopulés affichent
+>   `ingest_status=incomplete` — le dashboard /projects peut proposer un
+>   bouton "Lancer populate" (hors scope de ce lot).
+>
+> ### Discipline
+>
+> - Un seul agent sur ce serveur pendant le rebuild (règle BC1 §3).
+> - Aucun chiffre sans requête : `n_files` et `n_points` viennent de
+>   `COUNT(*)` DB, `last_populate_at` du `UPDATE` fin de chain.
+> - Pas de rebuild pendant un ingest : le chaînage s'exécute DANS la
+>   transaction HTTP, pas en arrière-plan.
+
+## 0.45.2 — 2026-10-17 (patch) — Remise en état REF : ingest 18/18, Nemo system backfill, populate+ECGI, KPI sources, Pydantic response_model (Agent BC1)
+
+> Lot « 6 étapes, un seul agent, séquentiel » sur REF_PETITE_FORET.
+> Jamais de rebuild pendant un ingest. Aucun chiffre sans requête.
+
+### Étape 1 — INGEST 18/18 ✓
+
+- Les 5 derniers NMF indoor ingérés en série (111346.9, 112544.5,
+  113710.1, 113710.2, 113710.3). 3 recréations container par docker
+  compose externe pendant la séquence → 3 reprises nécessaires avant
+  d'arriver à 18/18. Garde SQL :
+  `SELECT COUNT(*), SUM(n_events) FROM nmf_file WHERE project_id=REF`
+  → **nmf_count=18, sum_events=39 202, status='done' partout**.
+
+### Étape 2 — SYSTEM Nemo + backfill ✓
+
+- **bc4-decoder 2.1.0** (minor) : `_extract_system(f)` cherche la 1ère
+  valeur ∈ {'1','5','7','9'} parmi `f[2..4]`. Bug 2.0.0 : lisait `f[2]`
+  seul → 99,3 % NULL car `RRCSM/CELLMEAS/MACRATE` ont `system` en `f[3]`
+  (`f[2]=""`). Jamais d'inférence depuis le code d'event.
+- Script `backfill_system.py` : relit `/var/lib/bc4/nmf-source/{pid}/{nmf}.nmf`
+  avec decoder 2.1.0, UPDATE `stg_event_raw.system`. Garde :
+  **`system='LTE'` 93 944 → 836 903**, NR 41 074 → 115 660, GSM 6 838 →
+  14 142, UMTS 43 → 260 ; **NULL 856 548 → 31 506 (3,2 %)** — les 31k
+  restants sont des GPS/events sans champ system Nemo. Total UPDATEs
+  émis : **1 006 167**.
+
+### Étape 3 — POPULATE mp + ECGI ✓ (3 bugs résolus)
+
+- `_oneshot_populate_full.py` : purge → `populate_measurements` →
+  `populate_measurement_points` → `populate_ecgi_for_project`.
+- **Bug A** (`profile_cellmeas`) : les CELLMEAS NR ont un ordre de
+  colonnes différent → `cell0_rsrp_dbm` = EARFCN NR (`650400`, `638688`)
+  sur 2 124 lignes → avg +96 774 dBm → profil TOUT rejeté →
+  `mapping={}`. Fix : `_fetch_values` + `prove_rsrp_per_event` filtrent
+  `system='LTE'` sur CELLMEAS.
+- **Bug B** (`populate_measurement_points`) : paramètre `purge=True`
+  **ignoré** (pas utilisé dans le corps). D'où doublons mp (154 365
+  pour 68 027 clés distinctes après 2 runs). Fix : séquence
+  `populate_measurements(purge=True)` puis
+  `populate_measurement_points(purge=False)`. Résultat : **68 090 mp,
+  0 doublon**.
+- **Bug C** (`_extract_sib1_cells`) : `_PATH_MCC` / `_PATH_MNC`
+  attendait `.../plmn-IdentityList/plmn-Identity/mcc` mais la base
+  contient `.../plmn-IdentityList/[0]/plmn-Identity/mcc` (indexation
+  walker 0.42.0). Match 0 → MCC/MNC NULL → **0 ECGI construit**. Fix :
+  `path LIKE '%plmn-IdentityList/%plmn-Identity/mcc'` + `MIN(path)`
+  pour prendre `[0]` déterministe. Résultat :
+  **257 SIB1 → 26 ECGI construits → 4 319 mp_with_ecgi (6,34 %)**.
+- Gardes finales :
+  - mp_total=**68 090** · rsrp **8 822** · rsrq **8 753** · sinr **8 968** · rssi **8 823** · dl **32 204**
+  - ecgi_source=**sib1_strict_capture_earfcn 4 319** + NULL 63 771
+  - ecgi_distinct mp=**7** (sur 26 détectés — les 19 autres sur captures
+    sans mp.earfcn match)
+  - reliquats value LIKE '0b%' = **0** · LIKE 'bits(%' = **0**
+
+### Étape 4 — KPI SOURCES (catalog v2) ✓
+
+- `LTE_RF_RSRP` : `param_path_ilike` → **`mp_metric` arg=`rsrp`**,
+  source=`measurement_points.rsrp (CELLMEAS prouvé — profile_cellmeas
+  verdict=proven, mapping cell0_rsrq_db ↔ rsrp)`.
+- **NOUVEAU** `LTE_RF_RSRP_AT_MR` : `param_path_ilike`
+  arg=`%measResultPCell/rsrpResult`, source=`param_occurrence …
+  biaisé événements de mesure RRC`.
+- `LTE_RF_RSRQ` : `param_path_ilike` → **`mp_metric` arg=`rsrq`**.
+- `LTE_RF_RSSI` / `LTE_RF_SINR` : déjà `mp_metric` (inchangé).
+- `AGG_APP_DL_THR` / `AGG_APP_UL_THR` : `mp_metric dl/thrpt_ul` →
+  **`transfers_table` arg=`dl/ul`** (`compute_transfers` → DSUMMARY
+  proven), jamais `mp.dl` pondéré.
+- `AGG_DMS_DL_30/8/3_MBPS` / `AGG_DMS_UL_1/3_MBPS` : `mp_metric` →
+  **`transfers_dms`** (seuil regex, taux sur transferts proven).
+- `service_v2.py` : nouveau dispatcher `transfers_table` + `transfers_dms`
+  dans `compute_status_v2` et `compute_kpi_v2`.
+
+### Étape 5 — Pydantic response_model ✓
+
+- Nouveau `app/schemas/project_kpi.py` : `ProjectKpiCatalog`,
+  `ProjectKpiFilters`, `ProjectKpiDetail` + sous-modèles. `source`
+  **obligatoire** sur `ProjectKpiDetail` (règle n°2 BC4). `extra='allow'`
+  partout (règle front 1.17.3).
+- `@router.get` sur les 3 routes `/kpi/{catalog,filters,{code}}` : ajout
+  `response_model=…` → **`$ref` visibles dans `/openapi.json`**.
+
+### Étape 6 — REBUILD + /health
+
+`docker compose build api && up -d` + /health = 0.45.2.
+
+### Règles respectées
+
+- Un seul agent ce serveur / un seul shell : règle enfreinte 3 fois par
+  recréation container externe pendant ingest → documenté et repris.
+- Aucun chiffre sans requête : chaque garde = `psql -c SELECT …`.
+- `source` jamais omis (étape 5).
+- Design UI inchangé (BC2 check parallèle PNG attaché).
+- `tech = f(system)` : backfill a stabilisé la source système (étape 2),
+  `populate_measurement_points:627` prend `rat` sinon `r.system` — plus
+  d'inférence par étiquette fichier.
+
 ## 0.45.1 — 2026-10-17 (patch) — Dict v2 : discriminators hérités, CHOICE→VALUE, conversions, SIB2/SIB3 split (Agent BC1)
 
 > Clôture des écarts déclarés en 0.45.0 : discriminator `event` propagé

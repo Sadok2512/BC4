@@ -8,7 +8,14 @@ from pydantic import BaseModel, Field
 
 
 DictView = Literal["catalog", "raw"]
-GroupBy = Literal["operator", "band", "operator_band"]
+# 0.47.0 — Ajoute `dor` (join mp.ecgi → cell_ref.dor, ecgi_source=
+# 'sib1_strict' uniquement). Mécanique prête pour `dr` / `plaque` /
+# `arcep_zone` (déclarés mais désactivés côté front tant que les
+# colonnes correspondantes ne sont pas peuplées sur cell_ref).
+GroupBy = Literal[
+    "operator", "band", "operator_band",
+    "dor", "dr", "plaque", "arcep_zone",
+]
 Origin = Literal["network_config", "ue_capability", "ue_report"]
 
 
@@ -55,6 +62,11 @@ class DictTreeResponse(BaseModel):
     total_rows:        int
     distinct_param_keys: int
     tree:              list[DictTechnoBucket]
+    # Forward ref — défini plus bas (GroupByOption).
+    group_by_options:  list["GroupByOption"] = Field(
+        default_factory=list,
+        description="0.47.0 — group_by disponibles pour ce projet (operator/band/operator_band toujours ; dor/dr/plaque/arcep_zone selon état de cell_ref).",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -63,9 +75,21 @@ class DictTreeResponse(BaseModel):
 
 
 class DistributionValueGroup(BaseModel):
-    """Un groupe (operator ou band ou operator_band) sur une valeur donnée."""
+    """Un groupe (operator / band / operator_band / dor / dr / plaque /
+    arcep_zone) sur une valeur donnée.
+
+    0.47.0 — Ajout de ``dor`` + ``dr`` / ``plaque`` / ``arcep_zone``
+    pour exposer la jointure cell_ref. ``operator`` / ``band`` restent
+    là pour compatibilité avec les anciens appels. ``N/D`` = valeur
+    littérale ``"N/D"`` dans la colonne concernée quand l'ECGI est
+    absent, non strict, ou que la cellule n'a pas la valeur dans
+    cell_ref — jamais filtré silencieusement."""
     operator:        str | None = None
     band:            str | None = None
+    dor:             str | None = None
+    dr:              str | None = None
+    plaque:          str | None = None
+    arcep_zone:      str | None = None
     n:               int
     operator_color:  str | None = None
     band_color:      str | None = None
@@ -75,6 +99,28 @@ class DistributionValue(BaseModel):
     value:         str
     value_display: str
     groups:        list[DistributionValueGroup]
+
+
+class DistributionBlockStatus(BaseModel):
+    """0.47.0 — Déclaration d'indisponibilité pour un `group_by` requis.
+
+    Quand `group_by=dor` (ou dr/plaque/arcep_zone) mais que le
+    référentiel cellule n'expose pas la dimension pour ce projet, on
+    renvoie le bloc avec `status='UNAVAILABLE'` + `reason` lisible. Les
+    `values` restent `[]`, `verdict=NON_COMPARE`. **Jamais filtré
+    silencieusement**.
+    """
+    status: Literal["UNAVAILABLE"]
+    reason: str
+
+
+class DistributionCoverage(BaseModel):
+    """0.47.0 — Couverture de la jointure cell_ref pour un `group_by`
+    dimensionnel (dor/dr/plaque/arcep_zone). Permet au front d'afficher
+    « N points sur M dans un DOR connu (X %) »."""
+    with_value:    int
+    total:         int
+    pct:           float
 
 
 class DistributionBlock(BaseModel):
@@ -90,17 +136,36 @@ class DistributionBlock(BaseModel):
     comparability:  str
     verdict:        Literal["IDENTIQUE", "DIFFERENT", "NON_COMPARE"]
     result_id:      str
+    status:         Literal["AVAILABLE", "UNAVAILABLE"] = "AVAILABLE"
+    reason:         str | None = None
+    coverage:       DistributionCoverage | None = None
+
+
+class GroupByOption(BaseModel):
+    """0.47.0 — Déclaration côté catalogue des `group_by` disponibles
+    pour un projet. `available=false` → `reason` obligatoire."""
+    key:        GroupBy
+    available:  bool
+    reason:     str | None = None
 
 
 class DictDistributionResponse(BaseModel):
-    project_id: str
-    group_by:   GroupBy
-    blocks:     list[DistributionBlock]
+    project_id:        str
+    group_by:          GroupBy
+    blocks:            list[DistributionBlock]
+    group_by_options:  list[GroupByOption] = Field(
+        default_factory=list,
+        description="Déclare quels group_by sont utilisables sur ce projet (cell_ref peuplé ou non).",
+    )
 
 
 # ---------------------------------------------------------------------------
 # Fiche paramètre
 # ---------------------------------------------------------------------------
+
+
+# Résout la forward ref `DictTreeResponse.group_by_options -> GroupByOption`.
+DictTreeResponse.model_rebuild()
 
 
 class DictParamSheet(BaseModel):

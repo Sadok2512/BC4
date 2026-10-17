@@ -32,6 +32,12 @@ from typing import Any, Iterable, Literal
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from app.dict.cell_ref_group import (
+    CELL_REF_DIMS,
+    build_group_by_options,
+    check_cell_ref_dim,
+    mp_metric_dim_percentiles,
+)
 from app.kpi.catalog_v2 import (
     ALIASES_COUNT,
     ALIASES_REPORT,
@@ -433,6 +439,10 @@ def build_filters_v2(db: Session, project_id: str) -> dict[str, Any]:
         "arcep":    _geo_dim("arcep_zone"),
         "commune":  _geo_dim("commune"),
         "insee":    _geo_dim("insee"),
+        # 0.47.0 — group_by utilisables sur ce projet (operator/band
+        # toujours ; dor/dr/plaque/arcep_zone selon état du cell_ref,
+        # strict ECGI uniquement).
+        "group_by_options": build_group_by_options(db, project_id),
     }
 
 
@@ -564,7 +574,12 @@ def _dist_param_path(
 # ---------------------------------------------------------------------------
 
 
-GroupBy = Literal["operator", "band", "operator_band"]
+# 0.47.0 — Ajoute `dor` / `dr` / `plaque` / `arcep_zone` via jointure
+# mp.ecgi → cell_ref.<col> (ecgi_source='sib1_strict' uniquement).
+GroupBy = Literal[
+    "operator", "band", "operator_band",
+    "dor", "dr", "plaque", "arcep_zone",
+]
 
 
 def _group_cols(group_by: GroupBy) -> list[str]:
@@ -572,6 +587,8 @@ def _group_cols(group_by: GroupBy) -> list[str]:
         return ["operator"]
     if group_by == "band":
         return ["band"]
+    if group_by in CELL_REF_DIMS:
+        return [group_by]
     return ["operator", "band"]
 
 
@@ -805,6 +822,9 @@ def compute_kpi_v2(
         }
     entry = CATALOG_V2[canonical]
 
+    # 0.47.0 — group_by_options exposés systématiquement pour que le
+    # front sache quelles dimensions sont utilisables sur ce projet.
+    group_by_options = build_group_by_options(db, project_id)
     base = {
         "requested_code":    requested,
         "code":              canonical,
@@ -821,7 +841,32 @@ def compute_kpi_v2(
         "operators_requested": list(operators),
         "phases_requested":   list(phases),
         "group_by":          group_by,
+        "group_by_options":  group_by_options,
     }
+
+    # 0.47.0 — Court-circuit : si group_by dimensionnel (dor/dr/plaque/
+    # arcep_zone) et cell_ref ne porte pas cette dimension pour les
+    # ECGI du projet, UNAVAILABLE immédiat avec reason. Aucune requête
+    # inutile ensuite.
+    if group_by in CELL_REF_DIMS:
+        st = check_cell_ref_dim(db, project_id, group_by)
+        if not st.available:
+            return {
+                **base,
+                "status":  "UNAVAILABLE",
+                "reason":  st.reason,
+                "value":   None,
+                "n":       0,
+                "groups":  [],
+                "table":   [],
+                "comparability": "NO_DATA",
+                "coverage": {
+                    "with_value": st.n_with_value,
+                    "total":      st.n_total_mp,
+                    "pct":        st.pct,
+                },
+            }
+
     group_cols = _group_cols(group_by)
     expected_ops = set(_EXPECTED_OPERATORS) & _project_distinct(
         db, project_id, "measurement_points", "operator"
@@ -1017,9 +1062,24 @@ def compute_kpi_v2(
             ),
             {"pid": project_id},
         ).first()
-        groups_raw = _grouped_mp(db, project_id, col, group_cols, operators=operators)
-        groups = _decorate_groups(groups_raw, group_cols, expected_ops)
-        return {
+        # 0.47.0 — group_by dimensionnel → mp_metric_dim_percentiles
+        # (jointure ECGI strict → cell_ref.<col>), avec N/D pour les
+        # points sans ECGI strict ou sans valeur cell_ref.
+        coverage: dict[str, Any] | None = None
+        if group_by in CELL_REF_DIMS:
+            groups_raw, cov = mp_metric_dim_percentiles(db, project_id, col, group_by)
+            total = cov["total"]
+            pct = round(100.0 * cov["with_value"] / total, 2) if total else 0.0
+            coverage = {
+                "with_value": cov["with_value"],
+                "total":      total,
+                "pct":        pct,
+            }
+            groups = groups_raw  # pas de _decorate_groups (pas d'operator)
+        else:
+            groups_raw = _grouped_mp(db, project_id, col, group_cols, operators=operators)
+            groups = _decorate_groups(groups_raw, group_cols, expected_ops)
+        out = {
             **base,
             "status": "AVAILABLE",
             "reason": None,
@@ -1032,6 +1092,9 @@ def compute_kpi_v2(
             "table":  groups,
             "comparability": _comparability(groups),
         }
+        if coverage is not None:
+            out["coverage"] = coverage
+        return out
 
     # 0.45.2 — Débit depuis la TABLE DES TRANSFERTS (compute_transfers).
     if kind in ("transfers_table", "transfers_dms"):

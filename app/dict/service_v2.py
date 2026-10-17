@@ -8,6 +8,13 @@ from typing import Any
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from app.dict.cell_ref_group import (
+    CELL_REF_DIMS,
+    build_group_by_options,
+    check_cell_ref_dim,
+    param_occurrence_dim_counts,
+)
+
 
 # Palette opérateur / bande — alignée avec kpi.service_v2.
 _OPERATOR_COLORS: dict[str, str] = {
@@ -136,6 +143,8 @@ def build_dict_tree(db: Session, project_id: str, view: str) -> dict[str, Any]:
         "total_rows":         int(total_rows),
         "distinct_param_keys": int(distinct_param_keys),
         "tree":               tree_out,
+        # 0.47.0 — group_by utilisables pour ce projet.
+        "group_by_options":   build_group_by_options(db, project_id),
     }
 
 
@@ -162,8 +171,51 @@ def build_distribution(
 ) -> dict[str, Any]:
     """Distribution de valeurs par (param_key, group_by). Pour chaque
     clé : values[] = {value, value_display, groups{operator?/band?: n}}.
+
+    0.47.0 — Accepte aussi ``group_by ∈ {dor, dr, plaque, arcep_zone}``.
+    Joint ``mp.ecgi → cell_ref.<col>`` (ecgi_source='sib1_strict'
+    uniquement). Si la dimension est absente du cell_ref pour ce projet,
+    renvoie le bloc avec ``status='UNAVAILABLE'`` + ``reason``.
     """
+    group_by_options = build_group_by_options(db, project_id)
+    is_cell_ref_dim = group_by in CELL_REF_DIMS
+    cell_ref_status = (
+        check_cell_ref_dim(db, project_id, group_by) if is_cell_ref_dim else None
+    )
+
     blocks: list[dict[str, Any]] = []
+
+    # 0.47.0 — Court-circuit : si group_by dimensionnel non disponible,
+    # on renvoie UNAVAILABLE pour toutes les clés sans requêter meta.
+    if is_cell_ref_dim and cell_ref_status and not cell_ref_status.available:
+        for key in keys:
+            blocks.append({
+                "param_key":       key,
+                "display_name":    key.rsplit("/", 1)[-1] if "/" in key else key,
+                "unit":            None,
+                "choice_of":       None,
+                "discriminators":  None,
+                "origin":          "network_config",
+                "n_total":         0,
+                "distinct_values": 0,
+                "values":          [],
+                "comparability":   "NO_DATA",
+                "verdict":         "NON_COMPARE",
+                "result_id":       _result_id(project_id, key, group_by),
+                "status":          "UNAVAILABLE",
+                "reason":          cell_ref_status.reason,
+                "coverage": {
+                    "with_value": cell_ref_status.n_with_value,
+                    "total":      cell_ref_status.n_total_mp,
+                    "pct":        cell_ref_status.pct,
+                },
+            })
+        return {
+            "project_id":        project_id,
+            "group_by":          group_by,
+            "blocks":            blocks,
+            "group_by_options":  group_by_options,
+        }
 
     for key in keys:
         # Métadonnées communes (unit, origin, choice_of, discriminators).
@@ -201,6 +253,7 @@ def build_distribution(
             })
             continue
         display_name, unit, origin, choice_of, discs_json, n_total, distinct_vals = meta
+
         if origin == "ue_report":
             # Pour les mesures rapportées, pas de distribution config : on
             # redirige vers un KPI éventuel (indicatif).
@@ -220,43 +273,64 @@ def build_distribution(
             })
             continue
 
-        # Groupage (operator | band | operator_band)
-        if group_by == "operator":
-            group_cols = ["operator"]
-        elif group_by == "band":
-            group_cols = ["band"]
-        else:
-            group_cols = ["operator", "band"]
-        sel = ", ".join(group_cols)
-        rows = db.execute(
-            text(
-                f"""
-                SELECT COALESCE(value_converted, value) AS v,
-                       {sel},
-                       COUNT(*) AS n
-                FROM param_occurrence
-                WHERE project_id = :pid AND param_key = :k
-                GROUP BY v, {sel}
-                ORDER BY v
-                """
-            ),
-            {"pid": project_id, "k": key},
-        ).fetchall()
-
-        # Pivot values[] = {value, value_display, groups[]}.
+        # Pivot values[] = {value, value_display, groups[]} selon la
+        # branche group_by. On distingue :
+        #   - operator / band / operator_band : lecture directe
+        #     param_occurrence.(operator, band).
+        #   - dor / dr / plaque / arcep_zone : jointure cell_ref via
+        #     stg_event_id → mp.ecgi (strict).
         by_value: dict[str, list[dict[str, Any]]] = {}
-        for r in rows:
-            v = r[0]
-            if v is None:
-                continue
-            g: dict[str, Any] = {"n": int(r[-1])}
-            for i, c in enumerate(group_cols):
-                g[c] = r[1 + i]
-                if c == "operator":
-                    g["operator_color"] = _op_color(r[1 + i])
-                elif c == "band":
-                    g["band_color"] = _band_color(r[1 + i])
-            by_value.setdefault(str(v), []).append(g)
+        coverage: dict[str, Any] | None = None
+
+        if is_cell_ref_dim:
+            dim_rows, cov = param_occurrence_dim_counts(
+                db, project_id, key, group_by,
+            )
+            for r in dim_rows:
+                g: dict[str, Any] = {group_by: r["dim"], "n": r["n"]}
+                by_value.setdefault(str(r["value"]), []).append(g)
+            total = cov["total"]
+            pct = round(100.0 * cov["with_value"] / total, 2) if total else 0.0
+            coverage = {
+                "with_value": cov["with_value"],
+                "total":      total,
+                "pct":        pct,
+            }
+        else:
+            # Groupage classique (operator | band | operator_band).
+            if group_by == "operator":
+                group_cols = ["operator"]
+            elif group_by == "band":
+                group_cols = ["band"]
+            else:
+                group_cols = ["operator", "band"]
+            sel = ", ".join(group_cols)
+            rows = db.execute(
+                text(
+                    f"""
+                    SELECT COALESCE(value_converted, value) AS v,
+                           {sel},
+                           COUNT(*) AS n
+                    FROM param_occurrence
+                    WHERE project_id = :pid AND param_key = :k
+                    GROUP BY v, {sel}
+                    ORDER BY v
+                    """
+                ),
+                {"pid": project_id, "k": key},
+            ).fetchall()
+            for r in rows:
+                v = r[0]
+                if v is None:
+                    continue
+                g = {"n": int(r[-1])}
+                for i, c in enumerate(group_cols):
+                    g[c] = r[1 + i]
+                    if c == "operator":
+                        g["operator_color"] = _op_color(r[1 + i])
+                    elif c == "band":
+                        g["band_color"] = _band_color(r[1 + i])
+                by_value.setdefault(str(v), []).append(g)
 
         values_out: list[dict[str, Any]] = []
         for v, groups in by_value.items():
@@ -274,7 +348,7 @@ def build_distribution(
         else:
             verdict = "DIFFERENT"; comparability = "COMPARABLE"
 
-        blocks.append({
+        block: dict[str, Any] = {
             "param_key":      key,
             "display_name":   display_name,
             "unit":           unit,
@@ -287,12 +361,18 @@ def build_distribution(
             "comparability":  comparability,
             "verdict":        verdict,
             "result_id":      _result_id(project_id, key, group_by),
-        })
+            "status":         "AVAILABLE",
+            "reason":         None,
+        }
+        if coverage is not None:
+            block["coverage"] = coverage
+        blocks.append(block)
 
     return {
-        "project_id": project_id,
-        "group_by":   group_by,
-        "blocks":     blocks,
+        "project_id":        project_id,
+        "group_by":          group_by,
+        "blocks":            blocks,
+        "group_by_options":  group_by_options,
     }
 
 

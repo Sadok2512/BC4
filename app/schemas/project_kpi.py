@@ -72,6 +72,19 @@ class KpiFilterDimension(BaseModel):
     values: list[str] = Field(default_factory=list)
 
 
+class KpiGroupByOption(BaseModel):
+    """0.47.0 — Déclare quels `group_by` sont utilisables sur ce projet.
+
+    `operator` / `band` / `operator_band` sont toujours vrais. `dor` /
+    `dr` / `plaque` / `arcep_zone` dépendent du peuplement de cell_ref
+    sur les cellules observées (ECGI strict). `available=false` →
+    `reason` obligatoire (jamais muet)."""
+    model_config = ConfigDict(extra="allow")
+    key: str
+    available: bool
+    reason: Optional[str] = None
+
+
 class ProjectKpiFilters(BaseModel):
     """Réponse GET /projects/{id}/kpi/filters.
 
@@ -95,6 +108,9 @@ class ProjectKpiFilters(BaseModel):
     arcep: Optional[KpiFilterDimension] = None
     commune: Optional[KpiFilterDimension] = None
     insee: Optional[KpiFilterDimension] = None
+    # 0.47.0 — Déclare les group_by utilisables (operator/band toujours ;
+    # dor/dr/plaque/arcep_zone selon état du cell_ref).
+    group_by_options: list[KpiGroupByOption] = Field(default_factory=list)
 
 
 class KpiGroupRow(BaseModel):
@@ -102,6 +118,13 @@ class KpiGroupRow(BaseModel):
     n: int
     operator: Optional[str] = None
     band: Optional[str] = None
+    # 0.47.0 — Jointure cell_ref (dor/dr/plaque/arcep_zone). `"N/D"`
+    # littéral quand l'ECGI est manquant / non strict / sans valeur
+    # dans cell_ref.
+    dor: Optional[str] = None
+    dr: Optional[str] = None
+    plaque: Optional[str] = None
+    arcep_zone: Optional[str] = None
     p10: Optional[float] = None
     p50: Optional[float] = None
     p90: Optional[float] = None
@@ -138,3 +161,9 @@ class ProjectKpiDetail(BaseModel):
     group_by: Optional[str] = None
     groups: Optional[list[KpiGroupRow]] = None
     table: Optional[list[KpiGroupRow]] = None
+    # 0.47.0 — Couverture jointure cell_ref (dor/dr/plaque/arcep_zone).
+    # with_value = n points avec ECGI strict ET valeur présente dans
+    # cell_ref ; total = n points totaux ; pct = with_value / total.
+    coverage: Optional[dict] = None
+    # Déclare les group_by utilisables sur ce projet (idem /kpi/filters).
+    group_by_options: Optional[list[KpiGroupByOption]] = None

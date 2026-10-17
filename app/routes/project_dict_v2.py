@@ -73,12 +73,15 @@ def dict_distribution(
     db: Session = Depends(get_db),
 ) -> DictDistributionResponse:
     _require_project(db, project_id)
-    if group_by not in ("operator", "band", "operator_band"):
+    # 0.47.0 — ajoute dor / dr / plaque / arcep_zone (jointure cell_ref).
+    allowed = {"operator", "band", "operator_band",
+               "dor", "dr", "plaque", "arcep_zone"}
+    if group_by not in allowed:
         raise HTTPException(
             400,
             {
                 "code": "GROUP_BY_UNKNOWN",
-                "message": "group_by attendu ∈ {operator, band, operator_band}",
+                "message": f"group_by attendu ∈ {sorted(allowed)}",
             },
         )
     key_list = [k.strip() for k in (keys or "").split(",") if k.strip()]
