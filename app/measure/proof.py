@@ -357,10 +357,13 @@ def prove_rsrp_per_event(
         text(
             """
             WITH cm AS (
+                -- 0.45.2 : system='LTE' seul (CELLMEAS NR mal mappé par
+                -- decoder 2.0.0, cf. profiling.py:_fetch_values).
                 SELECT capture_id, seq,
                        (raw_fields ->> :f)::float AS cm_val
                 FROM stg_event_raw
                 WHERE project_id = :pid AND event_code = 'CELLMEAS'
+                  AND system = 'LTE'
                   AND raw_fields ->> :f IS NOT NULL
             ),
             mr AS (

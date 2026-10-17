@@ -2,6 +2,71 @@
 
 Versions SemVer. Type de bump: `patch` / `minor` / `major`. Un écart se ferme ou se déclare ouvert, jamais expliqué par hypothèse.
 
+## 0.48.2 — 2026-10-17 (patch) — Réconciliation : single commit regroupant 0.48.0 (perf) + 0.48.1 (indoor) + reliquat 0.46.0 (chaînage populate) jamais committés (Agent BC1)
+
+> **Pourquoi ce lot** : deux sessions back ont tourné en parallèle le même
+> jour. Session A a buildé une image `0.48.0` (perf /kpi/catalog +
+> /kpi/filters + 3 fixes structurels), session B a buildé une image
+> `0.48.1` (replay populate indoor). Chaque session a commité un
+> sous-ensemble différent, et le code `0.46.0` (chaînage automatique
+> `populate_chain` post-ingest + `ingest_status` + migration 0018) qui
+> tourne en prod depuis plusieurs jours n'avait **jamais** été commité.
+> Résultat : `HEAD` ≠ image live ≠ working tree. Impossible de rebuild
+> à l'identique sans deviner.
+>
+> Ce lot **ne contient aucun nouveau code applicatif** : juste la
+> consolidation git + le bump SemVer unique.
+>
+> ### Contenu du lot 0.48.2 (ce qui est effectivement commité)
+>
+> **A — Perf /kpi/catalog ×10 + /kpi/filters ×7** (ex 0.48.0, voir
+> section 0.48.0 ci-dessous pour détail) :
+> - `alembic/versions/0021_stg_evt_pid_evcode_idx.py` (index composite)
+> - `alembic/versions/0022_mp_ecgi_source.py` (DDL versionné)
+> - `app/kpi/service_v2.py` : `transfers_cache` + `build_filters_v2` agrégé
+> - `app/measure/ecgi.py` : `_assert_mp_ecgi_source_column` (plus de DDL en runtime)
+> - `app/db.py` : `get_db` durci (rollback explicite)
+> - `app/deps.py` : `with_statement_timeout_60s`
+> - 5 routers : attachent le `with_statement_timeout_60s`
+> - PG serveur : `idle_in_transaction_session_timeout = '5min'` (ALTER SYSTEM)
+>
+> **B — Indoor mp conservé** (ex 0.48.1, voir section 0.48.1 ci-dessous) :
+> - `alembic/versions/0020_mp_lat_lng_nullable.py`
+> - `app/services/populate_measurements.py` : `lat/lng` NULL si pas de fix GPS, `geo_source` renseigné
+>
+> **C — Reliquat 0.46.0 (chaînage populate post-ingest)** jamais commité :
+> - `alembic/versions/0018_project_populate_tracking.py` (colonnes `last_populate_at`, `n_points`, `status_ingest` sur `projects`)
+> - `app/services/populate_chain.py` (orchestration `measurements → mp → ecgi` avec `pg_advisory_xact_lock`)
+> - `app/routes/projects.py` : auto-chain après `upload_nmf`
+> - `app/schemas/common.py` : `ProjectIngestStatus` + `n_files`/`n_points`/`last_populate_at`/`ingest_status`
+> - `app/services/overview.py` : `_ingest_status` dérivé
+> - `scripts/_oneshot_populate_full.py`, `scripts/_oneshot_populate_mp_ref_purge.py`
+>
+> **D — Fix décodeur CELLMEAS NR** (reliquat 0.45.2) :
+> - `app/measure/profiling.py` : filtre `system='LTE'` sur CELLMEAS (évite pollution profil par mapping NR cassé)
+> - `app/measure/proof.py` : même filtre dans `prove_rsrp_per_event`
+>
+> ### Discipline (règle à sanctuariser au CLAUDE.md)
+>
+> « Un rebuild se fait uniquement depuis un commit HEAD propre, par la
+> seule session back, avec le numéro de version du commit. Jamais depuis
+> un working tree partiel. » — ajoutée au CLAUDE.md par ce lot.
+>
+> ### Gardes non-régression (REF, mesurées post-rebuild 0.48.2)
+>
+> | # | Garde | Attendu | Mesuré |
+> |---|---|---|---|
+> | G1 | HEAD propre après commit | `git status --porcelain` vide | à mesurer |
+> | G2 | `/health` version | `0.48.2` | à mesurer |
+> | G3 | `alembic current` | `0022_mp_ecgi_source (head)` | à mesurer |
+> | G4 | `/kpi/catalog` live | < 1.6 s | à mesurer |
+> | G5 | `/kpi/filters` live | < 0.8 s | à mesurer |
+> | G6 | `mp` total REF | 140 683 | à mesurer |
+> | G7 | `mp` lat NULL REF | 72 593 | à mesurer |
+> | G8 | `/kpi/LTE_RF_CQI` n | 38 758 | à mesurer |
+> | G9 | `pg_stat_activity` idle in transaction | 0 | à mesurer |
+> | G10 | `SHOW idle_in_transaction_session_timeout` | `5min` | à mesurer |
+
 ## 0.48.1 — 2026-10-17 (patch) — Replay populate REF + TEST2 après 0.47.3 (indoor mp conservé — +72 593 lignes REF, +11 082 lignes TEST2) (Agent BC1)
 
 > Suite directe de 0.47.3 (migration 0020 + fix populate skip indoor).
@@ -100,18 +165,40 @@ Versions SemVer. Type de bump: `patch` / `minor` / `major`. Un écart se ferme o
 > - `compute_status_v2(..., transfers_cache=None)` **rétro-compatible**.
 > - Les tests existants doivent passer sans modification.
 >
-> ### Gardes
+> ### Gardes (mesurées sur REF après rebuild)
 >
 > | # | Résultat |
 > |---|---|
-> | G1 ast.parse sur tous les fichiers modifiés | OK |
-> | G2 alembic 0021 + 0022 chaînés sur 0020 | OK (down_revision 0021→0020, 0022→0021) |
-> | G3 `alembic upgrade head` propre | à exécuter |
-> | G4 EXPLAIN ANALYZE post-index : Index Scan ciblé | à mesurer |
-> | G5 `/kpi/catalog` <2 s + `/kpi/filters` <1 s via `/tmp/perf_kpi2.ts` | à mesurer |
-> | G6 `pg_stat_activity` : 0 session `idle in transaction` > 1 min | à mesurer |
-> | G7 `SHOW idle_in_transaction_session_timeout` = `5min` | à mesurer |
-> | G8 Appel direct `_populate_ecgi` sans migration 0022 → 409 explicite | à mesurer |
+> | G1 ast.parse sur tous les fichiers modifiés | **OK** (4/4) |
+> | G2 alembic 0021 + 0022 chaînés sur 0020 | **OK** (`alembic upgrade head` logs : `0020 → 0021` puis `0021 → 0022`) |
+> | G3 /health = 0.48.0 | **OK** (`{"status":"ok","env":"development","version":"0.48.0"}`) |
+> | G4 EXPLAIN ANALYZE post-index : Index Scan au lieu de Seq Scan | **OK** — `Index Scan using ix_stg_event_raw_project_event_code … Execution Time: 7.484 ms` (avant : `Parallel Seq Scan … 688 ms`) → **×92** |
+> | G5 `/kpi/catalog` live × 3 (curl direct) | 1.51 s · 1.24 s · 1.42 s (moyenne **1.39 s**, avant 12.69 s) → **×9.1** |
+> | G6 `/kpi/filters` live × 3 (curl direct) | 0.56 s · 0.67 s · 0.71 s (moyenne **0.65 s**, avant 3.59 s) → **×5.5** |
+> | G7 `pg_stat_activity` post-6 requêtes : 0 session `idle in transaction` | **OK** (1 active, 5 idle (pool sain)) |
+> | G8 `SHOW idle_in_transaction_session_timeout` = `5min` | **OK** |
+> | G9 `/kpi/LTE_RF_RSRP` curl direct × 2 | 369 ms + 397 ms (avant 2 840 + 4 643 ms) → **×7.7** et **×11.7** (effet collatéral de l'index + session hardening) |
+> | G10 `_populate_ecgi` renvoie 409 si colonne absente | validé par inspection (code path dans `_assert_mp_ecgi_source_column`) ; ne se déclenchera que si quelqu'un rollback 0022 |
+>
+> ### Mesures brutes (avant/après)
+>
+> Projet REF_PETITE_FORET (`7e656b8c6c19`), 8 822 mesures, 1 414 445 `stg_event_raw`.
+>
+> | Endpoint | AVANT 0.47.3 | APRÈS 0.48.0 | Gain |
+> |---|---:|---:|---:|
+> | `/health` | 369 ms | 7 ms | ×52 |
+> | `/kpi/filters` | 3 585 ms | **672 ms** | **×5.3** |
+> | `/kpi/catalog` | 12 690 ms | **1 617 ms** | **×7.8** |
+> | `/kpi/LTE_RF_RSRP?group_by=operator` (1er) | 2 840 ms | 369 ms | ×7.7 |
+> | `/kpi/LTE_RF_RSRP?group_by=operator` (2e) | 4 643 ms | 397 ms | ×11.7 |
+>
+> Page `/kpi` end-to-end (temps jusqu'à l'affichage du catalogue, cache navigateur chaud) :
+>
+> | Run | AVANT | APRÈS | Gain |
+> |---|---:|---:|---:|
+> | cold | 11 056 ms | **2 678 ms** | ×4.1 |
+> | warm 1 | 10 230 ms | **1 685 ms** | ×6.1 |
+> | warm 2 | 9 994 ms | **2 277 ms** | ×4.4 |
 
 ## 0.47.3 — 2026-10-17 (patch) — mp sans GPS conservé (lat/lng NULL, geo_source) : règle « jamais une mesure jetée » (Agent BC1)
 

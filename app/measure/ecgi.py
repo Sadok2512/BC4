@@ -159,9 +159,10 @@ def _extract_sib1_cells(db: Session, project_id: str) -> list[dict[str, Any]]:
          capture avant ce SIB1 ou juste après), earfcn (mp.earfcn
          de la capture)}.
 
-    Les champs `pci` et `earfcn` sont joints à partir des
-    `measurement_points` de la capture (même capture_id). On prend la
-    valeur la plus proche en seq.
+    0.45.2 — Match MCC/MNC via `LIKE %plmn-IdentityList%plmn-Identity/mcc`
+    pour tolérer l'indexation `[N]` ajoutée par le walker 0.42.0
+    (ex. `.../plmn-IdentityList/[0]/plmn-Identity/mcc`). On garde
+    uniquement le PREMIER PLMN (index [0]) via `MIN(path)`, ordre lex.
     """
     rows = db.execute(
         text(
@@ -172,25 +173,40 @@ def _extract_sib1_cells(db: Session, project_id: str) -> list[dict[str, Any]]:
                 FROM param_occurrence po
                 JOIN stg_event se ON se.id = po.stg_event_id
                 WHERE po.project_id = :pid
-                  AND po.path IN (:p_ci, :p_mcc, :p_mnc, :p_tac)
+                  AND (po.path = :p_ci
+                       OR po.path = :p_tac
+                       OR po.path LIKE :pat_mcc
+                       OR po.path LIKE :pat_mnc)
+            ),
+            -- Première occurrence (index [0] du plmn-IdentityList) par
+            -- stg_event_id pour MCC et MNC (jamais mélanger des PLMN
+            -- différents).
+            plmn_first AS (
+                SELECT stg_event_id,
+                       MIN(path) FILTER (WHERE path LIKE :pat_mcc) AS mcc_path,
+                       MIN(path) FILTER (WHERE path LIKE :pat_mnc) AS mnc_path
+                FROM sib1
+                GROUP BY stg_event_id
             )
-            SELECT stg_event_id, capture_id, seq, operator, band,
-                   MAX(CASE WHEN path = :p_ci  THEN value END) AS cell_identity,
-                   MAX(CASE WHEN path = :p_mcc THEN value END) AS mcc,
-                   MAX(CASE WHEN path = :p_mnc THEN value END) AS mnc,
-                   MAX(CASE WHEN path = :p_tac THEN value END) AS tac
-            FROM sib1
-            GROUP BY stg_event_id, capture_id, seq, operator, band
-            HAVING MAX(CASE WHEN path = :p_ci THEN value END) IS NOT NULL
-            ORDER BY capture_id, seq
+            SELECT s.stg_event_id, MIN(s.capture_id), MIN(s.seq),
+                   MIN(s.operator), MIN(s.band),
+                   MAX(CASE WHEN s.path = :p_ci  THEN s.value END) AS cell_identity,
+                   MAX(CASE WHEN s.path = pf.mcc_path THEN s.value END) AS mcc,
+                   MAX(CASE WHEN s.path = pf.mnc_path THEN s.value END) AS mnc,
+                   MAX(CASE WHEN s.path = :p_tac THEN s.value END) AS tac
+            FROM sib1 s
+            LEFT JOIN plmn_first pf ON pf.stg_event_id = s.stg_event_id
+            GROUP BY s.stg_event_id
+            HAVING MAX(CASE WHEN s.path = :p_ci THEN s.value END) IS NOT NULL
+            ORDER BY MIN(s.capture_id), MIN(s.seq)
             """
         ),
         {
             "pid": project_id,
             "p_ci":  _PATH_CI,
-            "p_mcc": _PATH_MCC,
-            "p_mnc": _PATH_MNC,
             "p_tac": _PATH_TAC,
+            "pat_mcc": "systemInformationBlockType1/cellAccessRelatedInfo/plmn-IdentityList/%plmn-Identity/mcc",
+            "pat_mnc": "systemInformationBlockType1/cellAccessRelatedInfo/plmn-IdentityList/%plmn-Identity/mnc",
         },
     ).fetchall()
     return [
@@ -323,13 +339,33 @@ def _build_ecgi_cells(sib1_rows: list[dict]) -> list[EcgiCell]:
     return cells
 
 
-def _ensure_mp_ecgi_source(db: Session) -> None:
-    """Migration idempotente : ajoute la colonne `mp.ecgi_source`."""
-    db.execute(text(
-        "ALTER TABLE measurement_points ADD COLUMN IF NOT EXISTS "
-        "ecgi_source VARCHAR"
-    ))
-    db.commit()
+def _assert_mp_ecgi_source_column(db: Session) -> None:
+    """0.48.0 — Vérifie que ``measurement_points.ecgi_source`` existe
+    (créée par alembic 0022). **Plus de DDL dans le handler** : si la
+    colonne manque c'est que la migration n'a pas été jouée → on refuse
+    la requête avec un 409 explicite plutôt que de bloquer la base avec
+    un ``ALTER TABLE`` sauvage pendant un pic de trafic.
+    """
+    row = db.execute(
+        text(
+            "SELECT 1 FROM information_schema.columns "
+            "WHERE table_name = 'measurement_points' "
+            "  AND column_name = 'ecgi_source'"
+        )
+    ).first()
+    if row is None:
+        from fastapi import HTTPException
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "SCHEMA_MIGRATION_MISSING",
+                "message": (
+                    "measurement_points.ecgi_source absent. "
+                    "Jouer `alembic upgrade head` (migration 0022). "
+                    "Aucun DDL n'est fait depuis le handler."
+                ),
+            },
+        )
 
 
 def _propagate_to_mp(
@@ -342,7 +378,7 @@ def _propagate_to_mp(
 
     `mp.ecgi_source` ∈ {'sib1_strict', NULL}.
     """
-    _ensure_mp_ecgi_source(db)
+    _assert_mp_ecgi_source_column(db)
     # Reset mp.ecgi + mp.ecgi_source (idempotence).
     db.execute(text(
         "UPDATE measurement_points SET ecgi = NULL, ecgi_source = NULL "

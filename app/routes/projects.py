@@ -32,6 +32,7 @@ from app.services.import_report import (
     build_import_report,
 )
 from app.services.overview import compute_overview, project_to_schema
+from app.services.populate_chain import run_populate_chain
 
 # Auth minimum « lecteur » exigée pour TOUTES les routes de ce routeur :
 # lecture et écriture passent par la même porte, la différentiation
@@ -224,6 +225,38 @@ def upload_nmf(
         )
 
     refresh_project_summary(db, project)
+
+    # 0.46.0 — Chaînage AUTOMATIQUE populate (règle structurelle BC1) :
+    # populate_measurements → populate_measurement_points → populate_ecgi.
+    # Verrouillage pg_advisory_xact_lock par project_id (sérialisation).
+    # Jamais une étape manuelle : la requête HTTP ne retourne qu'après
+    # que `n_points` et `last_populate_at` soient à jour sur Project.
+    # Si une étape échoue, l'exception remonte → 500 avec le détail →
+    # `ingest_status` restera `incomplete` au prochain GET /projects.
+    if files_done > 0:
+        try:
+            chain_report = run_populate_chain(db, project)
+            # Trace minimale dans le report (consultable via GET /projects/{id}/import).
+            project.status = "ready"
+            project.status_ingest = "ready"
+            db.commit()
+            logger_chain = __import__("logging").getLogger("app.routes.projects")
+            logger_chain.info(
+                "[upload_nmf] populate chain OK project=%s n_points=%d elapsed=%ss",
+                project.id, chain_report["n_points"], chain_report["elapsed_s"],
+            )
+        except Exception as exc:
+            project.status = "failed"
+            project.status_ingest = "error"
+            db.commit()
+            raise HTTPException(
+                500,
+                {
+                    "code": "POPULATE_CHAIN_FAIL",
+                    "message": f"ingest OK mais populate chain FAIL : {exc!r}",
+                },
+            )
+
     return build_import_report(
         db, project, entries,
         files_received=len(files),

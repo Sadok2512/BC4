@@ -27,7 +27,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.db import get_db
-from app.deps import get_actor, get_current_user, require_role
+from app.deps import get_actor, get_current_user, require_role, with_statement_timeout_60s
 from app.kpi.service_v2 import (
     build_catalog_v2_response,
     build_filters_v2,
@@ -46,7 +46,12 @@ from app.schemas.settings import Actor
 router = APIRouter(
     prefix="/projects",
     tags=["kpi-project"],
-    dependencies=[Depends(get_current_user)],
+    # 0.48.0 — statement_timeout 60 s pour empêcher qu'une requête bloquée
+    # (lock, scan dément) ne tombe en time-out seule au bout de plusieurs
+    # minutes. Les routes write (_populate_ecgi, _rebuild_param_occurrence)
+    # restent sous ce plafond : si une opération réelle a besoin de plus,
+    # c'est qu'elle doit être async / batch, pas HTTP.
+    dependencies=[Depends(get_current_user), Depends(with_statement_timeout_60s)],
 )
 
 
@@ -142,13 +147,15 @@ def kpi_detail(
     db: Session = Depends(get_db),
 ) -> dict:
     _require_project(db, project_id)
-    if group_by not in ("operator", "band", "operator_band"):
+    # 0.46.1 — Alignement avec service_v2.GroupBy (dim cell_ref géo
+    # peuvent toutes servir de group_by si cell_ref.{col} est peuplé).
+    if group_by not in ("operator", "band", "operator_band", "dor", "dr", "plaque", "arcep_zone"):
         raise HTTPException(
             400,
             {
                 "code": "GROUP_BY_UNKNOWN",
                 "message": f"group_by {group_by!r} invalide. "
-                "Valeurs admises : operator | band | operator_band.",
+                "Valeurs admises : operator | band | operator_band | dor | dr | plaque | arcep_zone.",
             },
         )
     return compute_kpi_v2(

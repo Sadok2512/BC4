@@ -83,20 +83,33 @@ def _fetch_values(
     db: Session, project_id: str, event_code: str, field: str, limit: int,
 ) -> list[float]:
     """Lit un échantillon de `raw_fields->>field` sur `stg_event_raw` pour
-    un `event_code` donné, converti en float. Ordre `(capture_id, seq)`."""
+    un `event_code` donné, converti en float. Ordre `(capture_id, seq)`.
+
+    0.45.2 — Filtre system='LTE' sur CELLMEAS. Nemo CELLMEAS NR a un
+    ordre de colonnes DIFFÉRENT de CELLMEAS LTE : appliquer le mapping
+    LTE sur une ligne NR fait tomber des ARFCN (~650 400) dans la colonne
+    `cell0_rsrp_dbm`, ce qui pollue le profil (avg +96 774 dBm au lieu
+    de −90 dBm). On restreint le profil CELLMEAS **au corpus prouvé**
+    (LTE), le mapping NR est un lot séparé (bug decoder 2.0.0).
+    """
+    extra = ""
+    params: dict[str, object] = {"pid": project_id, "ec": event_code, "f": field, "lim": limit}
+    if event_code == "CELLMEAS":
+        extra = " AND system = 'LTE'"
     rows = db.execute(
         text(
-            """
+            f"""
             SELECT raw_fields ->> :f
             FROM stg_event_raw
             WHERE project_id = :pid
               AND event_code = :ec
               AND raw_fields ->> :f IS NOT NULL
+              {extra}
             ORDER BY capture_id, seq
             LIMIT :lim
             """
         ),
-        {"pid": project_id, "ec": event_code, "f": field, "lim": limit},
+        params,
     ).all()
     out: list[float] = []
     for (v,) in rows:

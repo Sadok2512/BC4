@@ -2,9 +2,11 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.db import get_db
+from app.deps import with_statement_timeout_60s
 from app.models import KpiCatalogGroup, KpiRrcSummary
 
-router = APIRouter(prefix="/kpi", tags=["kpi"])
+# 0.48.0 — statement_timeout 60 s (cf. project_kpi.router).
+router = APIRouter(prefix="/kpi", tags=["kpi"], dependencies=[Depends(with_statement_timeout_60s)])
 
 
 @router.get("/catalog")

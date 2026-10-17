@@ -1,9 +1,10 @@
 from collections import defaultdict
 from statistics import fmean
 
-from sqlalchemy.orm import Session
+from sqlalchemy import text
+from sqlalchemy.orm import Session, object_session
 
-from app.models import MeasurementPoint, Project
+from app.models import MeasurementPoint, NmfFile, Project
 from app.schemas.common import (
     FilterContext,
     MeasurementPoint as MeasurementPointSchema,
@@ -17,7 +18,36 @@ from app.schemas.common import (
 from app.services.filters import apply_measurement_filters
 
 
+def _ingest_status(n_files: int, n_points: int | None, status_ingest: str | None) -> str:
+    """Dérive l'état complétude à partir de l'état DB observé.
+
+    Jamais inventé : lit uniquement `nmf_file.status='done'` (via n_files),
+    `projects.n_points` (snapshot populate), `projects.status_ingest`.
+    """
+    if status_ingest in ("importing", "processing"):
+        return "processing"
+    if status_ingest == "error":
+        return "failed"
+    if n_files == 0:
+        return "empty"
+    # NMF ingérés : vérifier le populate.
+    if n_points is None or n_points == 0:
+        return "incomplete"
+    return "ready"
+
+
 def _project_schema(p: Project) -> ProjectSchema:
+    # 0.46.0 — Dérivation `n_files` + `ingest_status` à la volée depuis la DB.
+    # `n_files` = COUNT(nmf_file WHERE status='done') ; une seule requête par
+    # projet. Si pas de session rattachée (projet mocké), on tombe à 0 sans
+    # inventer.
+    db = object_session(p)
+    n_files = 0
+    if db is not None:
+        n_files = (
+            db.query(NmfFile).filter(NmfFile.project_id == p.id, NmfFile.status == "done").count()
+        )
+    status = _ingest_status(n_files, p.n_points, p.status_ingest)
     return ProjectSchema(
         id=p.id,
         name=p.name,
@@ -33,6 +63,10 @@ def _project_schema(p: Project) -> ProjectSchema:
         captures=p.captures,
         importedAt=p.imported_at,
         status=p.status,
+        n_files=n_files,
+        n_points=p.n_points,
+        last_populate_at=p.last_populate_at.isoformat() if p.last_populate_at else None,
+        ingest_status=status,  # type: ignore[arg-type]
     )
 
 

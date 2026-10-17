@@ -66,10 +66,13 @@ from app.services.dict_service import (
 )
 from app.services.filters import parse_csv_list
 
+from app.deps import with_statement_timeout_60s
+
 router = APIRouter(
     prefix="/projects",
     tags=["dictionary"],
-    dependencies=[Depends(get_current_user)],
+    # 0.48.0 — statement_timeout 60 s (cf. project_kpi.router).
+    dependencies=[Depends(get_current_user), Depends(with_statement_timeout_60s)],
 )
 
 # Bornes du paramètre `limit` sur /dict/param/map.

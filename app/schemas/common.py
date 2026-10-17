@@ -7,6 +7,13 @@ Tech = Literal["LTE", "NR", "EN-DC"]
 Service = Literal["Data", "SMS", "Voice"]
 MetricKey = Literal["dl", "rsrp", "sinr", "latency"]
 ProjectStatus = Literal["ready", "processing", "failed"]
+# 0.46.0 — Complétude ingest↔populate :
+#   `ready`      : tous les NMF ingérés ont été populés, `n_points > 0`.
+#   `incomplete` : NMF ingérés sans populate (ou n_points=0 malgré fichiers).
+#   `processing` : ingest en cours.
+#   `empty`      : aucun NMF.
+#   `failed`     : erreur bloquante.
+ProjectIngestStatus = Literal["ready", "incomplete", "processing", "empty", "failed"]
 
 
 class Project(BaseModel):
@@ -24,6 +31,14 @@ class Project(BaseModel):
     captures: int
     importedAt: str
     status: ProjectStatus
+    # 0.46.0 — Visibilité complétude côté client (dashboard /projects).
+    # Jamais inventé : `n_files` = COUNT(nmf_file.status='done'), `n_points`
+    # = snapshot stocké au dernier populate (NULL si pas encore passé).
+    # `last_populate_at` ISO 8601 ; `ingest_status` dérivé (voir ci-dessus).
+    n_files: int = 0
+    n_points: int | None = None
+    last_populate_at: str | None = None
+    ingest_status: ProjectIngestStatus = "empty"
 
 
 class FilterContext(BaseModel):

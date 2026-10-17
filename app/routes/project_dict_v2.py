@@ -28,10 +28,13 @@ from app.schemas.dict_v2 import (
 )
 
 
+from app.deps import with_statement_timeout_60s
+
 router = APIRouter(
     prefix="/projects",
     tags=["dict-v2"],
-    dependencies=[Depends(get_current_user)],
+    # 0.48.0 — statement_timeout 60 s (cf. project_kpi.router).
+    dependencies=[Depends(get_current_user), Depends(with_statement_timeout_60s)],
 )
 
 

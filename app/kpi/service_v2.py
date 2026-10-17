@@ -153,11 +153,18 @@ def compute_status_v2(
     entry: dict[str, Any],
     *,
     services: tuple[str, ...] = (),
+    transfers_cache: list[Any] | None = None,
 ) -> KpiStatusV2:
     """Évalue la règle ``available_check`` de l'entrée sur un projet.
 
     Un service hors scope → NOT_APPLICABLE **avant** toute requête DB
     (économise les I/O et expose la raison).
+
+    ``transfers_cache`` (0.48.0) : si fourni, les règles
+    ``transfers_table`` / ``transfers_dms`` réutilisent ce résultat
+    déjà calculé au lieu de rappeler ``compute_transfers`` à chaque
+    entrée (sinon 7 scans de ``stg_event_raw`` par
+    ``build_catalog_v2_response``).
     """
     if services and not is_in_service_scope(entry, services):
         return KpiStatusV2("NOT_APPLICABLE", not_applicable_reason(entry, services))
@@ -223,8 +230,11 @@ def compute_status_v2(
     # `transfers_dms`   : idem. La différence est dans compute_kpi_v2.
     if kind in ("transfers_table", "transfers_dms"):
         direction = (check.get("arg") or "dl").lower()
-        from app.measure.throughput import compute_transfers
-        ts = compute_transfers(db, project_id)
+        if transfers_cache is not None:
+            ts = transfers_cache
+        else:
+            from app.measure.throughput import compute_transfers
+            ts = compute_transfers(db, project_id)
         n_proven = sum(
             1 for t in ts if t.verdict == "proven" and t.direction == direction and t.thrpt_mbps is not None
         )
@@ -262,9 +272,23 @@ def build_catalog_v2_response(
     l'appel (le statut dépend du projet).
     """
     entries = sorted_entries()
+    # 0.48.0 — Pré-calculer les transferts une seule fois : sans ce cache,
+    # les 7 entrées ``transfers_table`` / ``transfers_dms`` relanceraient
+    # chacune un ``compute_transfers`` (scan de ``stg_event_raw``), soit
+    # 6 appels redondants et >6 s de latence évitable.
+    transfers_cache: list[Any] | None = None
+    needs_transfers = any(
+        (e.get("available_check") or {}).get("kind") in ("transfers_table", "transfers_dms")
+        for e in entries
+    )
+    if needs_transfers:
+        from app.measure.throughput import compute_transfers
+        transfers_cache = compute_transfers(db, project_id)
     status_cache: dict[str, KpiStatusV2] = {}
     for e in entries:
-        status_cache[e["code"]] = compute_status_v2(db, project_id, e, services=services)
+        status_cache[e["code"]] = compute_status_v2(
+            db, project_id, e, services=services, transfers_cache=transfers_cache,
+        )
 
     # Comptes par statut
     counts_by_status: dict[str, int] = {}
@@ -333,59 +357,91 @@ def build_catalog_v2_response(
 # ---------------------------------------------------------------------------
 
 
-def _distinct(db: Session, project_id: str, column: str) -> list[str]:
-    """SELECT DISTINCT ``column`` FROM measurement_points pour ce
-    projet. NULL → N/D exposé explicitement."""
-    rows = db.execute(
-        text(
-            f"SELECT DISTINCT {column} FROM measurement_points "
-            f"WHERE project_id = :pid"
-        ),
-        {"pid": project_id},
-    ).fetchall()
-    out = sorted({r[0] for r in rows if r[0] is not None})
-    has_null = any(r[0] is None for r in rows)
-    if has_null:
-        out.append("N/D")
-    return out
+# 0.48.0 — Dimensions mp directes et dimensions géo (via cell_ref).
+# Listes typées à l'extérieur pour partager avec les tests et éviter
+# tout littéral oublié ailleurs.
+_MP_DIMS: tuple[tuple[str, str], ...] = (
+    # (clé exposée, colonne SQL)
+    ("operators",     "operator"),
+    ("bands",         "band"),
+    ("rats",          "tech"),
+    ("service_types", "service_type"),
+    ("phases",        "phase"),
+    ("envs",          "env"),
+    ("deps",          "dep"),
+)
+_GEO_DIMS: tuple[tuple[str, str], ...] = (
+    ("dr",      "dr"),
+    ("plaque",  "plaque"),
+    ("dor",     "dor"),
+    ("arcep",   "arcep_zone"),
+    ("commune", "commune"),
+    ("insee",   "insee"),
+)
 
 
 def build_filters_v2(db: Session, project_id: str) -> dict[str, Any]:
     """Filtres réels issus de ``measurement_points`` du projet.
 
-    0.41.0 — Chaque dimension porte ``{available, reason, values}`` :
-    - ``available=False`` quand le référentiel n'est pas chargé OU que
-      l'ECGI n'est pas propagé.
-    - ``reason`` décrit explicitement l'écart.
-    - ``values[]`` est la liste des valeurs réelles observées (vide
-      si available=False).
+    0.41.0 — Chaque dimension porte ``{available, reason, values}``.
+    0.48.0 — Perf : 15 round-trips séquentiels ``SELECT DISTINCT``
+    + ``COUNT`` → **3 requêtes agrégées** :
+      1. mp_agg : counts + ``array_agg DISTINCT`` par colonne mp
+         (operator/band/tech/service_type/phase/env/dep) + flag has_null.
+      2. geo_agg : ``array_agg DISTINCT`` par colonne cell_ref (dr/
+         plaque/dor/arcep_zone/commune/insee), via jointure unique.
+      3. build_group_by_options : 1 requête interne (inchangée).
     """
-    # Dimensions directes depuis measurement_points.
-    def _dim(col: str) -> dict[str, Any]:
-        vals = _distinct(db, project_id, col)
-        return {
-            "available": bool(vals),
-            "reason":    None if vals else f"aucune valeur distincte pour measurement_points.{col}",
-            "values":    vals,
-        }
-
-    # ECGI propagé ? (prérequis pour les filtres référentiel géo)
-    mp_total = db.execute(
-        text("SELECT COUNT(*) FROM measurement_points WHERE project_id = :pid"),
-        {"pid": project_id},
-    ).scalar() or 0
-    mp_with_ecgi = db.execute(
-        text(
-            "SELECT COUNT(*) FROM measurement_points "
-            "WHERE project_id = :pid AND ecgi IS NOT NULL"
-        ),
-        {"pid": project_id},
-    ).scalar() or 0
+    # ---- 1) Agrégats mp (7 dims + 2 counts) en 1 round-trip ----
+    mp_select_parts = ["COUNT(*) AS mp_total",
+                       "COUNT(*) FILTER (WHERE ecgi IS NOT NULL) AS mp_with_ecgi"]
+    for _, col in _MP_DIMS:
+        # array_agg DISTINCT exclut les NULL automatiquement en PG.
+        mp_select_parts.append(
+            f"array_agg(DISTINCT {col}) FILTER (WHERE {col} IS NOT NULL) AS {col}_vals"
+        )
+        mp_select_parts.append(
+            f"bool_or({col} IS NULL) AS {col}_has_null"
+        )
+    mp_sql = (
+        "SELECT " + ", ".join(mp_select_parts) +
+        " FROM measurement_points WHERE project_id = :pid"
+    )
+    mp_row = db.execute(text(mp_sql), {"pid": project_id}).first()
+    assert mp_row is not None  # COUNT(*) ne renvoie jamais 0 ligne
+    mp_total = int(mp_row.mp_total or 0)
+    mp_with_ecgi = int(mp_row.mp_with_ecgi or 0)
     ecgi_pct = (100.0 * mp_with_ecgi / mp_total) if mp_total else 0.0
 
-    # Référentiel chargé ? (cell_ref.dr/plaque/dor/arcep/commune renseignés
-    # pour les ECGI du projet)
-    def _geo_dim(col: str) -> dict[str, Any]:
+    def _mp_dim_from_row(col: str) -> dict[str, Any]:
+        raw = getattr(mp_row, f"{col}_vals", None) or []
+        has_null = bool(getattr(mp_row, f"{col}_has_null", False))
+        values = sorted(str(v) for v in raw if v is not None)
+        if has_null:
+            values.append("N/D")
+        return {
+            "available": bool(values),
+            "reason":    None if values else f"aucune valeur distincte pour measurement_points.{col}",
+            "values":    values,
+        }
+
+    # ---- 2) Agrégats géo (6 dims) en 1 round-trip, uniquement si ECGI ----
+    if mp_with_ecgi:
+        geo_select_parts = [
+            f"array_agg(DISTINCT cr.{col}) FILTER (WHERE cr.{col} IS NOT NULL) AS {col}_vals"
+            for _, col in _GEO_DIMS
+        ]
+        geo_sql = (
+            "SELECT " + ", ".join(geo_select_parts) +
+            " FROM measurement_points mp "
+            " JOIN cell_ref cr ON cr.eci = mp.ecgi "
+            " WHERE mp.project_id = :pid"
+        )
+        geo_row = db.execute(text(geo_sql), {"pid": project_id}).first()
+    else:
+        geo_row = None
+
+    def _geo_dim_from_row(col: str) -> dict[str, Any]:
         if not mp_with_ecgi:
             return {
                 "available": False,
@@ -395,15 +451,8 @@ def build_filters_v2(db: Session, project_id: str) -> dict[str, Any]:
                 ),
                 "values": [],
             }
-        rows = db.execute(
-            text(
-                f"SELECT DISTINCT cr.{col} FROM measurement_points mp "
-                f"JOIN cell_ref cr ON cr.eci = mp.ecgi "
-                f"WHERE mp.project_id = :pid AND cr.{col} IS NOT NULL"
-            ),
-            {"pid": project_id},
-        ).fetchall()
-        values = sorted({r[0] for r in rows if r[0] is not None})
+        raw = getattr(geo_row, f"{col}_vals", None) or []
+        values = sorted(str(v) for v in raw if v is not None)
         if not values:
             return {
                 "available": False,
@@ -416,34 +465,23 @@ def build_filters_v2(db: Session, project_id: str) -> dict[str, Any]:
             }
         return {"available": True, "reason": None, "values": values}
 
-    return {
-        "project_id":    project_id,
-        "operators":     _dim("operator"),
-        "bands":         _dim("band"),
-        "rats":          _dim("tech"),
-        "service_types": _dim("service_type"),
-        "phases":        _dim("phase"),
-        "envs":          _dim("env"),
-        "deps":          _dim("dep"),
-        "ecgi": {
-            "available":    bool(mp_with_ecgi),
-            "mp_total":     int(mp_total),
-            "mp_with_ecgi": int(mp_with_ecgi),
-            "pct":          round(ecgi_pct, 2),
-            "reason":       None if mp_with_ecgi else "ECGI non encore propagé",
-        },
-        # Dimensions référentiel géo — join mp.ecgi → cell_ref.<col>.
-        "dr":       _geo_dim("dr"),
-        "plaque":   _geo_dim("plaque"),
-        "dor":      _geo_dim("dor"),
-        "arcep":    _geo_dim("arcep_zone"),
-        "commune":  _geo_dim("commune"),
-        "insee":    _geo_dim("insee"),
-        # 0.47.0 — group_by utilisables sur ce projet (operator/band
-        # toujours ; dor/dr/plaque/arcep_zone selon état du cell_ref,
-        # strict ECGI uniquement).
-        "group_by_options": build_group_by_options(db, project_id),
+    out: dict[str, Any] = {"project_id": project_id}
+    for key, col in _MP_DIMS:
+        out[key] = _mp_dim_from_row(col)
+    out["ecgi"] = {
+        "available":    bool(mp_with_ecgi),
+        "mp_total":     mp_total,
+        "mp_with_ecgi": mp_with_ecgi,
+        "pct":          round(ecgi_pct, 2),
+        "reason":       None if mp_with_ecgi else "ECGI non encore propagé",
     }
+    for key, col in _GEO_DIMS:
+        out[key] = _geo_dim_from_row(col)
+    # 0.47.0 — group_by utilisables sur ce projet (operator/band
+    # toujours ; dor/dr/plaque/arcep_zone selon état du cell_ref,
+    # strict ECGI uniquement).
+    out["group_by_options"] = build_group_by_options(db, project_id)
+    return out
 
 
 # ---------------------------------------------------------------------------

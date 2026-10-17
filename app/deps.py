@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.config import settings
@@ -19,6 +20,20 @@ from app.db import get_db
 from app.models import AppUser
 from app.schemas.settings import Actor
 from app.services.auth import TokenError, decode_token
+
+
+def with_statement_timeout_60s(db: Session = Depends(get_db)) -> Session:
+    """0.48.0 — Pose ``SET LOCAL statement_timeout = '60s'`` sur la
+    transaction courante. À attacher aux routers lecture (``/projects/*/kpi``,
+    ``/dict``) pour qu'une requête bloquée ne traîne pas éternellement en
+    attente d'un lock ou d'un scan dément.
+
+    ``SET LOCAL`` s'applique uniquement à la transaction courante — pas
+    de pollution du pool. SQLAlchemy ouvre la transaction au premier
+    ``execute``, donc on force l'ouverture ici.
+    """
+    db.execute(text("SET LOCAL statement_timeout = '60s'"))
+    return db
 
 # auto_error=False : on gère nous-mêmes la 401 pour l'uniformiser avec les
 # autres erreurs de l'API (`{code, message}` au lieu du HTTPBearer défaut).

@@ -28,14 +28,15 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.db import get_db
-from app.deps import get_current_user
+from app.deps import get_current_user, with_statement_timeout_60s
 from app.models import Project
 
 
 router = APIRouter(
     prefix="/projects",
     tags=["dictionary"],
-    dependencies=[Depends(get_current_user)],
+    # 0.48.0 — statement_timeout 60 s (cf. project_kpi.router).
+    dependencies=[Depends(get_current_user), Depends(with_statement_timeout_60s)],
 )
 
 
