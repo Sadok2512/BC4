@@ -56,16 +56,17 @@ Versions SemVer. Type de bump: `patch` / `minor` / `major`. Un écart se ferme o
 >
 > | # | Garde | Attendu | Mesuré |
 > |---|---|---|---|
-> | G1 | HEAD propre après commit | `git status --porcelain` vide | à mesurer |
-> | G2 | `/health` version | `0.48.2` | à mesurer |
-> | G3 | `alembic current` | `0022_mp_ecgi_source (head)` | à mesurer |
-> | G4 | `/kpi/catalog` live | < 1.6 s | à mesurer |
-> | G5 | `/kpi/filters` live | < 0.8 s | à mesurer |
-> | G6 | `mp` total REF | 140 683 | à mesurer |
-> | G7 | `mp` lat NULL REF | 72 593 | à mesurer |
-> | G8 | `/kpi/LTE_RF_CQI` n | 38 758 | à mesurer |
-> | G9 | `pg_stat_activity` idle in transaction | 0 | à mesurer |
-> | G10 | `SHOW idle_in_transaction_session_timeout` | `5min` | à mesurer |
+> | G1 | HEAD propre après commit | `git status --porcelain` vide | **OK** (commit `16c2b88`) |
+> | G2 | `/health` version | `0.48.2` | **`0.48.2`** |
+> | G3 | `alembic current` | `0022_mp_ecgi_source (head)` | **`0022_mp_ecgi_source`** |
+> | G4 | `/kpi/catalog` live × 3 (curl) | < 1.6 s | 1.53 / 1.34 / 1.29 s (max **1.53 s**) |
+> | G5 | `/kpi/filters` live × 3 (curl) | < 0.8 s | 0.65 / 0.57 / 0.73 s (max **0.73 s**) |
+> | G6 | `mp` total REF | 140 683 | **140 683** |
+> | G7 | `mp` lat NULL REF (indoor) | 72 593 | **72 593** |
+> | G7b | `mp` `geo_source='gps_fix'` REF | 140 683 − 72 593 = 68 090 | **68 090** |
+> | G8 | `/kpi/LTE_RF_CQI` n (direct curl) | 38 758 | **38 758** (value=8.0, status=AVAILABLE) |
+> | G9 | `pg_stat_activity` idle in transaction | 0 | **0** (1 active, 2 idle sains) |
+> | G10 | `SHOW idle_in_transaction_session_timeout` | `5min` | **`5min`** |
 
 ## 0.48.1 — 2026-10-17 (patch) — Replay populate REF + TEST2 après 0.47.3 (indoor mp conservé — +72 593 lignes REF, +11 082 lignes TEST2) (Agent BC1)
 
