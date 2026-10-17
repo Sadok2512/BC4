@@ -2,6 +2,108 @@
 
 Versions SemVer. Type de bump: `patch` / `minor` / `major`. Un écart se ferme ou se déclare ouvert, jamais expliqué par hypothèse.
 
+## 0.47.2 — 2026-10-17 (patch) — Backfill projects.n_points pré-0.46 + purge pollution national-2026 (NMF agent-ingéré) + ré-ingest TEST2 (Agent BC1)
+
+> Trois correctifs opérationnels sans changement d'API publique.
+>
+> **(1) Backfill tracking projet pré-0.46.** La migration
+> `0018_project_populate_tracking` a introduit `projects.n_points` et
+> `projects.last_populate_at` (0.46.0) mais ne backfillait rien pour
+> les projets déjà peuplés avant. Résultat : REF_PETITE_FORET
+> affichait `n_points=NULL`, `last_populate_at=NULL`, bien qu'ayant
+> 68 090 mp en base. Correctif SQL idempotent sur tous les projets
+> dans ce cas (`UPDATE … WHERE p.n_points IS NULL`).
+>
+> **(2) Purge pollution `national-2026`.** Le projet seed
+> `national-2026` / « Benchmark National » (fixtures_data.py:91-106,
+> `captures=5 800 000` déclaré, démo nationale) avait un NMF REF
+> (`BCNE…incar_26Jun11_104724.5.nmf`) ingéré dedans par un agent le
+> 2026-10-17 15:10:06 → 6 698 mp parasites. Le projet reste
+> (seed démo), mais les tables filles sont purgées :
+> `nmf_file`, `stg_event`, `stg_event_raw`, `measurement_points`,
+> `param_occurrence`. L'état `projects` repasse à NULL. Fichier source
+> `/var/lib/bc4/nmf-source/national-2026/*.nmf` supprimé du volume.
+>
+> **(3) Ré-ingest TEST2.** TEST2 n'avait qu'1 NMF ingéré (5 798 mp,
+> `incar_104724.5`). Les 8 autres Incar (`103519.1`, `103519.2`,
+> `103519.3`, `104724.4`, `104724.6`, `105812.7`, `105812.8`,
+> `105812.9`) ingérés depuis `/home/devmat/BC4/witness-nmf/Mesures
+> Dynamiques - Incar/`. Idempotent par sha256 côté back ; chaîne auto
+> `run_populate_chain` (0.46.0) à chaque upload → `n_points` + ECGI
+> propagés sans intervention manuelle.
+
+### Correctifs
+
+- SQL backfill (idempotent) :
+
+  ```sql
+  UPDATE projects p
+  SET n_points = sub.n,
+      last_populate_at = COALESCE(p.last_populate_at, now()),
+      status_ingest = CASE WHEN sub.n > 0 THEN 'ready' ELSE p.status_ingest END
+  FROM (SELECT project_id, COUNT(*) AS n FROM measurement_points GROUP BY project_id) sub
+  WHERE p.id = sub.project_id AND p.n_points IS NULL;
+  ```
+
+- Purge `national-2026` (safe par ID exact, pas de wildcard) :
+
+  ```sql
+  DELETE FROM param_occurrence WHERE project_id = 'national-2026';
+  DELETE FROM measurement_points WHERE project_id = 'national-2026';
+  DELETE FROM stg_event_raw WHERE project_id = 'national-2026';
+  DELETE FROM stg_event WHERE project_id = 'national-2026';
+  DELETE FROM nmf_file WHERE project_id = 'national-2026';
+  UPDATE projects SET n_points=NULL, last_populate_at=NULL, status_ingest=NULL,
+    n_captures_ingest=NULL, n_events_ingest=NULL WHERE id = 'national-2026';
+  ```
+
+  Puis `rm -rf /var/lib/bc4/nmf-source/national-2026/`.
+
+### Écart 6 698 (national purgé) vs 5 798 (TEST2) — explication
+
+Les deux projets ont reçu le même fichier `incar_26Jun11_104724.5.nmf`
+mais à deux moments différents (national 15:10, TEST2 15:29). Entre
+les deux, le code `populate_measurement_points` a changé. En
+particulier, `app/measure/populate.py:673` filtre désormais tout
+measurement_point sans GPS (`lat_v IS NULL OR lon_v IS NULL →
+continue`). Les 900 mp absents de TEST2 étaient des entrées de
+catégorie `cqi` / `tx_power` / `data_summary` sans fix GPS, acceptées
+par l'ancienne populate chain mais rejetées par la nouvelle (règle
+dure 0.44.0 : « jamais une position inventée »).
+
+Query de vérification (TEST2 courant) :
+
+  ```sql
+  SELECT COUNT(*) AS mp_total,
+         COUNT(*) FILTER (WHERE lat IS NOT NULL AND lng IS NOT NULL) AS with_gps
+  FROM measurement_points WHERE project_id='134af70a06eb';
+  -- → 5798 / 5798  (100 % GPS, cf. nouvelle règle)
+  ```
+
+Impossible de rejouer la requête côté national (purgé), mais l'écart
+900 correspond à la ventilation historique vue en 0.45.2 sur TEST2
+(mesures `data_summary` sans GPS → écartées).
+
+### `national-2026` n'était pas créé par un agent
+
+Vérif : `grep "national-2026" app/seed/fixtures_data.py` → ligne 91,
+seed démo historique (versions 0.4+). L'agent n'a PAS créé le projet.
+L'agent a ingéré UN NMF REF dedans — c'est la pollution purgée. Le
+projet seed reste disponible pour la démo.
+
+### Rebuild + /health
+
+- `pyproject.toml : 0.47.1 → 0.47.2 (patch)`.
+- `app/main.py : version="0.47.2"`.
+- `/health = {"status":"ok","env":"development","version":"0.47.2"}`.
+
+### Garde
+
+- `GET /projects` : REF (18/68090/ready), TEST2 (9/>5798/ready),
+  national-2026 (0/null/null).
+- `GET /projects/134af70a06eb/kpi/filters` : 5 chips actifs
+  (operator/band/service_type/env/phases).
+
 ## 0.47.1 — 2026-10-17 (patch) — Persistance source upload cell_ref + import à 0 ligne = status='rejected' + purge seed geo-v1 trompeur (Agent BC1)
 
 > Deux défauts corrigés après enquête sur le dossier

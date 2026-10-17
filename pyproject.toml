@@ -1,7 +1,7 @@
 [project]
 name = "bc4-back"
-version = "0.47.1"
-description = "BC4 backend FastAPI — persistance source upload cell_ref + 0 ligne=status=rejected + seed geo-v1 trompeur purgé"
+version = "0.47.2"
+description = "BC4 backend FastAPI — backfill projects.n_points pré-0.46 + purge pollution national-2026 (NMF agent) + ré-ingest TEST2"
 requires-python = ">=3.10"
 
 [tool.pytest.ini_options]
