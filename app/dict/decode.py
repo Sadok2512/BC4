@@ -105,17 +105,13 @@ def walk(v: Any, path: list[str], out: list[tuple[list[str], Any]]) -> None:
         return
     elif isinstance(v, tuple):
         # BIT STRING pycrate = (val:int, len:int).
+        # 0.44.0 (G9) — TOUTE longueur de BIT STRING → **entier décimal**.
+        # L'ancien émetteur « 0b… » pour BIT STRING courts (≤16 bits)
+        # créait 2319 lignes param_occurrence inutilisables côté KPI
+        # (TAC rendu `0b0001011100011001` au lieu de `5913`). On émet
+        # systématiquement la valeur entière.
         if len(v) == 2 and isinstance(v[0], int) and isinstance(v[1], int):
-            if v[1] <= 16:
-                out.append((path, "0b" + format(v[0], "0%db" % v[1])))
-            else:
-                # 0.42.0 — Pour les BIT STRING longs (ex. cellIdentity
-                # 28 bits, newUE-Identity 48 bits), on émet désormais la
-                # VALEUR entière en décimal — pas seulement la longueur.
-                # Permet la reconstruction ECGI aval sans ambiguïté.
-                # L'ancien descripteur "bits(n)" était un faux positif
-                # applicatif (ligne présente, valeur inutilisable).
-                out.append((path, str(v[0])))
+            out.append((path, str(v[0])))
         else:
             out.append((path, str(v)))
     elif v is None:

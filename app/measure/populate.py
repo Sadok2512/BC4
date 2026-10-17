@@ -326,6 +326,12 @@ def populate_measurement_points(
     # (cf. audit : `cell0_rsrp_dbm` tient en fait RSSI, `cell0_rsrq_db`
     # tient RSRP). On re-affecte chaque métrique au champ dont la
     # plus grande fraction de valeurs tombe dans la plage 3GPP.
+    # 0.44.0 — Profil par la PREUVE (G0/G2/G5). profile_cellmeas choisit
+    # le champ RSRP qui PASSE median|Δ| ≤ 2 dB (prove_rsrp_per_event),
+    # pas la meilleure moyenne. RSRQ/SINR/RSSI par plage + cohérence.
+    from app.measure.cellmeas_profile import ensure_table, persist_profile_row
+
+    ensure_table(db)
     cm_map = profile_cellmeas(db, project_id)
     report["cellmeas_mapping"] = {
         "rssi": cm_map.rssi,
@@ -335,16 +341,71 @@ def populate_measurement_points(
         "debug": cm_map.debug,
     }
 
-    # 0.39.0 — Preuve ±2 dB par ÉVÉNEMENT sur le champ RSRP profilé
-    # (appariement capture_id + fenêtre seq la plus serrée vs RRC
-    # `measResultPCell/rsrpResult`). `run_proof` reste consommé en
-    # parallèle pour traçabilité distributionnelle historique.
+    # Persist proofs RSRP (table cellmeas_profile).
+    for pr in cm_map.rsrp_proofs:
+        persist_profile_row(
+            db,
+            project_id=project_id,
+            metric="rsrp",
+            field=pr.field,
+            avg=None,
+            n=0,
+            n_pairs=pr.n_pairs,
+            median_abs_delta=pr.median_abs_delta,
+            p90_abs_delta=pr.p90_abs_delta,
+            verdict=pr.verdict,
+            reason=pr.reason,
+        )
+    # Persist mapping choisi pour les 3 autres métriques (RSRQ/SINR/RSSI).
+    for metric_name, field_name in (
+        ("rsrq", cm_map.rsrq),
+        ("sinr", cm_map.sinr),
+        ("rssi", cm_map.rssi),
+    ):
+        if field_name is None:
+            persist_profile_row(
+                db, project_id=project_id, metric=metric_name,
+                field=None, avg=None, n=0, n_pairs=None,
+                median_abs_delta=None, p90_abs_delta=None,
+                verdict="rejected", reason="aucun candidat ne satisfait la règle plage+cohérence",
+            )
+            continue
+        # Récupère stats du profil
+        prof = next((p for p in cm_map.profiles if p.field == field_name), None)
+        persist_profile_row(
+            db, project_id=project_id, metric=metric_name,
+            field=field_name,
+            avg=prof.avg if prof else None,
+            n=prof.n_valid if prof else 0,
+            n_pairs=None,
+            median_abs_delta=None, p90_abs_delta=None,
+            verdict="proven", reason="plage 3GPP + cohérence",
+        )
+    # Persist c8 ambigu
+    for p in cm_map.profiles:
+        if p.field == "cell0_c8":
+            persist_profile_row(
+                db, project_id=project_id, metric="ambigu",
+                field="cell0_c8", avg=p.avg, n=p.n_valid, n_pairs=None,
+                median_abs_delta=None, p90_abs_delta=None,
+                verdict="rejected",
+                reason="zone frontière RSRQ/SINR — non affecté",
+            )
+
+    # 0.44.0 — REFUS strict : si RSRP n'est pas prouvé, on arrête ici
+    # sans toucher à mp.rsrp (NULL déclaré plutôt que faux chiffre).
     per_event_proof = None
     if cm_map.rsrp:
-        per_event_proof = prove_rsrp_per_event(
-            db, project_id, cm_map.rsrp
-        )
+        per_event_proof = prove_rsrp_per_event(db, project_id, cm_map.rsrp)
         report["per_event_proof_rsrp"] = per_event_proof.as_dict()
+        if per_event_proof.verdict != "proven":
+            report["refused_populate_rsrp"] = True
+            report["refused_reason"] = (
+                f"profiled field {cm_map.rsrp} rejected by ±2 dB proof "
+                f"(median|Δ|={per_event_proof.median_abs_delta})"
+            )
+            # On vide le mapping RSRP pour que les reads ultérieurs renvoient NULL
+            cm_map.rsrp = None
     # Legacy distribution proof (traçabilité).
     proof_rows = run_proof(db, project_id)
     report["proof"] = [p.as_dict() for p in proof_rows]

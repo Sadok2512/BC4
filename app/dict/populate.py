@@ -337,11 +337,16 @@ def populate_param_occurrence(
                 INSERT INTO param_occurrence (
                     project_id, stg_event_id, system, channel, message,
                     path, value, value_converted, unit_converted,
-                    operator, band, lat, lon
+                    operator, band, lat, lon,
+                    param_key, display_name, choice_of, discriminators,
+                    origin, is_identifier, functional_group
                 ) VALUES (
                     :project_id, :stg_event_id, :system, :channel, :message,
                     :path, :value, :value_converted, :unit_converted,
-                    :operator, :band, :lat, :lon
+                    :operator, :band, :lat, :lon,
+                    :param_key, :display_name, :choice_of,
+                    CAST(:discriminators AS JSONB),
+                    :origin, :is_identifier, :functional_group
                 )
                 ON CONFLICT (project_id, stg_event_id, path) DO NOTHING
                 """
@@ -412,6 +417,10 @@ def populate_param_occurrence(
             else:
                 value_converted, unit_converted = None, None
 
+            # 0.45.0 — Dictionnaire v2 : enrichissement par ligne.
+            from app.dict.enrich_v2 import enrich as _enrich_dict_v2
+            import json as _json
+            e2 = _enrich_dict_v2(path_str, r.message)
             batch.append(
                 {
                     "project_id": project_id,
@@ -427,6 +436,13 @@ def populate_param_occurrence(
                     "band": band,
                     "lat": float(r.lat) if r.lat is not None else None,
                     "lon": float(r.lon) if r.lon is not None else None,
+                    "param_key":        e2["param_key"],
+                    "display_name":     e2["display_name"],
+                    "choice_of":        e2["choice_of"],
+                    "discriminators":   _json.dumps(e2["discriminators"]) if e2["discriminators"] else None,
+                    "origin":           e2["origin"],
+                    "is_identifier":    bool(e2["is_identifier"]),
+                    "functional_group": e2["functional_group"],
                 }
             )
             stats["n_params_queued"] += 1

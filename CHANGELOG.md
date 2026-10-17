@@ -2,6 +2,178 @@
 
 Versions SemVer. Type de bump: `patch` / `minor` / `major`. Un écart se ferme ou se déclare ouvert, jamais expliqué par hypothèse.
 
+## 0.45.0 — 2026-10-17 (minor) — Dictionnaire v2 : param_key + origin + distributions (Agent BC1)
+
+> Référence : `specs/dict_tree.html` + `specs/dict_v2.html`. Audit préalable
+> REF : défaut #1 (CHOICE applati) encore actif (3 500+ feuilles ENUM/CHOICE
+> dont `sf*`/`psf*`/`ms*`/`setup`/`release`/`am`/`both`). BIT STRING et
+> SEQUENCE OF scalaires déjà fermés (0.42/0.44). Ce lot ajoute l'infra
+> dictionnaire v2 **sans toucher au walker** : path brut préservé
+> (`view=raw`), projection calculée en post-populate (`view=catalog`).
+
+### Migration `0017_param_occurrence_dict_v2`
+
+7 colonnes additives : `param_key` (canonique), `display_name`, `choice_of`,
+`discriminators` JSONB, `origin` ∈ {`network_config`, `ue_capability`,
+`ue_report`}, `is_identifier`, `functional_group` (30+ patterns regex
+calqués sur `dict_tree.html`). Index `(project_id, param_key)` +
+`(project_id, origin, message)`.
+
+### Enrichissement — `app/dict/enrich_v2.py`
+
+CHOICE collapse par set de segments connus (`setup`/`release`/`am`/
+`um-*`/`sf*`/`psf*`/`ms*`/`eventA*`/`measObjectEUTRA`/`reportConfigEUTRA`…).
+Discriminators via regex sur segments (bearer/RLC mode/direction/event/
+measObject_type/reportConfig_type). Origin via table statique
+(20 messages mappés + fallback `network_config`). `is_identifier` set
+statique. `functional_group` liste ordonnée de 30+ regex.
+
+### Hook populate — `app/dict/populate.py`
+
+L'INSERT INTO param_occurrence intègre les 7 colonnes v2. Un
+`POST /projects/{id}/kpi/_rebuild_param_occurrence` sur un projet
+existant remplit (idempotent, purge=True par défaut).
+
+### Nouvelles routes — `app/routes/project_dict_v2.py`
+
+Pydantic `app/schemas/dict_v2.py` → visibles dans `/openapi.json`.
+
+- `GET /projects/{id}/dict/tree?view=catalog` : arbre `Techno → origin →
+  message → functional_group → leaves` (identifiants exclus, groupé sur
+  `param_key`).
+- `GET /projects/{id}/dict/tree?view=raw` : arbre brut (path complet,
+  identifiants inclus).
+- `GET /projects/{id}/dict/distribution?keys=k1,k2&group_by=operator|band|operator_band`
+  : `blocks[]` avec `values[] × groups` + `verdict`
+  (`IDENTIQUE | DIFFERENT | NON_COMPARE`) + couleurs opérateur/bande.
+- `GET /projects/{id}/dict/param/{key}` : fiche (chemin, messages
+  porteurs avec n, discriminators_examples, kpi_hint pour
+  `origin=ue_report`).
+
+### Discipline
+
+- Walker ASN.1 **non modifié**. `path` reste la source brute.
+- `param_key` est une PROJECTION, pas une réécriture.
+- Aucune règle inventée : param_key défaut = path, groupe = `Autres`.
+- Backfill : lignes antérieures = NULL, relancer rebuild_param_occurrence.
+
+### Garde (REF, après rebuild)
+
+- `dict/tree?view=catalog` : plus de feuille `sf*`, `drx-Config` sous
+  `MAC-DRX` avec `choice_of` renseigné.
+- `t-Reordering` : plusieurs clés avec `discriminators`
+  (bearer_kind × rlc_mode × direction).
+- `eventId` : `eventA1..A5` comme valeurs, discriminators event présent.
+- `rrc-TransactionIdentifier` `is_identifier=true` → absent de catalog,
+  présent dans raw.
+- `UE-NR-Capability` sous `origin=ue_capability` uniquement.
+- `dict/distribution?keys=a3-Offset+discs,hysteresis+discs,timeToTrigger+discs
+  &group_by=operator` → 3 blocs avec groupes Orange/Bouygues/Free.
+
+## 0.44.0 — 2026-10-17 (minor) — vérité des données (G0/G2/G5/G8/G9/G10) + partiel G4/G6/G7 (Agent BC1)
+
+> Lot « clôture des NON FAIT G0–G11 » (projet REF). Trois étapes
+> complètement livrées + deux déclarées **partielles**.
+
+### Étape 1 ✓ — profil CELLMEAS par la PREUVE (G0, G2, G5)
+
+- Nouvelle table `cellmeas_profile(project_id, capture_id, metric,
+  field, avg, n, n_pairs, median_abs_delta, p90_abs_delta, verdict,
+  reason, decoder_release, created_at)` — `ensure_table` idempotent
+  en tête de `populate_measurement_points`.
+- `profile_cellmeas` **choisit RSRP par la preuve** (`prove_rsrp_per_event`),
+  pas par heuristique « meilleure moyenne ». RSRQ/SINR/RSSI par plage
+  3GPP + cohérence (RSRQ ∈ [−20,−3], SINR corrélé positivement
+  (avg ≥ −3), RSSI ∈ [−120,−20] avec avg > −90).
+- `cell0_c8` → `verdict='rejected' reason='zone frontière RSRQ/SINR'`.
+- `populate_measurement_points` **refuse** d'écrire mp.rsrp si verdict
+  RSRP ≠ `proven` : NULL déclaré plutôt que faux chiffre.
+- Profil persisté sur REF :
+  - rsrp ← `cell0_rsrq_db` (**proven**, n_pairs=2201, median|Δ|=1.5 dB)
+  - rsrp ← `cell0_rsrp_dbm` (rejected, median|Δ|=34.2 dB)
+  - rsrp ← `cell0_c7` (rejected, median|Δ|=5.6 dB)
+  - rssi ← `cell0_rsrp_dbm` (proven plage+cohérence, avg −64.68 dBm)
+  - rsrq ← `cell0_sinr_db` (proven, avg −9.49 dB)
+  - sinr ← `cell0_c9` (proven, avg +8.66 dB)
+  - ambigu ← `cell0_c8` (rejected, avg −3.11)
+- Stats mp après repopulation :
+  rsrp n=9404 [-118..-69.6] avg=-90.76 ; rsrq n=9345 [-20..-3.9] ;
+  sinr n=9714 [-8.3..+29.7] ; rssi n=9405 [-82.8..-36.8].
+
+### Étape 2 ✓ — mp.ecgi_source strict (G8)
+
+- Migration `ALTER TABLE measurement_points ADD COLUMN IF NOT EXISTS
+  ecgi_source VARCHAR` (idempotent).
+- `_propagate_to_mp` réécrite : règle stricte `(capture_id, earfcn)`
+  seule — le SIB1 LTE n'exposant pas `physCellId` natively, la clé
+  idéale `(capture_id, pci, earfcn)` est réduite au couple
+  `(capture_id, earfcn)` et marquée `ecgi_source='sib1_strict_capture_earfcn'`.
+  **Pas de fallback cross-capture** : tout ce qui n'a pas de SIB1
+  mêmes `(capture, earfcn)` reste `ecgi=NULL` + `ecgi_source=NULL`.
+- Ventilation REF (après rerun) :
+  - `sib1_strict_capture_earfcn` : 2910 lignes
+  - `NULL` : 102 920 lignes
+  - `ecgi_distinct(mp) = 4` (le même qu'avant la correction — expliqué
+    ci-dessous)
+- **Les 4 ECGI distincts d'avant venaient du fallback Pass 2 par
+  capture** : une cellule par capture, 5 captures → 4 captures avec
+  SIB1 earfcn disponible → 4 ECGI distincts. Après fix strict, on
+  retrouve les mêmes 4 ECGI mais seulement 2910 mp attribués (vs
+  73 091 avant, 100 % non prouvé). 100 % honnêtement **non prouvé**.
+- Les 20 ECGI de `cell_ref` ne sont PAS tous propagés sur mp parce
+  que `_attach_pci_earfcn` ne remonte un earfcn que pour 108 des 153
+  SIB1 décodés, et que les HO intra-capture restent exclus du match
+  strict. Écart déclaré, pas comblé.
+
+### Étape 3 ✓ — walker BIT STRING → entier (G9, G10)
+
+- `app/dict/decode.py:walk()` : TOUTE longueur de BIT STRING émet
+  désormais la **valeur entière décimale**, plus de `0b…` littéral
+  (ancien seuil `len ≤ 16 → 0b`, supprimé).
+- Avant / après sur REF :
+  - `bits_literal` (value LIKE '0b%' OR 'bits(') : **2319 → 0** ✓
+  - TAC distinct values (serving + neighbors) :
+    `0b0001011100011001 → 5913` ; aussi `39233` (116 occ), `30501`
+    (14 occ) — tous entiers.
+  - Listes SEQUENCE OF comparables **inchangées** : `plmn-IdentityList=459`,
+    `interFreqCarrierFreqList=983`, `cellReselectionPriority=494`,
+    `neighCellConfig=541`. Aucune troncation détectable après rebuild.
+
+### Étape 4 PARTIEL — KPI sources Pydantic (G4, G6, G11)
+
+- `GET /projects/{id}/kpi/LTE_RF_RSRP` renvoie `source="param_occurrence (path LIKE '%measResultPCell/rsrpResult', message='MeasurementReport' — RRC autoritaire, idx − 141 dBm (3GPP TS 36.133 §9.1.4))"` et `n=1573`. **Toujours servi depuis RRC**, pas depuis `mp.rsrp` (n=9404). Bascule vers mp.rsrp + ajout d'un nouveau code `LTE_RF_RSRP_AT_MR` **NON FAIT** dans ce lot.
+- `AGG_APP_DL_THR` renvoie `source="measurement_points.dl (DSUMMARY-derived)"` et `n=79 077`. **Pondéré sur mp.dl** (une mesure propagée × fenêtre, ~N lignes mp par transfert), **pas sur la table des 79 transferts** comme demandé. Catalogue à recâbler.
+- `response_model` Pydantic explicite sur `/kpi/{catalog,filters,{code}}` **NON FAIT** — les 3 handlers KPI renvoient toujours `dict` nu dans `/openapi.json`.
+- G11 : `LTE_RF_RSRP?group_by=operator_band` → `n_groups=7, sum=d.n=1573`, 0 N/D. mp.rsrp sans band = 0. La "ligne N/D 4205" attendue par la spec n'existe plus (post-fix EARFCN→band).
+
+### Étape 5 NON FAIT — ingest 9 restants + replay (G7)
+
+- `nmf_count=9/18`. La sérialisation `populate_param_occurrence` /
+  `populate_measurement_points` (une tx par fichier + verrou projet)
+  **n'a pas été shippée** dans ce lot. Lots précédents ont documenté
+  des deadlocks en concurrence ; la correction nécessite un lot ingest
+  dédié (file-lock + `with db.begin()` par fichier) non abordé ici.
+
+### Build + /health
+
+- `pyproject.toml : 0.43.0 → 0.44.0 (minor)`.
+- `app/main.py : version="0.44.0"`.
+- `docker compose build api && up -d` : OK.
+- `/health = {"status":"ok","env":"development","version":"0.44.0"}`.
+
+### Fichiers modifiés
+
+```
+app/measure/cellmeas_profile.py   (nouveau — table + persist)
+app/measure/profiling.py          (profile_cellmeas par preuve)
+app/measure/populate.py           (persist profils + refus si non proven)
+app/measure/ecgi.py               (mp.ecgi_source + rule stricte)
+app/dict/decode.py                (walk BIT STRING → int quelle que soit la longueur)
+app/main.py                       (version 0.44.0)
+pyproject.toml                    (version + description)
+```
+
+
 ## 0.43.0 — 2026-10-16 (minor) — DICT « Identité cellule » (lot D du audit G0-G11) (Agent BC1)
 
 > Lot livré **D uniquement** : la section « Identité cellule » du

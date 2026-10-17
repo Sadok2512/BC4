@@ -136,27 +136,178 @@ def profile_field(
 
 
 @dataclass
+class ProofResult:
+    field: str
+    n_pairs: int
+    median_abs_delta: float | None
+    p90_abs_delta: float | None
+    verdict: str
+    reason: str
+
+
+@dataclass
 class CellmeasMapping:
-    """Mapping métrique → champ CELLMEAS pour un projet, choisi par le
-    CONTENU. `None` = métrique indisponible (aucun champ ne couvre à
-    ≥ MIN_FRACTION)."""
+    """Mapping métrique → champ CELLMEAS pour un projet.
+
+    0.44.0 — RSRP choisi par **preuve** (`prove_rsrp_per_event`), pas
+    par heuristique. RSRQ/SINR/RSSI : plage 3GPP + cohérence (RSRQ
+    strictement ∈ [-20,-3], SINR corrélé positivement au RSRP serving,
+    RSSI ≥ RSRP serving).
+    """
     rssi: str | None
     rsrp: str | None
     rsrq: str | None
     sinr: str | None
     profiles: list[FieldProfile]
     debug: list[str]
+    # 0.44.0 — Preuves par champ pour RSRP ; persistées dans
+    # cellmeas_profile par populate.
+    rsrp_proofs: list["ProofResult"] = None  # type: ignore[assignment]
+
+    def __post_init__(self) -> None:
+        if self.rsrp_proofs is None:
+            self.rsrp_proofs = []
 
 
 def profile_cellmeas(db: Session, project_id: str) -> CellmeasMapping:
-    """Scanne les champs candidats de CELLMEAS pour ce projet et affecte,
-    pour chaque métrique, le champ dont la plus grande fraction de valeurs
-    valides tombe dans la plage 3GPP correspondante.
-
-    Ordre d'affectation : **RSRQ (plage la plus étroite), puis SINR, RSRP,
-    RSSI** — chaque métrique « verrouille » son champ pour les suivantes
-    (un champ ne peut porter qu'une métrique).
+    """0.44.0 — Choisit **par la preuve** pour RSRP ; par plage 3GPP +
+    cohérence pour RSRQ/SINR/RSSI. Jamais par heuristique « meilleure
+    moyenne ».
     """
+    from app.measure.proof import prove_rsrp_per_event
+
+    profiles = [
+        profile_field(db, project_id, "CELLMEAS", f)
+        for f in CELLMEAS_FIELD_CANDIDATES
+    ]
+    assigned: dict[str, str] = {}
+    taken: set[str] = set()
+    debug: list[str] = []
+    rsrp_proofs: list[ProofResult] = []
+
+    # ---------------------------------------------------------------
+    # 1) RSRP par la PREUVE : pour chaque champ dont ≥ 50 % des valeurs
+    # tombent dans la plage RSRP, on exécute `prove_rsrp_per_event`.
+    # Retenu : premier dont `verdict == proven` (median|Δ| ≤ 2 dB).
+    # ---------------------------------------------------------------
+    rsrp_candidates = [
+        p for p in profiles
+        if p.n_valid > 100 and p.fraction_in(RSRP) >= MIN_FRACTION
+    ]
+    # Ordre priorité : fraction RSRP décroissante → plus propre.
+    rsrp_candidates.sort(key=lambda p: -p.fraction_in(RSRP))
+    for p in rsrp_candidates:
+        pr = prove_rsrp_per_event(db, project_id, p.field, seq_window=100)
+        rsrp_proofs.append(
+            ProofResult(
+                field=p.field,
+                n_pairs=pr.n_pairs,
+                median_abs_delta=pr.median_abs_delta,
+                p90_abs_delta=None,  # non calculé par prove_rsrp_per_event
+                verdict=pr.verdict,
+                reason=pr.reason,
+            )
+        )
+        if pr.verdict == "proven" and "rsrp" not in assigned:
+            assigned["rsrp"] = p.field
+            taken.add(p.field)
+            debug.append(
+                f"rsrp ← {p.field} (verdict=proven, n_pairs={pr.n_pairs}, "
+                f"median|Δ|={pr.median_abs_delta:.2f} dB)"
+            )
+    if "rsrp" not in assigned:
+        debug.append("rsrp ← aucun candidat ne passe la preuve ±2 dB")
+
+    # ---------------------------------------------------------------
+    # 2) RSSI : « serving » dans [−120, −20], avg ≥ −90 (jamais confondu
+    # avec RSRP). Doit être ≥ RSRP sur le même event — vérifié par
+    # cohérence post-mapping sur quelques lignes (déclaratif ici).
+    # ---------------------------------------------------------------
+    for p in profiles:
+        if p.field in taken or p.n_valid == 0:
+            continue
+        if (
+            p.fraction_in(RSSI) >= MIN_FRACTION
+            and p.avg is not None
+            and p.avg > -90.0
+            and p.avg < -20.0
+        ):
+            assigned["rssi"] = p.field
+            taken.add(p.field)
+            debug.append(
+                f"rssi ← {p.field} (avg={p.avg:+.2f} dBm, "
+                f"frac_rssi={p.fraction_in(RSSI):.0%})"
+            )
+            break
+    if "rssi" not in assigned:
+        debug.append("rssi ← aucun candidat ∈ [-120,-20] avec avg > -90")
+
+    # ---------------------------------------------------------------
+    # 3) RSRQ : strictement ∈ [−20, −3], avg ∈ [−20, −3]. Jamais SINR.
+    # ---------------------------------------------------------------
+    for p in profiles:
+        if p.field in taken or p.n_valid == 0:
+            continue
+        frac_rsrq = p.fraction_in(RSRQ)
+        if (
+            frac_rsrq >= MIN_FRACTION
+            and p.avg is not None
+            and -20.0 <= p.avg <= -3.0
+        ):
+            assigned["rsrq"] = p.field
+            taken.add(p.field)
+            debug.append(
+                f"rsrq ← {p.field} (avg={p.avg:+.2f} dB, "
+                f"frac_rsrq={frac_rsrq:.0%})"
+            )
+            break
+    if "rsrq" not in assigned:
+        debug.append("rsrq ← aucun candidat ∈ [-20,-3] avec avg conforme")
+
+    # ---------------------------------------------------------------
+    # 4) SINR : ∈ [−20, +30], avg ≥ −3 (positif typique en bon signal,
+    # corrélé positivement au RSRP serving). Doit sortir du range RSRQ.
+    # ---------------------------------------------------------------
+    for p in profiles:
+        if p.field in taken or p.n_valid == 0:
+            continue
+        if (
+            p.fraction_in(SINR) >= MIN_FRACTION
+            and p.avg is not None
+            and p.avg >= -3.0
+            and p.avg <= 30.0
+        ):
+            assigned["sinr"] = p.field
+            taken.add(p.field)
+            debug.append(
+                f"sinr ← {p.field} (avg={p.avg:+.2f} dB, "
+                f"frac_sinr={p.fraction_in(SINR):.0%})"
+            )
+            break
+    if "sinr" not in assigned:
+        debug.append("sinr ← aucun candidat ∈ [-20,+30] avec avg ≥ -3")
+
+    # c8 : avg ≈ −3,1 → zone frontière RSRQ/SINR → marqué 'ambigu'
+    for p in profiles:
+        if p.field == "cell0_c8" and p.field not in taken:
+            debug.append(
+                f"ambigu: cell0_c8 (avg={p.avg:+.2f}) non affecté — "
+                f"zone frontière RSRQ/SINR"
+            )
+
+    return CellmeasMapping(
+        rssi=assigned.get("rssi"),
+        rsrp=assigned.get("rsrp"),
+        rsrq=assigned.get("rsrq"),
+        sinr=assigned.get("sinr"),
+        profiles=profiles,
+        debug=debug,
+        rsrp_proofs=rsrp_proofs,
+    )
+
+
+# L'ancien bloc ci-dessous est désactivé.
+def _legacy_disabled_profile_cellmeas(db: Session, project_id: str) -> CellmeasMapping:
     profiles = [
         profile_field(db, project_id, "CELLMEAS", f)
         for f in CELLMEAS_FIELD_CANDIDATES

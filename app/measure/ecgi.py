@@ -323,30 +323,41 @@ def _build_ecgi_cells(sib1_rows: list[dict]) -> list[EcgiCell]:
     return cells
 
 
+def _ensure_mp_ecgi_source(db: Session) -> None:
+    """Migration idempotente : ajoute la colonne `mp.ecgi_source`."""
+    db.execute(text(
+        "ALTER TABLE measurement_points ADD COLUMN IF NOT EXISTS "
+        "ecgi_source VARCHAR"
+    ))
+    db.commit()
+
+
 def _propagate_to_mp(
     db: Session, project_id: str, cells: list[EcgiCell],
 ) -> int:
-    """Pour chaque mp du projet, assigne ``ecgi`` depuis la dernière
-    cellule SIB1 **de la même capture**. Préférence au match
-    ``(capture_id, pci, earfcn)`` quand pci+earfcn sont connus ;
-    sinon fallback sur ``capture_id`` uniquement (une capture =
-    une cellule serving globalement sur REF, les HO intra-capture
-    sont rares en drive-test urbain).
+    """0.44.0 — RÈGLE STRICTE (G8) : mp.ecgi est posé **uniquement** si
+    on peut matcher la mesure sur `(capture_id, pci, earfcn)` avec un
+    SIB1 vu dans la MÊME capture. Toute autre attribution = NULL. Pas
+    de fallback 'inferred' par défaut.
 
-    Retourne le nombre de mp mis à jour.
+    `mp.ecgi_source` ∈ {'sib1_strict', NULL}.
     """
-    # Dernière cellule par capture (ordre first_capture → last_capture).
-    last_cell_by_cap: dict[str, EcgiCell] = {}
-    for c in cells:
-        for cap in (c.first_capture, c.last_capture):
-            if cap is None:
-                continue
-            last_cell_by_cap[cap] = c
+    _ensure_mp_ecgi_source(db)
+    # Reset mp.ecgi + mp.ecgi_source (idempotence).
+    db.execute(text(
+        "UPDATE measurement_points SET ecgi = NULL, ecgi_source = NULL "
+        "WHERE project_id = :pid"
+    ), {"pid": project_id})
 
     total = 0
-    # Pass 1 — match précis (capture, pci, earfcn) quand connu.
+    # Pass A — strict `(capture_id, earfcn)` sur mp CELLMEAS/CQI/TXPC
+    # dont `earfcn` est posé (via mapping décodeur). Note : le SIB1 LTE
+    # n'expose PAS physCellId natively (PCI vient du sync/PRACH, pas
+    # d'un IE SIB1), donc la clé idéale `(capture_id, pci, earfcn)` est
+    # réduite à `(capture_id, earfcn)` tant qu'on ne peut pas corréler
+    # côté mesure. Source : `sib1_strict_capture_earfcn`.
     for c in cells:
-        if c.pci is None or c.earfcn is None:
+        if c.earfcn is None:
             continue
         for cap in (c.first_capture, c.last_capture):
             if cap is None:
@@ -355,34 +366,21 @@ def _propagate_to_mp(
                 text(
                     """
                     UPDATE measurement_points
-                    SET ecgi = :ecgi
+                    SET ecgi = :ecgi, ecgi_source = 'sib1_strict_capture_earfcn'
                     WHERE project_id = :pid
                       AND capture_id = :cap
                       AND earfcn = :earfcn
                       AND ecgi IS NULL
                     """
                 ),
-                {"ecgi": c.ecgi, "pid": project_id, "cap": cap, "earfcn": c.earfcn},
+                {
+                    "ecgi": c.ecgi,
+                    "pid": project_id,
+                    "cap": cap,
+                    "earfcn": c.earfcn,
+                },
             )
             total += r.rowcount or 0
-
-    # Pass 2 — fallback par capture pour tout mp sans ecgi (une
-    # capture = une cellule serving, matché par le dernier SIB1 vu).
-    for cap, cell in last_cell_by_cap.items():
-        r = db.execute(
-            text(
-                """
-                UPDATE measurement_points
-                SET ecgi = :ecgi
-                WHERE project_id = :pid
-                  AND capture_id = :cap
-                  AND ecgi IS NULL
-                """
-            ),
-            {"ecgi": cell.ecgi, "pid": project_id, "cap": cap},
-        )
-        total += r.rowcount or 0
-
     return total
 
 

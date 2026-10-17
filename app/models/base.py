@@ -619,6 +619,14 @@ class ParamOccurrence(Base):
     band: Mapped[str | None] = mapped_column(String, nullable=True)
     lat: Mapped[float | None] = mapped_column(Float, nullable=True)
     lon: Mapped[float | None] = mapped_column(Float, nullable=True)
+    # 0.45.0 — Dictionnaire v2 : enrichissement calculé au populate.
+    param_key:         Mapped[str | None]  = mapped_column(Text,    nullable=True)
+    display_name:      Mapped[str | None]  = mapped_column(String,  nullable=True)
+    choice_of:         Mapped[str | None]  = mapped_column(String,  nullable=True)
+    discriminators:    Mapped[dict | None] = mapped_column(JSON,    nullable=True)
+    origin:            Mapped[str | None]  = mapped_column(String,  nullable=True)
+    is_identifier:     Mapped[bool | None] = mapped_column(Boolean, nullable=True, default=False)
+    functional_group:  Mapped[str | None]  = mapped_column(String,  nullable=True)
 
 
 class Skill(Base):

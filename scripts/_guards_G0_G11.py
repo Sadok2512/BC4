@@ -118,11 +118,18 @@ def main() -> int:
         print()
 
         print("═══════ G1 — tech vient de system=9 (EN-DC) ═══════")
-        print("Requête : SELECT event_code, system, count(*) FROM measurement_points WHERE tech='NR' GROUP BY 1,2")
+        # mp n'a pas de colonne `system` ; on remonte via stg_event_raw.system
+        # joint par (project_id, capture_id, seq).
+        print("Requête : jointure mp(tech='NR') ↔ stg_event_raw.system par (project,capture,seq)")
         for ec, sy, n in q(db, """
-            SELECT event_code, system, COUNT(*)
-            FROM measurement_points WHERE project_id=:pid AND tech='NR'
-            GROUP BY 1,2 ORDER BY 3 DESC
+            SELECT mp.event_code, s.system, COUNT(*)
+            FROM measurement_points mp
+            JOIN stg_event_raw s
+              ON s.project_id = mp.project_id
+             AND s.capture_id = mp.capture_id
+             AND s.seq = mp.seq
+            WHERE mp.project_id=:pid AND mp.tech='NR'
+            GROUP BY 1,2 ORDER BY 3 DESC LIMIT 10
         """, pid=PID):
             print(f"  event_code={ec}  system={sy}  count={n}")
         print()
@@ -333,6 +340,7 @@ def main() -> int:
             print(f"  N/D rows (operator or band = NULL/N/D) : {len(nd)}")
             for g in nd[:5]:
                 print(f"    operator={g.get('operator')} band={g.get('band')} n={g.get('n')}")
+            n_rsrp = db.execute(text("SELECT COUNT(rsrp) FROM measurement_points WHERE project_id=:pid"), {"pid": PID}).scalar()
             print(f"  mp.rsrp total (SELECT COUNT(rsrp)) : {n_rsrp}")
             # 4205 RSRP sans bande attendu :
             no_band_n = db.execute(text("""
