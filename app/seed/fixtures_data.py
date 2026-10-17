@@ -458,17 +458,14 @@ USERS = [
 ]
 
 
-GEO_REFERENCES = [
-    {
-        "id": "geo-v1",
-        "version": 1,
-        "filename": "referentiel_zones_v1.csv",
-        "imported_at": "2026-04-01T09:00:00Z",
-        "author": "demo.ingenieur",
-        "status": "active",
-        "rows": 0,
-    },
-]
+# 0.47.1 — Le seed GEO_REFERENCES était trompeur : il insérait une
+# entrée (``geo-v1`` / ``referentiel_zones_v1.csv``) avec
+# ``status='active'`` et ``rows=0``, laissant penser qu'un import réel
+# avait eu lieu alors qu'aucun fichier n'existait sur disque. Un agent
+# a interprété cette entrée comme une preuve d'upload, puis demandé le
+# fichier source — qui n'a jamais existé. On ne seed plus de pseudo-
+# upload : si la page Géographie est vide, c'est le vrai état.
+GEO_REFERENCES: list[dict[str, object]] = []
 
 
 AI_CONFIG = {

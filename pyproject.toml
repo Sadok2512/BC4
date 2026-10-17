@@ -1,7 +1,7 @@
 [project]
 name = "bc4-back"
-version = "0.47.0"
-description = "BC4 backend FastAPI — group_by=dor (+dr/plaque/arcep_zone) sur /dict/v2/distribution et /kpi/{code} : jointure mp.ecgi → cell_ref (ecgi_source=sib1_strict), N/D + coverage, UNAVAILABLE si cell_ref vide"
+version = "0.47.1"
+description = "BC4 backend FastAPI — persistance source upload cell_ref + 0 ligne=status=rejected + seed geo-v1 trompeur purgé"
 requires-python = ">=3.10"
 
 [tool.pytest.ini_options]

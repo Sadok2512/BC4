@@ -2,6 +2,85 @@
 
 Versions SemVer. Type de bump: `patch` / `minor` / `major`. Un écart se ferme ou se déclare ouvert, jamais expliqué par hypothèse.
 
+## 0.47.1 — 2026-10-17 (patch) — Persistance source upload cell_ref + import à 0 ligne = status='rejected' + purge seed geo-v1 trompeur (Agent BC1)
+
+> Deux défauts corrigés après enquête sur le dossier
+> « referentiel_zones_v1.csv ».
+>
+> **Défaut 1 — pseudo-import de démo**. L'entrée `geo_references`
+> `geo-v1` / `referentiel_zones_v1.csv` / `author=demo.ingenieur` /
+> `rows=0` / `status='active'` était un **seed démo** (voir
+> `app/seed/fixtures_data.py:GEO_REFERENCES`) et non un vrai upload.
+> Un agent l'a interprété comme un fichier chargé, puis a demandé le
+> fichier source — qui n'a jamais existé.
+>
+> **Défaut 2 — upload sans persistance**. `POST /settings/cell-ref/
+> upload` parsait le CSV puis jetait le blob. Seuls `sha256`, `size` et
+> `filename` étaient conservés dans `reference_import`. Un audit « voir
+> ce qui a été chargé » était impossible.
+>
+> **Défaut 3 — succès déclaré à 0 ligne**. L'ancien code renvoyait
+> `status='ok'` (ou `'noop'`) même quand aucune cellule n'était écrite.
+> On ne distinguait pas un import vide d'un vrai import.
+
+### Correctifs
+
+- `app/routes/settings_cell_ref.py` :
+  - Blob persisté dans `BC4_REFERENCES_DIR` (défaut
+    `/var/lib/bc4/references`) sous le nom `<reference_id>.csv` — même
+    pour les imports rejected (debug).
+  - `source_path` renvoyé dans la réponse + persisté dans
+    `reference_import.source_path` (nouvelle colonne).
+  - Report porte `reject_reasons` ventilés par motif + `status_reason`
+    lisible.
+  - `status='rejected'` si `cells_affected = 0` (reason explicite :
+    fichier vide, en-tête non reconnu, lignes rejetées, lignes
+    ambigues, aucune colonne géo renseignée). Plus jamais `'ok'`
+    silencieux.
+- `app/seed/fixtures_data.py:GEO_REFERENCES = []` (vide) — plus de
+  pseudo-upload de démo qui induit en erreur.
+- Migration `0019_reference_import_source_path` :
+  - ajoute colonne `source_path NVARCHAR NULL` à `reference_import`
+    (NULL pour les anciens imports pré-0.47.1, source définitivement
+    perdue) ;
+  - purge le seed `geo-v1` existant via DELETE ciblé (match exact
+    `id='geo-v1' AND filename='referentiel_zones_v1.csv' AND
+    author='demo.ingenieur' AND rows=0`) — ne touche aucun upload réel.
+- `docker-compose.yml` : nouveau volume nommé `bc4_references` monté
+  sur `/var/lib/bc4/references` (idem pattern NMF).
+
+### Rebuild + /health
+
+- `pyproject.toml : 0.47.0 → 0.47.1 (patch)`.
+- `app/main.py : version="0.47.1"`.
+- `/health = {"status":"ok","env":"development","version":"0.47.1"}`.
+
+### Garde
+
+- `SELECT COUNT(*) FROM geo_references;` → 0 après migration.
+- Nouvel upload d'un CSV cell_ref :
+  - Le fichier est copié dans `/var/lib/bc4/references/<ref_id>.csv`
+    (vérif `docker exec bc4-api-1 ls /var/lib/bc4/references/`).
+  - La réponse contient `source_path` + `status` + `status_reason`.
+  - Un CSV vide / sans en-tête / avec 0 cell_affected → `status =
+    'rejected'`, `status_reason` lisible.
+
+### NON FAIT (déclaré, règle n°1)
+
+L'utilisateur a affirmé que le fichier `referentiel_zones_v1.csv`
+existait sur disque. Après enquête :
+- Aucun fichier CSV sous `/var/lib/bc4/`, `/app/`, `/tmp` ou
+  `/home/devmat/BC4` ne correspond.
+- Aucune colonne `source_path` dans l'ancien schéma `reference_import`.
+- Les 4 anciens `reference_import` sont tous
+  `annulé — fabriqué par agent` (incident 2026-10-16 21:57).
+
+→ Le fichier **doit être re-fourni par l'utilisateur**. L'agent ne le
+reconstruit pas (règle CLAUDE.md n°1). Une fois ré-uploadé via `POST
+/settings/cell-ref/upload` sur un **projet TEST** (jamais REF), les
+étapes 2-4 du lot (DRY-RUN, IMPORT, APPARIEMENT) peuvent être
+exécutées.
+
 ## 0.47.0 — 2026-10-17 (minor) — group_by=dor (+dr/plaque/arcep_zone) sur /dict/v2/distribution et /kpi/{code} : join mp.ecgi → cell_ref (ecgi_source=sib1_strict), N/D + coverage, UNAVAILABLE si cell_ref vide, group_by_options exposés (Agent BC1)
 
 > Jointure stricte : ``mp.ecgi = cell_ref.eci`` filtrée par

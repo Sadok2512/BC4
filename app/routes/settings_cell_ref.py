@@ -1,7 +1,7 @@
-"""Upload cell_ref géo (0.41.0).
+"""Upload cell_ref géo (0.41.0, étendu 0.47.1).
 
 ``POST /settings/cell-ref/upload`` — accepte un CSV (séparateur `,` ou
-`;`, UTF-8) OU un xlsx. Colonnes reconnues (insensible à la casse) :
+`;`, UTF-8). Colonnes reconnues (insensible à la casse) :
 
 - ``eci`` OU ``ecgi`` (identifiant cellule — autoritaire pour l'appariement)
 - ``enodebid`` OU ``enb_id``
@@ -16,8 +16,16 @@ rejetée avec raison. La route répond avec un rapport
 Discipline :
 - Pas d'invention : un champ absent du CSV ne touche pas la colonne
   existante (UPDATE … COALESCE).
-- Pas de fichier gardé en base ; on persiste uniquement un
-  ``reference_import`` (id + source filename + sha256 + taille).
+- **0.47.1** — Le blob est désormais persisté dans
+  ``/var/lib/bc4/references/<reference_id>.csv`` ; le chemin est
+  stocké dans ``reference_import.source_path``. Jusqu'à 0.47.0, seuls
+  les hash + metadata étaient conservés → impossible d'auditer /
+  rejouer un import.
+- **0.47.1** — Un import où ``cells_affected = 0`` renvoie désormais
+  ``status='rejected'`` + ``report.reject_reasons`` ventilé par motif
+  (ni_eci_ni_enodebid, ambiguous, aucune_colonne_geo, arcep_invalide,
+  entete_non_reconnu). Plus jamais ``status='ok'`` quand rien n'est
+  écrit en base.
 """
 
 from __future__ import annotations
@@ -25,7 +33,9 @@ from __future__ import annotations
 import csv
 import hashlib
 import io
+import os
 import uuid
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
@@ -35,6 +45,13 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.deps import get_actor, require_role
 from app.schemas.settings import Actor
+
+# 0.47.1 — Dossier de persistance des blobs d'upload. Montable via
+# bind-mount docker-compose (voir compose.yaml). Mode défensif : si le
+# dossier n'existe pas, on tente de le créer au premier upload.
+REFERENCES_STORAGE_DIR = Path(
+    os.environ.get("BC4_REFERENCES_DIR", "/var/lib/bc4/references")
+)
 
 
 router = APIRouter(prefix="/settings/cell-ref", tags=["settings-cell-ref"])
@@ -222,19 +239,65 @@ async def upload_cell_ref(
         else:  # rejected
             rejected.append({"line": i, "row": row, "reason": reason})
 
-    # Trace de l'import (persisté mais sans le blob — on garde juste
-    # la métadonnée + sha256 pour reproductibilité).
-    import json as _json
+    # 0.47.1 — Persistance du blob source (défaut historique corrigé).
+    # Toujours écrit — même quand l'import est rejected — pour qu'un
+    # debug ultérieur puisse voir exactement ce qui a été envoyé.
     reference_id = f"ref-{uuid.uuid4().hex[:12]}"
+    try:
+        REFERENCES_STORAGE_DIR.mkdir(parents=True, exist_ok=True)
+        source_path = REFERENCES_STORAGE_DIR / f"{reference_id}.csv"
+        source_path.write_bytes(blob)
+        source_path_str: str | None = str(source_path)
+    except OSError as e:
+        # Dossier non montable : on log mais on ne fait pas échouer
+        # l'import (le blob est perdu mais les lignes écrites restent
+        # valides). Le rapport porte le warning.
+        parse_warnings.append(
+            f"persistance source impossible : {e!r} — vérifier le "
+            "montage {REFERENCES_STORAGE_DIR}"
+        )
+        source_path_str = None
+
+    # 0.47.1 — Ventilation des rejets par motif (pour status=rejected).
+    reject_reasons: dict[str, int] = {}
+    for r in rejected:
+        key = (r.get("reason") or "").split(" — ", 1)[0]
+        reject_reasons[key] = reject_reasons.get(key, 0) + 1
+
+    # 0.47.1 — Un import à 0 ligne écrite = ÉCHEC DÉCLARÉ, plus
+    # jamais ``status='ok'``. On exploite les signaux pour construire
+    # une raison lisible.
+    if cells_affected == 0:
+        status_final = "rejected"
+        if processed == 0:
+            top_reason = "fichier vide ou en-tête non reconnu"
+        elif skipped_empty == processed:
+            top_reason = (
+                "toutes les lignes sans colonne géo renseignée "
+                "(aucun dor/dr/plaque/arcep_zone/commune/insee)"
+            )
+        elif rejected:
+            # Motif dominant (le plus fréquent)
+            top_reason = max(reject_reasons, key=reject_reasons.get)
+            top_reason = f"ligne(s) rejetée(s) : {top_reason}"
+        elif ambiguous:
+            top_reason = f"{len(ambiguous)} ligne(s) ambigues — eci multiples"
+        else:
+            top_reason = "aucune cellule affectée en base (motif indéterminé)"
+    else:
+        status_final = "ok"
+        top_reason = None
+
+    import json as _json
     db.execute(
         text(
             """
             INSERT INTO reference_import
                 (id, filename, uploaded_at, actor, rows_read, rows_loaded,
-                 rows_rejected, status, report)
+                 rows_rejected, status, report, source_path)
             VALUES
                 (:id, :fn, CURRENT_TIMESTAMP, :actor, :read, :loaded,
-                 :rej, :status, CAST(:report AS JSON))
+                 :rej, :status, CAST(:report AS JSON), :source_path)
             """
         ),
         {
@@ -244,16 +307,21 @@ async def upload_cell_ref(
             "read":   processed,
             "loaded": cells_affected,
             "rej":    len(rejected),
-            "status": "ok" if cells_affected > 0 else "noop",
+            "status": status_final,
+            "source_path": source_path_str,
             "report": _json.dumps({
-                "sha256":        sha256,
-                "size":          len(blob),
-                "inserted":      inserted,
-                "updated_lines": updated_lines,
-                "cells_affected": cells_affected,
-                "skipped_empty": skipped_empty,
-                "rejected":      len(rejected),
-                "ambiguous":     len(ambiguous),
+                "sha256":          sha256,
+                "size":            len(blob),
+                "inserted":        inserted,
+                "updated_lines":   updated_lines,
+                "cells_affected":  cells_affected,
+                "skipped_empty":   skipped_empty,
+                "rejected":        len(rejected),
+                "ambiguous":       len(ambiguous),
+                "reject_reasons":  reject_reasons,
+                "status_reason":   top_reason,
+                "parse_warnings":  parse_warnings,
+                "source_path":     source_path_str,
             }),
         },
     )
@@ -265,6 +333,9 @@ async def upload_cell_ref(
         "filename":        filename,
         "sha256":          sha256,
         "size_bytes":      len(blob),
+        "source_path":     source_path_str,
+        "status":          status_final,
+        "status_reason":   top_reason,
         "processed":       processed,
         "matched":         matched,       # lignes CSV matchées (insert+update)
         "cells_affected":  cells_affected, # cellules effectivement écrites
@@ -274,6 +345,7 @@ async def upload_cell_ref(
         "not_found":       0,             # jamais : si pas de match on INSERT
         "rejected":        len(rejected),
         "ambiguous":       len(ambiguous),
+        "reject_reasons":  reject_reasons,
         "rejected_detail":  rejected[:20],
         "ambiguous_detail": ambiguous[:20],
         "warnings":        parse_warnings,
