@@ -38,6 +38,40 @@ DENY = re.compile(
 # Clés « conteneur » à aplatir sans contribuer au path (CHOICE/wrapper).
 DROP = {"message", "c1", "criticalExtensions"}
 
+# 0.45.1 — CHOICE qui doivent émettre une FEUILLE (nom = parent, valeur
+# = alt_name) EN PLUS de walker l'intérieur. Permet d'avoir
+# ``drx-Config = setup / release`` et ``longDRX-CycleStartOffset = sf160``
+# comme vraies feuilles dict v2, distribuables.
+_CHOICE_EMIT_VALUE: set[str] = {
+    "drx-Config",
+    "longDRX-CycleStartOffset",
+    "shortDRX",
+    "triggerQuantity",
+    "reportQuantity",
+    "rlc-Config",
+    "headerCompression",
+    "phr-Config",
+    "measObject",
+    "reportConfig",
+    "triggerType",
+    "eventId",
+    "a1-Threshold",
+    "a2-Threshold",
+    "a4-Threshold",
+    "a5-Threshold1",
+    "a5-Threshold2",
+    "cqi-ReportPeriodic",
+    "soundingRS-UL-ConfigDedicated",
+    "antennaInfo",
+    "schedulingRequestConfig",
+    "redirectedCarrierInfo",
+    "nr-Config-r15",
+    "rlf-TimersAndConstants",
+    "speedStatePars",
+    "measGapConfig",
+    "gapOffset",
+}
+
 # Messages à SKIP (Paging LTE : contient uniquement des identités d'abonné ;
 # NAS : hors scope RRC, chiffré de bout en bout).
 SKIP_MSG: set[str] = {"Paging"}
@@ -89,6 +123,15 @@ def walk(v: Any, path: list[str], out: list[tuple[list[str], Any]]) -> None:
             if v[1] is None:
                 out.append((path, v[0]))
             else:
+                # 0.45.1 — CHOICE → VALUE sur les CHOICE spécifiques du
+                # spec dict v2 : on émet UNE feuille à ``path`` dont la
+                # valeur est l'alt_name (ex. ``drx-Config = setup``,
+                # ``longDRX-CycleStartOffset = sf160``), ET on walk
+                # l'intérieur sous ``path + [alt_name]`` pour garder la
+                # structure. Le dict v2 collapse l'alt_name dans
+                # param_key (côté enrich_v2).
+                if path and path[-1] in _CHOICE_EMIT_VALUE:
+                    out.append((path, v[0]))
                 walk(v[1], path + [v[0]], out)
     elif isinstance(v, list):
         # 0.42.0 — PLMN MCC/MNC = SEQUENCE SIZE (3) OF MCC-MNC-Digit.
@@ -99,8 +142,18 @@ def walk(v: Any, path: list[str], out: list[tuple[list[str], Any]]) -> None:
         if v and all(isinstance(x, int) and 0 <= x <= 9 for x in v):
             out.append((path, "".join(str(x) for x in v)))
             return
-        for x in v:
-            walk(x, path, out)
+        # 0.45.1 — SEQUENCE OF structures : préserver l'index [i] dans le
+        # path pour éviter que l'UniqueConstraint ne drop les feuilles
+        # dupliquées entre éléments (reportConfig[0] ≠ reportConfig[1]).
+        # Pour les listes de scalaires (plus de 9), on fallback au walk
+        # plat historique.
+        is_struct_list = any(isinstance(x, (dict, tuple)) for x in v)
+        if is_struct_list:
+            for i, x in enumerate(v):
+                walk(x, path + [f"[{i}]"], out)
+        else:
+            for x in v:
+                walk(x, path, out)
     elif isinstance(v, (bytes, bytearray)):
         return
     elif isinstance(v, tuple):

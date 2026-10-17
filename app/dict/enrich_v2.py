@@ -195,6 +195,13 @@ _EVENT_PATTERN = re.compile(r"^event([AB]\d(?:_\d)?)$")
 def extract_discriminators(path_segments: list[str]) -> dict[str, Any]:
     """Lit les discriminants depuis les segments du path. Jamais inventé :
     seuls les segments présents produisent une entrée.
+
+    0.45.1 — Les discriminants sont **hérités** le long du path : un
+    discriminant extrait d'un ancêtre (``reportConfigToAddModList[i] →
+    event``, ``drb-ToAddModList → bearer``, ``measObjectToAddModList →
+    measObject_type``) s'applique à TOUTES les feuilles de ce sous-arbre.
+    Le walker produit les segments dans l'ordre racine → feuille ; on
+    accumule au fur et à mesure et on renvoie l'état final.
     """
     d: dict[str, Any] = {}
     for seg in path_segments:
@@ -203,26 +210,29 @@ def extract_discriminators(path_segments: list[str]) -> dict[str, Any]:
             d.setdefault("bearer_kind", "SRB")
         if seg.startswith("drb-ToAddModList") or seg == "drb-Identity":
             d.setdefault("bearer_kind", "DRB")
-        # RLC mode
+        # RLC mode (le DERNIER vu l'emporte si le path traverse plusieurs
+        # modes — en pratique un path ne traverse qu'une seule alt RLC).
         if seg in _RLC_MODE_FROM_SEGMENT:
             d["rlc_mode"] = _RLC_MODE_FROM_SEGMENT[seg]
         # Direction (DL/UL)
         if seg in _DIRECTION_FROM_SEGMENT:
             d["direction"] = _DIRECTION_FROM_SEGMENT[seg]
-        # Event A1..A6 / B1/B2
+        # Event A1..A6 / B1/B2 — hérité pour toutes les feuilles sœurs
+        # (hysteresis, timeToTrigger, triggerQuantity, reportAmount,
+        # reportInterval, maxReportCells) sous le même reportConfig.
         m = _EVENT_PATTERN.match(seg)
         if m:
             d["event"] = m.group(1)
-        # measObject CHOICE
+        # measObject CHOICE — hérité par les feuilles de la cellule.
         if seg == "measObjectEUTRA":   d["measObject_type"] = "EUTRA"
         if seg == "measObjectUTRA":    d["measObject_type"] = "UTRA"
         if seg == "measObjectNR-r15":  d["measObject_type"] = "NR"
-        # reportConfig CHOICE
+        # reportConfig CHOICE — hérité.
         if seg == "reportConfigEUTRA":    d["reportConfig_type"] = "EUTRA"
         if seg == "reportConfigInterRAT": d["reportConfig_type"] = "InterRAT"
-        # BWP / sCell indices : passés par structure parent — ici juste
-        # tag si présent dans le path (le discriminant valeur viendra
-        # d'une sœur rangée).
+        # Scell / BWP : marqueur booléen (le vrai index est une sœur
+        # ``sCellIndex`` / ``bwp-Id`` — on ne la joint pas ici,
+        # elle apparaît comme KPI séparé).
         if seg == "sCellToAddModList":   d.setdefault("has_scell", True)
         if seg.startswith("BWP"):        d.setdefault("has_bwp",   True)
     return d
@@ -236,7 +246,9 @@ def extract_discriminators(path_segments: list[str]) -> dict[str, Any]:
 def canonical_param_key(path: str) -> tuple[str, str | None, str]:
     """Retourne ``(param_key, choice_of, display_name)``.
 
-    - ``param_key`` : chemin canonique sans les segments CHOICE.
+    - ``param_key`` : chemin canonique sans les segments CHOICE **ni**
+      les index de liste ``[i]`` (ces derniers restent dans ``path``
+      pour la contrainte d'unicité).
     - ``choice_of`` : nom du dernier segment supprimé (le CHOICE parent)
       si une alt a été collapsée, sinon ``None``.
     - ``display_name`` : dernier segment du param_key.
@@ -245,6 +257,10 @@ def canonical_param_key(path: str) -> tuple[str, str | None, str]:
     kept: list[str] = []
     last_choice_parent: str | None = None
     for seg in segs:
+        # 0.45.1 — Drop les index de liste [i] : le param_key canonique
+        # agrège les feuilles reportConfig[0]..[N] sous une seule clé.
+        if seg.startswith("[") and seg.endswith("]"):
+            continue
         if _is_choice_segment(seg):
             # On note le segment PRÉCÉDENT comme choice_of si pas déjà
             # vu — c'est le nom du CHOICE qui contenait cette alt.

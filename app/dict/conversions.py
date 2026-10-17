@@ -19,6 +19,7 @@ Références :
 """
 from __future__ import annotations
 
+import re
 from typing import Any
 
 
@@ -97,6 +98,64 @@ def _rsrq_threshold_ssb(raw: Any) -> tuple[str, str] | None:
     return (f"{v:g}", "dB")
 
 
+# 0.45.1 — conversions supplémentaires (dict v2 clôture écarts).
+
+def _hysteresis(raw: Any) -> tuple[str, str] | None:
+    """3GPP TS 36.331 : hysteresis = valeur × 0,5 dB (plage 0..30)."""
+    i = _as_int(raw)
+    if i is None or not (0 <= i <= 30):
+        return None
+    v = i * 0.5
+    return (f"{v:g}", "dB")
+
+
+def _threshold_rsrq(raw: Any) -> tuple[str, str] | None:
+    """3GPP TS 36.133 : RSRQ threshold = (idx/2) − 20 dB (plage 0..34)."""
+    i = _as_int(raw)
+    if i is None or not (0 <= i <= 34):
+        return None
+    v = i / 2 - 20
+    return (f"{v:g}", "dB")
+
+
+_TTT_ENUM_TO_MS: dict[str, int] = {
+    "ms0":     0, "ms40":    40, "ms64":    64, "ms80":    80, "ms100":   100,
+    "ms128":  128, "ms160":  160, "ms256":  256, "ms320":  320, "ms480":   480,
+    "ms512":  512, "ms640":  640, "ms1024":1024, "ms1280":1280, "ms2560": 2560,
+    "ms5120":5120,
+}
+
+
+def _time_to_trigger(raw: Any) -> tuple[str, str] | None:
+    """TTT enum pycrate → ms (3GPP TS 36.331 ReportConfigEUTRA)."""
+    s = str(raw).strip() if raw is not None else ""
+    if s in _TTT_ENUM_TO_MS:
+        return (str(_TTT_ENUM_TO_MS[s]), "ms")
+    return None
+
+
+_PSF_PATTERN = re.compile(r"^psf(\d+)$")
+_SF_PATTERN  = re.compile(r"^sf(\d+)$")
+
+
+def _psf_to_ms(raw: Any) -> tuple[str, str] | None:
+    """``psfN`` → ``N ms`` (periodic subframe, 1 subframe = 1 ms)."""
+    s = str(raw).strip() if raw is not None else ""
+    m = _PSF_PATTERN.match(s)
+    if not m:
+        return None
+    return (m.group(1), "ms")
+
+
+def _sf_to_ms(raw: Any) -> tuple[str, str] | None:
+    """``sfN`` → ``N ms`` (subframe = 1 ms LTE)."""
+    s = str(raw).strip() if raw is not None else ""
+    m = _SF_PATTERN.match(s)
+    if not m:
+        return None
+    return (m.group(1), "ms")
+
+
 # Table : nom de segment feuille (exact, insensible à la casse) → fonction.
 _RULES: dict[str, Any] = {
     "rsrp-Result": _rsrp_result,
@@ -116,6 +175,20 @@ _RULES: dict[str, Any] = {
     "rsrqThresholdSSB": _rsrq_threshold_ssb,
     "q-Hyst": _q_hyst,
     "qHyst": _q_hyst,
+    # 0.45.1 — Dict v2 clôture
+    "hysteresis":        _hysteresis,
+    "threshold-RSRQ":    _threshold_rsrq,
+    "thresholdRSRQ":     _threshold_rsrq,
+    "timeToTrigger":     _time_to_trigger,
+    "onDurationTimer":   _psf_to_ms,
+    "drx-InactivityTimer":     _psf_to_ms,
+    "drx-RetransmissionTimer": _psf_to_ms,
+    "longDRX-Cycle":     _sf_to_ms,
+    "shortDRX-Cycle":    _sf_to_ms,
+    # 0.45.1 — Les CHOICE longDRX-CycleStartOffset / shortDRX-Cycle
+    # émettent la valeur de la branche choisie (sf160, sf20…). Le segment
+    # feuille remonté par le walker est l'alt_name — on convertit idem.
+    "longDRX-CycleStartOffset": _sf_to_ms,
 }
 
 

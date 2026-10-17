@@ -212,6 +212,24 @@ def compute_status_v2(
             or f"aucune occurrence RRC pour path LIKE {pat!r}",
         )
 
+    # 0.45.2 — Débit depuis la TABLE DES TRANSFERTS (compute_transfers).
+    # `transfers_table` : AVAILABLE si ≥ 1 transfert proven de la direction.
+    # `transfers_dms`   : idem. La différence est dans compute_kpi_v2.
+    if kind in ("transfers_table", "transfers_dms"):
+        direction = (check.get("arg") or "dl").lower()
+        from app.measure.throughput import compute_transfers
+        ts = compute_transfers(db, project_id)
+        n_proven = sum(
+            1 for t in ts if t.verdict == "proven" and t.direction == direction and t.thrpt_mbps is not None
+        )
+        if n_proven > 0:
+            return KpiStatusV2("AVAILABLE", None)
+        return KpiStatusV2(
+            "PENDING",
+            check.get("reason_if_null")
+            or f"compute_transfers : 0 transfert `proven` direction={direction!r}",
+        )
+
     # Règle inconnue → écart déclaré, pas inventé.
     return KpiStatusV2(
         "UNAVAILABLE",
@@ -1013,6 +1031,64 @@ def compute_kpi_v2(
             "groups": groups,
             "table":  groups,
             "comparability": _comparability(groups),
+        }
+
+    # 0.45.2 — Débit depuis la TABLE DES TRANSFERTS (compute_transfers).
+    if kind in ("transfers_table", "transfers_dms"):
+        direction = (check.get("arg") or "dl").lower()
+        from app.measure.throughput import compute_transfers
+        ts = compute_transfers(db, project_id)
+        proven = [
+            t for t in ts
+            if t.verdict == "proven" and t.direction == direction and t.thrpt_mbps is not None
+        ]
+        if not proven:
+            return {**base, "status": "PENDING",
+                    "reason": check.get("reason_if_null")
+                              or f"compute_transfers : 0 transfert proven direction={direction!r}",
+                    "value": None, "n": 0}
+        mbps = sorted(float(t.thrpt_mbps) for t in proven)  # type: ignore[arg-type]
+        n = len(mbps)
+        p10 = mbps[int(n * 0.10)]
+        p50 = mbps[n // 2]
+        p90 = mbps[min(n - 1, int(n * 0.90))]
+
+        if kind == "transfers_dms":
+            # Taux ≥ seuil (seuil encodé dans le code du KPI).
+            import re as _re
+            m_dms = _re.match(r"^AGG_DMS_(DL|UL)_(\d+)_MBPS$", canonical)
+            if m_dms is None:
+                return {**base, "status": "UNAVAILABLE",
+                        "reason": f"code {canonical!r} ne matche pas AGG_DMS_(DL|UL)_<N>_MBPS",
+                        "value": None}
+            threshold = int(m_dms.group(2))
+            n_above = sum(1 for v in mbps if v >= threshold)
+            value = (100.0 * n_above / n) if n else None
+            return {
+                **base,
+                "status":    "AVAILABLE",
+                "reason":    None,
+                "threshold": threshold,
+                "n_total":   n,
+                "n_above":   n_above,
+                "value":     value,
+                "n":         n,
+                "groups":    [],
+                "table":     [],
+            }
+
+        # transfers_table : percentiles directs sur thrpt_mbps.
+        return {
+            **base,
+            "status": "AVAILABLE",
+            "reason": None,
+            "n":      n,
+            "value":  float(p50),
+            "p10":    float(p10),
+            "p50":    float(p50),
+            "p90":    float(p90),
+            "groups": [],
+            "table":  [],
         }
 
     return {**base, "status": "UNAVAILABLE",

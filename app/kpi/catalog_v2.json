@@ -92,13 +92,13 @@
       "nature": "Métrique mesurée",
       "family": "Débit applicatif",
       "aliases": [],
-      "formula": "percentile_cont sur measurement_points.dl (tous opérateurs)",
-      "source": "measurement_points.dl (DSUMMARY-derived)",
+      "formula": "percentile_cont sur transferts proven (compute_transfers) direction=dl — 1 ligne par DSUMMARY DL",
+      "source": "table des transferts (compute_transfers → DSUMMARY DL verdict=proven), jamais measurement_points.dl pondéré",
       "unit": "Mbit/s",
       "available_check": {
-        "kind": "mp_metric",
+        "kind": "transfers_table",
         "arg": "dl",
-        "reason_if_null": "measurement_points.dl NULL partout — mapping DSUMMARY non prouvé (lot 0.39.0 en cours)."
+        "reason_if_null": "compute_transfers retourne 0 transfert `proven` DL — aucun DSUMMARY DL rattaché à un Start CMDREQ dans la plage 0..300 Mbit/s."
       },
       "service_scope": [
         "HTTP_DOWNLOAD",
@@ -132,13 +132,13 @@
       "nature": "Métrique mesurée",
       "family": "Débit applicatif",
       "aliases": [],
-      "formula": "percentile_cont sur measurement_points.thrpt_ul (tous opérateurs)",
-      "source": "measurement_points.thrpt_ul (DSUMMARY-derived)",
+      "formula": "percentile_cont sur transferts proven (compute_transfers) direction=ul",
+      "source": "table des transferts (compute_transfers → DSUMMARY UL verdict=proven), jamais measurement_points.thrpt_ul pondéré",
       "unit": "Mbit/s",
       "available_check": {
-        "kind": "mp_metric",
-        "arg": "thrpt_ul",
-        "reason_if_null": "measurement_points.thrpt_ul NULL partout — mapping DSUMMARY non prouvé (lot 0.39.0 en cours)."
+        "kind": "transfers_table",
+        "arg": "ul",
+        "reason_if_null": "compute_transfers retourne 0 transfert `proven` UL — aucun DSUMMARY UL rattaché à un Start CMDREQ dans la plage 0..300 Mbit/s."
       },
       "service_scope": [
         "HTTP_DOWNLOAD",
@@ -153,12 +153,12 @@
       "family": "DMS DL",
       "aliases": [],
       "formula": "100 × count(measurement_points.dl ≥ 30) / count(measurement_points.dl IS NOT NULL)",
-      "source": "measurement_points.dl (Mbit/s)",
+      "source": "table des transferts (compute_transfers → DSUMMARY DL verdict=proven)",
       "unit": "%",
       "available_check": {
-        "kind": "mp_metric",
+        "kind": "transfers_dms",
         "arg": "dl",
-        "reason_if_null": "measurement_points.dl NULL partout — mapping DSUMMARY non prouvé (écart 0.24.0, lot 0.39.0 en cours)."
+        "reason_if_null": "compute_transfers retourne 0 transfert DL `proven`."
       },
       "service_scope": [
         "HTTP_DOWNLOAD",
@@ -173,12 +173,12 @@
       "family": "DMS DL",
       "aliases": [],
       "formula": "100 × count(measurement_points.dl ≥ 3) / count(measurement_points.dl IS NOT NULL)",
-      "source": "measurement_points.dl (Mbit/s)",
+      "source": "table des transferts (compute_transfers → DSUMMARY DL verdict=proven)",
       "unit": "%",
       "available_check": {
-        "kind": "mp_metric",
+        "kind": "transfers_dms",
         "arg": "dl",
-        "reason_if_null": "measurement_points.dl NULL partout — mapping DSUMMARY non prouvé (écart 0.24.0, lot 0.39.0 en cours)."
+        "reason_if_null": "compute_transfers retourne 0 transfert DL `proven`."
       },
       "service_scope": [
         "HTTP_DOWNLOAD",
@@ -193,12 +193,12 @@
       "family": "DMS DL",
       "aliases": [],
       "formula": "100 × count(measurement_points.dl ≥ 8) / count(measurement_points.dl IS NOT NULL)",
-      "source": "measurement_points.dl (Mbit/s)",
+      "source": "table des transferts (compute_transfers → DSUMMARY DL verdict=proven)",
       "unit": "%",
       "available_check": {
-        "kind": "mp_metric",
+        "kind": "transfers_dms",
         "arg": "dl",
-        "reason_if_null": "measurement_points.dl NULL partout — mapping DSUMMARY non prouvé (écart 0.24.0, lot 0.39.0 en cours)."
+        "reason_if_null": "compute_transfers retourne 0 transfert DL `proven`."
       },
       "service_scope": [
         "HTTP_DOWNLOAD",
@@ -213,12 +213,12 @@
       "family": "DMS UL",
       "aliases": [],
       "formula": "100 × count(measurement_points.thrpt_ul ≥ 1) / count(measurement_points.thrpt_ul IS NOT NULL)",
-      "source": "measurement_points.thrpt_ul (Mbit/s)",
+      "source": "table des transferts (compute_transfers → DSUMMARY UL verdict=proven)",
       "unit": "%",
       "available_check": {
-        "kind": "mp_metric",
-        "arg": "thrpt_ul",
-        "reason_if_null": "measurement_points.thrpt_ul NULL partout — mapping DSUMMARY non prouvé (écart 0.24.0, lot 0.39.0 en cours)."
+        "kind": "transfers_dms",
+        "arg": "ul",
+        "reason_if_null": "compute_transfers retourne 0 transfert UL `proven`."
       },
       "service_scope": [
         "HTTP_DOWNLOAD",
@@ -233,12 +233,12 @@
       "family": "DMS UL",
       "aliases": [],
       "formula": "100 × count(measurement_points.thrpt_ul ≥ 3) / count(measurement_points.thrpt_ul IS NOT NULL)",
-      "source": "measurement_points.thrpt_ul (Mbit/s)",
+      "source": "table des transferts (compute_transfers → DSUMMARY UL verdict=proven)",
       "unit": "%",
       "available_check": {
-        "kind": "mp_metric",
-        "arg": "thrpt_ul",
-        "reason_if_null": "measurement_points.thrpt_ul NULL partout — mapping DSUMMARY non prouvé (écart 0.24.0, lot 0.39.0 en cours)."
+        "kind": "transfers_dms",
+        "arg": "ul",
+        "reason_if_null": "compute_transfers retourne 0 transfert UL `proven`."
       },
       "service_scope": [
         "HTTP_DOWNLOAD",
@@ -1715,8 +1715,25 @@
       "nature": "Métrique mesurée",
       "family": "Qualité radio",
       "aliases": [],
+      "formula": "percentile_cont sur measurement_points.rsrp (CELLMEAS prouvé)",
+      "source": "measurement_points.rsrp (CELLMEAS prouvé — profile_cellmeas verdict=proven, mapping cell0_rsrq_db ↔ rsrp)",
+      "unit": "dBm",
+      "available_check": {
+        "kind": "mp_metric",
+        "arg": "rsrp",
+        "reason_if_null": "measurement_points.rsrp NULL partout — relancer populate_measurement_points sur ce projet (profil CELLMEAS prouvé en cellmeas_profile)."
+      },
+      "service_scope": []
+    },
+    {
+      "code": "LTE_RF_RSRP_AT_MR",
+      "name": "LTE RSRP @ MeasurementReport (RRC)",
+      "techno": "LTE",
+      "nature": "Métrique mesurée",
+      "family": "Qualité radio",
+      "aliases": [],
       "formula": "percentile_cont sur CAST(value_converted AS DOUBLE PRECISION) filtré par path LIKE '%measResultPCell/rsrpResult'",
-      "source": "param_occurrence (path LIKE '%measResultPCell/rsrpResult', message='MeasurementReport' — RRC autoritaire, idx − 141 dBm (3GPP TS 36.133 §9.1.4))",
+      "source": "param_occurrence (path LIKE '%measResultPCell/rsrpResult', message='MeasurementReport' — biaisé événements de mesure RRC, idx − 141 dBm 3GPP TS 36.133 §9.1.4)",
       "unit": "dBm",
       "available_check": {
         "kind": "param_path_ilike",
@@ -1732,13 +1749,13 @@
       "nature": "Métrique mesurée",
       "family": "Qualité radio",
       "aliases": [],
-      "formula": "percentile_cont sur CAST(value_converted AS DOUBLE PRECISION) filtré par path LIKE '%measResultPCell/rsrqResult'",
-      "source": "param_occurrence (path LIKE '%measResultPCell/rsrqResult', message='MeasurementReport' — RRC autoritaire, (idx / 2) − 20 dB (3GPP TS 36.133 §9.1.7))",
+      "formula": "percentile_cont sur measurement_points.rsrq (CELLMEAS prouvé)",
+      "source": "measurement_points.rsrq (CELLMEAS prouvé — profile_cellmeas verdict=proven)",
       "unit": "dB",
       "available_check": {
-        "kind": "param_path_ilike",
-        "arg": "%measResultPCell/rsrqResult",
-        "reason_if_absent": "aucune occurrence RRC pour path LIKE '%measResultPCell/rsrqResult'"
+        "kind": "mp_metric",
+        "arg": "rsrq",
+        "reason_if_null": "measurement_points.rsrq NULL partout — relancer populate_measurement_points sur ce projet."
       },
       "service_scope": []
     },

@@ -35,6 +35,11 @@ from app.kpi.service_v2 import (
 )
 from app.measure.ecgi import populate_ecgi_for_project
 from app.models import Project
+from app.schemas.project_kpi import (
+    ProjectKpiCatalog,
+    ProjectKpiDetail,
+    ProjectKpiFilters,
+)
 from app.schemas.settings import Actor
 
 
@@ -54,7 +59,7 @@ def _require_project(db: Session, project_id: str) -> Project:
     return p
 
 
-@router.get("/{project_id}/kpi/catalog")
+@router.get("/{project_id}/kpi/catalog", response_model=ProjectKpiCatalog)
 def kpi_catalog(
     project_id: str,
     service_type: list[str] = Query(default_factory=list),
@@ -71,7 +76,7 @@ def kpi_catalog(
     )
 
 
-@router.get("/{project_id}/kpi/filters")
+@router.get("/{project_id}/kpi/filters", response_model=ProjectKpiFilters)
 def kpi_filters(project_id: str, db: Session = Depends(get_db)) -> dict:
     _require_project(db, project_id)
     return build_filters_v2(db, project_id)
@@ -126,7 +131,7 @@ def kpi_populate_ecgi(
     }
 
 
-@router.get("/{project_id}/kpi/{code}")
+@router.get("/{project_id}/kpi/{code}", response_model=ProjectKpiDetail)
 def kpi_detail(
     project_id: str,
     code: str,

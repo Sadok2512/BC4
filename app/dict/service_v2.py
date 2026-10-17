@@ -167,12 +167,15 @@ def build_distribution(
 
     for key in keys:
         # Métadonnées communes (unit, origin, choice_of, discriminators).
+        # 0.45.1 — distinct_values = COUNT(DISTINCT COALESCE(value_converted, value))
+        # pour que les feuilles non-converties (ex. hysteresis en 0.45.0)
+        # soient aussi comptées correctement.
         meta = db.execute(
             text(
                 """
                 SELECT display_name, unit_converted, origin, choice_of,
                        MIN(discriminators::text), COUNT(*) AS n_total,
-                       COUNT(DISTINCT value_converted) AS distinct_vals
+                       COUNT(DISTINCT COALESCE(value_converted, value)) AS distinct_vals
                 FROM param_occurrence
                 WHERE project_id = :pid AND param_key = :k
                 GROUP BY display_name, unit_converted, origin, choice_of

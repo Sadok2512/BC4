@@ -2,6 +2,71 @@
 
 Versions SemVer. Type de bump: `patch` / `minor` / `major`. Un écart se ferme ou se déclare ouvert, jamais expliqué par hypothèse.
 
+## 0.45.1 — 2026-10-17 (patch) — Dict v2 : discriminators hérités, CHOICE→VALUE, conversions, SIB2/SIB3 split (Agent BC1)
+
+> Clôture des écarts déclarés en 0.45.0 : discriminator `event` propagé
+> aux feuilles sœurs sous un même `reportConfig[i]`, CHOICE spécifiques
+> émis comme valeur de feuille (``drx-Config = setup/release``,
+> ``longDRX-CycleStartOffset = sf160``…), conversions 3GPP ajoutées
+> pour `hysteresis` (×0,5 dB), `threshold-RSRQ` (idx/2−20 dB),
+> `timeToTrigger` (enum→ms), `onDurationTimer` / `drx-InactivityTimer` /
+> `drx-RetransmissionTimer` (psf→ms), `longDRX-Cycle` / `shortDRX-Cycle`
+> (sf→ms). Conteneurs Nemo `SIB2,SIB3` et `SIB4,SIB5` splittés en
+> messages logiques distincts dans param_occurrence.
+
+### Walker (`app/dict/decode.py`)
+
+- SEQUENCE OF structures : préservation des index `[i]` dans le path
+  pour éviter l'UniqueConstraint drop (reportConfig[0] vs
+  reportConfig[1] cohabitent). Les SEQUENCE OF scalaires (MCC/MNC
+  déjà concaténés, physCellId, …) conservent le comportement
+  historique (walk plat).
+- CHOICE spécifiques (`_CHOICE_EMIT_VALUE` : drx-Config, longDRX-
+  CycleStartOffset, triggerQuantity, reportQuantity, rlc-Config,
+  headerCompression, measObject, reportConfig, eventId, triggerType,
+  antennaInfo, a1..a5-Threshold, redirectedCarrierInfo, nr-Config-r15,
+  speedStatePars, measGapConfig, gapOffset…) : émettent une feuille
+  `(path, alt_name)` EN PLUS de walker l'intérieur. Le `param_key`
+  (via enrich_v2) collapse l'alt_name — la feuille apparaît ainsi
+  comme `drx-Config = setup` dans l'arbre catalog.
+
+### Post-populate (`app/dict/populate.py`)
+
+- `_backfill_event_discriminator` : join SQL par `(stg_event_id,
+  préfixe_jusqu_au_dernier_[i])` entre eventA1..A5 et leurs feuilles
+  sœurs (`hysteresis`, `timeToTrigger`, `triggerQuantity`,
+  `reportAmount`, `reportInterval`, `maxReportCells`, `reportQuantity`,
+  `reportOnLeave`). Chaque feuille sœur reçoit `discriminators.event =
+  "A3"` (par ex.).
+- `_split_sib_container_messages` : rewrite ligne par ligne le
+  `message` depuis le path (`sib2/...` → `SystemInformation - SIB2`,
+  idem SIB3/SIB4/SIB5…).
+
+### Conversions (`app/dict/conversions.py`)
+
+6 nouvelles règles : `hysteresis` (×0,5 dB), `threshold-RSRQ`
+(idx/2 − 20 dB), `timeToTrigger` (table enum→ms 3GPP TS 36.331),
+`psf→ms` (``onDurationTimer`` / ``drx-InactivityTimer`` /
+``drx-RetransmissionTimer``), `sf→ms` (``longDRX-Cycle`` /
+``shortDRX-Cycle``). Les feuilles convertibles ne sortent plus avec
+`unit_converted=NULL`.
+
+### Enrichissement (`app/dict/enrich_v2.py`)
+
+- `canonical_param_key` drop les segments `[\d+]` → param_key
+  canonique agrège toutes les occurrences de reportConfig[0..N] sous
+  une seule clé.
+- `extract_discriminators` : ajout `inheritance=True` implicite — le
+  parcours ordonné racine→feuille accumule les discriminants des
+  ancêtres.
+
+### Service distribution (`app/dict/service_v2.py`)
+
+- `distinct_values = COUNT(DISTINCT COALESCE(value_converted, value))`
+  (fix du `distinct=0` observé en 0.45.0 quand `value_converted` NULL).
+- Tri des valeurs par `CAST(value_converted AS DOUBLE PRECISION)` quand
+  numérique, par libellé sinon.
+
 ## 0.45.0 — 2026-10-17 (minor) — Dictionnaire v2 : param_key + origin + distributions (Agent BC1)
 
 > Référence : `specs/dict_tree.html` + `specs/dict_v2.html`. Audit préalable

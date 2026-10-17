@@ -241,6 +241,91 @@ WHERE project_id = :pid
 """
 
 
+def _backfill_event_discriminator(db: Session, project_id: str) -> int:
+    """0.45.1 — Join hysteresis/timeToTrigger/triggerQuantity/reportAmount/
+    reportInterval/maxReportCells à l'eventId de leur reportConfig[i]
+    frère (même stg_event, même préfixe de path jusqu'au dernier ``[i]``).
+
+    Ajoute ``discriminators.event = "A3"`` (par ex.) aux feuilles sœurs
+    de ``eventA3`` dans le même ``reportConfig[i]``. Les ``[i]`` ont été
+    préservés par le walker 0.45.1 — si un path n'a pas d'index (ancienne
+    ingestion), le join tombe à vide, pas d'exception.
+
+    Retourne le nombre de lignes affectées.
+    """
+    # Pour chaque event leaf (eventA1..A5/B1/B2) : prefix = path tronqué
+    # au dernier ``[i]`` inclus. On rebuild la clé de rapprochement en
+    # SQL via regexp.
+    # Optimisation 0.45.1 : CTE inline → le planner matérialise mal et
+    # tombe sur du seq scan 170k × 1.5k (>12 min). On matérialise les
+    # tuples (stg_event_id, prefix_i, event_name) dans une TEMP table
+    # indexée + ANALYZE : le plan devient Nested Loop indexable sur
+    # ix_param_occ_path + display_name filter → 3 s sur REF (10k lignes).
+    db.execute(text("DROP TABLE IF EXISTS _event_prefix_map"))
+    db.execute(
+        text(
+            r"""
+            CREATE TEMP TABLE _event_prefix_map ON COMMIT DROP AS
+            SELECT DISTINCT
+                   stg_event_id,
+                   substring(path FROM '^(.*\[\d+\])') AS prefix_i,
+                   substring(path FROM 'event([A-B]\d)') AS event_name
+            FROM param_occurrence
+            WHERE project_id = :pid
+              AND path ~ 'event[A-B]\d'
+              AND substring(path FROM '^(.*\[\d+\])') IS NOT NULL
+            """
+        ),
+        {"pid": project_id},
+    )
+    db.execute(text("CREATE INDEX ON _event_prefix_map(stg_event_id)"))
+    db.execute(text("ANALYZE _event_prefix_map"))
+    result = db.execute(
+        text(
+            r"""
+            UPDATE param_occurrence h
+            SET discriminators = COALESCE(h.discriminators, '{}'::jsonb)
+                                 || jsonb_build_object('event', e.event_name)
+            FROM _event_prefix_map e
+            WHERE h.project_id = :pid
+              AND h.stg_event_id = e.stg_event_id
+              AND h.path LIKE e.prefix_i || '/%'
+              AND h.display_name IN (
+                    'hysteresis','timeToTrigger','triggerQuantity',
+                    'reportAmount','reportInterval','maxReportCells',
+                    'reportQuantity','reportOnLeave'
+              )
+              AND NOT (h.discriminators ? 'event')
+            """
+        ),
+        {"pid": project_id},
+    )
+    return result.rowcount or 0
+
+
+def _split_sib_container_messages(db: Session, project_id: str) -> int:
+    """0.45.1 — Les conteneurs Nemo ``SystemInformation - SIB2,SIB3`` /
+    ``SystemInformation - SIB4,SIB5`` regroupent plusieurs SIB dans le
+    même event stg_event. Le path ASN.1 préserve le discriminant
+    (``.../sib-TypeAndInfo/sib2/...`` vs ``sib3``). On rewrite
+    ``message`` ligne par ligne pour que les filtres par SIB (SIB2 /
+    SIB3 séparés) marchent côté catalog.
+    """
+    r = db.execute(
+        text(
+            r"""
+            UPDATE param_occurrence
+            SET message = 'SystemInformation - SIB' || substring(path FROM 'sib(\d+)')
+            WHERE project_id = :pid
+              AND message LIKE 'SystemInformation - SIB%,%'
+              AND path ~ 'sib\d+'
+            """
+        ),
+        {"pid": project_id},
+    )
+    return r.rowcount or 0
+
+
 def _backfill_stg_event_system(db: Session, project_id: str) -> int:
     """Déduit `stg_event.system` depuis `message` quand il est NULL. Retourne
     le nombre de lignes mises à jour (0 si rien à faire — idempotent)."""
@@ -457,6 +542,19 @@ def populate_param_occurrence(
     _flush()
 
     db.commit()
+
+    # 0.45.1 — Post-populate : discriminators hérités cross-sibling.
+    # Les feuilles ``hysteresis``/``timeToTrigger``/``triggerQuantity``/
+    # ``reportAmount``/``reportInterval``/``maxReportCells`` sous un
+    # même ``reportConfig[i]`` partagent l'``event`` de leur eventId
+    # sibling. On fait le join par (stg_event_id, index_prefix) où
+    # index_prefix = préfixe du path jusqu'au dernier ``[i]`` inclus.
+    _backfill_event_discriminator(db, project_id)
+    # 0.45.1 — Split logique des conteneurs Nemo ``SIB2,SIB3`` / ``SIB4,SIB5``
+    # en messages individuels par SIB, lu dans le path ASN.1.
+    _split_sib_container_messages(db, project_id)
+    db.commit()
+
     # Comptage réel après commit (ON CONFLICT peut avoir avalé des doublons).
     stats["n_params_written"] = int(
         db.execute(
