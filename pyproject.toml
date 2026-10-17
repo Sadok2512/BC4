@@ -1,7 +1,7 @@
 [project]
 name = "bc4-back"
-version = "0.47.2"
-description = "BC4 backend FastAPI — backfill projects.n_points pré-0.46 + purge pollution national-2026 (NMF agent) + ré-ingest TEST2"
+version = "0.48.1"
+description = "BC4 backend FastAPI — mp sans GPS conservé (lat/lng NULL + geo_source) : règle « jamais une mesure jetée » (fix populate skip indoor), replay REF (+72k mp indoor) + TEST2 (+11k)"
 requires-python = ">=3.10"
 
 [tool.pytest.ini_options]

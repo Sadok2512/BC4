@@ -80,6 +80,13 @@ class Project(Base):
     # (DOR / DR / plaque / arcep). JSON nullable — resté `null` tant
     # qu'aucune cellule Orange n'a été jointe (déclaré, pas N/A).
     perimeter: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    # 0.46.0 — Suivi complétude populate_measurement_points (chaînage auto
+    # post-ingest). `last_populate_at` est posé à CHAQUE fin de populate
+    # réussi ; `n_points` snapshot mp pour ce projet au moment du populate.
+    # Un projet avec `nmf_count > 0 AND (last_populate_at IS NULL OR
+    # n_points = 0)` est **incomplet** (NMF ingérés mais pas transformés).
+    last_populate_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    n_points: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
 
 class NmfFile(Base):
@@ -248,8 +255,16 @@ class MeasurementPoint(Base):
 
     id: Mapped[str] = mapped_column(String, primary_key=True)
     project_id: Mapped[str] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True)
-    lat: Mapped[float] = mapped_column(Float, nullable=False)
-    lng: Mapped[float] = mapped_column(Float, nullable=False)
+    # 0.47.3 — lat/lng NULL autorisé : une mesure radio/data sans fix GPS
+    # est CONSERVÉE (règle « jamais une mesure jetée ») mais sans position
+    # inventée. Elle sort des cartes et de la voie géo « position » (chip
+    # Géo = none), pas des KPI radio.
+    lat: Mapped[float | None] = mapped_column(Float, nullable=True)
+    lng: Mapped[float | None] = mapped_column(Float, nullable=True)
+    # 0.47.3 — Origine de la position : NULL = indoor / perte de fix,
+    # 'gps_fix' = dernier GPS event, 'ecgi_cell_centroid' = future
+    # propagation depuis cell_ref.
+    geo_source: Mapped[str | None] = mapped_column(String, nullable=True)
     # 0.24.0 — operator/tech/service/dep/site/band deviennent nullable
     # pour accueillir les points issus de `stg_measurement_raw` (NMF).
     # Pattern populate.py : NULL en base, COALESCE("non attribué") au SELECT.

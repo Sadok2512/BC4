@@ -107,12 +107,24 @@ def populate_measurements(db: Session, project_id: str, *, purge: bool = True) -
         if system:
             by_sys[system] = by_sys.get(system, 0) + 1
 
+        # 0.47.3 — Règle « jamais une mesure jetée ».
+        #
+        # Avant 0.47.3, les points sans GPS étaient forgés 0,0 puis
+        # skippés en bloc par le filtre `lat not in (0.0, None)`.
+        # Résultat : fichiers indoor → measurement_points vide, KPI
+        # radio/data perdus. Nouveau comportement :
+        #   - lat/lng NULL si le GPS manque (jamais 0,0 inventé).
+        #   - geo_source renseigne l'origine ('gps_fix' si position,
+        #     NULL si indoor/perte de fix).
+        #   - La ligne mp est conservée : les KPI radio comptent.
+        has_gps = r.lat is not None and r.lon is not None and not (r.lat == 0.0 and r.lon == 0.0)
         rows_batch.append(
             {
                 "id": f"mp-{uuid.uuid4().hex[:12]}",
                 "project_id": project_id,
-                "lat": r.lat if r.lat is not None else 0.0,  # NOT NULL — on skip plus bas si absent
-                "lng": r.lon if r.lon is not None else 0.0,
+                "lat": float(r.lat) if has_gps else None,
+                "lng": float(r.lon) if has_gps else None,
+                "geo_source": "gps_fix" if has_gps else None,
                 "operator": operator,
                 "tech": system,  # LTE / NR / None
                 "band": band,
@@ -131,10 +143,8 @@ def populate_measurements(db: Session, project_id: str, *, purge: bool = True) -
             }
         )
 
-    # 3b) Skip des points sans lat/lon (le NOT NULL de lat/lng est hérité
-    #     des seeds B0 ; une mesure NMF sans GPS précédent n'est pas
-    #     géolocalisable → on la saute plutôt que de forger 0,0).
-    rows_batch = [r for r in rows_batch if r["lat"] not in (0.0, None) or r["lng"] not in (0.0, None)]
+    # 0.47.3 — plus de filtre « skip si pas de GPS ». Toutes les mesures
+    # entrent en mp (lat/lng NULL pour les indoor).
 
     # 4) Insert batch.
     inserted = len(rows_batch)
@@ -144,12 +154,14 @@ def populate_measurements(db: Session, project_id: str, *, purge: bool = True) -
             text(
                 """
                 INSERT INTO measurement_points (
-                    id, project_id, lat, lng, operator, tech, service, band,
+                    id, project_id, lat, lng, geo_source,
+                    operator, tech, service, band,
                     dep, site, ts, dl, rsrp, sinr, latency,
                     capture_id, seq, rsrq, rssi, cqi, mimo_rank, tx_power,
                     thrpt_ul, event_code
                 ) VALUES (
-                    :id, :project_id, :lat, :lng, :operator, :tech, :service, :band,
+                    :id, :project_id, :lat, :lng, :geo_source,
+                    :operator, :tech, :service, :band,
                     :dep, :site, :ts, :dl, :rsrp, :sinr, :latency,
                     :capture_id, :seq, :rsrq, :rssi, :cqi, :mimo_rank, :tx_power,
                     :thrpt_ul, :event_code

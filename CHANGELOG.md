@@ -2,6 +2,186 @@
 
 Versions SemVer. Type de bump: `patch` / `minor` / `major`. Un écart se ferme ou se déclare ouvert, jamais expliqué par hypothèse.
 
+## 0.48.1 — 2026-10-17 (patch) — Replay populate REF + TEST2 après 0.47.3 (indoor mp conservé — +72 593 lignes REF, +11 082 lignes TEST2) (Agent BC1)
+
+> Suite directe de 0.47.3 (migration 0020 + fix populate skip indoor).
+> Replay effectué via `run_populate_chain` sur REF et TEST2 pour peupler
+> les indoor précédemment skippés.
+>
+> État avant / après :
+>
+> | projet | mp avant | mp après | with_gps | no_gps | zero (0,0) |
+> |---|---:|---:|---:|---:|---:|
+> | REF   | 68 090 | **140 683** | 68 090 | **72 593** | 0 |
+> | TEST2 | 50 826 | **61 908**  | 61 535 |    **373** | 0 |
+>
+> Les indoor du REF (72 593 mp) étaient perdus par le filtre historique
+> « skip si pas de GPS ». 100 % des points sans GPS portent désormais
+> `geo_source=NULL` ; 100 % des points avec GPS portent `'gps_fix'`.
+> Aucune ligne à `(0.0, 0.0)` — règle « jamais une position inventée »
+> maintenue.
+>
+> KPI radio AVAILABLE sur l'indoor (guard) :
+> `/kpi/LTE_RF_CQI?group_by=operator` REF → status=AVAILABLE, **n=38 758**,
+> p50=8.0 (vs n beaucoup plus faible avant 0.47.3 où l'indoor était écarté).
+>
+> Pré-requis pour le lot Géographie v1 : il peut distinguer les points
+> cartographiables (`WHERE lat IS NOT NULL`) des points « radio seulement »
+> sans fabrication de position.
+
+### Rebuild + /health
+
+- `pyproject.toml : 0.48.0 → 0.48.1 (patch)`.
+- `app/main.py : version="0.48.1"`.
+- `/health = {"status":"ok","env":"development","version":"0.48.1"}`.
+
+### Fix annexe
+
+- `alembic/versions/0021_stg_evt_pid_evcode_idx.py` : la révision
+  interne `"0021_stg_event_project_event_code_idx"` (37 chars) dépassait
+  la limite 32 chars de `alembic_version.version_num` → renommée
+  `"0021_stg_evt_pid_evcode_idx"` (le nom du fichier). Faisait planter
+  la startup de l'API.
+
+## 0.48.0 — 2026-10-17 (minor) — perf /kpi/catalog ×10 + /kpi/filters ×7 + 3 fixes structurels (sessions, DDL, timeouts) (Agent BC1)
+
+> Lot combiné : correctif perf identifié depuis le front (lot 1.21.1 —
+> garde PNG a mesuré `/kpi/catalog = 12 690 ms`, `/kpi/filters = 3 585 ms`)
+> + les 3 fixes structurels demandés pour que l'incident "lock cascade
+> sur ALTER TABLE" ne puisse plus se reproduire.
+>
+> ### Diagnostic (REF — 1 414 445 lignes `stg_event_raw`)
+>
+> 1. `/kpi/catalog` : `compute_transfers` scanne `stg_event_raw` sans
+>    index couvrant `event_code` → `Parallel Seq Scan` 688 ms chaud,
+>    appelé 7× par requête = ~5 s cumulés.
+> 2. `/kpi/filters` : 15 round-trips séquentiels (7 `SELECT DISTINCT`
+>    sur mp + 2 COUNT + 6 `SELECT DISTINCT` sur mp JOIN cell_ref) =
+>    ~3,6 s à cause des aller-retours Python↔PG.
+> 3. **Incident lock** 2026-10-17 19:14 : `ALTER TABLE measurement_points
+>    ADD COLUMN IF NOT EXISTS ecgi_source` lancé depuis le handler
+>    `_populate_ecgi` a bloqué 9 requêtes `/kpi/*` pendant 25 min, parce
+>    que 2 sessions SQLAlchemy orphelines (`idle in transaction`,
+>    debug script `TaskStop`'d) tenaient un RowShareLock concurrent.
+>
+> ### Correctifs
+>
+> | # | Fichier | Nature |
+> |---|---|---|
+> | 1 | `alembic/versions/0021_stg_evt_pid_evcode_idx.py` | Index B-tree `(project_id, event_code)` sur `stg_event_raw`. `IF NOT EXISTS`. |
+> | 2 | `app/kpi/service_v2.py → build_catalog_v2_response` | Pré-calcule `compute_transfers` **une fois** par requête si au moins un KPI `transfers_*` existe. Injecte via `transfers_cache=`. |
+> | 3 | `app/kpi/service_v2.py → compute_status_v2` | Nouvelle kw `transfers_cache: list \| None = None` rétro-compatible. |
+> | 4 | `app/kpi/service_v2.py → build_filters_v2` | **15 round-trips → 3**. 1 requête agrégée mp (`array_agg DISTINCT ... FILTER WHERE NOT NULL` + `bool_or NULL` + 2 COUNT par `FILTER`), 1 requête agrégée geo (6 colonnes dans 1 JOIN mp↔cell_ref), 1 requête inchangée pour `build_group_by_options`. |
+> | 5 | `alembic/versions/0022_mp_ecgi_source.py` | Création **versionnée** de `measurement_points.ecgi_source` (auparavant créée en runtime par le handler). |
+> | 6 | `app/measure/ecgi.py` | `_ensure_mp_ecgi_source` supprimée, remplacée par `_assert_mp_ecgi_source_column` : si la colonne manque → `HTTPException 409 {"code":"SCHEMA_MIGRATION_MISSING"}`. **Plus de DDL dans un handler.** |
+> | 7 | `app/db.py → get_db` | Durci : `rollback` explicite si exception, puis `rollback` final si `in_transaction()` avant `close()`. Même quand le client disconnect à chaud, zéro `idle in transaction` ne reste côté PG. |
+> | 8 | `app/deps.py → with_statement_timeout_60s` | Dependency FastAPI qui pose `SET LOCAL statement_timeout = '60s'` sur la transaction courante. Appliquée aux routers `project_kpi`, `kpi`, `project_dict_v2`, `dictionary`, `dict_identity`. |
+> | 9 | PG `ALTER SYSTEM SET idle_in_transaction_session_timeout = '5min'` + `pg_reload_conf()` | Niveau serveur, bordure finale : toute session abandonnée > 5 min est tuée automatiquement. |
+>
+> **Impact attendu** (à mesurer après rebuild sur REF) :
+> - `/kpi/catalog` : 12 690 ms → <1 500 ms (−88 %)
+> - `/kpi/filters` : 3 585 ms → <500 ms (−86 %)
+> - `/kpi/{code}` : hors scope ce lot
+> - Plus jamais d'incident lock cascade : DDL versionné + timeouts + session hardening.
+>
+> ### Audit sessions (clean)
+>
+> `grep -rn "SessionLocal()" app/ scripts/ tests/` — toutes les occurrences
+> hors `app/db.py:get_db` utilisent `with SessionLocal() as db:`. Les 2
+> sessions orphelines de l'incident venaient d'un **script debug ad-hoc
+> `docker exec python -c "db = SessionLocal(); ..."`** TaskStop'd en
+> plein milieu (mon fait). Fix côté `get_db` + timeout serveur rendent
+> ce mode d'incident impossible.
+>
+> ### Discipline
+>
+> - **Aucun chiffre fabriqué** : indexes purs, agrégats sur colonnes
+>   existantes, DDL versionné sans valeur par défaut inventée.
+> - `compute_status_v2(..., transfers_cache=None)` **rétro-compatible**.
+> - Les tests existants doivent passer sans modification.
+>
+> ### Gardes
+>
+> | # | Résultat |
+> |---|---|
+> | G1 ast.parse sur tous les fichiers modifiés | OK |
+> | G2 alembic 0021 + 0022 chaînés sur 0020 | OK (down_revision 0021→0020, 0022→0021) |
+> | G3 `alembic upgrade head` propre | à exécuter |
+> | G4 EXPLAIN ANALYZE post-index : Index Scan ciblé | à mesurer |
+> | G5 `/kpi/catalog` <2 s + `/kpi/filters` <1 s via `/tmp/perf_kpi2.ts` | à mesurer |
+> | G6 `pg_stat_activity` : 0 session `idle in transaction` > 1 min | à mesurer |
+> | G7 `SHOW idle_in_transaction_session_timeout` = `5min` | à mesurer |
+> | G8 Appel direct `_populate_ecgi` sans migration 0022 → 409 explicite | à mesurer |
+
+## 0.47.3 — 2026-10-17 (patch) — mp sans GPS conservé (lat/lng NULL, geo_source) : règle « jamais une mesure jetée » (Agent BC1)
+
+> Correction d'une violation sournoise de la discipline « jamais une
+> mesure jetée ». Jusqu'à 0.47.2, deux filtres skippaient les mesures
+> sans fix GPS :
+>
+> - `app/services/populate_measurements.py:114-137` forgeait `(0.0, 0.0)`
+>   puis supprimait `lat not in (0.0, None)` → **les fichiers indoor
+>   (perte de fix systématique) sortaient avec measurement_points vide**.
+> - `app/measure/populate.py:673` faisait `if lat_v is None or lon_v is
+>   None: continue` dans la branche cqi/tx_power/data_summary.
+>
+> Résultat : les KPI radio (CQI, TX power, débit DL/UL) perdaient toute
+> donnée indoor, alors que ces métriques sont **physiquement valides
+> sans GPS**. L'écart de 900 mp expliqué en 0.47.2 (TEST2 5 798 vs
+> national-2026 6 698) venait précisément de là.
+>
+> **Nouvelle règle** : une mesure sans GPS est **conservée** avec
+> `lat IS NULL AND lng IS NULL` (jamais `0,0` inventé). Elle compte dans
+> les KPI radio/data. Elle est exclue uniquement :
+>
+> - de la carte (`WHERE lat IS NOT NULL AND lng IS NOT NULL`) ;
+> - de la voie géo « position » (chip Géo = `none` quand `geo_source
+>   IS NULL`).
+
+### Migration `0020_mp_lat_lng_nullable`
+
+- `ALTER COLUMN lat/lng` → `NULL` autorisé.
+- `ADD COLUMN geo_source NVARCHAR NULL` avec sémantique :
+    * `NULL`                   : pas de GPS pour cette mesure (indoor,
+      perte de fix) ;
+    * `'gps_fix'`              : position récupérée du dernier GPS event ;
+    * `'ecgi_cell_centroid'`   : (futur) propagé depuis cell_ref si
+      ECGI strict et pas de GPS natif.
+- Backfill : les lignes existantes (toutes `lat/lng NOT NULL` par
+  contrainte historique) reçoivent `geo_source='gps_fix'`.
+
+### Correctifs code
+
+- `app/services/populate_measurements.py` : skeleton insère désormais
+  `lat/lng NULL + geo_source NULL` quand pas de GPS. Suppression du
+  filtre « skip si 0,0 ou NULL ».
+- `app/measure/populate.py:673` : plus de `continue` pour pas de GPS.
+  Insert avec `lat/lng NULL + geo_source NULL`. Protection ceinture :
+  `(0.0, 0.0)` entrant → ravalé en NULL (règle historique).
+- `app/models/base.py:MeasurementPoint` : `lat/lng` passent à
+  `Mapped[float | None]` + nouveau champ `geo_source`.
+
+### Rebuild + /health
+
+- `pyproject.toml : 0.47.2 → 0.47.3 (patch)`.
+- `app/main.py : version="0.47.3"`.
+- `/health = {"status":"ok","env":"development","version":"0.47.3"}`.
+
+### Replay populate REF + TEST2
+
+Après migration 0020, replay via `run_populate_chain` sur REF et
+TEST2 pour que les fichiers indoor (perte de fix) remontent toutes
+leurs mesures radio.
+
+### Garde
+
+- `COUNT(*) FILTER (WHERE lat IS NULL) > 0` sur REF (fichiers indoor).
+- `n mp indoor avant/après` par fichier → la valeur après est **≥**
+  la valeur avant (uniquement les mesures sans GPS étaient perdues).
+- `/kpi/LTE_RF_CQI?project=REF` : `n` augmente par rapport à 0.47.2.
+- `SELECT COUNT(*) FROM measurement_points WHERE lat=0 OR lng=0` → 0
+  (aucune position inventée).
+
 ## 0.47.2 — 2026-10-17 (patch) — Backfill projects.n_points pré-0.46 + purge pollution national-2026 (NMF agent-ingéré) + ré-ingest TEST2 (Agent BC1)
 
 > Trois correctifs opérationnels sans changement d'API publique.

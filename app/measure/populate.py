@@ -493,7 +493,8 @@ def populate_measurement_points(
             text(
                 """
                 INSERT INTO measurement_points (
-                    id, project_id, lat, lng, operator, tech, service, band,
+                    id, project_id, lat, lng, geo_source,
+                    operator, tech, service, band,
                     dep, site, ts, dl, rsrp, sinr, latency,
                     capture_id, seq, rsrq, rssi, cqi, mimo_rank, tx_power,
                     thrpt_ul, event_code,
@@ -501,7 +502,8 @@ def populate_measurement_points(
                     service_name, service_action, service_type,
                     phase, env, rat, earfcn
                 ) VALUES (
-                    :id, :project_id, :lat, :lng, :operator, :tech, :service, :band,
+                    :id, :project_id, :lat, :lng, :geo_source,
+                    :operator, :tech, :service, :band,
                     :dep, :site, :ts, :dl, :rsrp, :sinr, :latency,
                     :capture_id, :seq, :rsrq, :rssi, :cqi, :mimo_rank, :tx_power,
                     :thrpt_ul, :event_code,
@@ -664,20 +666,38 @@ def populate_measurement_points(
         # ------------------------------------------------------------
         _MP_INSERT_CATS = {"cellmeas", "cqi", "tx_power", "data_summary"}
         if category not in {"cellmeas"} and category in _MP_INSERT_CATS:
-            # Skip si pas de lat/lon : une mesure sans GPS précédent n'est
-            # pas géo-localisable (jamais 0,0 inventé). Indoor sans fix
-            # ressort donc comme measurement_points vide — c'est la règle
-            # dure "jamais une position inventée".
+            # 0.47.3 — RÈGLE « jamais une mesure jetée ».
+            #
+            # Avant 0.47.3, les mesures sans fix GPS étaient skippées
+            # (continue). Résultat : les fichiers indoor (perte de fix
+            # systématique) sortaient avec measurement_points vide et
+            # les KPI radio (CQI, TX power, débit) n'avaient aucune
+            # donnée — alors que ces métriques sont PHYSIQUEMENT
+            # valides sans GPS.
+            #
+            # Nouvelle règle : la mesure est conservée avec lat/lng
+            # NULL (jamais 0,0 inventé). Elle compte dans les KPI
+            # radio/data. Elle est exclue des cartes (WHERE lat IS NOT
+            # NULL) et du chip géo « position » (geo_source NULL → chip
+            # Géo compte en 'none').
             lat_v = r.lat if r.lat is not None else None
             lon_v = r.lon if r.lon is not None else None
-            if lat_v is None or lon_v is None:
-                continue
+            # Protection ceinture : si pour une raison quelconque une
+            # position (0.0, 0.0) remonte du décodeur, on la ravale en
+            # NULL (règle historique « jamais 0,0 inventé »).
+            if lat_v == 0.0 and lon_v == 0.0:
+                lat_v = None
+                lon_v = None
+            geo_source: str | None = (
+                "gps_fix" if (lat_v is not None and lon_v is not None) else None
+            )
             inserts.append(
                 {
                     "id": f"mp-{uuid.uuid4().hex[:12]}",
                     "project_id": project_id,
-                    "lat": float(lat_v),
-                    "lng": float(lon_v),
+                    "lat": float(lat_v) if lat_v is not None else None,
+                    "lng": float(lon_v) if lon_v is not None else None,
+                    "geo_source": geo_source,
                     "operator": operator,
                     "tech": tech_value,
                     "band": None,  # band hors CELLMEAS pas câblée par le CONTENU
