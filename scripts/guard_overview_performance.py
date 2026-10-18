@@ -27,6 +27,11 @@ class DB:
         return self
     def filter(self, *args): return self
     def all(self): return self.points
+    def yield_per(self, size):
+        assert size == 10000
+        return self
+    def __iter__(self):
+        return iter(tuple(getattr(point, field.key) for field in self.fields) for point in self.points)
 
 def points(n):
     return [SimpleNamespace(id=f"TEST-{i}", lat=None if i % 5 == 0 else 0.,

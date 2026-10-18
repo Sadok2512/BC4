@@ -1,4 +1,4 @@
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 from statistics import fmean
 
 from sqlalchemy import text
@@ -17,6 +17,11 @@ from app.schemas.common import (
     TrendPoint,
 )
 from app.services.filters import apply_measurement_filters
+
+
+_POINT_FIELDS = ("id", "lat", "lng", "operator", "tech", "service", "band", "dep",
+                 "site", "ts", "dl", "rsrp", "sinr", "latency")
+_OverviewPoint = namedtuple("_OverviewPoint", _POINT_FIELDS)
 
 
 def _ingest_status(n_files: int, n_points: int | None, status_ingest: str | None) -> str:
@@ -106,13 +111,14 @@ def compute_overview(db: Session, f: FilterContext) -> OverviewData:
 
     # Scalar rows avoid materializing hundreds of thousands of ORM identities
     # and unused ingestion columns. The returned point population is unchanged.
-    fields = ("id", "lat", "lng", "operator", "tech", "service", "band", "dep",
-              "site", "ts", "dl", "rsrp", "sinr", "latency")
-    q = db.query(*(getattr(MeasurementPoint, key) for key in fields)).filter(
+    q = db.query(*(getattr(MeasurementPoint, key) for key in _POINT_FIELDS)).filter(
         MeasurementPoint.project_id == project.id
     )
     q = apply_measurement_filters(q, f)
-    points = q.all()
+    # SQLAlchemy Row attribute lookup dominates millions of accesses here.
+    # Compact tuples give constant-time field descriptors; fetch batches avoid
+    # keeping an additional full DB result/ORM population in memory.
+    points = [_OverviewPoint(*row) for row in q.yield_per(10000)]
 
     def mv(key: str, label: str, unit: str, sel, pop):
         vals = [sel(p) for p in pop]

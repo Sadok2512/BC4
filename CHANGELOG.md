@@ -1,3 +1,9 @@
+## 0.52.2 (patch) — BC4-BACK 2026-10-18 — Bounded overview fetch and compact rows
+
+- Fetch scalar measurement fields in 10,000-row batches and retain compact named tuples.
+- Avoid millions of SQLAlchemy Row attribute lookups identified by the live profile; all observations, aggregates and response fields are preserved.
+- Re-run full offline parity and gzip guards before build.
+
 ## 0.52.1 (patch) — BC4-BACK 2026-10-18 — Overview JSON transport
 
 - Serialize validated overview models directly, avoiding a second full Python object graph.
