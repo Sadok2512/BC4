@@ -1,3 +1,8 @@
+## 0.52.3 (patch) — BC4-BACK 2026-10-18 — Bulk point validation
+
+- Validate compact overview points with one Pydantic list adapter instead of constructing keyword dictionaries for every observation.
+- Preserve full field validation, nulls, real zero, complete point count and response JSON; offline parity and encoding guards retained.
+
 ## 0.52.2 (patch) — BC4-BACK 2026-10-18 — Bounded overview fetch and compact rows
 
 - Fetch scalar measurement fields in 10,000-row batches and retain compact named tuples.

@@ -1,6 +1,7 @@
 from collections import defaultdict, namedtuple
 from statistics import fmean
 
+from pydantic import TypeAdapter
 from sqlalchemy import text
 from sqlalchemy.orm import Session, object_session
 
@@ -22,6 +23,7 @@ from app.services.filters import apply_measurement_filters
 _POINT_FIELDS = ("id", "lat", "lng", "operator", "tech", "service", "band", "dep",
                  "site", "ts", "dl", "rsrp", "sinr", "latency")
 _OverviewPoint = namedtuple("_OverviewPoint", _POINT_FIELDS)
+_POINT_LIST = TypeAdapter(list[MeasurementPointSchema])
 
 
 def _ingest_status(n_files: int, n_points: int | None, status_ingest: str | None) -> str:
@@ -180,7 +182,7 @@ def compute_overview(db: Session, f: FilterContext) -> OverviewData:
 
     return OverviewData(
         project=_project_schema(project),
-        points=[_point_schema(p) for p in points],
+        points=_POINT_LIST.validate_python(points, from_attributes=True),
         kpis=kpis,
         byOperator=by_operator,
         trend=trend,
