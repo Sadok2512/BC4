@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import gzip
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Response, UploadFile
 from sqlalchemy.orm import Session
 
 from app.db import get_db
@@ -219,6 +220,7 @@ def get_import_report(
 @router.get("/{project_id}/overview", response_model=OverviewData)
 def overview(
     project_id: str,
+    request: Request,
     op: str | None = Query(default=None, description="CSV operators"),
     tech: str | None = Query(default=None),
     svc: str | None = Query(default=None),
@@ -226,7 +228,7 @@ def overview(
     dep: str | None = Query(default=None),
     metric: str | None = Query(default=None),
     db: Session = Depends(get_db),
-) -> OverviewData:
+) -> Response:
     f = FilterContext(
         project=project_id,
         op=parse_csv_list(op),
@@ -237,6 +239,26 @@ def overview(
         metric=metric,  # type: ignore[arg-type]
     )
     try:
-        return compute_overview(db, f)
+        data = compute_overview(db, f)
+        # Already validated Pydantic models: serialize directly in Rust instead
+        # of expanding the entire population into a second Python object tree.
+        payload = data.model_dump_json().encode("utf-8")
+        encodings = request.headers.get("accept-encoding", "").lower().split(",")
+        gzip_allowed = any(
+            entry.split(";")[0].strip() == "gzip"
+            and not any(
+                part.strip().startswith("q=") and part.strip()[2:].strip() in ("0", "0.0", "0.00", "0.000")
+                for part in entry.split(";")[1:]
+            )
+            for entry in encodings
+        )
+        if gzip_allowed:
+            return Response(
+                gzip.compress(payload, compresslevel=3),
+                media_type="application/json",
+                headers={"Content-Encoding": "gzip", "Vary": "Accept-Encoding"},
+            )
+        return Response(payload, media_type="application/json",
+                        headers={"Vary": "Accept-Encoding"})
     except LookupError:
         raise HTTPException(404, {"code": "NOT_FOUND", "message": "Projet introuvable"})

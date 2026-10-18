@@ -1,3 +1,8 @@
+## 0.52.1 (patch) — BC4-BACK 2026-10-18 — Overview JSON transport
+
+- Serialize validated overview models directly, avoiding a second full Python object graph.
+- Compress overview JSON only when the caller accepts gzip; preserve identical decompressed payload and OpenAPI schema. Other endpoints and streaming responses are unchanged.
+
 ## 0.52.0 (minor) — BC4-BACK 2026-10-18 — Overview performance and nullable measurements
 
 - Overview reads only its fourteen response fields rather than materializing full ORM measurement identities.

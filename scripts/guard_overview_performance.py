@@ -52,3 +52,19 @@ for metric in ["dl", "rsrp", "sinr", "latency"]:
     assert old["compute_overview"](db,f).model_dump()==overview.compute_overview(db,f).model_dump()
 print(json.dumps({"offline_only":True,"results":results,"all_metrics_parity":"PASS",
                   "null_coordinates_and_labels_preserved":"PASS"},indent=2))
+
+# Exercise the real endpoint response serialization without a DB or HTTP writes.
+import gzip
+from starlette.requests import Request
+from app.routes import projects
+expected = overview.compute_overview(DB(points(100)), FilterContext(project=project.id))
+projects.compute_overview = lambda db, filters: expected
+for encoding in ["identity", "gzip", "gzip;q=0"]:
+    request = Request({"type": "http", "headers": [(b"accept-encoding", encoding.encode())]})
+    response = projects.overview(project.id, request, op=None, tech=None, svc=None,
+                                band=None, dep=None, metric=None, db=None)
+    compressed = response.headers.get("content-encoding") == "gzip"
+    assert compressed == (encoding == "gzip")
+    payload = gzip.decompress(response.body) if compressed else response.body
+    assert json.loads(payload) == expected.model_dump()
+print("PASS: direct JSON + gzip/identity/disabled gzip preserve exact payload")
