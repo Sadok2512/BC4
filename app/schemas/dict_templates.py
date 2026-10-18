@@ -31,6 +31,12 @@ class TemplateUpdate(BaseModel):
         for entry in self.entries:
             refs=[(x.technology,x.param_key,str(sorted(x.discriminators.items()))) for x in entry.parameters]
             if len(set(refs)) != len(refs): raise ValueError('Duplicate parameter references')
+            for i, left in enumerate(entry.parameters):
+                for right in entry.parameters[i+1:]:
+                    if left.technology == right.technology and left.param_key == right.param_key:
+                        shared = left.discriminators.keys() & right.discriminators.keys()
+                        if all(left.discriminators[k] == right.discriminators[k] for k in shared):
+                            raise ValueError('Overlapping parameter populations')
             if any(x.technology != entry.technology for x in entry.parameters): raise ValueError('Technology mismatch')
         return self
 

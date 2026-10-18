@@ -72,3 +72,7 @@ def test_admin_permissions_revision_and_update(db):
     assert stale.value.status_code==409
     result=update_template('drx',body,Actor(login='TEST-admin',role='admin'),db)
     assert result.revision==2
+
+def test_overlapping_discriminators_rejected():
+    with pytest.raises(ValueError,match='Overlapping'):
+        TemplateUpdate(revision=1,entries=[dict(id='drx-test',label='TEST',position=1,technology='LTE',parameters=[dict(param_key='TEST/x',technology='LTE',discriminators={}),dict(param_key='TEST/x',technology='LTE',discriminators={'event':'A3'})])])

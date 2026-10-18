@@ -7,7 +7,7 @@ p=argparse.ArgumentParser();p.add_argument('guard',choices=['G12a','G12b','G12c'
 base=os.environ.get('BC4_API_BASE','http://localhost:8000')
 def request(path,body=None):
     headers={'Content-Type':'application/json'}
-    if 'token' in globals():headers['Authorization']='Bearer '+token
+    if globals().get('token'):headers['Authorization']='Bearer '+token
     req=urllib.request.Request(base+path,data=None if body is None else json.dumps(body).encode(),headers=headers)
     with urllib.request.urlopen(req,timeout=120) as r:return json.load(r)
 token=os.environ.get('BC4_TOKEN')

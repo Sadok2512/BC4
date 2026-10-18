@@ -1,0 +1,65 @@
+PHASE A — RRC templates backend — 2026-10-18
+
+Version : 0.51.0, minor. Migration 0024_dict_templates suit 0023_nmf_import_jobs déjà appliquée.
+La version 0.49.0 était déjà géographique ; 0.50.0 carte était présente dans le workspace. Ces changements ont été conservés et réconciliés, pas écrasés.
+Code initial livré : 0627d52. Commit suivant : durcissement validation des références qui se recouvrent et correctif du lanceur de gardes.
+Rebuild uniquement depuis HEAD propre. Frontend non touché pendant cette phase.
+
+Implémenté
+- dict_category : 10 catégories dans l'ordre utilisateur + Autres.
+- dict_category_map : 97 chemins complets vérifiés sur TEST2, comparaison exacte ou préfixe terminé par /, aucun classement par sous-chaîne de nom.
+- dict_template : 85 lignes de configuration de la maquette, sans valeurs illustratives.
+- 63 lignes résolues ; 22 non résolues faute de chemin vérifié (dont métriques composites de la maquette). Elles restent visibles, resolved=false, param_key=null dans summary, raison explicite. Ce n'est pas une preuve d'absence d'un paramètre du projet.
+- Autres reçoit toutes les clés non couvertes ; aucune clé perdue. Raw inchangé.
+- GET /projects/{id}/dict/v2/templates
+- GET /projects/{id}/dict/v2/templates/{category}/summary?group_by=operator|band|operator_band
+- PUT /settings/dict/templates/{category}, admin, révision optimiste, champs étrangers rejetés.
+- Une requête agrégée de param_occurrence par résumé ; pas de boucle SQL par paramètre.
+- Identité technologie + clé canonique + discriminants ; résultats identifiés et liés au projet de la route.
+- Nulls opérateur/bande conservés ; valeurs non décodables comptées séparément. Aucune substitution d'observation.
+- Valeurs dominantes ex aequo exposées ; pas de majorité arbitraire, ni de verdict basé sur les occurrences.
+
+Préalable TEST2
+Ingestion des 16 NMF vérifiée par présence, taille, SHA256, redécodage en lecture seule et comptes identiques à la base. Le populate autorisé a ensuite été interrompu par un redémarrage externe du conteneur durant B. Cette mission templates ne relance pas le populate et ne modifie pas les observations. Le statut de complétude des points/ECGI reste un écart ouvert. Les gardes RRC portent sur les 156131 occurrences RRC existantes de TEST2.
+
+Tests manuels
+28 tests PASS (tables temporaires transactionnelles PostgreSQL et SQLite isolée pour la file d'import).
+Commande :
+docker run --rm --network bc4_default -v /home/devmat/BC4/bc4-back:/app:ro -e PYTHONDONTWRITEBYTECODE=1 -e BC4_DSN=postgresql+psycopg://bc4:bc4@bc4-db-1:5432/bc4 -e BC4_JWT_SECRET=TEST-only-not-used-for-auth --entrypoint python bc4-api:latest -m pytest tests/test_dict_templates.py tests/test_dict_geo_filters.py tests/test_dict_map_v2.py tests/test_import_jobs.py -q -p no:cacheprovider
+
+Gardes (credentials via environnement, aucun token dans les preuves)
+python3 scripts/guard_dict_templates.py G12a
+G12a PASS: 0 uncovered keys
+python3 scripts/guard_dict_templates.py G12b
+{"param_key":"rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/drx-Config/longDRX-CycleStartOffset","summary_total":372,"distribution_total":372,"diff":[]}
+G12b PASS
+python3 scripts/guard_dict_templates.py G12c
+{"guard":"G12c","project_id":"bd553a1d1346","categories":11,"entries":85,"all_zero":true,"status":"PASS"}
+Projet TEST-EMPTY créé sans ingestion ; aucune modification de TEST2/Test_3 par les gardes.
+
+Preuves HTTP brutes et OpenAPI
+/home/devmat/BC4/dict-templates-evidence/
+- G12a.txt, G12b.txt, G12c.txt
+- openapi.json
+- {project_id}-tree.json, -templates.json, -summary.json
+- curl-times.json : horodatage, URL, code HTTP, temps curl et /usr/bin/time -p pour chaque appel.
+
+Mesures du 2026-10-18 20:55 UTC (toutes HTTP 200)
+TEST2 : tree 0.996023 s ; templates 0.219349 s ; summary DRX operator 0.030684 s.
+Test_3 : tree 4.703714 s ; templates 1.017478 s ; summary DRX operator 0.363816 s.
+Seuil summary <5 s : PASS sur l'appel Test_3 mesuré. Il ne s'agit pas d'un percentile de charge.
+Commande exécutée pour chaque URL : /usr/bin/time -p curl --silent --show-error --fail-with-body --config - --output <fichier.json> --write-out '%{http_code} %{time_total}' <URL>
+Header Authorization fourni sur stdin de curl, jamais enregistré en clair.
+
+Déploiement
+ docker compose -f /home/devmat/BC4/docker-compose.yml build api
+ docker compose -f /home/devmat/BC4/docker-compose.yml up -d api
+ curl -fsS http://localhost:8000/health
+ {"status":"ok","env":"development","version":"0.51.0"}
+
+Limites
+- 22 lignes de configuration nécessitent un chemin approuvé ou une définition de calcul composite : aucune invention.
+- Le classement explicite est initialisé depuis les chemins observés de TEST2 ; les chemins nouveaux non couverts restent Autres.
+- Les résumés sont projet-scopés ; cette première route ne possède pas de filtres géographiques/période supplémentaires.
+- Le frontend et l'interface administrateur Réglages appartiennent à la phase B ; seul le PUT admin backend est livré ici.
+- Les mesures et conversions existantes ne sont pas modifiées.
