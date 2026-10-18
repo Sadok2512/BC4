@@ -4,7 +4,8 @@ from statistics import fmean
 from sqlalchemy import text
 from sqlalchemy.orm import Session, object_session
 
-from app.models import MeasurementPoint, NmfFile, Project
+from app.models import MeasurementPoint, NmfFile, Project, NmfImportJob
+from app.services.import_jobs import job_view
 from app.schemas.common import (
     FilterContext,
     MeasurementPoint as MeasurementPointSchema,
@@ -47,6 +48,8 @@ def _project_schema(p: Project) -> ProjectSchema:
         n_files = (
             db.query(NmfFile).filter(NmfFile.project_id == p.id, NmfFile.status == "done").count()
         )
+    latest_job = (db.query(NmfImportJob).filter(NmfImportJob.project_id == p.id)
+        .order_by(NmfImportJob.created_at.desc()).first()) if db is not None else None
     status = _ingest_status(n_files, p.n_points, p.status_ingest)
     return ProjectSchema(
         id=p.id,
@@ -64,6 +67,7 @@ def _project_schema(p: Project) -> ProjectSchema:
         importedAt=p.imported_at,
         status=p.status,
         n_files=n_files,
+        import_job=job_view(latest_job) if latest_job else None,
         n_points=p.n_points,
         last_populate_at=p.last_populate_at.isoformat() if p.last_populate_at else None,
         ingest_status=status,  # type: ignore[arg-type]

@@ -1,0 +1,29 @@
+[
+  {
+    "timestamp": "2026-10-18T19:52:09.226412+00:00",
+    "url": "http://localhost:8000/projects/7e656b8c6c19/dict/v2/tree?view=catalog",
+    "headers": {
+      "Authorization": "Bearer <local admin token; redacted>"
+    },
+    "status": 404,
+    "body_file": "tree.json"
+  },
+  {
+    "timestamp": "2026-10-18T19:52:09.226412+00:00",
+    "url": "http://localhost:8000/projects/7e656b8c6c19/dict/v2/templates",
+    "headers": {
+      "Authorization": "Bearer <local admin token; redacted>"
+    },
+    "status": 404,
+    "body_file": "templates.json"
+  },
+  {
+    "timestamp": "2026-10-18T19:52:09.226412+00:00",
+    "url": "http://localhost:8000/projects/7e656b8c6c19/dict/v2/templates/drx/summary?group_by=operator",
+    "headers": {
+      "Authorization": "Bearer <local admin token; redacted>"
+    },
+    "status": 404,
+    "body_file": "summary.json"
+  }
+]

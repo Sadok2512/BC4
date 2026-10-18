@@ -104,3 +104,25 @@ bc4-back/
 - Pas de scénarios assistant complets.
 - Pas de mutations admin lourdes (import géo, CRUD users, config IA).
 - Ne touche à aucun composant du front.
+
+### Imports NMF en arrière-plan
+
+`POST /projects/{id}/nmf` sauvegarde les fichiers sur le volume `bc4_nmf_source`
+et répond **202** avec un identifiant de lot. Il ne renvoie plus directement le
+rapport final. Lire `GET /projects/{id}/imports/{job_id}` pour suivre les états
+`queued`, `decoding`, `finalizing`, `done` ou `error`, les compteurs par fichier
+et le rapport final. La liste des projets expose également `import_job`.
+
+Démarrer le service `import-worker` avec l'API (`docker compose up -d --build
+api import-worker`). Les lots et leur progression sont persistés en base. Après
+un redémarrage, le worker reprend les lots interrompus ; les fichiers déjà
+validés sont reconnus par leur SHA-256. Le worker sérialise les lots avec un
+verrou PostgreSQL conservé pendant les commits. Un second import ou une
+suppression du même projet est refusé tant que son lot est actif.
+
+Le décodage ne recalcule plus les mesures après chaque fichier. Le dictionnaire
+RRC et la chaîne de mesures sont calculés une seule fois à la fin du lot. Une
+erreur de finalisation conserve les sources et marque le lot en échec ; elle
+n'est pas présentée comme un succès. Les anciens imports synchrones interrompus
+avant cette évolution doivent être renvoyés : les doublons déjà décodés sont
+réutilisés.

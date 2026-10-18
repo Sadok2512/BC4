@@ -302,7 +302,7 @@ def profile_cellmeas(db: Session, project_id: str) -> CellmeasMapping:
 
     # c8 : avg ≈ −3,1 → zone frontière RSRQ/SINR → marqué 'ambigu'
     for p in profiles:
-        if p.field == "cell0_c8" and p.field not in taken:
+        if p.field == "cell0_c8" and p.field not in taken and p.avg is not None:
             debug.append(
                 f"ambigu: cell0_c8 (avg={p.avg:+.2f}) non affecté — "
                 f"zone frontière RSRQ/SINR"

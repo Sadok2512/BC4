@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import io
 import os
+import time
 
 import pytest
 from sqlalchemy import text
@@ -38,6 +39,20 @@ def _witness_bytes() -> tuple[bytes, bool]:
         with open(path, "rb") as fh:
             return fh.read(), True
     return b"BC4-NMF-placeholder\x00" * 128, False
+
+
+def _await_report(client, pid: str, response, headers):
+    assert response.status_code == 202, response.text
+    job = response.json()
+    deadline = time.monotonic() + float(os.environ.get("BC4_IMPORT_TEST_TIMEOUT", "120"))
+    while job["status"] not in ("done", "error"):
+        assert time.monotonic() < deadline, f"Import still running: {job['id']}"
+        time.sleep(0.2)
+        poll = client.get(f"/projects/{pid}/imports/{job['id']}", headers=headers)
+        assert poll.status_code == 200, poll.text
+        job = poll.json()
+    assert job["report"] is not None, job.get("error_msg")
+    return job["report"]
 
 
 def _reset_project(pid: str) -> None:
@@ -75,8 +90,7 @@ def test_create_upload_report(client, admin_headers):
         # ----- Upload streamé (1 fichier) -----
         files = [("files", ("witness-a.nmf", witness, "application/octet-stream"))]
         r3 = client.post(f"/projects/{pid}/nmf", files=files, headers=admin_headers)
-        assert r3.status_code == 200, r3.text
-        report = r3.json()
+        report = _await_report(client, pid, r3, admin_headers)
         assert report["files_received"] == 1
         assert len(report["by_file"]) == 1
         by_file = report["by_file"][0]
@@ -151,7 +165,7 @@ def test_create_upload_report(client, admin_headers):
         # ----- Idempotence : rejouer le même fichier ne doit pas dupliquer -----
         files2 = [("files", ("witness-a.nmf", witness, "application/octet-stream"))]
         r4 = client.post(f"/projects/{pid}/nmf", files=files2, headers=admin_headers)
-        assert r4.status_code == 200
+        _await_report(client, pid, r4, admin_headers)
         with SessionLocal() as db:
             n_files = db.execute(
                 text("SELECT COUNT(*) FROM nmf_file WHERE project_id = :p"),

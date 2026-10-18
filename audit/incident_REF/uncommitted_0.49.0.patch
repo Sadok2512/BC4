@@ -1,0 +1,598 @@
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index 4b28c4e..6b6aeba 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -1,5 +1,15 @@
+ # bc4-back — CHANGELOG
+ 
++## 0.49.0 — 2026-10-18 — Filtres géographiques du dictionnaire RRC
++
++- Ajout de `GET /projects/{id}/dict/v2/filters` : disponibilités, raisons et options DOR/Plaque/Zone ARCEP propres aux événements RRC du projet.
++- Paramètres répétés `dor`, `plaque`, `arcep_zone` sur distribution (OR par dimension, AND entre dimensions). Comptages et verdicts calculés sur la population filtrée.
++- Réutilisation exclusive des liaisons ECGI strictes existantes, même projet/capture/EARFCN/technologie ; associations ambiguës exclues. Aucune jointure temporelle ou cross-capture, aucune modification de décodage/populate.
++- EXISTS évite de multiplier les occurrences par les doublons de mesures/référentiel. Paramètres SQL liés ; filtres indisponibles ou valeurs obsolètes rejetés explicitement (422).
++- Identifiants existants inchangés sans filtre ; résultats filtrés identifiés par leur périmètre, avec `source_result_id` conservé.
++- Tests transactionnels sur tables temporaires : données utilisateur non modifiées.
++
++
+ Versions SemVer. Type de bump: `patch` / `minor` / `major`. Un écart se ferme ou se déclare ouvert, jamais expliqué par hypothèse.
+ 
+ ## 0.48.2 — 2026-10-17 (patch) — Réconciliation : single commit regroupant 0.48.0 (perf) + 0.48.1 (indoor) + reliquat 0.46.0 (chaînage populate) jamais committés (Agent BC1)
+diff --git a/README.md b/README.md
+index de27419..4b1f45d 100644
+--- a/README.md
++++ b/README.md
+@@ -104,3 +104,25 @@ bc4-back/
+ - Pas de scénarios assistant complets.
+ - Pas de mutations admin lourdes (import géo, CRUD users, config IA).
+ - Ne touche à aucun composant du front.
++
++### Imports NMF en arrière-plan
++
++`POST /projects/{id}/nmf` sauvegarde les fichiers sur le volume `bc4_nmf_source`
++et répond **202** avec un identifiant de lot. Il ne renvoie plus directement le
++rapport final. Lire `GET /projects/{id}/imports/{job_id}` pour suivre les états
++`queued`, `decoding`, `finalizing`, `done` ou `error`, les compteurs par fichier
++et le rapport final. La liste des projets expose également `import_job`.
++
++Démarrer le service `import-worker` avec l'API (`docker compose up -d --build
++api import-worker`). Les lots et leur progression sont persistés en base. Après
++un redémarrage, le worker reprend les lots interrompus ; les fichiers déjà
++validés sont reconnus par leur SHA-256. Le worker sérialise les lots avec un
++verrou PostgreSQL conservé pendant les commits. Un second import ou une
++suppression du même projet est refusé tant que son lot est actif.
++
++Le décodage ne recalcule plus les mesures après chaque fichier. Le dictionnaire
++RRC et la chaîne de mesures sont calculés une seule fois à la fin du lot. Une
++erreur de finalisation conserve les sources et marque le lot en échec ; elle
++n'est pas présentée comme un succès. Les anciens imports synchrones interrompus
++avant cette évolution doivent être renvoyés : les doublons déjà décodés sont
++réutilisés.
+diff --git a/app/dict/service_v2.py b/app/dict/service_v2.py
+index 42905e5..9562920 100644
+--- a/app/dict/service_v2.py
++++ b/app/dict/service_v2.py
+@@ -3,6 +3,8 @@
+ from __future__ import annotations
+ 
+ import hashlib
++import json
++from app.dict.geo_filters import geographic_scope
+ from typing import Any
+ 
+ from sqlalchemy import text
+@@ -168,6 +170,7 @@ def _result_id(project_id: str, param_key: str, group_by: str) -> str:
+ def build_distribution(
+     db: Session, project_id: str, keys: list[str], group_by: str,
+     *, operators: tuple[str, ...] = (), bands: tuple[str, ...] = (),
++    geographic: dict[str, tuple[str, ...]] | None = None,
+ ) -> dict[str, Any]:
+     """Distribution de valeurs par (param_key, group_by). Pour chaque
+     clé : values[] = {value, value_display, groups{operator?/band?: n}}.
+@@ -177,6 +180,7 @@ def build_distribution(
+     uniquement). Si la dimension est absente du cell_ref pour ce projet,
+     renvoie le bloc avec ``status='UNAVAILABLE'`` + ``reason``.
+     """
++    geo_cte, geo_predicate, geo_params = geographic_scope(db, project_id, geographic)
+     group_by_options = build_group_by_options(db, project_id)
+     is_cell_ref_dim = group_by in CELL_REF_DIMS
+     cell_ref_status = (
+@@ -224,17 +228,17 @@ def build_distribution(
+         # soient aussi comptées correctement.
+         meta = db.execute(
+             text(
+-                """
++                geo_cte + f"""
+                 SELECT display_name, unit_converted, origin, choice_of,
+                        MIN(discriminators::text), COUNT(*) AS n_total,
+                        COUNT(DISTINCT COALESCE(value_converted, value)) AS distinct_vals
+                 FROM param_occurrence
+-                WHERE project_id = :pid AND param_key = :k
++                WHERE project_id = :pid AND param_key = :k {geo_predicate}
+                 GROUP BY display_name, unit_converted, origin, choice_of
+                 ORDER BY COUNT(*) DESC LIMIT 1
+                 """
+             ),
+-            {"pid": project_id, "k": key},
++            {"pid": project_id, "k": key, **geo_params},
+         ).first()
+         if meta is None:
+             blocks.append({
+@@ -307,17 +311,17 @@ def build_distribution(
+             sel = ", ".join(group_cols)
+             rows = db.execute(
+                 text(
+-                    f"""
++                    geo_cte + f"""
+                     SELECT COALESCE(value_converted, value) AS v,
+                            {sel},
+                            COUNT(*) AS n
+                     FROM param_occurrence
+-                    WHERE project_id = :pid AND param_key = :k
++                    WHERE project_id = :pid AND param_key = :k {geo_predicate}
+                     GROUP BY v, {sel}
+                     ORDER BY v
+                     """
+                 ),
+-                {"pid": project_id, "k": key},
++                {"pid": project_id, "k": key, **geo_params},
+             ).fetchall()
+             for r in rows:
+                 v = r[0]
+@@ -368,6 +372,11 @@ def build_distribution(
+             block["coverage"] = coverage
+         blocks.append(block)
+ 
++    if geo_predicate:
++        scope = json.dumps({key: sorted(set(values)) for key, values in sorted((geographic or {}).items()) if values}, sort_keys=True)
++        for block in blocks:
++            block["source_result_id"] = block["result_id"]
++            block["result_id"] = hashlib.sha256(f"{block['result_id']}:{scope}".encode()).hexdigest()[:16]
+     return {
+         "project_id":        project_id,
+         "group_by":          group_by,
+diff --git a/app/ingest/nmf.py b/app/ingest/nmf.py
+index 2e081f7..ed764f1 100644
+--- a/app/ingest/nmf.py
++++ b/app/ingest/nmf.py
+@@ -422,6 +422,7 @@ def ingest_upload(
+     stream: IO[bytes],
+     filename: str,
+     handle: DecoderHandle,
++    *, populate: bool = True,
+ ) -> NmfFile:
+     """Ingère UN upload : stream → disque → hash → idempotence → décode →
+     stg_event. Retourne le `NmfFile` persisté (toujours : succès, erreur,
+@@ -682,7 +683,7 @@ def ingest_upload(
+         # Appelé après le commit stg_event pour que `_build_sib1_index`
+         # ait accès aux SIB1 à jour. Erreur ici → NMF reste `done` mais
+         # un warning est émis (pas de rollback d'ingestion).
+-        if result.measurements:
++        if populate and result.measurements:
+             try:
+                 from app.services.populate_measurements import populate_measurements
+                 populate_measurements(db, project.id, purge=True)
+@@ -694,7 +695,7 @@ def ingest_upload(
+         # UPDATE sur les skeleton rows (CELLMEAS) et INSERT pour les autres
+         # catégories (CMDREQ, data_*, tx_power, cqi, lock, other).
+         # Appelé APRÈS le skeleton BC1 pour profiter des lignes insérées.
+-        if result.raw_events:
++        if populate and result.raw_events:
+             try:
+                 from app.measure.populate import populate_measurement_points
+                 populate_measurement_points(db, project.id, purge=False)
+@@ -883,7 +884,7 @@ def _import_enrich(_handle):
+     return None
+ 
+ 
+-def refresh_project_summary(db: Session, project: Project) -> None:
++def refresh_project_summary(db: Session, project: Project, *, populate: bool = True, importing: bool = False) -> None:
+     """Recalcule les colonnes résumé de `projects` à partir des comptes
+     réels de `nmf_file` et `stg_event`. Aucun chiffre inventé.
+     """
+@@ -942,6 +943,8 @@ def refresh_project_summary(db: Session, project: Project) -> None:
+     project.n_events_ingest = n_events
+     project.gps_coverage_pct = gps_cov
+     project.technos_seen = technos
++    if importing:
++        status = "importing"
+     project.status_ingest = status
+ 
+     # Enrichissement Zod (0.11.0) : operators / bands / technologies.
+@@ -1045,6 +1048,9 @@ def refresh_project_summary(db: Session, project: Project) -> None:
+ 
+     db.commit()
+ 
++    if not populate:
++        return
++
+     # ---------------------------------------------------------------
+     # Dictionnaire RRC complet (0.12.0) : décode les RRCSM aplatis
+     # (LTE+NR) et peuple `param_occurrence`. Déclenché après le commit
+diff --git a/app/main.py b/app/main.py
+index 903ab06..f6f997b 100644
+--- a/app/main.py
++++ b/app/main.py
+@@ -29,7 +29,7 @@ from app.routes import (
+ logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(name)s:%(message)s")
+ logging.getLogger("app").setLevel(logging.INFO)
+ 
+-app = FastAPI(title="bc4-back", version="0.48.2")
++app = FastAPI(title="bc4-back", version="0.49.0")
+ 
+ # CORS (B2 / P1-1) : origines PILOTÉES par `BC4_CORS_ORIGINS` (jamais en
+ # dur), méthodes/en-têtes explicites pour les uploads multipart
+@@ -52,7 +52,7 @@ app.add_middleware(
+ def health() -> dict[str, str]:
+     with engine.connect() as conn:
+         conn.execute(text("SELECT 1"))
+-    return {"status": "ok", "env": settings.env, "version": "0.48.2"}
++    return {"status": "ok", "env": settings.env, "version": "0.49.0"}
+ 
+ 
+ app.include_router(auth.router)
+diff --git a/app/measure/profiling.py b/app/measure/profiling.py
+index 14d2b93..964205a 100644
+--- a/app/measure/profiling.py
++++ b/app/measure/profiling.py
+@@ -302,7 +302,7 @@ def profile_cellmeas(db: Session, project_id: str) -> CellmeasMapping:
+ 
+     # c8 : avg ≈ −3,1 → zone frontière RSRQ/SINR → marqué 'ambigu'
+     for p in profiles:
+-        if p.field == "cell0_c8" and p.field not in taken:
++        if p.field == "cell0_c8" and p.field not in taken and p.avg is not None:
+             debug.append(
+                 f"ambigu: cell0_c8 (avg={p.avg:+.2f}) non affecté — "
+                 f"zone frontière RSRQ/SINR"
+diff --git a/app/models/__init__.py b/app/models/__init__.py
+index 419cac0..2fb1c4b 100644
+--- a/app/models/__init__.py
++++ b/app/models/__init__.py
+@@ -59,3 +59,5 @@ __all__ = [
+     "StgMeasurementRaw",
+     "User",
+ ]
++
++from app.models.import_job import NmfImportJob
+diff --git a/app/routes/project_dict_v2.py b/app/routes/project_dict_v2.py
+index eb4b9fd..d99a032 100644
+--- a/app/routes/project_dict_v2.py
++++ b/app/routes/project_dict_v2.py
+@@ -20,8 +20,10 @@ from app.dict.service_v2 import (
+     build_distribution,
+     build_param_sheet,
+ )
++from app.dict.geo_filters import geographic_options
+ from app.models import Project
+ from app.schemas.dict_v2 import (
++    DictFilterOptions,
+     DictDistributionResponse,
+     DictParamSheet,
+     DictTreeResponse,
+@@ -65,6 +67,12 @@ def dict_tree(
+     return DictTreeResponse(**build_dict_tree(db, project_id, view))
+ 
+ 
++@router.get("/{project_id}/dict/v2/filters", response_model=DictFilterOptions)
++def dict_filter_options(project_id: str, db: Session = Depends(get_db)) -> DictFilterOptions:
++    _require_project(db, project_id)
++    return DictFilterOptions(**geographic_options(db, project_id))
++
++
+ @router.get(
+     "/{project_id}/dict/v2/distribution",
+     response_model=DictDistributionResponse,
+@@ -73,6 +81,9 @@ def dict_distribution(
+     project_id: str,
+     keys: str = Query(..., description="Liste CSV de param_key"),
+     group_by: str = Query(default="operator"),
++    dor: list[str] | None = Query(default=None),
++    plaque: list[str] | None = Query(default=None),
++    arcep_zone: list[str] | None = Query(default=None),
+     db: Session = Depends(get_db),
+ ) -> DictDistributionResponse:
+     _require_project(db, project_id)
+@@ -93,8 +104,11 @@ def dict_distribution(
+             400,
+             {"code": "KEYS_EMPTY", "message": "au moins 1 param_key requis"},
+         )
++    geographic = {key: tuple(values) for key, values in {"dor": dor, "plaque": plaque, "arcep_zone": arcep_zone}.items() if values}
++    if geographic and group_by not in {"operator", "band", "operator_band"}:
++        raise HTTPException(422, detail={"code": "GROUP_BY_UNSUPPORTED_WITH_FILTERS", "message": "Filtres géographiques : regroupement par opérateur, bande ou les deux."})
+     return DictDistributionResponse(
+-        **build_distribution(db, project_id, key_list, group_by)
++        **build_distribution(db, project_id, key_list, group_by, geographic=geographic)
+     )
+ 
+ 
+diff --git a/app/routes/projects.py b/app/routes/projects.py
+index 1e1e3bb..f28ffd0 100644
+--- a/app/routes/projects.py
++++ b/app/routes/projects.py
+@@ -15,7 +15,9 @@ from app.ingest.nmf import (
+     refresh_project_summary,
+     resolve_decoder,
+ )
+-from app.models import NmfFile, Project
++from app.models import NmfFile, Project, NmfImportJob
++from app.services.import_jobs import enqueue, job_view, active_job
++from app.schemas.ingest import NmfImportJobView
+ from app.schemas.common import FilterContext, OverviewData, Project as ProjectSchema
+ from app.schemas.ingest import (
+     NmfFileEntry,
+@@ -143,9 +145,11 @@ def delete_project(
+     - **403** si le rôle est insuffisant (lecteur).
+     """
+     require_role(actor, "admin", "editor")
+-    p = db.get(Project, project_id)
++    p = db.query(Project).filter(Project.id == project_id).with_for_update().one_or_none()
+     if not p:
+         raise HTTPException(404, {"code": "NOT_FOUND", "message": "Projet introuvable"})
++    if active_job(db, project_id):
++        raise HTTPException(409, "Un import est en cours pour ce projet.")
+     db.delete(p)
+     db.commit()
+     return Response(status_code=204)
+@@ -162,107 +166,23 @@ def get_project_ingest(project_id: str, db: Session = Depends(get_db)) -> Projec
+     return _ingest_view(p)
+ 
+ 
+-@router.post(
+-    "/{project_id}/nmf",
+-    response_model=NmfImportReport,
+-    response_model_exclude_none=False,
+-)
++@router.post("/{project_id}/nmf", response_model=NmfImportJobView, status_code=202)
+ def upload_nmf(
+     project_id: str,
+-    files: list[UploadFile] = File(..., description="Un ou plusieurs fichiers NMF"),
++    files: list[UploadFile] = File(...),
+     actor: Actor = Depends(get_actor),
+     db: Session = Depends(get_db),
+-) -> NmfImportReport:
+-    """Upload multi-fichiers NMF, streamé. Idempotent sur (project_id, sha256)."""
++) -> NmfImportJobView:
+     require_role(actor, "admin", "editor")
+-    project = db.get(Project, project_id)
+-    if not project:
+-        raise HTTPException(404, {"code": "NOT_FOUND", "message": "Projet introuvable"})
+-
+-    project.status_ingest = "importing"
+-    project.status = "processing"
+-    db.commit()
+-
+-    handle = resolve_decoder()
+-    entries: list[NmfFileEntry] = []
+-    files_done = 0
+-    files_error = 0
++    return job_view(enqueue(db, project_id, files))
+ 
+-    for upload in files:
+-        try:
+-            nmf = ingest_upload(
+-                db=db,
+-                project=project,
+-                stream=upload.file,
+-                filename=upload.filename or "unnamed.nmf",
+-                handle=handle,
+-            )
+-        except BodyTooLarge:
+-            raise HTTPException(
+-                413,
+-                {
+-                    "code": "PAYLOAD_TOO_LARGE",
+-                    "message": f"Fichier NMF > {MAX_FILE_BYTES} octets",
+-                },
+-            )
+-        finally:
+-            upload.file.close()
+ 
+-        if nmf.status == "done":
+-            files_done += 1
+-        elif nmf.status == "error":
+-            files_error += 1
+-        entries.append(
+-            NmfFileEntry(
+-                filename=nmf.filename,
+-                status=nmf.status,  # type: ignore[arg-type]
+-                n_captures=nmf.n_captures,
+-                n_events=nmf.n_events,
+-                n_gps=nmf.n_gps,
+-                decoder_version=nmf.decoder_version,
+-                error_msg=nmf.error_msg,
+-            )
+-        )
+-
+-    refresh_project_summary(db, project)
+-
+-    # 0.46.0 — Chaînage AUTOMATIQUE populate (règle structurelle BC1) :
+-    # populate_measurements → populate_measurement_points → populate_ecgi.
+-    # Verrouillage pg_advisory_xact_lock par project_id (sérialisation).
+-    # Jamais une étape manuelle : la requête HTTP ne retourne qu'après
+-    # que `n_points` et `last_populate_at` soient à jour sur Project.
+-    # Si une étape échoue, l'exception remonte → 500 avec le détail →
+-    # `ingest_status` restera `incomplete` au prochain GET /projects.
+-    if files_done > 0:
+-        try:
+-            chain_report = run_populate_chain(db, project)
+-            # Trace minimale dans le report (consultable via GET /projects/{id}/import).
+-            project.status = "ready"
+-            project.status_ingest = "ready"
+-            db.commit()
+-            logger_chain = __import__("logging").getLogger("app.routes.projects")
+-            logger_chain.info(
+-                "[upload_nmf] populate chain OK project=%s n_points=%d elapsed=%ss",
+-                project.id, chain_report["n_points"], chain_report["elapsed_s"],
+-            )
+-        except Exception as exc:
+-            project.status = "failed"
+-            project.status_ingest = "error"
+-            db.commit()
+-            raise HTTPException(
+-                500,
+-                {
+-                    "code": "POPULATE_CHAIN_FAIL",
+-                    "message": f"ingest OK mais populate chain FAIL : {exc!r}",
+-                },
+-            )
+-
+-    return build_import_report(
+-        db, project, entries,
+-        files_received=len(files),
+-        files_done=files_done,
+-        files_error=files_error,
+-    )
++@router.get("/{project_id}/imports/{job_id}", response_model=NmfImportJobView)
++def get_import_job(project_id: str, job_id: str, db: Session = Depends(get_db)) -> NmfImportJobView:
++    job = db.get(NmfImportJob, job_id)
++    if not job or job.project_id != project_id:
++        raise HTTPException(404, "Import introuvable")
++    return job_view(job)
+ 
+ 
+ @router.get("/{project_id}/import", response_model=NmfImportReport)
+diff --git a/app/schemas/common.py b/app/schemas/common.py
+index 61e46d8..acbee32 100644
+--- a/app/schemas/common.py
++++ b/app/schemas/common.py
+@@ -1,6 +1,7 @@
+ from typing import Literal
+ 
+ from pydantic import BaseModel, Field
++from app.schemas.ingest import NmfImportJobView
+ 
+ Operator = Literal["Orange", "SFR", "Bouygues", "Free"]
+ Tech = Literal["LTE", "NR", "EN-DC"]
+@@ -35,6 +36,7 @@ class Project(BaseModel):
+     # Jamais inventé : `n_files` = COUNT(nmf_file.status='done'), `n_points`
+     # = snapshot stocké au dernier populate (NULL si pas encore passé).
+     # `last_populate_at` ISO 8601 ; `ingest_status` dérivé (voir ci-dessus).
++    import_job: NmfImportJobView | None = None
+     n_files: int = 0
+     n_points: int | None = None
+     last_populate_at: str | None = None
+diff --git a/app/schemas/dict_v2.py b/app/schemas/dict_v2.py
+index 44c523d..9fadcaa 100644
+--- a/app/schemas/dict_v2.py
++++ b/app/schemas/dict_v2.py
+@@ -136,6 +136,7 @@ class DistributionBlock(BaseModel):
+     comparability:  str
+     verdict:        Literal["IDENTIQUE", "DIFFERENT", "NON_COMPARE"]
+     result_id:      str
++    source_result_id: str | None = None
+     status:         Literal["AVAILABLE", "UNAVAILABLE"] = "AVAILABLE"
+     reason:         str | None = None
+     coverage:       DistributionCoverage | None = None
+@@ -181,3 +182,17 @@ class DictParamSheet(BaseModel):
+     n_total:           int
+     sample_paths:      list[str] = Field(default_factory=list)
+     kpi_hint:          str | None = Field(default=None, description="Pour origin=ue_report : code KPI correspondant (ex. LTE_RF_RSRP_AT_MR).")
++
++
++class DictGeographicDimension(BaseModel):
++    key: Literal["dor", "plaque", "arcep_zone"]
++    label: str
++    available: bool
++    reason: str | None = None
++    options: list[str]
++    count: int
++
++
++class DictFilterOptions(BaseModel):
++    project_id: str
++    geographic: list[DictGeographicDimension]
+diff --git a/app/schemas/ingest.py b/app/schemas/ingest.py
+index f7ecf5e..a8553e5 100644
+--- a/app/schemas/ingest.py
++++ b/app/schemas/ingest.py
+@@ -83,3 +83,15 @@ class NmfImportReport(BaseModel):
+     gps_coverage_pct: float | None   # None si aucun event — jamais 0 par défaut
+     operators_seen: dict[str, int]   # PLMN → opérateur → n events
+     technos_seen: dict[str, int]
++
++
++class NmfImportJobView(BaseModel):
++    id: str
++    project_id: str
++    status: Literal['queued', 'decoding', 'finalizing', 'done', 'error']
++    files_total: int
++    files_done: int
++    files_error: int
++    by_file: list[NmfFileEntry]
++    error_msg: str | None
++    report: NmfImportReport | None
+diff --git a/app/services/overview.py b/app/services/overview.py
+index 0419f1e..4812f7d 100644
+--- a/app/services/overview.py
++++ b/app/services/overview.py
+@@ -4,7 +4,8 @@ from statistics import fmean
+ from sqlalchemy import text
+ from sqlalchemy.orm import Session, object_session
+ 
+-from app.models import MeasurementPoint, NmfFile, Project
++from app.models import MeasurementPoint, NmfFile, Project, NmfImportJob
++from app.services.import_jobs import job_view
+ from app.schemas.common import (
+     FilterContext,
+     MeasurementPoint as MeasurementPointSchema,
+@@ -47,6 +48,8 @@ def _project_schema(p: Project) -> ProjectSchema:
+         n_files = (
+             db.query(NmfFile).filter(NmfFile.project_id == p.id, NmfFile.status == "done").count()
+         )
++    latest_job = (db.query(NmfImportJob).filter(NmfImportJob.project_id == p.id)
++        .order_by(NmfImportJob.created_at.desc()).first()) if db is not None else None
+     status = _ingest_status(n_files, p.n_points, p.status_ingest)
+     return ProjectSchema(
+         id=p.id,
+@@ -64,6 +67,7 @@ def _project_schema(p: Project) -> ProjectSchema:
+         importedAt=p.imported_at,
+         status=p.status,
+         n_files=n_files,
++        import_job=job_view(latest_job) if latest_job else None,
+         n_points=p.n_points,
+         last_populate_at=p.last_populate_at.isoformat() if p.last_populate_at else None,
+         ingest_status=status,  # type: ignore[arg-type]
+diff --git a/pyproject.toml b/pyproject.toml
+index 5e9582d..85a40ff 100644
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -1,6 +1,6 @@
+ [project]
+ name = "bc4-back"
+-version = "0.48.2"
++version = "0.49.0"
+ description = "BC4 backend FastAPI — réconciliation 0.48.0 (perf /kpi/catalog ×10 + /kpi/filters ×7 + 3 fixes structurels) + 0.48.1 (indoor mp conservé, replay REF+TEST2) + reliquat 0.46.0 (chaînage populate post-ingest, ingest_status) jamais committé jusqu'ici"
+ requires-python = ">=3.10"
+ 
+diff --git a/tests/test_g7_nmf_ingest.py b/tests/test_g7_nmf_ingest.py
+index f1f62f9..f4205b9 100644
+--- a/tests/test_g7_nmf_ingest.py
++++ b/tests/test_g7_nmf_ingest.py
+@@ -21,6 +21,7 @@ from __future__ import annotations
+ 
+ import io
+ import os
++import time
+ 
+ import pytest
+ from sqlalchemy import text
+@@ -40,6 +41,20 @@ def _witness_bytes() -> tuple[bytes, bool]:
+     return b"BC4-NMF-placeholder\x00" * 128, False
+ 
+ 
++def _await_report(client, pid: str, response, headers):
++    assert response.status_code == 202, response.text
++    job = response.json()
++    deadline = time.monotonic() + float(os.environ.get("BC4_IMPORT_TEST_TIMEOUT", "120"))
++    while job["status"] not in ("done", "error"):
++        assert time.monotonic() < deadline, f"Import still running: {job['id']}"
++        time.sleep(0.2)
++        poll = client.get(f"/projects/{pid}/imports/{job['id']}", headers=headers)
++        assert poll.status_code == 200, poll.text
++        job = poll.json()
++    assert job["report"] is not None, job.get("error_msg")
++    return job["report"]
++
++
+ def _reset_project(pid: str) -> None:
+     with SessionLocal() as db:
+         db.execute(text("DELETE FROM stg_event WHERE project_id = :p"), {"p": pid})
+@@ -75,8 +90,7 @@ def test_create_upload_report(client, admin_headers):
+         # ----- Upload streamé (1 fichier) -----
+         files = [("files", ("witness-a.nmf", witness, "application/octet-stream"))]
+         r3 = client.post(f"/projects/{pid}/nmf", files=files, headers=admin_headers)
+-        assert r3.status_code == 200, r3.text
+-        report = r3.json()
++        report = _await_report(client, pid, r3, admin_headers)
+         assert report["files_received"] == 1
+         assert len(report["by_file"]) == 1
+         by_file = report["by_file"][0]
+@@ -151,7 +165,7 @@ def test_create_upload_report(client, admin_headers):
+         # ----- Idempotence : rejouer le même fichier ne doit pas dupliquer -----
+         files2 = [("files", ("witness-a.nmf", witness, "application/octet-stream"))]
+         r4 = client.post(f"/projects/{pid}/nmf", files=files2, headers=admin_headers)
+-        assert r4.status_code == 200
++        _await_report(client, pid, r4, admin_headers)
+         with SessionLocal() as db:
+             n_files = db.execute(
+                 text("SELECT COUNT(*) FROM nmf_file WHERE project_id = :p"),

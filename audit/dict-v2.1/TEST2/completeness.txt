@@ -1,0 +1,26 @@
+2026-10-18T20:23:24.233261+00:00
+      id      | name  | status | status_ingest | n_captures_ingest | n_events_ingest | n_points |       last_populate_at        
+--------------+-------+--------+---------------+-------------------+-----------------+----------+-------------------------------
+ 134af70a06eb | TEST2 | failed | error         |                16 |           29876 |    61908 | 2026-10-17 18:53:44.559946+00
+(1 row)
+
+ nmf_files | captures | done 
+-----------+----------+------
+        16 |       16 |   16
+(1 row)
+
+  mp   | captures | ecgi_rows | ecgi_distinct 
+-------+----------+-----------+---------------
+ 19655 |       14 |         0 |             0
+(1 row)
+
+ raw_events | captures 
+------------+----------
+     766697 |       16
+(1 row)
+
+ param_occurrences | param_keys 
+-------------------+------------
+            156131 |        773
+(1 row)
+

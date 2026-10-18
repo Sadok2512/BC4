@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import hashlib
+import json
+from app.dict.geo_filters import geographic_scope
 from typing import Any
 
 from sqlalchemy import text
@@ -103,14 +105,18 @@ def build_dict_tree(db: Session, project_id: str, view: str) -> dict[str, Any]:
         {"pid": project_id},
     ).scalar() or 0
 
+    from app.dict.templates import category_maps, classify
+    maps = category_maps(db) if view == "catalog" else []
     # Groupage python : techno → origin → message → group → feuilles
     tree: dict[str, dict[str, dict[str, dict[str, list[dict]]]]] = {}
     for r in rows:
         system = (r[0] or "LTE")
         origin = (r[1] or "network_config")
         msg    = (r[2] or "?")
-        group  = (r[3] or "Autres")
+        category_id, category_label, category_position = classify(system, r[4], maps) if view == "catalog" else (None, "RAW", 0)
+        group = category_label
         leaf = {
+            "category_id": category_id,
             "param_key":      r[4],
             "display_name":   r[5],
             "choice_of":      r[6],
@@ -168,6 +174,8 @@ def _result_id(project_id: str, param_key: str, group_by: str) -> str:
 def build_distribution(
     db: Session, project_id: str, keys: list[str], group_by: str,
     *, operators: tuple[str, ...] = (), bands: tuple[str, ...] = (),
+    geographic: dict[str, tuple[str, ...]] | None = None,
+    technology: str | None = None,
 ) -> dict[str, Any]:
     """Distribution de valeurs par (param_key, group_by). Pour chaque
     clé : values[] = {value, value_display, groups{operator?/band?: n}}.
@@ -177,6 +185,10 @@ def build_distribution(
     uniquement). Si la dimension est absente du cell_ref pour ce projet,
     renvoie le bloc avec ``status='UNAVAILABLE'`` + ``reason``.
     """
+    geo_cte, geo_predicate, geo_params = geographic_scope(db, project_id, geographic)
+    if technology:
+        geo_predicate += " AND param_occurrence.system = :technology"
+        geo_params["technology"] = technology
     group_by_options = build_group_by_options(db, project_id)
     is_cell_ref_dim = group_by in CELL_REF_DIMS
     cell_ref_status = (
@@ -224,17 +236,17 @@ def build_distribution(
         # soient aussi comptées correctement.
         meta = db.execute(
             text(
-                """
+                geo_cte + f"""
                 SELECT display_name, unit_converted, origin, choice_of,
                        MIN(discriminators::text), COUNT(*) AS n_total,
                        COUNT(DISTINCT COALESCE(value_converted, value)) AS distinct_vals
                 FROM param_occurrence
-                WHERE project_id = :pid AND param_key = :k
+                WHERE project_id = :pid AND param_key = :k {geo_predicate}
                 GROUP BY display_name, unit_converted, origin, choice_of
                 ORDER BY COUNT(*) DESC LIMIT 1
                 """
             ),
-            {"pid": project_id, "k": key},
+            {"pid": project_id, "k": key, **geo_params},
         ).first()
         if meta is None:
             blocks.append({
@@ -307,17 +319,17 @@ def build_distribution(
             sel = ", ".join(group_cols)
             rows = db.execute(
                 text(
-                    f"""
+                    geo_cte + f"""
                     SELECT COALESCE(value_converted, value) AS v,
                            {sel},
                            COUNT(*) AS n
                     FROM param_occurrence
-                    WHERE project_id = :pid AND param_key = :k
+                    WHERE project_id = :pid AND param_key = :k {geo_predicate}
                     GROUP BY v, {sel}
                     ORDER BY v
                     """
                 ),
-                {"pid": project_id, "k": key},
+                {"pid": project_id, "k": key, **geo_params},
             ).fetchall()
             for r in rows:
                 v = r[0]
@@ -368,6 +380,11 @@ def build_distribution(
             block["coverage"] = coverage
         blocks.append(block)
 
+    if geo_predicate:
+        scope = json.dumps({key: sorted(set(values)) for key, values in sorted((geographic or {}).items()) if values}, sort_keys=True)
+        for block in blocks:
+            block["source_result_id"] = block["result_id"]
+            block["result_id"] = hashlib.sha256(f"{block['result_id']}:{scope}".encode()).hexdigest()[:16]
     return {
         "project_id":        project_id,
         "group_by":          group_by,

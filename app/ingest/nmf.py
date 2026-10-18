@@ -422,6 +422,7 @@ def ingest_upload(
     stream: IO[bytes],
     filename: str,
     handle: DecoderHandle,
+    *, populate: bool = True,
 ) -> NmfFile:
     """Ingère UN upload : stream → disque → hash → idempotence → décode →
     stg_event. Retourne le `NmfFile` persisté (toujours : succès, erreur,
@@ -682,7 +683,7 @@ def ingest_upload(
         # Appelé après le commit stg_event pour que `_build_sib1_index`
         # ait accès aux SIB1 à jour. Erreur ici → NMF reste `done` mais
         # un warning est émis (pas de rollback d'ingestion).
-        if result.measurements:
+        if populate and result.measurements:
             try:
                 from app.services.populate_measurements import populate_measurements
                 populate_measurements(db, project.id, purge=True)
@@ -694,7 +695,7 @@ def ingest_upload(
         # UPDATE sur les skeleton rows (CELLMEAS) et INSERT pour les autres
         # catégories (CMDREQ, data_*, tx_power, cqi, lock, other).
         # Appelé APRÈS le skeleton BC1 pour profiter des lignes insérées.
-        if result.raw_events:
+        if populate and result.raw_events:
             try:
                 from app.measure.populate import populate_measurement_points
                 populate_measurement_points(db, project.id, purge=False)
@@ -883,7 +884,7 @@ def _import_enrich(_handle):
     return None
 
 
-def refresh_project_summary(db: Session, project: Project) -> None:
+def refresh_project_summary(db: Session, project: Project, *, populate: bool = True, importing: bool = False) -> None:
     """Recalcule les colonnes résumé de `projects` à partir des comptes
     réels de `nmf_file` et `stg_event`. Aucun chiffre inventé.
     """
@@ -942,6 +943,8 @@ def refresh_project_summary(db: Session, project: Project) -> None:
     project.n_events_ingest = n_events
     project.gps_coverage_pct = gps_cov
     project.technos_seen = technos
+    if importing:
+        status = "importing"
     project.status_ingest = status
 
     # Enrichissement Zod (0.11.0) : operators / bands / technologies.
@@ -1044,6 +1047,9 @@ def refresh_project_summary(db: Session, project: Project) -> None:
     }[status]
 
     db.commit()
+
+    if not populate:
+        return
 
     # ---------------------------------------------------------------
     # Dictionnaire RRC complet (0.12.0) : décode les RRCSM aplatis

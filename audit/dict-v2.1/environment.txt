@@ -1,0 +1,23 @@
+2026-10-18T19:52:09.226412+00:00
+        id         |         name         
+-------------------+----------------------
+ 134af70a06eb      | TEST2
+ 4b7bfd50ddb6      | Test_3
+ idf-t3-2026       | Paris 2026 Q1
+ lille-indoor-2026 | Tests Indoor
+ lyon-drive-2026   | Lyon Métropole
+ marseille-5g-2026 | Marseille 5G
+ national-2026     | Benchmark National
+ rennes-lte-2026   | Rennes LTE (sans NR)
+(8 rows)
+
+     version_num      
+----------------------
+ 0023_nmf_import_jobs
+(1 row)
+
+   table_name    
+-----------------
+ nmf_import_jobs
+(1 row)
+

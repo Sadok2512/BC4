@@ -22,6 +22,7 @@ Origin = Literal["network_config", "ue_capability", "ue_report"]
 class DictLeaf(BaseModel):
     """Feuille de l'arbre dictionnaire (view=catalog ou view=raw)."""
 
+    category_id: str | None = None
     param_key:        str
     display_name:     str
     unit:             str | None = None
@@ -136,6 +137,7 @@ class DistributionBlock(BaseModel):
     comparability:  str
     verdict:        Literal["IDENTIQUE", "DIFFERENT", "NON_COMPARE"]
     result_id:      str
+    source_result_id: str | None = None
     status:         Literal["AVAILABLE", "UNAVAILABLE"] = "AVAILABLE"
     reason:         str | None = None
     coverage:       DistributionCoverage | None = None
@@ -181,3 +183,57 @@ class DictParamSheet(BaseModel):
     n_total:           int
     sample_paths:      list[str] = Field(default_factory=list)
     kpi_hint:          str | None = Field(default=None, description="Pour origin=ue_report : code KPI correspondant (ex. LTE_RF_RSRP_AT_MR).")
+
+
+class DictGeographicDimension(BaseModel):
+    key: Literal["dor", "plaque", "arcep_zone"]
+    label: str
+    available: bool
+    reason: str | None = None
+    options: list[str]
+    count: int
+
+
+class DictFilterOptions(BaseModel):
+    project_id: str
+    geographic: list[DictGeographicDimension]
+
+
+class DictMapPoint(BaseModel):
+    occurrence_id: str
+    event_id: str
+    capture_id: str
+    seq: int
+    nmf_file_id: str | None
+    param_key: str
+    display_name: str | None
+    path: str
+    technology: str
+    operator: str | None
+    band: str | None
+    value_raw: str | None
+    value_converted: str | None
+    unit: str | None
+    lat: float
+    lon: float
+    source: str
+    coordinate_source: str
+    operator_color: str
+
+
+class DictMapOperator(BaseModel):
+    name: str
+    count: int
+    color: str
+
+
+class DictMapResponse(BaseModel):
+    project_id: str
+    points: list[DictMapPoint]
+    total_occurrences: int
+    geolocated_occurrences: int
+    returned_occurrences: int
+    truncated: bool
+    limit: int
+    operators: list[DictMapOperator]
+    reason: str | None

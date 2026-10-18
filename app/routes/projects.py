@@ -15,7 +15,9 @@ from app.ingest.nmf import (
     refresh_project_summary,
     resolve_decoder,
 )
-from app.models import NmfFile, Project
+from app.models import NmfFile, Project, NmfImportJob
+from app.services.import_jobs import enqueue, job_view, active_job
+from app.schemas.ingest import NmfImportJobView
 from app.schemas.common import FilterContext, OverviewData, Project as ProjectSchema
 from app.schemas.ingest import (
     NmfFileEntry,
@@ -143,9 +145,11 @@ def delete_project(
     - **403** si le rôle est insuffisant (lecteur).
     """
     require_role(actor, "admin", "editor")
-    p = db.get(Project, project_id)
+    p = db.query(Project).filter(Project.id == project_id).with_for_update().one_or_none()
     if not p:
         raise HTTPException(404, {"code": "NOT_FOUND", "message": "Projet introuvable"})
+    if active_job(db, project_id):
+        raise HTTPException(409, "Un import est en cours pour ce projet.")
     db.delete(p)
     db.commit()
     return Response(status_code=204)
@@ -162,107 +166,23 @@ def get_project_ingest(project_id: str, db: Session = Depends(get_db)) -> Projec
     return _ingest_view(p)
 
 
-@router.post(
-    "/{project_id}/nmf",
-    response_model=NmfImportReport,
-    response_model_exclude_none=False,
-)
+@router.post("/{project_id}/nmf", response_model=NmfImportJobView, status_code=202)
 def upload_nmf(
     project_id: str,
-    files: list[UploadFile] = File(..., description="Un ou plusieurs fichiers NMF"),
+    files: list[UploadFile] = File(...),
     actor: Actor = Depends(get_actor),
     db: Session = Depends(get_db),
-) -> NmfImportReport:
-    """Upload multi-fichiers NMF, streamé. Idempotent sur (project_id, sha256)."""
+) -> NmfImportJobView:
     require_role(actor, "admin", "editor")
-    project = db.get(Project, project_id)
-    if not project:
-        raise HTTPException(404, {"code": "NOT_FOUND", "message": "Projet introuvable"})
+    return job_view(enqueue(db, project_id, files))
 
-    project.status_ingest = "importing"
-    project.status = "processing"
-    db.commit()
 
-    handle = resolve_decoder()
-    entries: list[NmfFileEntry] = []
-    files_done = 0
-    files_error = 0
-
-    for upload in files:
-        try:
-            nmf = ingest_upload(
-                db=db,
-                project=project,
-                stream=upload.file,
-                filename=upload.filename or "unnamed.nmf",
-                handle=handle,
-            )
-        except BodyTooLarge:
-            raise HTTPException(
-                413,
-                {
-                    "code": "PAYLOAD_TOO_LARGE",
-                    "message": f"Fichier NMF > {MAX_FILE_BYTES} octets",
-                },
-            )
-        finally:
-            upload.file.close()
-
-        if nmf.status == "done":
-            files_done += 1
-        elif nmf.status == "error":
-            files_error += 1
-        entries.append(
-            NmfFileEntry(
-                filename=nmf.filename,
-                status=nmf.status,  # type: ignore[arg-type]
-                n_captures=nmf.n_captures,
-                n_events=nmf.n_events,
-                n_gps=nmf.n_gps,
-                decoder_version=nmf.decoder_version,
-                error_msg=nmf.error_msg,
-            )
-        )
-
-    refresh_project_summary(db, project)
-
-    # 0.46.0 — Chaînage AUTOMATIQUE populate (règle structurelle BC1) :
-    # populate_measurements → populate_measurement_points → populate_ecgi.
-    # Verrouillage pg_advisory_xact_lock par project_id (sérialisation).
-    # Jamais une étape manuelle : la requête HTTP ne retourne qu'après
-    # que `n_points` et `last_populate_at` soient à jour sur Project.
-    # Si une étape échoue, l'exception remonte → 500 avec le détail →
-    # `ingest_status` restera `incomplete` au prochain GET /projects.
-    if files_done > 0:
-        try:
-            chain_report = run_populate_chain(db, project)
-            # Trace minimale dans le report (consultable via GET /projects/{id}/import).
-            project.status = "ready"
-            project.status_ingest = "ready"
-            db.commit()
-            logger_chain = __import__("logging").getLogger("app.routes.projects")
-            logger_chain.info(
-                "[upload_nmf] populate chain OK project=%s n_points=%d elapsed=%ss",
-                project.id, chain_report["n_points"], chain_report["elapsed_s"],
-            )
-        except Exception as exc:
-            project.status = "failed"
-            project.status_ingest = "error"
-            db.commit()
-            raise HTTPException(
-                500,
-                {
-                    "code": "POPULATE_CHAIN_FAIL",
-                    "message": f"ingest OK mais populate chain FAIL : {exc!r}",
-                },
-            )
-
-    return build_import_report(
-        db, project, entries,
-        files_received=len(files),
-        files_done=files_done,
-        files_error=files_error,
-    )
+@router.get("/{project_id}/imports/{job_id}", response_model=NmfImportJobView)
+def get_import_job(project_id: str, job_id: str, db: Session = Depends(get_db)) -> NmfImportJobView:
+    job = db.get(NmfImportJob, job_id)
+    if not job or job.project_id != project_id:
+        raise HTTPException(404, "Import introuvable")
+    return job_view(job)
 
 
 @router.get("/{project_id}/import", response_model=NmfImportReport)

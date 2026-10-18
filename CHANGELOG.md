@@ -1,4 +1,32 @@
+## 0.51.0 (minor) — bc4-back 2026-10-18 — Templates RRC par catégorie (Agent BC1)
+
+- Migration 0024 après la 0023 NMF déjà appliquée : configuration dict_category, dict_category_map et dict_template ; aucune mesure ni référence géographique injectée.
+- Dix catégories ordonnées et Autres, 85 lignes de template transcrites de la maquette. 63 lignes reliées à 97 chemins vérifiés dans TEST2 ; 22 lignes non résolues conservées avec diagnostic explicite, éditables par administrateur.
+- Classement catalogue par préfixes de segments ASN.1 exacts ; Raw inchangé. Tout chemin non couvert va dans Autres.
+- GET templates et summary par opérateur/bande/les deux ; une agrégation SQL par résumé, scope projet injecté serveur, discriminants conservés, distributions complètes et nulls explicites. Égalités de valeurs dominantes et absence de majorité ne produisent aucun verdict arbitraire.
+- PUT admin avec validation stricte et protection de révision concurrente ; configuration indépendante des projets.
+- Gardes manuels scripts/guard_dict_templates.py G12a/G12b/G12c ; tests sur tables temporaires transactionnelles.
+- Réconciliation des travaux géographiques, imports NMF et carte présents dans le workspace ; aucun remplacement de la migration 0023 ni retour de version.
+- Limitation préalable : TEST2 conserve un populate interrompu par un redémarrage externe ; les lectures RRC utilisent ses occurrences existantes, aucune réparation silencieuse des mesures.
+
+# 0.50.0 — Carte RRC traçable
+
+- Endpoint GET /projects/{id}/dict/v2/map : occurrences canoniques avec preuve événement/capture/seq/fichier, coordonnées de l’événement source uniquement, filtrage opérateur/bande/technologie/géographie.
+- Couverture géographique, limite explicite, effectifs par opérateur sur la population retournée. Aucun changement des sources, du parsing ou des conversions.
+- Filtre technologique optionnel sur les distributions afin de conserver le même périmètre LTE/NR.
+- Tests transactionnels sur tables temporaires : provenance, absence de coordonnées, filtres, couverture, limites et zéros réels.
+
 # bc4-back — CHANGELOG
+
+## 0.49.0 — 2026-10-18 — Filtres géographiques du dictionnaire RRC
+
+- Ajout de `GET /projects/{id}/dict/v2/filters` : disponibilités, raisons et options DOR/Plaque/Zone ARCEP propres aux événements RRC du projet.
+- Paramètres répétés `dor`, `plaque`, `arcep_zone` sur distribution (OR par dimension, AND entre dimensions). Comptages et verdicts calculés sur la population filtrée.
+- Réutilisation exclusive des liaisons ECGI strictes existantes, même projet/capture/EARFCN/technologie ; associations ambiguës exclues. Aucune jointure temporelle ou cross-capture, aucune modification de décodage/populate.
+- EXISTS évite de multiplier les occurrences par les doublons de mesures/référentiel. Paramètres SQL liés ; filtres indisponibles ou valeurs obsolètes rejetés explicitement (422).
+- Identifiants existants inchangés sans filtre ; résultats filtrés identifiés par leur périmètre, avec `source_result_id` conservé.
+- Tests transactionnels sur tables temporaires : données utilisateur non modifiées.
+
 
 Versions SemVer. Type de bump: `patch` / `minor` / `major`. Un écart se ferme ou se déclare ouvert, jamais expliqué par hypothèse.
 

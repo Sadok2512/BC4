@@ -1,6 +1,7 @@
 from typing import Literal
 
 from pydantic import BaseModel, Field
+from app.schemas.ingest import NmfImportJobView
 
 Operator = Literal["Orange", "SFR", "Bouygues", "Free"]
 Tech = Literal["LTE", "NR", "EN-DC"]
@@ -35,6 +36,7 @@ class Project(BaseModel):
     # Jamais inventé : `n_files` = COUNT(nmf_file.status='done'), `n_points`
     # = snapshot stocké au dernier populate (NULL si pas encore passé).
     # `last_populate_at` ISO 8601 ; `ingest_status` dérivé (voir ci-dessus).
+    import_job: NmfImportJobView | None = None
     n_files: int = 0
     n_points: int | None = None
     last_populate_at: str | None = None

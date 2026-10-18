@@ -1,0 +1,1 @@
+SELECT system,origin,message,functional_group,param_key,display_name,discriminators,unit_converted,is_identifier,COUNT(*) AS occurrences FROM param_occurrence WHERE project_id='134af70a06eb' GROUP BY system,origin,message,functional_group,param_key,display_name,discriminators,unit_converted,is_identifier ORDER BY system,message,param_key,discriminators::text;

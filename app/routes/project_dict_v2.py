@@ -10,6 +10,8 @@ Scope strict : ``project_id`` injecté serveur via le path.
 
 from __future__ import annotations
 
+from typing import Literal
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
@@ -20,8 +22,11 @@ from app.dict.service_v2 import (
     build_distribution,
     build_param_sheet,
 )
+from app.dict.geo_filters import geographic_options
 from app.models import Project
 from app.schemas.dict_v2 import (
+    DictMapResponse,
+    DictFilterOptions,
     DictDistributionResponse,
     DictParamSheet,
     DictTreeResponse,
@@ -65,6 +70,12 @@ def dict_tree(
     return DictTreeResponse(**build_dict_tree(db, project_id, view))
 
 
+@router.get("/{project_id}/dict/v2/filters", response_model=DictFilterOptions)
+def dict_filter_options(project_id: str, db: Session = Depends(get_db)) -> DictFilterOptions:
+    _require_project(db, project_id)
+    return DictFilterOptions(**geographic_options(db, project_id))
+
+
 @router.get(
     "/{project_id}/dict/v2/distribution",
     response_model=DictDistributionResponse,
@@ -73,6 +84,10 @@ def dict_distribution(
     project_id: str,
     keys: str = Query(..., description="Liste CSV de param_key"),
     group_by: str = Query(default="operator"),
+    technology: Literal["LTE", "NR"] | None = Query(default=None),
+    dor: list[str] | None = Query(default=None),
+    plaque: list[str] | None = Query(default=None),
+    arcep_zone: list[str] | None = Query(default=None),
     db: Session = Depends(get_db),
 ) -> DictDistributionResponse:
     _require_project(db, project_id)
@@ -87,14 +102,19 @@ def dict_distribution(
                 "message": f"group_by attendu ∈ {sorted(allowed)}",
             },
         )
+    if technology and group_by not in {"operator", "band", "operator_band"}:
+        raise HTTPException(422, detail={"code": "TECHNOLOGY_GROUP_UNSUPPORTED", "message": "Filtre technologique : regroupement par opérateur, bande ou les deux."})
     key_list = [k.strip() for k in (keys or "").split(",") if k.strip()]
     if not key_list:
         raise HTTPException(
             400,
             {"code": "KEYS_EMPTY", "message": "au moins 1 param_key requis"},
         )
+    geographic = {key: tuple(values) for key, values in {"dor": dor, "plaque": plaque, "arcep_zone": arcep_zone}.items() if values}
+    if geographic and group_by not in {"operator", "band", "operator_band"}:
+        raise HTTPException(422, detail={"code": "GROUP_BY_UNSUPPORTED_WITH_FILTERS", "message": "Filtres géographiques : regroupement par opérateur, bande ou les deux."})
     return DictDistributionResponse(
-        **build_distribution(db, project_id, key_list, group_by)
+        **build_distribution(db, project_id, key_list, group_by, geographic=geographic, technology=technology)
     )
 
 
@@ -109,3 +129,42 @@ def dict_param(
 ) -> DictParamSheet:
     _require_project(db, project_id)
     return DictParamSheet(**build_param_sheet(db, project_id, param_key))
+
+
+@router.get("/{project_id}/dict/v2/map", response_model=DictMapResponse)
+def dict_map(
+    project_id: str,
+    keys: str = Query(..., max_length=20000),
+    technology: Literal["LTE", "NR"] | None = Query(default=None),
+    operator: list[str] | None = Query(default=None),
+    band: list[str] | None = Query(default=None),
+    dor: list[str] | None = Query(default=None),
+    plaque: list[str] | None = Query(default=None),
+    arcep_zone: list[str] | None = Query(default=None),
+    limit: int = Query(default=5000, ge=1, le=10000),
+    db: Session = Depends(get_db),
+) -> DictMapResponse:
+    from app.dict.map_v2 import build_map
+    _require_project(db, project_id)
+    key_list = sorted(set(k.strip() for k in keys.split(',') if k.strip()))
+    if not key_list or len(key_list) > 100:
+        raise HTTPException(422, detail={"code": "MAP_KEYS_INVALID", "message": "Sélectionnez entre 1 et 100 paramètres."})
+    geographic = {key: tuple(values) for key, values in {"dor": dor, "plaque": plaque, "arcep_zone": arcep_zone}.items() if values}
+    return DictMapResponse(**build_map(db, project_id, key_list, technology=technology,
+        operators=operator or (), bands=band or (), geographic=geographic, limit=limit))
+
+
+# Templates: project identity is always supplied by the route, never by configuration.
+from typing import Literal
+from app.schemas.dict_templates import TemplatesResponse, SummaryResponse
+from app.dict.templates import list_templates, summarize
+
+@router.get("/{project_id}/dict/v2/templates", response_model=TemplatesResponse)
+def dict_templates(project_id: str, db: Session = Depends(get_db)):
+    _require_project(db, project_id)
+    return list_templates(db, project_id)
+
+@router.get("/{project_id}/dict/v2/templates/{category}/summary", response_model=SummaryResponse)
+def dict_template_summary(project_id: str, category: str, group_by: Literal["operator", "band", "operator_band"] = "operator", db: Session = Depends(get_db)):
+    _require_project(db, project_id)
+    return summarize(db, project_id, category, group_by)

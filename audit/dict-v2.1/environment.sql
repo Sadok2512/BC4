@@ -1,0 +1,1 @@
+SELECT id,name FROM projects ORDER BY id; SELECT version_num FROM alembic_version; SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('dict_category','dict_category_map','dict_template','nmf_import_jobs');

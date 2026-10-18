@@ -59,3 +59,5 @@ __all__ = [
     "StgMeasurementRaw",
     "User",
 ]
+
+from app.models.import_job import NmfImportJob

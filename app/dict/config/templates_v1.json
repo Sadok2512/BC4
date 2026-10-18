@@ -1,0 +1,1969 @@
+{
+  "source": "User-approved template membership; exact paths verified against TEST2 keys.csv. No measurement seed.",
+  "categories": [
+    {
+      "id": "phy",
+      "label": "PHY",
+      "position": 1,
+      "entries": [
+        {
+          "id": "phy-01",
+          "label": "dl-Bandwidth",
+          "position": 1,
+          "technology": "LTE",
+          "discriminators": {},
+          "parameters": [
+            {
+              "param_key": "dl-Bandwidth",
+              "technology": "LTE",
+              "discriminators": {}
+            },
+            {
+              "param_key": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/mobilityControlInfo/carrierBandwidth/dl-Bandwidth",
+              "technology": "LTE",
+              "discriminators": {}
+            }
+          ],
+          "reason": null
+        },
+        {
+          "id": "phy-02",
+          "label": "transmissionMode",
+          "position": 2,
+          "technology": "LTE",
+          "discriminators": {},
+          "parameters": [
+            {
+              "param_key": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/physicalConfigDedicated/antennaInfo/explicitValue/transmissionMode",
+              "technology": "LTE",
+              "discriminators": {}
+            },
+            {
+              "param_key": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/physicalConfigDedicated/antennaInfo/explicitValue/transmissionMode",
+              "technology": "LTE",
+              "discriminators": {}
+            }
+          ],
+          "reason": null
+        },
+        {
+          "id": "phy-03",
+          "label": "cqi-ReportModeAperiodic",
+          "position": 3,
+          "technology": "LTE",
+          "discriminators": {},
+          "parameters": [
+            {
+              "param_key": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/physicalConfigDedicated/cqi-ReportConfig/cqi-ReportModeAperiodic",
+              "technology": "LTE",
+              "discriminators": {}
+            }
+          ],
+          "reason": null
+        },
+        {
+          "id": "phy-04",
+          "label": "cqi-pmi-ConfigIndex",
+          "position": 4,
+          "technology": "LTE",
+          "discriminators": {},
+          "parameters": [
+            {
+              "param_key": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/physicalConfigDedicated/cqi-ReportConfig-r10/cqi-ReportPeriodic-r10/cqi-pmi-ConfigIndex",
+              "technology": "LTE",
+              "discriminators": {}
+            },
+            {
+              "param_key": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/physicalConfigDedicated/cqi-ReportConfig/cqi-ReportPeriodic/cqi-pmi-ConfigIndex",
+              "technology": "LTE",
+              "discriminators": {}
+            }
+          ],
+          "reason": null
+        },
+        {
+          "id": "phy-05",
+          "label": "srs-ConfigIndex",
+          "position": 5,
+          "technology": "LTE",
+          "discriminators": {},
+          "parameters": [
+            {
+              "param_key": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/physicalConfigDedicated/soundingRS-UL-ConfigDedicated/srs-ConfigIndex",
+              "technology": "LTE",
+              "discriminators": {}
+            },
+            {
+              "param_key": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/physicalConfigDedicated/soundingRS-UL-ConfigDedicated/srs-ConfigIndex",
+              "technology": "LTE",
+              "discriminators": {}
+            }
+          ],
+          "reason": null
+        },
+        {
+          "id": "phy-06",
+          "label": "subcarrierSpacing",
+          "position": 6,
+          "technology": "NR",
+          "discriminators": {},
+          "parameters": [],
+          "reason": "Aucun chemin canonique vérifié dans le catalogue audité ; configuration administrateur requise."
+        },
+        {
+          "id": "phy-07",
+          "label": "tdd-UL-DL pattern1",
+          "position": 7,
+          "technology": "NR",
+          "discriminators": {},
+          "parameters": [],
+          "reason": "Aucun chemin canonique vérifié dans le catalogue audité ; configuration administrateur requise."
+        },
+        {
+          "id": "phy-08",
+          "label": "mcs-Table (pdsch)",
+          "position": 8,
+          "technology": "NR",
+          "discriminators": {},
+          "parameters": [],
+          "reason": "Aucun chemin canonique vérifié dans le catalogue audité ; configuration administrateur requise."
+        }
+      ]
+    },
+    {
+      "id": "power-control",
+      "label": "Power control",
+      "position": 2,
+      "entries": [
+        {
+          "id": "power-control-01",
+          "label": "p0-NominalPUSCH",
+          "position": 1,
+          "technology": "LTE",
+          "discriminators": {},
+          "parameters": [
+            {
+              "param_key": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/mobilityControlInfo/radioResourceConfigCommon/uplinkPowerControlCommon/p0-NominalPUSCH",
+              "technology": "LTE",
+              "discriminators": {}
+            },
+            {
+              "param_key": "systemInformation/systemInformation-r8/sib-TypeAndInfo/sib2/radioResourceConfigCommon/uplinkPowerControlCommon/p0-NominalPUSCH",
+              "technology": "LTE",
+              "discriminators": {}
+            }
+          ],
+          "reason": null
+        },
+        {
+          "id": "power-control-02",
+          "label": "alpha",
+          "position": 2,
+          "technology": "LTE",
+          "discriminators": {},
+          "parameters": [
+            {
+              "param_key": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/mobilityControlInfo/radioResourceConfigCommon/uplinkPowerControlCommon/alpha",
+              "technology": "LTE",
+              "discriminators": {}
+            },
+            {
+              "param_key": "systemInformation/systemInformation-r8/sib-TypeAndInfo/sib2/radioResourceConfigCommon/uplinkPowerControlCommon/alpha",
+              "technology": "LTE",
+              "discriminators": {}
+            }
+          ],
+          "reason": null
+        },
+        {
+          "id": "power-control-03",
+          "label": "p0-NominalPUCCH",
+          "position": 3,
+          "technology": "LTE",
+          "discriminators": {},
+          "parameters": [
+            {
+              "param_key": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/mobilityControlInfo/radioResourceConfigCommon/uplinkPowerControlCommon/p0-NominalPUCCH",
+              "technology": "LTE",
+              "discriminators": {}
+            },
+            {
+              "param_key": "systemInformation/systemInformation-r8/sib-TypeAndInfo/sib2/radioResourceConfigCommon/uplinkPowerControlCommon/p0-NominalPUCCH",
+              "technology": "LTE",
+              "discriminators": {}
+            }
+          ],
+          "reason": null
+        },
+        {
+          "id": "power-control-04",
+          "label": "p0-UE-PUSCH",
+          "position": 4,
+          "technology": "LTE",
+          "discriminators": {},
+          "parameters": [
+            {
+              "param_key": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/physicalConfigDedicated/uplinkPowerControlDedicated/p0-UE-PUSCH",
+              "technology": "LTE",
+              "discriminators": {}
+            }
+          ],
+          "reason": null
+        },
+        {
+          "id": "power-control-05",
+          "label": "preambleInitialReceivedTargetPower",
+          "position": 5,
+          "technology": "LTE",
+          "discriminators": {},
+          "parameters": [
+            {
+              "param_key": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/mobilityControlInfo/radioResourceConfigCommon/rach-ConfigCommon/powerRampingParameters/preambleInitialReceivedTargetPower",
+              "technology": "LTE",
+              "discriminators": {}
+            },
+            {
+              "param_key": "systemInformation/systemInformation-r8/sib-TypeAndInfo/sib2/radioResourceConfigCommon/rach-ConfigCommon/powerRampingParameters/preambleInitialReceivedTargetPower",
+              "technology": "LTE",
+              "discriminators": {}
+            }
+          ],
+          "reason": null
+        },
+        {
+          "id": "power-control-06",
+          "label": "powerRampingStep",
+          "position": 6,
+          "technology": "LTE",
+          "discriminators": {},
+          "parameters": [
+            {
+              "param_key": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/mobilityControlInfo/radioResourceConfigCommon/rach-ConfigCommon/powerRampingParameters/powerRampingStep",
+              "technology": "LTE",
+              "discriminators": {}
+            },
+            {
+              "param_key": "systemInformation/systemInformation-r8/sib-TypeAndInfo/sib2/radioResourceConfigCommon/rach-ConfigCommon/powerRampingParameters/powerRampingStep",
+              "technology": "LTE",
+              "discriminators": {}
+            }
+          ],
+          "reason": null
+        },
+        {
+          "id": "power-control-07",
+          "label": "p-Max",
+          "position": 7,
+          "technology": "LTE",
+          "discriminators": {},
+          "parameters": [
+            {
+              "param_key": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/mobilityControlInfo/radioResourceConfigCommon/p-Max",
+              "technology": "LTE",
+              "discriminators": {}
+            },
+            {
+              "param_key": "systemInformationBlockType1/p-Max",
+              "technology": "LTE",
+              "discriminators": {}
+            },
+            {
+              "param_key": "systemInformation/systemInformation-r8/sib-TypeAndInfo/sib3/intraFreqCellReselectionInfo/p-Max",
+              "technology": "LTE",
+              "discriminators": {}
+            },
+            {
+              "param_key": "systemInformation/systemInformation-r8/sib-TypeAndInfo/sib5/interFreqCarrierFreqList/p-Max",
+              "technology": "LTE",
+              "discriminators": {}
+            }
+          ],
+          "reason": null
+        },
+        {
+          "id": "power-control-08",
+          "label": "p0 (p0-AlphaSets)",
+          "position": 8,
+          "technology": "NR",
+          "discriminators": {},
+          "parameters": [],
+          "reason": "Aucun chemin canonique vérifié dans le catalogue audité ; configuration administrateur requise."
+        }
+      ]
+    },
+    {
+      "id": "mobility",
+      "label": "Mobility",
+      "position": 3,
+      "entries": [
+        {
+          "id": "mobility-01",
+          "label": "a3-Offset",
+          "position": 1,
+          "technology": "LTE",
+          "discriminators": {
+            "event": "A3"
+          },
+          "parameters": [
+            {
+              "param_key": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/reportConfig/triggerType/eventId/a3-Offset",
+              "technology": "LTE",
+              "discriminators": {
+                "event": "A3"
+              }
+            }
+          ],
+          "reason": null
+        },
+        {
+          "id": "mobility-02",
+          "label": "hysteresis",
+          "position": 2,
+          "technology": "LTE",
+          "discriminators": {
+            "event": "A3"
+          },
+          "parameters": [
+            {
+              "param_key": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/reportConfig/triggerType/hysteresis",
+              "technology": "LTE",
+              "discriminators": {
+                "event": "A3"
+              }
+            }
+          ],
+          "reason": null
+        },
+        {
+          "id": "mobility-03",
+          "label": "timeToTrigger",
+          "position": 3,
+          "technology": "LTE",
+          "discriminators": {
+            "event": "A3"
+          },
+          "parameters": [
+            {
+              "param_key": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/reportConfig/triggerType/timeToTrigger",
+              "technology": "LTE",
+              "discriminators": {
+                "event": "A3"
+              }
+            }
+          ],
+          "reason": null
+        },
+        {
+          "id": "mobility-04",
+          "label": "threshold-RSRP",
+          "position": 4,
+          "technology": "LTE",
+          "discriminators": {
+            "event": "A2"
+          },
+          "parameters": [
+            {
+              "param_key": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/reportConfig/triggerType/eventId/a2-Threshold/threshold-RSRP",
+              "technology": "LTE",
+              "discriminators": {
+                "event": "A2"
+              }
+            }
+          ],
+          "reason": null
+        },
+        {
+          "id": "mobility-05",
+          "label": "threshold-RSRP",
+          "position": 5,
+          "technology": "LTE",
+          "discriminators": {
+            "event": "A1"
+          },
+          "parameters": [
+            {
+              "param_key": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/reportConfig/triggerType/eventId/a1-Threshold/threshold-RSRP",
+              "technology": "LTE",
+              "discriminators": {
+                "event": "A1"
+              }
+            }
+          ],
+          "reason": null
+        },
+        {
+          "id": "mobility-06",
+          "label": "a5-Threshold1 / 2",
+          "position": 6,
+          "technology": "LTE",
+          "discriminators": {
+            "event": "A5"
+          },
+          "parameters": [],
+          "reason": "Aucun chemin canonique vérifié dans le catalogue audité ; configuration administrateur requise."
+        },
+        {
+          "id": "mobility-07",
+          "label": "cellIndividualOffset",
+          "position": 7,
+          "technology": "LTE",
+          "discriminators": {},
+          "parameters": [
+            {
+              "param_key": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/measObjectToAddModList/measObject/cellsToAddModList/cellIndividualOffset",
+              "technology": "LTE",
+              "discriminators": {}
+            }
+          ],
+          "reason": null
+        },
+        {
+          "id": "mobility-08",
+          "label": "filterCoefficientRSRP",
+          "position": 8,
+          "technology": "LTE",
+          "discriminators": {},
+          "parameters": [
+            {
+              "param_key": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/quantityConfig/quantityConfigEUTRA/filterCoefficientRSRP",
+              "technology": "LTE",
+              "discriminators": {}
+            }
+          ],
+          "reason": null
+        },
+        {
+          "id": "mobility-09",
+          "label": "t304",
+          "position": 9,
+          "technology": "LTE",
+          "discriminators": {},
+          "parameters": [
+            {
+              "param_key": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/mobilityControlInfo/t304",
+              "technology": "LTE",
+              "discriminators": {}
+            }
+          ],
+          "reason": null
+        },
+        {
+          "id": "mobility-10",
+          "label": "b1-ThresholdNR-r15",
+          "position": 10,
+          "technology": "NR",
+          "discriminators": {
+            "event": "B1"
+          },
+          "parameters": [],
+          "reason": "Aucun chemin canonique vérifié dans le catalogue audité ; configuration administrateur requise."
+        }
+      ]
+    },
+    {
+      "id": "layering-idle",
+      "label": "Layering Idle",
+      "position": 4,
+      "entries": [
+        {
+          "id": "layering-idle-01",
+          "label": "cellReselectionPriority (serving)",
+          "position": 1,
+          "technology": "LTE",
+          "discriminators": {},
+          "parameters": [
+            {
+              "param_key": "rrcConnectionRelease/rrcConnectionRelease-r8/idleModeMobilityControlInfo/freqPriorityListEUTRA/cellReselectionPriority",
+              "technology": "LTE",
+              "discriminators": {}
+            },
+            {
+              "param_key": "rrcConnectionRelease/rrcConnectionRelease-r8/idleModeMobilityControlInfo/freqPriorityListGERAN/cellReselectionPriority",
+              "technology": "LTE",
+              "discriminators": {}
+            },
+            {
+              "param_key": "rrcConnectionRelease/rrcConnectionRelease-r8/idleModeMobilityControlInfo/freqPriorityListUTRA-FDD/cellReselectionPriority",
+              "technology": "LTE",
+              "discriminators": {}
+            },
+            {
+              "param_key": "systemInformation/systemInformation-r8/sib-TypeAndInfo/sib3/cellReselectionServingFreqInfo/cellReselectionPriority",
+              "technology": "LTE",
+              "discriminators": {}
+            },
+            {
+              "param_key": "systemInformation/systemInformation-r8/sib-TypeAndInfo/sib6/carrierFreqListUTRA-FDD/cellReselectionPriority",
+              "technology": "LTE",
+              "discriminators": {}
+            },
+            {
+              "param_key": "systemInformation/systemInformation-r8/sib-TypeAndInfo/sib7/carrierFreqsInfoList/commonInfo/cellReselectionPriority",
+              "technology": "LTE",
+              "discriminators": {}
+            }
+          ],
+          "reason": null
+        },
+        {
+          "id": "layering-idle-02",
+          "label": "cellReselectionPriority (SIB5)",
+          "position": 2,
+          "technology": "LTE",
+          "discriminators": {},
+          "parameters": [
+            {
+              "param_key": "systemInformation/systemInformation-r8/sib-TypeAndInfo/sib5/interFreqCarrierFreqList/cellReselectionPriority",
+              "technology": "LTE",
+              "discriminators": {}
+            }
+          ],
+          "reason": null
+        },
+        {
+          "id": "layering-idle-03",
+          "label": "threshX-High",
+          "position": 3,
+          "technology": "LTE",
+          "discriminators": {},
+          "parameters": [
+            {
+              "param_key": "systemInformation/systemInformation-r8/sib-TypeAndInfo/sib5/interFreqCarrierFreqList/threshX-High",
+              "technology": "LTE",
+              "discriminators": {}
+            },
+            {
+              "param_key": "systemInformation/systemInformation-r8/sib-TypeAndInfo/sib6/carrierFreqListUTRA-FDD/threshX-High",
+              "technology": "LTE",
+              "discriminators": {}
+            },
+            {
+              "param_key": "systemInformation/systemInformation-r8/sib-TypeAndInfo/sib7/carrierFreqsInfoList/commonInfo/threshX-High",
+              "technology": "LTE",
+              "discriminators": {}
+            }
+          ],
+          "reason": null
+        },
+        {
+          "id": "layering-idle-04",
+          "label": "threshX-Low",
+          "position": 4,
+          "technology": "LTE",
+          "discriminators": {},
+          "parameters": [
+            {
+              "param_key": "systemInformation/systemInformation-r8/sib-TypeAndInfo/sib5/interFreqCarrierFreqList/threshX-Low",
+              "technology": "LTE",
+              "discriminators": {}
+            },
+            {
+              "param_key": "systemInformation/systemInformation-r8/sib-TypeAndInfo/sib6/carrierFreqListUTRA-FDD/threshX-Low",
+              "technology": "LTE",
+              "discriminators": {}
+            },
+            {
+              "param_key": "systemInformation/systemInformation-r8/sib-TypeAndInfo/sib7/carrierFreqsInfoList/commonInfo/threshX-Low",
+              "technology": "LTE",
+              "discriminators": {}
+            }
+          ],
+          "reason": null
+        },
+        {
+          "id": "layering-idle-05",
+          "label": "threshServingLow",
+          "position": 5,
+          "technology": "LTE",
+          "discriminators": {},
+          "parameters": [
+            {
+              "param_key": "systemInformation/systemInformation-r8/sib-TypeAndInfo/sib3/cellReselectionServingFreqInfo/threshServingLow",
+              "technology": "LTE",
+              "discriminators": {}
+            }
+          ],
+          "reason": null
+        },
+        {
+          "id": "layering-idle-06",
+          "label": "s-IntraSearch",
+          "position": 6,
+          "technology": "LTE",
+          "discriminators": {},
+          "parameters": [
+            {
+              "param_key": "systemInformation/systemInformation-r8/sib-TypeAndInfo/sib3/intraFreqCellReselectionInfo/s-IntraSearch",
+              "technology": "LTE",
+              "discriminators": {}
+            }
+          ],
+          "reason": null
+        },
+        {
+          "id": "layering-idle-07",
+          "label": "s-NonIntraSearch",
+          "position": 7,
+          "technology": "LTE",
+          "discriminators": {},
+          "parameters": [
+            {
+              "param_key": "systemInformation/systemInformation-r8/sib-TypeAndInfo/sib3/cellReselectionServingFreqInfo/s-NonIntraSearch",
+              "technology": "LTE",
+              "discriminators": {}
+            }
+          ],
+          "reason": null
+        },
+        {
+          "id": "layering-idle-08",
+          "label": "q-RxLevMin",
+          "position": 8,
+          "technology": "LTE",
+          "discriminators": {},
+          "parameters": [
+            {
+              "param_key": "systemInformationBlockType1/cellSelectionInfo/q-RxLevMin",
+              "technology": "LTE",
+              "discriminators": {}
+            },
+            {
+              "param_key": "systemInformation/systemInformation-r8/sib-TypeAndInfo/sib3/intraFreqCellReselectionInfo/q-RxLevMin",
+              "technology": "LTE",
+              "discriminators": {}
+            },
+            {
+              "param_key": "systemInformation/systemInformation-r8/sib-TypeAndInfo/sib5/interFreqCarrierFreqList/q-RxLevMin",
+              "technology": "LTE",
+              "discriminators": {}
+            },
+            {
+              "param_key": "systemInformation/systemInformation-r8/sib-TypeAndInfo/sib6/carrierFreqListUTRA-FDD/q-RxLevMin",
+              "technology": "LTE",
+              "discriminators": {}
+            },
+            {
+              "param_key": "systemInformation/systemInformation-r8/sib-TypeAndInfo/sib7/carrierFreqsInfoList/commonInfo/q-RxLevMin",
+              "technology": "LTE",
+              "discriminators": {}
+            }
+          ],
+          "reason": null
+        },
+        {
+          "id": "layering-idle-09",
+          "label": "q-Hyst",
+          "position": 9,
+          "technology": "LTE",
+          "discriminators": {},
+          "parameters": [
+            {
+              "param_key": "systemInformation/systemInformation-r8/sib-TypeAndInfo/sib3/cellReselectionInfoCommon/q-Hyst",
+              "technology": "LTE",
+              "discriminators": {}
+            }
+          ],
+          "reason": null
+        },
+        {
+          "id": "layering-idle-10",
+          "label": "redirectedCarrierInfo (release)",
+          "position": 10,
+          "technology": "LTE",
+          "discriminators": {},
+          "parameters": [
+            {
+              "param_key": "rrcConnectionRelease/rrcConnectionRelease-r8/redirectedCarrierInfo",
+              "technology": "LTE",
+              "discriminators": {}
+            }
+          ],
+          "reason": null
+        }
+      ]
+    },
+    {
+      "id": "layering-connected",
+      "label": "Layering Connected",
+      "position": 5,
+      "entries": [
+        {
+          "id": "layering-connected-01",
+          "label": "measObjectEUTRA carrierFreq",
+          "position": 1,
+          "technology": "LTE",
+          "discriminators": {},
+          "parameters": [],
+          "reason": "Aucun chemin canonique vérifié dans le catalogue audité ; configuration administrateur requise."
+        },
+        {
+          "id": "layering-connected-02",
+          "label": "measObjectNR carrierFreq-r15",
+          "position": 2,
+          "technology": "NR",
+          "discriminators": {},
+          "parameters": [],
+          "reason": "Aucun chemin canonique vérifié dans le catalogue audité ; configuration administrateur requise."
+        },
+        {
+          "id": "layering-connected-03",
+          "label": "events actifs par couche",
+          "position": 3,
+          "technology": "LTE",
+          "discriminators": {},
+          "parameters": [],
+          "reason": "Aucun chemin canonique vérifié dans le catalogue audité ; configuration administrateur requise."
+        },
+        {
+          "id": "layering-connected-04",
+          "label": "s-Measure",
+          "position": 4,
+          "technology": "LTE",
+          "discriminators": {},
+          "parameters": [
+            {
+              "param_key": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/s-Measure",
+              "technology": "LTE",
+              "discriminators": {}
+            }
+          ],
+          "reason": null
+        },
+        {
+          "id": "layering-connected-05",
+          "label": "a5-Threshold1 / 2 par couche",
+          "position": 5,
+          "technology": "LTE",
+          "discriminators": {},
+          "parameters": [],
+          "reason": "Aucun chemin canonique vérifié dans le catalogue audité ; configuration administrateur requise."
+        },
+        {
+          "id": "layering-connected-06",
+          "label": "sCell dl-CarrierFreq",
+          "position": 6,
+          "technology": "LTE",
+          "discriminators": {},
+          "parameters": [],
+          "reason": "Aucun chemin canonique vérifié dans le catalogue audité ; configuration administrateur requise."
+        },
+        {
+          "id": "layering-connected-07",
+          "label": "nr-SecondaryCellGroupConfig présent",
+          "position": 7,
+          "technology": "NR",
+          "discriminators": {},
+          "parameters": [],
+          "reason": "Aucun chemin canonique vérifié dans le catalogue audité ; configuration administrateur requise."
+        },
+        {
+          "id": "layering-connected-08",
+          "label": "p-MaxEUTRA-r15",
+          "position": 8,
+          "technology": "NR",
+          "discriminators": {},
+          "parameters": [],
+          "reason": "Aucun chemin canonique vérifié dans le catalogue audité ; configuration administrateur requise."
+        }
+      ]
+    },
+    {
+      "id": "mimo-ca",
+      "label": "MIMO / CA",
+      "position": 6,
+      "entries": [
+        {
+          "id": "mimo-ca-01",
+          "label": "transmissionMode",
+          "position": 1,
+          "technology": "LTE",
+          "discriminators": {},
+          "parameters": [
+            {
+              "param_key": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/physicalConfigDedicated/antennaInfo/explicitValue/transmissionMode",
+              "technology": "LTE",
+              "discriminators": {}
+            },
+            {
+              "param_key": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/physicalConfigDedicated/antennaInfo/explicitValue/transmissionMode",
+              "technology": "LTE",
+              "discriminators": {}
+            }
+          ],
+          "reason": null
+        },
+        {
+          "id": "mimo-ca-02",
+          "label": "codebookSubsetRestriction",
+          "position": 2,
+          "technology": "LTE",
+          "discriminators": {},
+          "parameters": [],
+          "reason": "Aucun chemin canonique vérifié dans le catalogue audité ; configuration administrateur requise."
+        },
+        {
+          "id": "mimo-ca-03",
+          "label": "ri-ConfigIndex",
+          "position": 3,
+          "technology": "LTE",
+          "discriminators": {},
+          "parameters": [
+            {
+              "param_key": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/physicalConfigDedicated/cqi-ReportConfig-r10/cqi-ReportPeriodic-r10/ri-ConfigIndex",
+              "technology": "LTE",
+              "discriminators": {}
+            },
+            {
+              "param_key": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/physicalConfigDedicated/cqi-ReportConfig/cqi-ReportPeriodic/ri-ConfigIndex",
+              "technology": "LTE",
+              "discriminators": {}
+            }
+          ],
+          "reason": null
+        },
+        {
+          "id": "mimo-ca-04",
+          "label": "nb SCell configurées",
+          "position": 4,
+          "technology": "LTE",
+          "discriminators": {},
+          "parameters": [],
+          "reason": "Aucun chemin canonique vérifié dans le catalogue audité ; configuration administrateur requise."
+        },
+        {
+          "id": "mimo-ca-05",
+          "label": "maxRank",
+          "position": 5,
+          "technology": "NR",
+          "discriminators": {},
+          "parameters": [],
+          "reason": "Aucun chemin canonique vérifié dans le catalogue audité ; configuration administrateur requise."
+        },
+        {
+          "id": "mimo-ca-06",
+          "label": "nrofPorts (CSI-RS)",
+          "position": 6,
+          "technology": "NR",
+          "discriminators": {},
+          "parameters": [],
+          "reason": "Aucun chemin canonique vérifié dans le catalogue audité ; configuration administrateur requise."
+        },
+        {
+          "id": "mimo-ca-07",
+          "label": "maxNrofCodeWordsScheduledByDCI",
+          "position": 7,
+          "technology": "NR",
+          "discriminators": {},
+          "parameters": [],
+          "reason": "Aucun chemin canonique vérifié dans le catalogue audité ; configuration administrateur requise."
+        }
+      ]
+    },
+    {
+      "id": "mac",
+      "label": "MAC",
+      "position": 7,
+      "entries": [
+        {
+          "id": "mac-01",
+          "label": "maxHARQ-Tx",
+          "position": 1,
+          "technology": "LTE",
+          "discriminators": {},
+          "parameters": [
+            {
+              "param_key": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/ul-SCH-Config/maxHARQ-Tx",
+              "technology": "LTE",
+              "discriminators": {}
+            },
+            {
+              "param_key": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/ul-SCH-Config/maxHARQ-Tx",
+              "technology": "LTE",
+              "discriminators": {}
+            }
+          ],
+          "reason": null
+        },
+        {
+          "id": "mac-02",
+          "label": "periodicBSR-Timer",
+          "position": 2,
+          "technology": "LTE",
+          "discriminators": {},
+          "parameters": [
+            {
+              "param_key": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/ul-SCH-Config/periodicBSR-Timer",
+              "technology": "LTE",
+              "discriminators": {}
+            },
+            {
+              "param_key": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/ul-SCH-Config/periodicBSR-Timer",
+              "technology": "LTE",
+              "discriminators": {}
+            }
+          ],
+          "reason": null
+        },
+        {
+          "id": "mac-03",
+          "label": "retxBSR-Timer",
+          "position": 3,
+          "technology": "LTE",
+          "discriminators": {},
+          "parameters": [
+            {
+              "param_key": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/ul-SCH-Config/retxBSR-Timer",
+              "technology": "LTE",
+              "discriminators": {}
+            },
+            {
+              "param_key": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/ul-SCH-Config/retxBSR-Timer",
+              "technology": "LTE",
+              "discriminators": {}
+            }
+          ],
+          "reason": null
+        },
+        {
+          "id": "mac-04",
+          "label": "periodicPHR-Timer",
+          "position": 4,
+          "technology": "LTE",
+          "discriminators": {},
+          "parameters": [
+            {
+              "param_key": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/phr-Config/periodicPHR-Timer",
+              "technology": "LTE",
+              "discriminators": {}
+            },
+            {
+              "param_key": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/phr-Config/periodicPHR-Timer",
+              "technology": "LTE",
+              "discriminators": {}
+            }
+          ],
+          "reason": null
+        },
+        {
+          "id": "mac-05",
+          "label": "prohibitPHR-Timer",
+          "position": 5,
+          "technology": "LTE",
+          "discriminators": {},
+          "parameters": [
+            {
+              "param_key": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/phr-Config/prohibitPHR-Timer",
+              "technology": "LTE",
+              "discriminators": {}
+            },
+            {
+              "param_key": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/phr-Config/prohibitPHR-Timer",
+              "technology": "LTE",
+              "discriminators": {}
+            }
+          ],
+          "reason": null
+        },
+        {
+          "id": "mac-06",
+          "label": "sr-ConfigIndex (période)",
+          "position": 6,
+          "technology": "LTE",
+          "discriminators": {},
+          "parameters": [
+            {
+              "param_key": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/physicalConfigDedicated/schedulingRequestConfig/sr-ConfigIndex",
+              "technology": "LTE",
+              "discriminators": {}
+            },
+            {
+              "param_key": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/physicalConfigDedicated/schedulingRequestConfig/sr-ConfigIndex",
+              "technology": "LTE",
+              "discriminators": {}
+            }
+          ],
+          "reason": null
+        },
+        {
+          "id": "mac-07",
+          "label": "dsr-TransMax",
+          "position": 7,
+          "technology": "LTE",
+          "discriminators": {},
+          "parameters": [
+            {
+              "param_key": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/physicalConfigDedicated/schedulingRequestConfig/dsr-TransMax",
+              "technology": "LTE",
+              "discriminators": {}
+            },
+            {
+              "param_key": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/physicalConfigDedicated/schedulingRequestConfig/dsr-TransMax",
+              "technology": "LTE",
+              "discriminators": {}
+            }
+          ],
+          "reason": null
+        },
+        {
+          "id": "mac-08",
+          "label": "timeAlignmentTimerDedicated",
+          "position": 8,
+          "technology": "LTE",
+          "discriminators": {},
+          "parameters": [
+            {
+              "param_key": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/timeAlignmentTimerDedicated",
+              "technology": "LTE",
+              "discriminators": {}
+            },
+            {
+              "param_key": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/timeAlignmentTimerDedicated",
+              "technology": "LTE",
+              "discriminators": {}
+            }
+          ],
+          "reason": null
+        },
+        {
+          "id": "mac-09",
+          "label": "sr-TransMax",
+          "position": 9,
+          "technology": "NR",
+          "discriminators": {},
+          "parameters": [],
+          "reason": "Aucun chemin canonique vérifié dans le catalogue audité ; configuration administrateur requise."
+        }
+      ]
+    },
+    {
+      "id": "rlc-pdcp",
+      "label": "RLC / PDCP",
+      "position": 8,
+      "entries": [
+        {
+          "id": "rlc-pdcp-01",
+          "label": "rlc-Config",
+          "position": 1,
+          "technology": "LTE",
+          "discriminators": {
+            "bearer_kind": "DRB"
+          },
+          "parameters": [
+            {
+              "param_key": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/drb-ToAddModList/rlc-Config",
+              "technology": "LTE",
+              "discriminators": {
+                "bearer_kind": "DRB"
+              }
+            }
+          ],
+          "reason": null
+        },
+        {
+          "id": "rlc-pdcp-02",
+          "label": "t-Reordering",
+          "position": 2,
+          "technology": "LTE",
+          "discriminators": {
+            "bearer_kind": "DRB",
+            "rlc_mode": "AM",
+            "direction": "DL"
+          },
+          "parameters": [
+            {
+              "param_key": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/drb-ToAddModList/rlc-Config/dl-AM-RLC/t-Reordering",
+              "technology": "LTE",
+              "discriminators": {
+                "bearer_kind": "DRB",
+                "rlc_mode": "AM",
+                "direction": "DL"
+              }
+            }
+          ],
+          "reason": null
+        },
+        {
+          "id": "rlc-pdcp-03",
+          "label": "t-Reordering",
+          "position": 3,
+          "technology": "LTE",
+          "discriminators": {
+            "bearer_kind": "DRB",
+            "rlc_mode": "UM",
+            "direction": "DL"
+          },
+          "parameters": [
+            {
+              "param_key": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/drb-ToAddModList/rlc-Config/dl-UM-RLC/t-Reordering",
+              "technology": "LTE",
+              "discriminators": {
+                "bearer_kind": "DRB",
+                "rlc_mode": "UM",
+                "direction": "DL"
+              }
+            }
+          ],
+          "reason": null
+        },
+        {
+          "id": "rlc-pdcp-04",
+          "label": "t-PollRetransmit",
+          "position": 4,
+          "technology": "LTE",
+          "discriminators": {
+            "bearer_kind": "DRB",
+            "rlc_mode": "AM",
+            "direction": "UL"
+          },
+          "parameters": [
+            {
+              "param_key": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/drb-ToAddModList/rlc-Config/ul-AM-RLC/t-PollRetransmit",
+              "technology": "LTE",
+              "discriminators": {
+                "bearer_kind": "DRB",
+                "rlc_mode": "AM",
+                "direction": "UL"
+              }
+            }
+          ],
+          "reason": null
+        },
+        {
+          "id": "rlc-pdcp-05",
+          "label": "maxRetxThreshold",
+          "position": 5,
+          "technology": "LTE",
+          "discriminators": {
+            "bearer_kind": "DRB",
+            "rlc_mode": "AM",
+            "direction": "UL"
+          },
+          "parameters": [
+            {
+              "param_key": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/drb-ToAddModList/rlc-Config/ul-AM-RLC/maxRetxThreshold",
+              "technology": "LTE",
+              "discriminators": {
+                "bearer_kind": "DRB",
+                "rlc_mode": "AM",
+                "direction": "UL"
+              }
+            }
+          ],
+          "reason": null
+        },
+        {
+          "id": "rlc-pdcp-06",
+          "label": "t-StatusProhibit",
+          "position": 6,
+          "technology": "LTE",
+          "discriminators": {
+            "bearer_kind": "DRB",
+            "rlc_mode": "AM",
+            "direction": "DL"
+          },
+          "parameters": [
+            {
+              "param_key": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/drb-ToAddModList/rlc-Config/dl-AM-RLC/t-StatusProhibit",
+              "technology": "LTE",
+              "discriminators": {
+                "bearer_kind": "DRB",
+                "rlc_mode": "AM",
+                "direction": "DL"
+              }
+            }
+          ],
+          "reason": null
+        },
+        {
+          "id": "rlc-pdcp-07",
+          "label": "sn-FieldLength",
+          "position": 7,
+          "technology": "LTE",
+          "discriminators": {
+            "rlc_mode": "UM"
+          },
+          "parameters": [
+            {
+              "param_key": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/drb-ToAddModList/rlc-Config/dl-UM-RLC/sn-FieldLength",
+              "technology": "LTE",
+              "discriminators": {
+                "rlc_mode": "UM"
+              }
+            },
+            {
+              "param_key": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/drb-ToAddModList/rlc-Config/ul-UM-RLC/sn-FieldLength",
+              "technology": "LTE",
+              "discriminators": {
+                "rlc_mode": "UM"
+              }
+            }
+          ],
+          "reason": null
+        },
+        {
+          "id": "rlc-pdcp-08",
+          "label": "discardTimer",
+          "position": 8,
+          "technology": "LTE",
+          "discriminators": {
+            "bearer_kind": "DRB"
+          },
+          "parameters": [
+            {
+              "param_key": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/drb-ToAddModList/pdcp-Config/discardTimer",
+              "technology": "LTE",
+              "discriminators": {
+                "bearer_kind": "DRB"
+              }
+            }
+          ],
+          "reason": null
+        },
+        {
+          "id": "rlc-pdcp-09",
+          "label": "headerCompression",
+          "position": 9,
+          "technology": "LTE",
+          "discriminators": {},
+          "parameters": [
+            {
+              "param_key": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/drb-ToAddModList/pdcp-Config/headerCompression",
+              "technology": "LTE",
+              "discriminators": {}
+            }
+          ],
+          "reason": null
+        },
+        {
+          "id": "rlc-pdcp-10",
+          "label": "t-Reassembly",
+          "position": 10,
+          "technology": "NR",
+          "discriminators": {},
+          "parameters": [],
+          "reason": "Aucun chemin canonique vérifié dans le catalogue audité ; configuration administrateur requise."
+        }
+      ]
+    },
+    {
+      "id": "drx",
+      "label": "DRX",
+      "position": 9,
+      "entries": [
+        {
+          "id": "drx-01",
+          "label": "drx-Config",
+          "position": 1,
+          "technology": "LTE",
+          "discriminators": {},
+          "parameters": [
+            {
+              "param_key": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/drx-Config",
+              "technology": "LTE",
+              "discriminators": {}
+            }
+          ],
+          "reason": null
+        },
+        {
+          "id": "drx-02",
+          "label": "longDRX-Cycle",
+          "position": 2,
+          "technology": "LTE",
+          "discriminators": {},
+          "parameters": [
+            {
+              "param_key": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/drx-Config/longDRX-CycleStartOffset",
+              "technology": "LTE",
+              "discriminators": {}
+            }
+          ],
+          "reason": null
+        },
+        {
+          "id": "drx-03",
+          "label": "onDurationTimer",
+          "position": 3,
+          "technology": "LTE",
+          "discriminators": {},
+          "parameters": [
+            {
+              "param_key": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/drx-Config/onDurationTimer",
+              "technology": "LTE",
+              "discriminators": {}
+            }
+          ],
+          "reason": null
+        },
+        {
+          "id": "drx-04",
+          "label": "drx-InactivityTimer",
+          "position": 4,
+          "technology": "LTE",
+          "discriminators": {},
+          "parameters": [
+            {
+              "param_key": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/drx-Config/drx-InactivityTimer",
+              "technology": "LTE",
+              "discriminators": {}
+            }
+          ],
+          "reason": null
+        },
+        {
+          "id": "drx-05",
+          "label": "shortDRX-Cycle",
+          "position": 5,
+          "technology": "LTE",
+          "discriminators": {},
+          "parameters": [
+            {
+              "param_key": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/drx-Config/shortDRX/shortDRX-Cycle",
+              "technology": "LTE",
+              "discriminators": {}
+            }
+          ],
+          "reason": null
+        },
+        {
+          "id": "drx-06",
+          "label": "drxShortCycleTimer",
+          "position": 6,
+          "technology": "LTE",
+          "discriminators": {},
+          "parameters": [
+            {
+              "param_key": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/drx-Config/shortDRX/drxShortCycleTimer",
+              "technology": "LTE",
+              "discriminators": {}
+            }
+          ],
+          "reason": null
+        },
+        {
+          "id": "drx-07",
+          "label": "drx-RetransmissionTimer",
+          "position": 7,
+          "technology": "LTE",
+          "discriminators": {},
+          "parameters": [
+            {
+              "param_key": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/drx-Config/drx-RetransmissionTimer",
+              "technology": "LTE",
+              "discriminators": {}
+            }
+          ],
+          "reason": null
+        },
+        {
+          "id": "drx-08",
+          "label": "drx-LongCycle",
+          "position": 8,
+          "technology": "NR",
+          "discriminators": {},
+          "parameters": [],
+          "reason": "Aucun chemin canonique vérifié dans le catalogue audité ; configuration administrateur requise."
+        }
+      ]
+    },
+    {
+      "id": "timers-rlf",
+      "label": "Timers & RLF",
+      "position": 10,
+      "entries": [
+        {
+          "id": "timers-rlf-01",
+          "label": "t310",
+          "position": 1,
+          "technology": "LTE",
+          "discriminators": {},
+          "parameters": [
+            {
+              "param_key": "systemInformation/systemInformation-r8/sib-TypeAndInfo/sib2/ue-TimersAndConstants/t310",
+              "technology": "LTE",
+              "discriminators": {}
+            }
+          ],
+          "reason": null
+        },
+        {
+          "id": "timers-rlf-02",
+          "label": "n310",
+          "position": 2,
+          "technology": "LTE",
+          "discriminators": {},
+          "parameters": [
+            {
+              "param_key": "systemInformation/systemInformation-r8/sib-TypeAndInfo/sib2/ue-TimersAndConstants/n310",
+              "technology": "LTE",
+              "discriminators": {}
+            }
+          ],
+          "reason": null
+        },
+        {
+          "id": "timers-rlf-03",
+          "label": "n311",
+          "position": 3,
+          "technology": "LTE",
+          "discriminators": {},
+          "parameters": [
+            {
+              "param_key": "systemInformation/systemInformation-r8/sib-TypeAndInfo/sib2/ue-TimersAndConstants/n311",
+              "technology": "LTE",
+              "discriminators": {}
+            }
+          ],
+          "reason": null
+        },
+        {
+          "id": "timers-rlf-04",
+          "label": "t311",
+          "position": 4,
+          "technology": "LTE",
+          "discriminators": {},
+          "parameters": [
+            {
+              "param_key": "systemInformation/systemInformation-r8/sib-TypeAndInfo/sib2/ue-TimersAndConstants/t311",
+              "technology": "LTE",
+              "discriminators": {}
+            }
+          ],
+          "reason": null
+        },
+        {
+          "id": "timers-rlf-05",
+          "label": "t301",
+          "position": 5,
+          "technology": "LTE",
+          "discriminators": {},
+          "parameters": [
+            {
+              "param_key": "systemInformation/systemInformation-r8/sib-TypeAndInfo/sib2/ue-TimersAndConstants/t301",
+              "technology": "LTE",
+              "discriminators": {}
+            }
+          ],
+          "reason": null
+        },
+        {
+          "id": "timers-rlf-06",
+          "label": "t300",
+          "position": 6,
+          "technology": "LTE",
+          "discriminators": {},
+          "parameters": [
+            {
+              "param_key": "systemInformation/systemInformation-r8/sib-TypeAndInfo/sib2/ue-TimersAndConstants/t300",
+              "technology": "LTE",
+              "discriminators": {}
+            }
+          ],
+          "reason": null
+        },
+        {
+          "id": "timers-rlf-07",
+          "label": "t310 (SCG)",
+          "position": 7,
+          "technology": "NR",
+          "discriminators": {},
+          "parameters": [],
+          "reason": "Aucun chemin canonique vérifié dans le catalogue audité ; configuration administrateur requise."
+        }
+      ]
+    },
+    {
+      "id": "autres",
+      "label": "Autres",
+      "position": 11,
+      "entries": []
+    }
+  ],
+  "maps": [
+    {
+      "technology": "LTE",
+      "path_prefix": "dl-Bandwidth",
+      "category_id": "phy"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/mobilityControlInfo/carrierBandwidth/dl-Bandwidth",
+      "category_id": "phy"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/physicalConfigDedicated/antennaInfo/explicitValue/transmissionMode",
+      "category_id": "phy"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/physicalConfigDedicated/antennaInfo/explicitValue/transmissionMode",
+      "category_id": "phy"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/physicalConfigDedicated/cqi-ReportConfig/cqi-ReportModeAperiodic",
+      "category_id": "phy"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/physicalConfigDedicated/cqi-ReportConfig-r10/cqi-ReportPeriodic-r10/cqi-pmi-ConfigIndex",
+      "category_id": "phy"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/physicalConfigDedicated/cqi-ReportConfig/cqi-ReportPeriodic/cqi-pmi-ConfigIndex",
+      "category_id": "phy"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/physicalConfigDedicated/soundingRS-UL-ConfigDedicated/srs-ConfigIndex",
+      "category_id": "phy"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/physicalConfigDedicated/soundingRS-UL-ConfigDedicated/srs-ConfigIndex",
+      "category_id": "phy"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/mobilityControlInfo/radioResourceConfigCommon/uplinkPowerControlCommon/p0-NominalPUSCH",
+      "category_id": "power-control"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/sib2/radioResourceConfigCommon/uplinkPowerControlCommon/p0-NominalPUSCH",
+      "category_id": "power-control"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/mobilityControlInfo/radioResourceConfigCommon/uplinkPowerControlCommon/alpha",
+      "category_id": "power-control"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/sib2/radioResourceConfigCommon/uplinkPowerControlCommon/alpha",
+      "category_id": "power-control"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/mobilityControlInfo/radioResourceConfigCommon/uplinkPowerControlCommon/p0-NominalPUCCH",
+      "category_id": "power-control"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/sib2/radioResourceConfigCommon/uplinkPowerControlCommon/p0-NominalPUCCH",
+      "category_id": "power-control"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/physicalConfigDedicated/uplinkPowerControlDedicated/p0-UE-PUSCH",
+      "category_id": "power-control"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/mobilityControlInfo/radioResourceConfigCommon/rach-ConfigCommon/powerRampingParameters/preambleInitialReceivedTargetPower",
+      "category_id": "power-control"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/sib2/radioResourceConfigCommon/rach-ConfigCommon/powerRampingParameters/preambleInitialReceivedTargetPower",
+      "category_id": "power-control"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/mobilityControlInfo/radioResourceConfigCommon/rach-ConfigCommon/powerRampingParameters/powerRampingStep",
+      "category_id": "power-control"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/sib2/radioResourceConfigCommon/rach-ConfigCommon/powerRampingParameters/powerRampingStep",
+      "category_id": "power-control"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/mobilityControlInfo/radioResourceConfigCommon/p-Max",
+      "category_id": "power-control"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "systemInformationBlockType1/p-Max",
+      "category_id": "power-control"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/sib3/intraFreqCellReselectionInfo/p-Max",
+      "category_id": "power-control"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/sib5/interFreqCarrierFreqList/p-Max",
+      "category_id": "power-control"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/reportConfig/triggerType/eventId/a3-Offset",
+      "category_id": "mobility"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/reportConfig/triggerType/hysteresis",
+      "category_id": "mobility"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/reportConfig/triggerType/timeToTrigger",
+      "category_id": "mobility"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/reportConfig/triggerType/eventId/a2-Threshold/threshold-RSRP",
+      "category_id": "mobility"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/reportConfig/triggerType/eventId/a1-Threshold/threshold-RSRP",
+      "category_id": "mobility"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/measObjectToAddModList/measObject/cellsToAddModList/cellIndividualOffset",
+      "category_id": "mobility"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/quantityConfig/quantityConfigEUTRA/filterCoefficientRSRP",
+      "category_id": "mobility"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/mobilityControlInfo/t304",
+      "category_id": "mobility"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "rrcConnectionRelease/rrcConnectionRelease-r8/idleModeMobilityControlInfo/freqPriorityListEUTRA/cellReselectionPriority",
+      "category_id": "layering-idle"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "rrcConnectionRelease/rrcConnectionRelease-r8/idleModeMobilityControlInfo/freqPriorityListGERAN/cellReselectionPriority",
+      "category_id": "layering-idle"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "rrcConnectionRelease/rrcConnectionRelease-r8/idleModeMobilityControlInfo/freqPriorityListUTRA-FDD/cellReselectionPriority",
+      "category_id": "layering-idle"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/sib3/cellReselectionServingFreqInfo/cellReselectionPriority",
+      "category_id": "layering-idle"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/sib6/carrierFreqListUTRA-FDD/cellReselectionPriority",
+      "category_id": "layering-idle"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/sib7/carrierFreqsInfoList/commonInfo/cellReselectionPriority",
+      "category_id": "layering-idle"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/sib5/interFreqCarrierFreqList/cellReselectionPriority",
+      "category_id": "layering-idle"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/sib5/interFreqCarrierFreqList/threshX-High",
+      "category_id": "layering-idle"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/sib6/carrierFreqListUTRA-FDD/threshX-High",
+      "category_id": "layering-idle"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/sib7/carrierFreqsInfoList/commonInfo/threshX-High",
+      "category_id": "layering-idle"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/sib5/interFreqCarrierFreqList/threshX-Low",
+      "category_id": "layering-idle"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/sib6/carrierFreqListUTRA-FDD/threshX-Low",
+      "category_id": "layering-idle"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/sib7/carrierFreqsInfoList/commonInfo/threshX-Low",
+      "category_id": "layering-idle"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/sib3/cellReselectionServingFreqInfo/threshServingLow",
+      "category_id": "layering-idle"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/sib3/intraFreqCellReselectionInfo/s-IntraSearch",
+      "category_id": "layering-idle"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/sib3/cellReselectionServingFreqInfo/s-NonIntraSearch",
+      "category_id": "layering-idle"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "systemInformationBlockType1/cellSelectionInfo/q-RxLevMin",
+      "category_id": "layering-idle"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/sib3/intraFreqCellReselectionInfo/q-RxLevMin",
+      "category_id": "layering-idle"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/sib5/interFreqCarrierFreqList/q-RxLevMin",
+      "category_id": "layering-idle"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/sib6/carrierFreqListUTRA-FDD/q-RxLevMin",
+      "category_id": "layering-idle"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/sib7/carrierFreqsInfoList/commonInfo/q-RxLevMin",
+      "category_id": "layering-idle"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/sib3/cellReselectionInfoCommon/q-Hyst",
+      "category_id": "layering-idle"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "rrcConnectionRelease/rrcConnectionRelease-r8/redirectedCarrierInfo",
+      "category_id": "layering-idle"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/s-Measure",
+      "category_id": "layering-connected"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/physicalConfigDedicated/cqi-ReportConfig-r10/cqi-ReportPeriodic-r10/ri-ConfigIndex",
+      "category_id": "mimo-ca"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/physicalConfigDedicated/cqi-ReportConfig/cqi-ReportPeriodic/ri-ConfigIndex",
+      "category_id": "mimo-ca"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/ul-SCH-Config/maxHARQ-Tx",
+      "category_id": "mac"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/ul-SCH-Config/maxHARQ-Tx",
+      "category_id": "mac"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/ul-SCH-Config/periodicBSR-Timer",
+      "category_id": "mac"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/ul-SCH-Config/periodicBSR-Timer",
+      "category_id": "mac"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/ul-SCH-Config/retxBSR-Timer",
+      "category_id": "mac"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/ul-SCH-Config/retxBSR-Timer",
+      "category_id": "mac"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/phr-Config/periodicPHR-Timer",
+      "category_id": "mac"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/phr-Config/periodicPHR-Timer",
+      "category_id": "mac"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/phr-Config/prohibitPHR-Timer",
+      "category_id": "mac"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/phr-Config/prohibitPHR-Timer",
+      "category_id": "mac"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/physicalConfigDedicated/schedulingRequestConfig/sr-ConfigIndex",
+      "category_id": "mac"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/physicalConfigDedicated/schedulingRequestConfig/sr-ConfigIndex",
+      "category_id": "mac"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/physicalConfigDedicated/schedulingRequestConfig/dsr-TransMax",
+      "category_id": "mac"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/physicalConfigDedicated/schedulingRequestConfig/dsr-TransMax",
+      "category_id": "mac"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/timeAlignmentTimerDedicated",
+      "category_id": "mac"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/timeAlignmentTimerDedicated",
+      "category_id": "mac"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/drb-ToAddModList/rlc-Config",
+      "category_id": "rlc-pdcp"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/drb-ToAddModList/rlc-Config/dl-AM-RLC/t-Reordering",
+      "category_id": "rlc-pdcp"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/drb-ToAddModList/rlc-Config/dl-UM-RLC/t-Reordering",
+      "category_id": "rlc-pdcp"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/drb-ToAddModList/rlc-Config/ul-AM-RLC/t-PollRetransmit",
+      "category_id": "rlc-pdcp"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/drb-ToAddModList/rlc-Config/ul-AM-RLC/maxRetxThreshold",
+      "category_id": "rlc-pdcp"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/drb-ToAddModList/rlc-Config/dl-AM-RLC/t-StatusProhibit",
+      "category_id": "rlc-pdcp"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/drb-ToAddModList/rlc-Config/dl-UM-RLC/sn-FieldLength",
+      "category_id": "rlc-pdcp"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/drb-ToAddModList/rlc-Config/ul-UM-RLC/sn-FieldLength",
+      "category_id": "rlc-pdcp"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/drb-ToAddModList/pdcp-Config/discardTimer",
+      "category_id": "rlc-pdcp"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/drb-ToAddModList/pdcp-Config/headerCompression",
+      "category_id": "rlc-pdcp"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/drx-Config",
+      "category_id": "drx"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/drx-Config/longDRX-CycleStartOffset",
+      "category_id": "drx"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/drx-Config/onDurationTimer",
+      "category_id": "drx"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/drx-Config/drx-InactivityTimer",
+      "category_id": "drx"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/drx-Config/shortDRX/shortDRX-Cycle",
+      "category_id": "drx"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/drx-Config/shortDRX/drxShortCycleTimer",
+      "category_id": "drx"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/drx-Config/drx-RetransmissionTimer",
+      "category_id": "drx"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/sib2/ue-TimersAndConstants/t310",
+      "category_id": "timers-rlf"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/sib2/ue-TimersAndConstants/n310",
+      "category_id": "timers-rlf"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/sib2/ue-TimersAndConstants/n311",
+      "category_id": "timers-rlf"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/sib2/ue-TimersAndConstants/t311",
+      "category_id": "timers-rlf"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/sib2/ue-TimersAndConstants/t301",
+      "category_id": "timers-rlf"
+    },
+    {
+      "technology": "LTE",
+      "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/sib2/ue-TimersAndConstants/t300",
+      "category_id": "timers-rlf"
+    }
+  ]
+}

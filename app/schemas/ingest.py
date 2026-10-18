@@ -83,3 +83,15 @@ class NmfImportReport(BaseModel):
     gps_coverage_pct: float | None   # None si aucun event — jamais 0 par défaut
     operators_seen: dict[str, int]   # PLMN → opérateur → n events
     technos_seen: dict[str, int]
+
+
+class NmfImportJobView(BaseModel):
+    id: str
+    project_id: str
+    status: Literal['queued', 'decoding', 'finalizing', 'done', 'error']
+    files_total: int
+    files_done: int
+    files_error: int
+    by_file: list[NmfFileEntry]
+    error_msg: str | None
+    report: NmfImportReport | None
