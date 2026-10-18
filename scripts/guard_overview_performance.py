@@ -66,5 +66,5 @@ for encoding in ["identity", "gzip", "gzip;q=0"]:
     compressed = response.headers.get("content-encoding") == "gzip"
     assert compressed == (encoding == "gzip")
     payload = gzip.decompress(response.body) if compressed else response.body
-    assert json.loads(payload) == expected.model_dump()
+    assert json.loads(payload) == expected.model_dump(mode="json")
 print("PASS: direct JSON + gzip/identity/disabled gzip preserve exact payload")
