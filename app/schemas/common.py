@@ -72,14 +72,14 @@ class MetricValue(BaseModel):
 
 class MeasurementPoint(BaseModel):
     id: str
-    lat: float
-    lng: float
-    operator: Operator
-    tech: Tech
-    service: Service
-    band: str
-    dep: str
-    site: str
+    lat: float | None
+    lng: float | None
+    operator: Operator | None
+    tech: Tech | None
+    service: Service | None
+    band: str | None
+    dep: str | None
+    site: str | None
     ts: str
     dl: float | None
     rsrp: float | None

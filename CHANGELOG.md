@@ -1,3 +1,10 @@
+## 0.52.0 (minor) — BC4-BACK 2026-10-18 — Overview performance and nullable measurements
+
+- Overview reads only its fourteen response fields rather than materializing full ORM measurement identities.
+- Trend indexing is linear in observations, preserving buckets, observation order within each bucket, fmean rounding, complete point population and all existing filters.
+- Measurement response permits null GPS and attribution fields already nullable in storage. No fabricated coordinates, operator, service or labels; no migration or source writes.
+- Offline parity/performance guard: scripts/guard_overview_performance.py. No production test fixtures or cleanup.
+
 ## 0.51.0 (minor) — bc4-back 2026-10-18 — Templates RRC par catégorie (Agent BC1)
 
 - Migration 0024 après la 0023 NMF déjà appliquée : configuration dict_category, dict_category_map et dict_template ; aucune mesure ni référence géographique injectée.

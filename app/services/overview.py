@@ -104,7 +104,13 @@ def compute_overview(db: Session, f: FilterContext) -> OverviewData:
     if not project:
         raise LookupError("project not found")
 
-    q = db.query(MeasurementPoint).filter(MeasurementPoint.project_id == project.id)
+    # Scalar rows avoid materializing hundreds of thousands of ORM identities
+    # and unused ingestion columns. The returned point population is unchanged.
+    fields = ("id", "lat", "lng", "operator", "tech", "service", "band", "dep",
+              "site", "ts", "dl", "rsrp", "sinr", "latency")
+    q = db.query(*(getattr(MeasurementPoint, key) for key in fields)).filter(
+        MeasurementPoint.project_id == project.id
+    )
     q = apply_measurement_filters(q, f)
     points = q.all()
 
@@ -142,16 +148,19 @@ def compute_overview(db: Session, f: FilterContext) -> OverviewData:
         )
 
     metric = f.metric or "dl"
-    days = sorted({p.ts[:10] for p in points})
+    # Index each observation once, rather than scanning the full population
+    # again for every day/operator pair. Keep input order and fmean rounding.
+    buckets = defaultdict(lambda: defaultdict(list))
+    for point in points:
+        day = buckets[point.ts[:10]]
+        value = getattr(point, metric)
+        if value is not None:
+            day[point.operator].append(value)
     trend: list[TrendPoint] = []
-    for day in days:
-        series: dict[str, float | None] = {}
+    for day in sorted(buckets):
+        series = {}
         for op in project.operators:
-            vals = [
-                getattr(p, metric)
-                for p in points
-                if p.operator == op and p.ts.startswith(day) and getattr(p, metric) is not None
-            ]
+            vals = buckets[day].get(op, [])
             series[op] = round(fmean(vals), 1) if vals else None
         trend.append(TrendPoint(day=day, series=series))
 
