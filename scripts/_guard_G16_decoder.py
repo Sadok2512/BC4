@@ -1,7 +1,7 @@
 """Manual G16. Run in API container; --phase before before deploying, after after jobs.
 No subscriber values are written to reports. SQL uses parameters, never literal identities.
 """
-import argparse,csv,json,math,hashlib
+import argparse,csv,json,math,hashlib,re
 from pathlib import Path
 from datetime import datetime,timezone
 from collections import Counter
@@ -119,9 +119,12 @@ with SessionLocal() as db:
     print('G16d completed',flush=True)
     private_counts={}
     # All Deep/Light tables, all stored columns. Literal identities never appear in logs/files.
+    identity_pattern='|'.join(re.escape(v) for v in sorted(identities))
     for table in ('nmf_event_deep','nmf_event_group','nmf_event_light','nmf_event_light_group'):
-        q=f"SELECT count(*) FROM {table} d WHERE EXISTS (SELECT 1 FROM unnest(CAST(:identities AS text[])) identity WHERE strpos(jsonb_strip_nulls(to_jsonb(d))::text,identity)>0)"
-        private_counts[table]=query(db,q,{'identities':sorted(identities)},private=True).scalar_one()
+        # Grep the complete PostgreSQL row representation once per row. Escaping
+        # makes every alternative a literal identity, including leading '+'.
+        q=f"SELECT count(*) FROM {table} d WHERE d::text ~ :identity_pattern"
+        private_counts[table]=query(db,q,{'identity_pattern':identity_pattern},private=True).scalar_one() if identities else 0
     results['G16e']=dict(pass_=not any(private_counts.values()),identities_checked=len(identities),occurrences=private_counts)
     print('G16e completed',flush=True)
     before=json.loads((out/'baseline.json').read_text());after=baseline(db);save('after.json',after)
