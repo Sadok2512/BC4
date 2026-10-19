@@ -65,7 +65,11 @@ def decode_capture(db,pid,cap,level,*,force=False):
     file=file[0]
     if old and old['decode_level']=='deep':level='deep'  # Never downgrade or erase retained observations.
     if level=='deep':
-        db.execute(text('SELECT nmf_decoder_partition(:cap)'),params)
+        # Provision empty partitions in a short independent transaction. Holding the
+        # parent DDL lock during decode would block readers for the whole capture.
+        from app.db import engine
+        with engine.begin() as ddl:
+            ddl.execute(text('SELECT nmf_decoder_partition(:cap)'),{'cap':cap})
         for table in ('nmf_event_group','nmf_event_deep'):
             db.execute(text('DELETE FROM '+table+' WHERE project_id=:pid AND capture_id=:cap'),params)
     light=Light();deep_rows=[];group_rows=[];n=partial=0;version='unknown'
