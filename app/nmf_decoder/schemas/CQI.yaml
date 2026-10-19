@@ -1,0 +1,202 @@
+{
+  "event": "CQI",
+  "systems": [
+    7
+  ],
+  "system_col": 4,
+  "min_format": "2.19",
+  "schema_version": "1.0.0",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 5,
+      "code": "cqi.n_params",
+      "label": "#Params",
+      "type": "int",
+      "unit": "n",
+      "proof": "NFF 2.19 CQI Parameters for LTE #1",
+      "agg": "last",
+      "metric": false
+    },
+    {
+      "col": 6,
+      "code": "cqi.sample_duration",
+      "label": "Sample duration",
+      "type": "int",
+      "unit": "ms",
+      "proof": "NFF 2.19 CQI Parameters for LTE #2",
+      "agg": "mean",
+      "range": [
+        0.0,
+        null
+      ]
+    },
+    {
+      "col": 7,
+      "code": "cqi.req_rate",
+      "label": "Requested throughput",
+      "type": "int",
+      "unit": "bit/s",
+      "proof": "NFF 2.19 CQI Parameters for LTE #3",
+      "agg": "mean",
+      "range": [
+        0.0,
+        null
+      ]
+    },
+    {
+      "col": 8,
+      "code": "cqi.wb_cqi_0",
+      "label": "Wideband CQI cw0",
+      "type": "int",
+      "unit": "index",
+      "proof": "NFF 2.19 CQI Parameters for LTE #4",
+      "agg": "mean",
+      "range": [
+        0,
+        15
+      ]
+    },
+    {
+      "col": 9,
+      "code": "cqi.wb_cqi_1",
+      "label": "Wideband CQI cw1",
+      "type": "int",
+      "unit": "index",
+      "proof": "NFF 2.19 CQI Parameters for LTE #5",
+      "agg": "mean",
+      "range": [
+        0,
+        15
+      ]
+    },
+    {
+      "col": 10,
+      "code": "cqi.sb_cqi_0",
+      "label": "Subband CQI cw0",
+      "type": "int",
+      "unit": "index",
+      "proof": "NFF 2.19 CQI Parameters for LTE #6",
+      "agg": "mean",
+      "range": [
+        0,
+        15
+      ]
+    },
+    {
+      "col": 11,
+      "code": "cqi.sb_cqi_1",
+      "label": "Subband CQI cw1",
+      "type": "int",
+      "unit": "index",
+      "proof": "NFF 2.19 CQI Parameters for LTE #7",
+      "agg": "mean",
+      "range": [
+        0,
+        15
+      ]
+    },
+    {
+      "col": 12,
+      "code": "cqi.wb_pmi",
+      "label": "Wideband PMI",
+      "type": "int",
+      "unit": "index",
+      "proof": "NFF 2.19 CQI Parameters for LTE #8",
+      "agg": "mean"
+    },
+    {
+      "col": 13,
+      "code": "cqi.cell_type",
+      "label": "Serving cell type",
+      "type": "int",
+      "unit": "enum",
+      "proof": "NFF 2.19 CQI Parameters for LTE #9",
+      "agg": "dominant",
+      "range": [
+        0,
+        1
+      ],
+      "dimension": true
+    }
+  ],
+  "groups": [
+    {
+      "name": "ranks",
+      "fields": [
+        {
+          "code": "cqi.requested_rank_pct",
+          "label": "cqi.requested_rank_pct",
+          "type": "float",
+          "unit": "%",
+          "agg": "mean",
+          "range": [
+            0,
+            100
+          ],
+          "proof": "NFF 2.19 CQI LTE ranks #1"
+        },
+        {
+          "code": "cqi.rank",
+          "label": "cqi.rank",
+          "type": "int",
+          "unit": "index",
+          "agg": "dominant",
+          "weight": "requested_rank_pct",
+          "range": [
+            1,
+            4
+          ],
+          "proof": "NFF 2.19 CQI LTE ranks #2"
+        }
+      ],
+      "start": {
+        "header_col": 5
+      },
+      "count_code": "cqi.n_ranks",
+      "params_code": "cqi.params_ranks",
+      "proof": "NFF 2.19 CQI LTE #ranks count / params"
+    },
+    {
+      "name": "subbands",
+      "fields": [
+        {
+          "code": "cqi.subband_index",
+          "label": "cqi.subband_index",
+          "type": "int",
+          "unit": "index",
+          "agg": null,
+          "proof": "NFF 2.19 CQI LTE subbands #1"
+        },
+        {
+          "code": "cqi.cw0_subband",
+          "label": "cqi.cw0_subband",
+          "type": "int",
+          "unit": "index",
+          "agg": "mean",
+          "range": [
+            0,
+            15
+          ],
+          "proof": "NFF 2.19 CQI LTE subbands #2"
+        },
+        {
+          "code": "cqi.cw1_subband",
+          "label": "cqi.cw1_subband",
+          "type": "int",
+          "unit": "index",
+          "agg": "mean",
+          "range": [
+            0,
+            15
+          ],
+          "proof": "NFF 2.19 CQI LTE subbands #3"
+        }
+      ],
+      "start": "previous_end",
+      "count_code": "cqi.n_subbands",
+      "params_code": "cqi.params_subbands",
+      "proof": "NFF 2.19 CQI LTE #subbands count / params"
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "event": "TAD",
+  "systems": [
+    7
+  ],
+  "system_col": 4,
+  "min_format": "2.19",
+  "schema_version": "1.0.0",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 5,
+      "code": "tad.ta",
+      "label": "Timing advance",
+      "type": "int",
+      "unit": "TA units",
+      "proof": "NFF 2.19 TAD LTE #1",
+      "agg": "mean",
+      "range": [
+        0,
+        1282
+      ]
+    }
+  ],
+  "groups": []
+}

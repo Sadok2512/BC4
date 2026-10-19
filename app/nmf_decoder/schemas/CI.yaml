@@ -1,0 +1,96 @@
+{
+  "event": "CI",
+  "systems": [
+    7
+  ],
+  "system_col": 4,
+  "min_format": "2.19",
+  "schema_version": "1.0.0",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 5,
+      "code": "ci.hdr_n",
+      "label": "#Header params",
+      "type": "int",
+      "unit": "n",
+      "proof": "NFF 2.19 CI LTE #1",
+      "agg": "last",
+      "metric": false
+    },
+    {
+      "col": 6,
+      "code": "ci.rs_snr",
+      "label": "RS SNR (SINR)",
+      "type": "float",
+      "unit": "dB",
+      "proof": "NFF 2.19 CI Parameters for LTE #2",
+      "agg": "mean"
+    },
+    {
+      "col": 7,
+      "code": "ci.cell_type",
+      "label": "Serving cell type",
+      "type": "int",
+      "unit": "enum",
+      "proof": "NFF 2.19 CI LTE #3",
+      "agg": "dominant",
+      "range": [
+        0,
+        1
+      ],
+      "dimension": true
+    }
+  ],
+  "groups": [
+    {
+      "name": "antennas",
+      "fields": [
+        {
+          "code": "ci.snr_port",
+          "label": "ci.snr_port",
+          "type": "float",
+          "unit": "dB",
+          "agg": "mean",
+          "proof": "NFF 2.19 CI LTE antennas #1"
+        },
+        {
+          "code": "ci.port",
+          "label": "ci.port",
+          "type": "int",
+          "unit": "index",
+          "agg": "dominant",
+          "enum": [
+            0,
+            1,
+            2,
+            3,
+            100,
+            101,
+            102,
+            103,
+            110,
+            111,
+            112,
+            113,
+            120,
+            121,
+            122,
+            123,
+            130,
+            131,
+            132,
+            133
+          ],
+          "proof": "NFF 2.19 CI LTE antennas #2"
+        }
+      ],
+      "start": {
+        "header_col": 5
+      },
+      "count_code": "ci.n_antennas",
+      "params_code": "ci.params_antennas",
+      "proof": "NFF 2.19 CI LTE #antennas count / params"
+    }
+  ]
+}

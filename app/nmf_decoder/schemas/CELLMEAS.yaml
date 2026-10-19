@@ -1,0 +1,129 @@
+{
+  "event": "CELLMEAS",
+  "systems": [
+    7
+  ],
+  "system_col": 4,
+  "min_format": "2.19",
+  "schema_version": "1.0.0",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 5,
+      "code": "cellmeas.hdr_n",
+      "label": "#Header params",
+      "type": "int",
+      "unit": "n",
+      "proof": "NFF 2.19 CELLMEAS LTE #1",
+      "agg": "last",
+      "metric": false
+    }
+  ],
+  "groups": [
+    {
+      "name": "cells",
+      "fields": [
+        {
+          "code": "cell.type",
+          "label": "Cell type (0 serving…)",
+          "type": "int",
+          "unit": "enum",
+          "agg": "dominant",
+          "proof": "NFF 2.19 CELLMEAS Parameters for LTE cell #1"
+        },
+        {
+          "code": "cell.band",
+          "label": "Band (code Nemo)",
+          "type": "int",
+          "unit": "code",
+          "agg": "dominant",
+          "proof": "NFF 2.19 CELLMEAS Parameters for LTE cell #2"
+        },
+        {
+          "code": "cell.ch",
+          "label": "Channel number (EARFCN)",
+          "type": "int",
+          "unit": "earfcn",
+          "agg": "dominant",
+          "proof": "NFF 2.19 CELLMEAS Parameters for LTE cell #3"
+        },
+        {
+          "code": "cell.pci",
+          "label": "PCI",
+          "type": "int",
+          "unit": "id",
+          "agg": "dominant",
+          "proof": "NFF 2.19 CELLMEAS Parameters for LTE cell #4",
+          "range": [
+            0,
+            503
+          ]
+        },
+        {
+          "code": "cell.rssi",
+          "label": "E-UTRAN carrier RSSI",
+          "type": "float",
+          "unit": "dBm",
+          "agg": "mean",
+          "proof": "NFF 2.19 CELLMEAS Parameters for LTE cell #5"
+        },
+        {
+          "code": "cell.rsrp",
+          "label": "RSRP",
+          "type": "float",
+          "unit": "dBm",
+          "agg": "mean",
+          "proof": "NFF 2.19 CELLMEAS Parameters for LTE cell #6",
+          "range": [
+            -140,
+            0
+          ]
+        },
+        {
+          "code": "cell.rsrq",
+          "label": "RSRQ",
+          "type": "float",
+          "unit": "dB",
+          "agg": "mean",
+          "proof": "NFF 2.19 CELLMEAS Parameters for LTE cell #7",
+          "range": [
+            -30,
+            0
+          ]
+        },
+        {
+          "code": "cell.timing",
+          "label": "Cell frame timing",
+          "type": "int",
+          "unit": "Ts",
+          "agg": "mean",
+          "proof": "NFF 2.19 CELLMEAS Parameters for LTE cell #8",
+          "range": [
+            0,
+            307199
+          ]
+        },
+        {
+          "code": "cell.pathloss",
+          "label": "Pathloss",
+          "type": "float",
+          "unit": "dB",
+          "agg": "mean",
+          "proof": "NFF 2.19 CELLMEAS Parameters for LTE cell #9",
+          "range": [
+            0,
+            170
+          ]
+        }
+      ],
+      "start": {
+        "header_col": 5
+      },
+      "count_code": "cellmeas.n_cells",
+      "params_code": "cellmeas.params_cells",
+      "proof": "NFF 2.19 CELLMEAS LTE #cells count / params",
+      "aggregate_selection": "first",
+      "aggregation_note": "Light exposes first reported cell/port only; every set is retained in Deep, no averaging across cells/ports."
+    }
+  ]
+}

@@ -1,0 +1,245 @@
+{
+  "event": "PLAID",
+  "systems": [
+    7
+  ],
+  "system_col": 4,
+  "min_format": "2.19",
+  "schema_version": "1.0.0",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 5,
+      "code": "plaid.hdr_n",
+      "label": "#Header params (5 en 2.19, 7 observé en 2.59)",
+      "type": "int",
+      "unit": "n",
+      "proof": "NFF 2.19 PLAID LTE #1",
+      "agg": "last",
+      "metric": false
+    },
+    {
+      "col": 6,
+      "code": "plaid.sample_duration",
+      "label": "Sample duration",
+      "type": "int",
+      "unit": "ms",
+      "proof": "NFF 2.19 PLAID Parameters for LTE #2",
+      "agg": "mean",
+      "range": [
+        0.0,
+        null
+      ]
+    },
+    {
+      "col": 7,
+      "code": "plaid.prb_util_dl",
+      "label": "PRB utilization DL",
+      "type": "float",
+      "unit": "%",
+      "proof": "NFF 2.19 PLAID Parameters for LTE #3",
+      "agg": "mean",
+      "range": [
+        0,
+        100
+      ]
+    },
+    {
+      "col": 8,
+      "code": "plaid.dl_tbs_avg",
+      "label": "PDSCH average TBS",
+      "type": "int",
+      "unit": "bit",
+      "proof": "NFF 2.19 PLAID Parameters for LTE #4",
+      "agg": "mean",
+      "range": [
+        0.0,
+        null
+      ]
+    },
+    {
+      "col": 9,
+      "code": "plaid.dl_tbs_max",
+      "label": "PDSCH max TBS",
+      "type": "int",
+      "unit": "bit",
+      "proof": "NFF 2.19 PLAID Parameters for LTE #5",
+      "agg": "mean",
+      "range": [
+        0.0,
+        null
+      ]
+    },
+    {
+      "col": 10,
+      "code": "plaid.cell_type",
+      "label": "Serving cell type",
+      "type": "int",
+      "unit": "enum",
+      "proof": "NFF 2.19 PLAID Parameters for LTE #6",
+      "agg": "dominant",
+      "range": [
+        0,
+        1
+      ],
+      "dimension": true
+    }
+  ],
+  "groups": [
+    {
+      "name": "pla",
+      "fields": [
+        {
+          "code": "plaid.percentage",
+          "label": "plaid.percentage",
+          "type": "float",
+          "unit": "%",
+          "agg": "mean",
+          "range": [
+            0,
+            100
+          ],
+          "proof": "NFF 2.19 PLAID LTE pla #1"
+        },
+        {
+          "code": "plaid.rank",
+          "label": "plaid.rank",
+          "type": "int",
+          "unit": "index",
+          "agg": "dominant",
+          "weight": "percentage",
+          "range": [
+            0,
+            4
+          ],
+          "proof": "NFF 2.19 PLAID LTE pla #2"
+        },
+        {
+          "code": "plaid.mod0",
+          "label": "plaid.mod0",
+          "type": "int",
+          "unit": "index",
+          "agg": "dominant",
+          "weight": "percentage",
+          "range": [
+            1,
+            3
+          ],
+          "proof": "NFF 2.19 PLAID LTE pla #3"
+        },
+        {
+          "code": "plaid.mcs0",
+          "label": "plaid.mcs0",
+          "type": "int",
+          "unit": "index",
+          "agg": "mean",
+          "weight": "percentage",
+          "range": [
+            0,
+            31
+          ],
+          "proof": "NFF 2.19 PLAID LTE pla #4"
+        },
+        {
+          "code": "plaid.mod1",
+          "label": "plaid.mod1",
+          "type": "int",
+          "unit": "index",
+          "agg": "dominant",
+          "weight": "percentage",
+          "range": [
+            1,
+            3
+          ],
+          "proof": "NFF 2.19 PLAID LTE pla #5"
+        },
+        {
+          "code": "plaid.mcs1",
+          "label": "plaid.mcs1",
+          "type": "int",
+          "unit": "index",
+          "agg": "mean",
+          "weight": "percentage",
+          "range": [
+            0,
+            31
+          ],
+          "proof": "NFF 2.19 PLAID LTE pla #6"
+        }
+      ],
+      "start": {
+        "header_col": 5
+      },
+      "count_code": "plaid.n_pla",
+      "params_code": "plaid.params_pla",
+      "proof": "NFF 2.19 PLAID LTE #pla count / params"
+    },
+    {
+      "name": "prbs",
+      "fields": [
+        {
+          "code": "plaid.prb_percentage",
+          "label": "plaid.prb_percentage",
+          "type": "float",
+          "unit": "%",
+          "agg": "mean",
+          "range": [
+            0,
+            100
+          ],
+          "proof": "NFF 2.19 PLAID LTE prbs #1"
+        },
+        {
+          "code": "plaid.prbs",
+          "label": "plaid.prbs",
+          "type": "int",
+          "unit": "index",
+          "agg": "mean",
+          "weight": "prb_percentage",
+          "range": [
+            0,
+            100
+          ],
+          "proof": "NFF 2.19 PLAID LTE prbs #2"
+        }
+      ],
+      "start": "previous_end",
+      "count_code": "plaid.n_prbs",
+      "params_code": "plaid.params_prbs",
+      "proof": "NFF 2.19 PLAID LTE #prbs count / params"
+    },
+    {
+      "name": "prb_indexes",
+      "fields": [
+        {
+          "code": "plaid.prb_index_util",
+          "label": "plaid.prb_index_util",
+          "type": "float",
+          "unit": "%",
+          "agg": "mean",
+          "range": [
+            0,
+            100
+          ],
+          "proof": "NFF 2.19 PLAID LTE prb_indexes #1"
+        },
+        {
+          "code": "plaid.prb_index",
+          "label": "plaid.prb_index",
+          "type": "int",
+          "unit": "index",
+          "agg": null,
+          "range": [
+            0,
+            99
+          ],
+          "proof": "NFF 2.19 PLAID LTE prb_indexes #2"
+        }
+      ],
+      "start": "previous_end",
+      "count_code": "plaid.n_prb_indexes",
+      "params_code": "plaid.params_prb_indexes",
+      "proof": "NFF 2.19 PLAID LTE #prb_indexes count / params"
+    }
+  ]
+}

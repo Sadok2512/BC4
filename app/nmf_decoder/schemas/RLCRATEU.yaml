@@ -1,0 +1,122 @@
+{
+  "event": "RLCRATEU",
+  "systems": [
+    7
+  ],
+  "system_col": 4,
+  "min_format": "2.19",
+  "schema_version": "1.0.0",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 5,
+      "code": "rlc.hdr_n",
+      "label": "#Header params",
+      "type": "int",
+      "unit": "n",
+      "proof": "NFF 2.19 RLCRATEU LTE #1",
+      "agg": "last",
+      "metric": false
+    },
+    {
+      "col": 6,
+      "code": "rlc.ul_bitrate",
+      "label": "RLC UL throughput",
+      "type": "int",
+      "unit": "bit/s",
+      "proof": "NFF 2.19 RLCRATEU LTE #2",
+      "agg": "mean",
+      "range": [
+        0.0,
+        null
+      ]
+    },
+    {
+      "col": 7,
+      "code": "rlc.ul_block_rate",
+      "label": "RLC UL block rate",
+      "type": "int",
+      "unit": "blocks",
+      "proof": "NFF 2.19 RLCRATEU LTE #3",
+      "agg": "mean",
+      "range": [
+        0.0,
+        null
+      ]
+    },
+    {
+      "col": 8,
+      "code": "rlc.ul_retx",
+      "label": "RLC UL retransmission",
+      "type": "float",
+      "unit": "%",
+      "proof": "NFF 2.19 RLCRATEU LTE #4",
+      "agg": "mean",
+      "range": [
+        0,
+        100
+      ]
+    }
+  ],
+  "groups": [
+    {
+      "name": "radio_bearers",
+      "fields": [
+        {
+          "code": "rlc.ul_rb_id",
+          "label": "rlc.ul_rb_id",
+          "type": "int",
+          "unit": "index",
+          "agg": null,
+          "range": [
+            0,
+            34
+          ],
+          "proof": "NFF 2.19 RLCRATEU LTE radio_bearers #1"
+        },
+        {
+          "code": "rlc.ul_bitrate_rb",
+          "label": "rlc.ul_bitrate_rb",
+          "type": "int",
+          "unit": "bit/s",
+          "agg": "mean",
+          "range": [
+            0,
+            null
+          ],
+          "proof": "NFF 2.19 RLCRATEU LTE radio_bearers #2"
+        },
+        {
+          "code": "rlc.ul_blocks_rb",
+          "label": "rlc.ul_blocks_rb",
+          "type": "int",
+          "unit": "blocks",
+          "agg": "mean",
+          "range": [
+            0,
+            null
+          ],
+          "proof": "NFF 2.19 RLCRATEU LTE radio_bearers #3"
+        },
+        {
+          "code": "rlc.ul_retx_rb",
+          "label": "rlc.ul_retx_rb",
+          "type": "float",
+          "unit": "%",
+          "agg": "mean",
+          "range": [
+            0,
+            100
+          ],
+          "proof": "NFF 2.19 RLCRATEU LTE radio_bearers #4"
+        }
+      ],
+      "start": {
+        "header_col": 5
+      },
+      "count_code": "rlcrateu.n_radio_bearers",
+      "params_code": "rlcrateu.params_radio_bearers",
+      "proof": "NFF 2.19 RLCRATEU LTE #radio_bearers count / params"
+    }
+  ]
+}

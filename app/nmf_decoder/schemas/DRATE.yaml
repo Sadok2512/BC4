@@ -1,0 +1,68 @@
+{
+  "event": "DRATE",
+  "systems": "any_numeric",
+  "system_col": 4,
+  "min_format": "2.19",
+  "schema_version": "1.0.0",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "code": "app.ul_bitrate",
+      "label": "app.ul_bitrate",
+      "type": "int",
+      "unit": "bit/s",
+      "agg": "mean",
+      "proof": "NFF 2.19 pp105–106 DRATE application protocols #1; one context in col4",
+      "context_count": 1,
+      "range": [
+        0,
+        null
+      ],
+      "col": 6
+    },
+    {
+      "code": "app.dl_bitrate",
+      "label": "app.dl_bitrate",
+      "type": "int",
+      "unit": "bit/s",
+      "agg": "mean",
+      "proof": "NFF 2.19 pp105–106 DRATE application protocols #2; one context in col4",
+      "context_count": 1,
+      "range": [
+        0,
+        null
+      ],
+      "col": 7
+    },
+    {
+      "code": "app.ul_bytes",
+      "label": "app.ul_bytes",
+      "type": "int",
+      "unit": "byte",
+      "agg": "last",
+      "proof": "NFF 2.19 pp105–106 DRATE application protocols #3; one context in col4",
+      "context_count": 1,
+      "range": [
+        0,
+        null
+      ],
+      "col": 8
+    },
+    {
+      "code": "app.dl_bytes",
+      "label": "app.dl_bytes",
+      "type": "int",
+      "unit": "byte",
+      "agg": "last",
+      "proof": "NFF 2.19 pp105–106 DRATE application protocols #4; one context in col4",
+      "context_count": 1,
+      "range": [
+        0,
+        null
+      ],
+      "col": 9
+    }
+  ],
+  "groups": [],
+  "tech": "BOTH"
+}

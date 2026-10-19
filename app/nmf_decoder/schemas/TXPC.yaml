@@ -1,0 +1,139 @@
+{
+  "event": "TXPC",
+  "systems": [
+    7
+  ],
+  "system_col": 4,
+  "min_format": "2.19",
+  "schema_version": "1.0.0",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 5,
+      "code": "txpc.pusch_tx_power",
+      "label": "TX power PUSCH",
+      "type": "float",
+      "unit": "dBm",
+      "proof": "NFF 2.19 TXPC Parameters for LTE #1",
+      "agg": "mean",
+      "range": [
+        -41,
+        33
+      ]
+    },
+    {
+      "col": 6,
+      "code": "txpc.pucch_tx_power",
+      "label": "TX power PUCCH",
+      "type": "float",
+      "unit": "dBm",
+      "proof": "NFF 2.19 TXPC Parameters for LTE #2",
+      "agg": "mean",
+      "range": [
+        -41,
+        33
+      ]
+    },
+    {
+      "col": 7,
+      "code": "txpc.power_headroom",
+      "label": "Power headroom (PUSCH)",
+      "type": "float",
+      "unit": "dB",
+      "proof": "NFF 2.19 TXPC Parameters for LTE #3",
+      "agg": "mean",
+      "range": [
+        -23,
+        40
+      ]
+    },
+    {
+      "col": 8,
+      "code": "txpc.f_i",
+      "label": "PUSCH power adjustment f(i)",
+      "type": "float",
+      "unit": "dB",
+      "proof": "NFF 2.19 TXPC Parameters for LTE #4",
+      "agg": "mean"
+    },
+    {
+      "col": 9,
+      "code": "txpc.g_i",
+      "label": "PUCCH power adjustment g(i)",
+      "type": "float",
+      "unit": "dB",
+      "proof": "NFF 2.19 TXPC Parameters for LTE #5",
+      "agg": "mean"
+    }
+  ],
+  "groups": [
+    {
+      "name": "pusch_tpcs",
+      "fields": [
+        {
+          "code": "txpc.pusch_tpc_count",
+          "label": "txpc.pusch_tpc_count",
+          "type": "int",
+          "unit": "count",
+          "agg": "sum",
+          "range": [
+            0,
+            null
+          ],
+          "proof": "NFF 2.19 TXPC LTE pusch_tpcs #1"
+        },
+        {
+          "code": "txpc.pusch_tpc",
+          "label": "txpc.pusch_tpc",
+          "type": "float",
+          "unit": "dB",
+          "agg": "mean",
+          "weight": "pusch_tpc_count",
+          "range": [
+            -4,
+            4
+          ],
+          "proof": "NFF 2.19 TXPC LTE pusch_tpcs #2"
+        }
+      ],
+      "start": 10,
+      "count_code": "txpc.n_pusch_tpcs",
+      "params_code": "txpc.params_pusch_tpcs",
+      "proof": "NFF 2.19 TXPC LTE #pusch_tpcs count / params"
+    },
+    {
+      "name": "pucch_tpcs",
+      "fields": [
+        {
+          "code": "txpc.pucch_tpc_count",
+          "label": "txpc.pucch_tpc_count",
+          "type": "int",
+          "unit": "count",
+          "agg": "sum",
+          "range": [
+            0,
+            null
+          ],
+          "proof": "NFF 2.19 TXPC LTE pucch_tpcs #1"
+        },
+        {
+          "code": "txpc.pucch_tpc",
+          "label": "txpc.pucch_tpc",
+          "type": "float",
+          "unit": "dB",
+          "agg": "mean",
+          "weight": "pucch_tpc_count",
+          "range": [
+            -1,
+            3
+          ],
+          "proof": "NFF 2.19 TXPC LTE pucch_tpcs #2"
+        }
+      ],
+      "start": "previous_end",
+      "count_code": "txpc.n_pucch_tpcs",
+      "params_code": "txpc.params_pucch_tpcs",
+      "proof": "NFF 2.19 TXPC LTE #pucch_tpcs count / params"
+    }
+  ]
+}

@@ -1,0 +1,97 @@
+{
+  "event": "PDCPRATEU",
+  "systems": [
+    7
+  ],
+  "system_col": 4,
+  "min_format": "2.19",
+  "schema_version": "1.0.0",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 5,
+      "code": "pdcp.hdr_n",
+      "label": "#Header params",
+      "type": "int",
+      "unit": "n",
+      "proof": "NFF 2.19 PDCPRATEU LTE #1",
+      "agg": "last",
+      "metric": false
+    },
+    {
+      "col": 6,
+      "code": "pdcp.ul_bitrate",
+      "label": "PDCP UL throughput",
+      "type": "int",
+      "unit": "bit/s",
+      "proof": "NFF 2.19 PDCPRATEU LTE #2",
+      "agg": "mean",
+      "range": [
+        0.0,
+        null
+      ]
+    },
+    {
+      "col": 7,
+      "code": "pdcp.ul_block_rate",
+      "label": "PDCP UL block rate",
+      "type": "int",
+      "unit": "blocks",
+      "proof": "NFF 2.19 PDCPRATEU LTE #3",
+      "agg": "mean",
+      "range": [
+        0.0,
+        null
+      ]
+    }
+  ],
+  "groups": [
+    {
+      "name": "radio_bearers",
+      "fields": [
+        {
+          "code": "pdcp.ul_rb_id",
+          "label": "pdcp.ul_rb_id",
+          "type": "int",
+          "unit": "index",
+          "agg": null,
+          "range": [
+            0,
+            34
+          ],
+          "proof": "NFF 2.19 PDCPRATEU LTE radio_bearers #1"
+        },
+        {
+          "code": "pdcp.ul_bitrate_rb",
+          "label": "pdcp.ul_bitrate_rb",
+          "type": "int",
+          "unit": "bit/s",
+          "agg": "mean",
+          "range": [
+            0,
+            null
+          ],
+          "proof": "NFF 2.19 PDCPRATEU LTE radio_bearers #2"
+        },
+        {
+          "code": "pdcp.ul_blocks_rb",
+          "label": "pdcp.ul_blocks_rb",
+          "type": "int",
+          "unit": "blocks",
+          "agg": "mean",
+          "range": [
+            0,
+            null
+          ],
+          "proof": "NFF 2.19 PDCPRATEU LTE radio_bearers #3"
+        }
+      ],
+      "start": {
+        "header_col": 5
+      },
+      "count_code": "pdcprateu.n_radio_bearers",
+      "params_code": "pdcprateu.params_radio_bearers",
+      "proof": "NFF 2.19 PDCPRATEU LTE #radio_bearers count / params"
+    }
+  ]
+}

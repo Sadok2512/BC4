@@ -1,0 +1,26 @@
+{
+  "event": "RTPJITTER",
+  "systems": "any_numeric",
+  "system_col": 4,
+  "min_format": "2.19",
+  "schema_version": "1.0.0",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "code": "rtp.jitter_dl",
+      "label": "rtp.jitter_dl",
+      "type": "int",
+      "unit": "ms",
+      "agg": "mean",
+      "proof": "NFF 2.19 pp439–440 RTPJITTER jitter #1",
+      "range": [
+        0,
+        null
+      ],
+      "col": 5,
+      "context_count": 0
+    }
+  ],
+  "groups": [],
+  "tech": "BOTH"
+}

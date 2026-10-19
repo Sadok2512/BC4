@@ -1,0 +1,26 @@
+{
+  "event": "AQDL",
+  "systems": "any_numeric",
+  "system_col": 4,
+  "min_format": "2.19",
+  "schema_version": "1.0.0",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "code": "aqdl.mos",
+      "label": "aqdl.mos",
+      "type": "float",
+      "unit": "MOS",
+      "agg": "mean",
+      "proof": "NFF 2.19 p413 AQDL AQ MOS #1; AQ type col4",
+      "range": [
+        0,
+        5
+      ],
+      "col": 5,
+      "context_count": 0
+    }
+  ],
+  "groups": [],
+  "tech": "BOTH"
+}

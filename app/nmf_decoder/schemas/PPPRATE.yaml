@@ -1,0 +1,40 @@
+{
+  "event": "PPPRATE",
+  "systems": "any_numeric",
+  "system_col": 4,
+  "min_format": "2.19",
+  "schema_version": "1.0.0",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "code": "ppp.ul_bitrate",
+      "label": "ppp.ul_bitrate",
+      "type": "int",
+      "unit": "bit/s",
+      "agg": "mean",
+      "proof": "NFF 2.19 p159 PPPRATE #1",
+      "range": [
+        0,
+        null
+      ],
+      "col": 4,
+      "context_count": 0
+    },
+    {
+      "code": "ppp.dl_bitrate",
+      "label": "ppp.dl_bitrate",
+      "type": "int",
+      "unit": "bit/s",
+      "agg": "mean",
+      "proof": "NFF 2.19 p159 PPPRATE #2",
+      "range": [
+        0,
+        null
+      ],
+      "col": 5,
+      "context_count": 0
+    }
+  ],
+  "groups": [],
+  "tech": "BOTH"
+}

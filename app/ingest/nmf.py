@@ -255,6 +255,7 @@ def decode_nmf_file(path: str, handle: DecoderHandle) -> DecodeResult:
         if decode_full_fn is not None:
             blob = decode_full_fn(path)
             meta = blob.get("meta") or {}
+            meta["device_name"] = None  # #DN identity is never persisted.
             events_iter: Iterable[dict] = blob.get("events") or []
         else:
             # Fallback 1.0.0 — tout vient en signalling.
@@ -349,6 +350,8 @@ def decode_nmf_file(path: str, handle: DecoderHandle) -> DecodeResult:
                     }
                 else:
                     raw_fields_dict = {}
+                # Nemo non-RRC system is column 4 only; never search other positions.
+                system = {"7":"LTE","8":"LTE","9":"NR","5":"UMTS","1":"GSM"}.get(raw_fields_dict.get("rat_code") or raw_fields_dict.get("c3"))
                 raw_events.append(
                     {
                         "capture_id": str(cap_id),
@@ -663,6 +666,10 @@ def ingest_upload(
             # Alimente le flag "measurements" du résultat pour que la logique
             # de populate ci-dessous soit déclenchée comme en 0.24.0 BC1.
             result.measurements = mirror_rows
+
+        from app.nmf_decoder.store import decode_capture
+        for cap in sorted({ev["capture_id"] for ev in result.raw_events}):
+            decode_capture(db, project.id, cap, "light")
 
         nmf.status = "done"
         nmf.n_captures = result.captures

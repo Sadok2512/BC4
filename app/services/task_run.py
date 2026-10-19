@@ -97,10 +97,23 @@ def reconstruct(rows,pid):
         if ev=='DAA' and t['seq_daa'] is None:t['seq_daa']=seq;t['_start']=seconds(f.get('ts'))
         if ev=='DCOMP' and t['seq_dcomp'] is None:t['seq_dcomp']=seq;t['_end']=seconds(f.get('ts'));t['bytes_dcomp']=integer(f.get('c10'))
         if ev=='AQDL' and number(f.get('c4')) is not None:t['_mos'].append(number(f['c4']))
-        if ev=='DRATE':t['_samples'].append(dict(id=stable(t['id'],seq),task_id=t['id'],seq=seq,_time=seconds(f.get('ts')),bps=number(f.get('c6')),bytes_cum=integer(f.get('c8'))))
+        if ev=='DRATE':t['_samples'].append(dict(id=stable(t['id'],seq),task_id=t['id'],seq=seq,_time=seconds(f.get('ts')),bps=number(f.get('_ul_bps') if t['task_type']=='HTTP_UL' else f.get('c6')),bytes_cum=integer(f.get('c8'))))
     close();return tasks
 
-def load_tasks(db,pid):return reconstruct(db.execute(text(EVENT_SQL),{'pid':pid}).mappings(),pid)
+def load_tasks(db,pid):
+    from app.nmf_decoder.projection import source_sql
+    decoded={}
+    for code in ('app_dl_bitrate','app_ul_bitrate','app_dl_bytes','aqdl_mos'):
+        for r in db.execute(text(source_sql(code)),{'pid':pid}).mappings():
+            decoded.setdefault((r['capture_id'],r['seq']),{})[code]=r['value']
+    rows=[]
+    for r in db.execute(text(EVENT_SQL),{'pid':pid}).mappings():
+        row=dict(r);f=dict(row['raw_fields']);v=decoded.get((row['capture_id'],row['seq']),{})
+        if row['event_code']=='DRATE':
+            f['c6']=v.get('app_dl_bitrate');f['c8']=v.get('app_dl_bytes');f['_ul_bps']=v.get('app_ul_bitrate')
+        if row['event_code']=='AQDL':f['c4']=v.get('aqdl_mos')
+        row['raw_fields']=f;rows.append(row)
+    return reconstruct(rows,pid)
 
 def radio_index(rows):
     bycap={}

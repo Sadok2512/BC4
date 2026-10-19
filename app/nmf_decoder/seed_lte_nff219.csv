@@ -1,0 +1,96 @@
+event_code,system,field_index_1based,metric_code,label,unit,type,range,proof_ref,note
+PHRATE,7,5,phrate.ph_ch_type,"Physical channel type (1 PBCH,2 PDSCH,3 PUSCH)",enum,Integer,1-3,NFF 2.19 PHRATE Parameters for LTE #1,discriminant : la suite dépend de ce champ
+PHRATE,7,6,pdsch.bitrate_cw0,PDSCH throughput codeword 0,bit/s,Integer,>=0,NFF 2.19 PHRATE Parameters for LTE PDSCH #1,valide si col5==2
+PHRATE,7,7,pdsch.bitrate_cw1,PDSCH throughput codeword 1,bit/s,Integer,>=0,NFF 2.19 PHRATE Parameters for LTE PDSCH #2,valide si col5==2
+PHRATE,7,8,pdsch.block_rate,PDSCH block rate,blocks,Integer,>=0,NFF 2.19 PHRATE Parameters for LTE PDSCH #3,valide si col5==2
+PHRATE,7,9,pdsch.bler,PDSCH BLER,%,Float,0-100,NFF 2.19 PHRATE Parameters for LTE PDSCH #4,valide si col5==2
+PHRATE,7,10,pdsch.sch_bitrate_per_prb,PDSCH scheduled throughput/PRB,bit/s,Integer,>=0,NFF 2.19 PHRATE Parameters for LTE PDSCH #5,valide si col5==2
+PHRATE,7,11,pdsch.bitrate,PDSCH throughput,bit/s,Integer,>=0,NFF 2.19 PHRATE Parameters for LTE PDSCH #6,valide si col5==2
+PHRATE,7,6,pusch.bitrate,PUSCH throughput,bit/s,Integer,>=0,NFF 2.19 PHRATE Parameters for LTE PUSCH #1,valide si col5==3
+PHRATE,7,7,pusch.cell_type,"Serving cell type (0 PCell,1 SCell)",enum,Integer,0-1,NFF 2.19 PHRATE Parameters for LTE PUSCH #2,valide si col5==3
+PHRATE,7,6,pbch.block_rate,PBCH block rate,blocks,Integer,>=0,NFF 2.19 PHRATE Parameters for LTE PBCH #1,valide si col5==1
+PHRATE,7,7,pbch.bler,PBCH BLER,%,Float,0-100,NFF 2.19 PHRATE Parameters for LTE PBCH #2,valide si col5==1
+MACRATE,7,5,mac.dl_bitrate,MAC DL throughput,bit/s,Integer,>=0,NFF 2.19 MACRATE Parameters for LTE #1,
+MACRATE,7,6,mac.dl_block_rate,MAC DL block rate (PDUs),blocks,Integer,>=0,NFF 2.19 MACRATE Parameters for LTE #2,
+MACRATE,7,7,mac.dl_bler,MAC DL BLER,%,Float,0-100,NFF 2.19 MACRATE Parameters for LTE #3,
+MACRATE,7,8,mac.dl_bler_1st,MAC DL BLER 1st,%,Float,0-100,NFF 2.19 MACRATE Parameters for LTE #4,
+MACRATE,7,9,mac.dl_bler_2nd,MAC DL BLER 2nd,%,Float,0-100,NFF 2.19 MACRATE Parameters for LTE #5,
+MACRATE,7,10,mac.dl_bler_3rd,MAC DL BLER 3rd+,%,Float,0-100,NFF 2.19 MACRATE Parameters for LTE #6,
+MACRATE,7,11,mac.dl_residual_bler,MAC DL residual BLER,%,Float,0-100,NFF 2.19 MACRATE Parameters for LTE #7,
+MACRATE,7,12,mac.dl_new_blocks,MAC DL new blocks,blocks,Integer,>=0,NFF 2.19 MACRATE Parameters for LTE #8,
+MACRATE,7,13,mac.dl_redundant_retx,MAC DL redundant retransmission,%,Float,0-100,NFF 2.19 MACRATE Parameters for LTE #9,
+MACRATE,7,14,mac.cell_type,Serving cell type,enum,Integer,0-1,NFF 2.19 MACRATE Parameters for LTE #10,
+MACRATEU,7,5,mac.ul_bitrate,MAC UL throughput,bit/s,Integer,>=0,NFF 2.19 MACRATEU Parameters for LTE #1,
+MACRATEU,7,6,mac.ul_block_rate,MAC UL block rate,blocks,Integer,>=0,NFF 2.19 MACRATEU Parameters for LTE #2,
+MACRATEU,7,7,mac.ul_retx,MAC UL retransmission rate,%,Float,0-100,NFF 2.19 MACRATEU Parameters for LTE #3,
+MACRATEU,7,8,mac.ul_retx_1st,MAC UL retx 1st,%,Float,0-100,NFF 2.19 MACRATEU Parameters for LTE #4,
+MACRATEU,7,9,mac.ul_retx_2nd,MAC UL retx 2nd,%,Float,0-100,NFF 2.19 MACRATEU Parameters for LTE #5,
+MACRATEU,7,10,mac.ul_retx_3rd,MAC UL retx 3rd+,%,Float,0-100,NFF 2.19 MACRATEU Parameters for LTE #6,
+MACRATEU,7,11,mac.ul_residual_bler,MAC UL residual BLER,%,Float,0-100,NFF 2.19 MACRATEU Parameters for LTE #7,
+RLCRATE,7,5,rlc.hdr_n,#Header params,n,Integer,,NFF 2.19 RLCRATE LTE #1,
+RLCRATE,7,6,rlc.dl_bitrate,RLC DL throughput,bit/s,Integer,>=0,NFF 2.19 RLCRATE LTE #2,
+RLCRATE,7,7,rlc.dl_block_rate,RLC DL block rate,blocks,Integer,>=0,NFF 2.19 RLCRATE LTE #3,
+RLCRATE,7,8,rlc.dl_bler,RLC DL BLER,%,Float,0-100,NFF 2.19 RLCRATE LTE #4,"puis #RBs, params/RB, groupes (RB ID, bitrate/RB, block rate/RB, BLER/RB)"
+PDCPRATED,7,5,pdcp.hdr_n,#Header params,n,Integer,,NFF 2.19 PDCPRATED LTE #1,
+PDCPRATED,7,6,pdcp.dl_bitrate,PDCP DL throughput,bit/s,Integer,>=0,NFF 2.19 PDCPRATED LTE #2,
+PDCPRATED,7,7,pdcp.dl_block_rate,PDCP DL block rate,blocks,Integer,>=0,NFF 2.19 PDCPRATED LTE #3,"puis #RBs, params/RB, groupes"
+PLAID,7,5,plaid.hdr_n,"#Header params (5 en 2.19, 7 observé en 2.59)",n,Integer,,NFF 2.19 PLAID LTE #1,
+PLAID,7,6,plaid.sample_duration,Sample duration,ms,Integer,>=0,NFF 2.19 PLAID Parameters for LTE #2,
+PLAID,7,7,plaid.prb_util_dl,PRB utilization DL,%,Float,0-100,NFF 2.19 PLAID Parameters for LTE #3,
+PLAID,7,8,plaid.dl_tbs_avg,PDSCH average TBS,bit,Integer,>=0,NFF 2.19 PLAID Parameters for LTE #4,
+PLAID,7,9,plaid.dl_tbs_max,PDSCH max TBS,bit,Integer,>=0,NFF 2.19 PLAID Parameters for LTE #5,
+PLAID,7,10,plaid.cell_type,Serving cell type,enum,Integer,0-1,NFF 2.19 PLAID Parameters for LTE #6,
+PLAID,7,5+hdr_n+1,plaid.n_pla_sets,#PLA sets,n,Integer,,NFF 2.19 PLAID LTE,"suivi de #params/set puis groupes : Percentage %, Rank 0-4, Mod0 (1 QPSK,2 16QAM,3 64QAM), MCS0 0-31, Mod1, MCS1 [+3 champs non documentés 2.19 observés en 2.59] ; puis #PRBs/params/groupes ; puis #PRB indexes/params/groupes"
+PLAIU,7,5,plaiu.hdr_n,#Header params,n,Integer,,NFF 2.19 PLAIU LTE,
+PLAIU,7,6,plaiu.sample_duration,Sample duration,ms,Integer,>=0,NFF 2.19 PLAIU Parameters for LTE #2,"puis #PLA sets/params/groupes (Percentage, Rank 0-1, Mod0, MCS0)"
+PLAIU,7,7,plaiu.prb_util_ul,PRB utilization UL,%,Float,0-100,NFF 2.19 PLAIU Parameters for LTE #3,"puis #PLA sets/params/groupes (Percentage, Rank 0-1, Mod0, MCS0)"
+PLAIU,7,8,plaiu.ul_tbs_avg,PUSCH average TBS,bit,Integer,>=0,NFF 2.19 PLAIU Parameters for LTE #4,"puis #PLA sets/params/groupes (Percentage, Rank 0-1, Mod0, MCS0)"
+PLAIU,7,9,plaiu.ul_tbs_max,PUSCH max TBS,bit,Integer,>=0,NFF 2.19 PLAIU Parameters for LTE #5,"puis #PLA sets/params/groupes (Percentage, Rank 0-1, Mod0, MCS0)"
+CQI,7,5,cqi.n_params,#Params,n,Integer,,NFF 2.19 CQI Parameters for LTE #1,
+CQI,7,6,cqi.sample_duration,Sample duration,ms,Integer,>=0,NFF 2.19 CQI Parameters for LTE #2,
+CQI,7,7,cqi.req_rate,Requested throughput,bit/s,Integer,>=0,NFF 2.19 CQI Parameters for LTE #3,
+CQI,7,8,cqi.wb_cqi_0,Wideband CQI cw0,index,Integer,0-15,NFF 2.19 CQI Parameters for LTE #4,
+CQI,7,9,cqi.wb_cqi_1,Wideband CQI cw1,index,Integer,0-15,NFF 2.19 CQI Parameters for LTE #5,
+CQI,7,10,cqi.sb_cqi_0,Subband CQI cw0,index,Integer,0-15,NFF 2.19 CQI Parameters for LTE #6,
+CQI,7,11,cqi.sb_cqi_1,Subband CQI cw1,index,Integer,0-15,NFF 2.19 CQI Parameters for LTE #7,
+CQI,7,12,cqi.wb_pmi,Wideband PMI,index,Integer,,NFF 2.19 CQI Parameters for LTE #8,
+CQI,7,13,cqi.cell_type,Serving cell type,enum,Integer,0-1,NFF 2.19 CQI Parameters for LTE #9,
+CQI,7,14,cqi.n_ranks,#Ranks,n,Integer,,NFF 2.19 CQI Parameters for LTE #10,
+CQI,7,15,cqi.params_per_rank,#Params/rank,n,Integer,,NFF 2.19 CQI Parameters for LTE #11,
+CQI,7,groupes,cqi.rank_dist,"(Req. rank %, Rank 1-4) × #Ranks puis (#CQI subbands, params, SB index, CQI0/SB, CQI1/SB)",%/index,group,,NFF 2.19 CQI LTE,
+CELLMEAS,7,5,cellmeas.hdr_n,#Header params,n,Integer,,NFF 2.19 CELLMEAS LTE #1,
+CELLMEAS,7,6,cellmeas.n_cells,#Cells,n,Integer,,NFF 2.19 CELLMEAS LTE #2,
+CELLMEAS,7,7,cellmeas.params_per_cell,"#Params/Cell (9 en 2.19, 11 observé en 2.59)",n,Integer,,NFF 2.19 CELLMEAS LTE #3,
+CELLMEAS,7,8+0 (+k*params_per_cell),cell.type,Cell type (0 serving…),enum,Integer,,NFF 2.19 CELLMEAS Parameters for LTE cell #1,"champs 10-11 du groupe non documentés 2.19 (observés : 78.0, 22.2)"
+CELLMEAS,7,8+1 (+k*params_per_cell),cell.band,Band (code Nemo),code,Integer,,NFF 2.19 CELLMEAS Parameters for LTE cell #2,"champs 10-11 du groupe non documentés 2.19 (observés : 78.0, 22.2)"
+CELLMEAS,7,8+2 (+k*params_per_cell),cell.ch,Channel number (EARFCN),earfcn,Integer,,NFF 2.19 CELLMEAS Parameters for LTE cell #3,"champs 10-11 du groupe non documentés 2.19 (observés : 78.0, 22.2)"
+CELLMEAS,7,8+3 (+k*params_per_cell),cell.pci,PCI,id,Integer,0-503,NFF 2.19 CELLMEAS Parameters for LTE cell #4,"champs 10-11 du groupe non documentés 2.19 (observés : 78.0, 22.2)"
+CELLMEAS,7,8+4 (+k*params_per_cell),cell.rssi,E-UTRAN carrier RSSI,dBm,Float,,NFF 2.19 CELLMEAS Parameters for LTE cell #5,"champs 10-11 du groupe non documentés 2.19 (observés : 78.0, 22.2)"
+CELLMEAS,7,8+5 (+k*params_per_cell),cell.rsrp,RSRP,dBm,Float,-140-0,NFF 2.19 CELLMEAS Parameters for LTE cell #6,"champs 10-11 du groupe non documentés 2.19 (observés : 78.0, 22.2)"
+CELLMEAS,7,8+6 (+k*params_per_cell),cell.rsrq,RSRQ,dB,Float,-30-0,NFF 2.19 CELLMEAS Parameters for LTE cell #7,"champs 10-11 du groupe non documentés 2.19 (observés : 78.0, 22.2)"
+CELLMEAS,7,8+7 (+k*params_per_cell),cell.timing,Cell frame timing,,Integer,0-307199,NFF 2.19 CELLMEAS Parameters for LTE cell #8,"champs 10-11 du groupe non documentés 2.19 (observés : 78.0, 22.2)"
+CELLMEAS,7,8+8 (+k*params_per_cell),cell.pathloss,Pathloss,dB,Float,0-170,NFF 2.19 CELLMEAS Parameters for LTE cell #9,"champs 10-11 du groupe non documentés 2.19 (observés : 78.0, 22.2)"
+MIMOMEAS,7,5,mimo.hdr_n,#Header params,n,Integer,,NFF 2.19 MIMOMEAS LTE #1,
+MIMOMEAS,7,6,mimo.n_meas,#Measurements,n,Integer,,NFF 2.19 MIMOMEAS LTE #2,
+MIMOMEAS,7,7,mimo.params_per_meas,#Params/meas (9),n,Integer,,NFF 2.19 MIMOMEAS LTE,
+MIMOMEAS,7,8+0 (+k*9),mimo.band,Band,code,Integer,,NFF 2.19 MIMOMEAS Parameters for LTE #1,
+MIMOMEAS,7,8+1 (+k*9),mimo.ch,Channel (EARFCN),earfcn,Integer,,NFF 2.19 MIMOMEAS Parameters for LTE #2,
+MIMOMEAS,7,8+2 (+k*9),mimo.pci,PCI,id,Integer,0-503,NFF 2.19 MIMOMEAS Parameters for LTE #3,
+MIMOMEAS,7,8+3 (+k*9),mimo.port,Antenna port,enum,Integer,0-3,NFF 2.19 MIMOMEAS Parameters for LTE #4,
+MIMOMEAS,7,8+4 (+k*9),mimo.cell_type,Cell type,enum,Integer,,NFF 2.19 MIMOMEAS Parameters for LTE #5,
+MIMOMEAS,7,8+5 (+k*9),mimo.rssi_p,RSSI / antenna port,dBm,Float,,NFF 2.19 MIMOMEAS Parameters for LTE #6,
+MIMOMEAS,7,8+6 (+k*9),mimo.rsrq_p,RSRQ / antenna port,dB,Float,-30-0,NFF 2.19 MIMOMEAS Parameters for LTE #7,
+MIMOMEAS,7,8+7 (+k*9),mimo.rsrp_p,RSRP / antenna port,dBm,Float,-140-0,NFF 2.19 MIMOMEAS Parameters for LTE #8,
+MIMOMEAS,7,8+8 (+k*9),mimo.timing_p,Timing / antenna port,,Integer,,NFF 2.19 MIMOMEAS Parameters for LTE #9,
+TXPC,7,5,txpc.pusch_tx_power,TX power PUSCH,dBm,Float,-41-33,NFF 2.19 TXPC Parameters for LTE #1,"puis groupes (count, TPC dB) PUSCH, puis #PUCCH TPCs/params/groupes"
+TXPC,7,6,txpc.pucch_tx_power,TX power PUCCH,dBm,Float,-41-33,NFF 2.19 TXPC Parameters for LTE #2,"puis groupes (count, TPC dB) PUSCH, puis #PUCCH TPCs/params/groupes"
+TXPC,7,7,txpc.power_headroom,Power headroom (PUSCH),dB,Float,-23-40,NFF 2.19 TXPC Parameters for LTE #3,"puis groupes (count, TPC dB) PUSCH, puis #PUCCH TPCs/params/groupes"
+TXPC,7,8,txpc.f_i,PUSCH power adjustment f(i),dB,Float,,NFF 2.19 TXPC Parameters for LTE #4,"puis groupes (count, TPC dB) PUSCH, puis #PUCCH TPCs/params/groupes"
+TXPC,7,9,txpc.g_i,PUCCH power adjustment g(i),dB,Float,,NFF 2.19 TXPC Parameters for LTE #5,"puis groupes (count, TPC dB) PUSCH, puis #PUCCH TPCs/params/groupes"
+TXPC,7,10,txpc.n_pusch_tpc,#PUSCH TPCs,n,Integer,,NFF 2.19 TXPC Parameters for LTE #6,"puis groupes (count, TPC dB) PUSCH, puis #PUCCH TPCs/params/groupes"
+TXPC,7,11,txpc.params_per_pusch_tpc,#Params/PUSCH TPC,n,Integer,,NFF 2.19 TXPC Parameters for LTE #7,"puis groupes (count, TPC dB) PUSCH, puis #PUCCH TPCs/params/groupes"
+CI,7,5,ci.hdr_n,#Header params,n,Integer,,NFF 2.19 CI LTE #1,
+CI,7,6,ci.rs_snr,RS SNR (SINR),dB,Float,,NFF 2.19 CI Parameters for LTE #2,source SINR serving
+CI,7,7,ci.cell_type,Serving cell type,enum,Integer,0-1,NFF 2.19 CI LTE #3,
+CI,7,8,ci.n_antennas,#Antennas,n,Integer,,NFF 2.19 CI LTE #4,"puis #params/antenne, groupes (SNR/P dB, Port 0-3|100-133)"
+TAD,7,5,tad.ta,Timing advance,TA units,Integer,0-1282,NFF 2.19 TAD LTE #1,

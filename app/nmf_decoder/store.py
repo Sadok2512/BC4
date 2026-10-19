@@ -1,0 +1,99 @@
+"""Transactional capture replay. Typed columns + arrays, never JSON. One decoder for both levels."""
+import time
+from dataclasses import asdict
+from pathlib import Path
+from sqlalchemy import text
+from . import DECODER_VERSION
+from .schema import fields
+from .decoder import Record
+from .source import records
+from .light import Light
+
+HEADERS=sorted(k for k,v in fields().items() if v['group'] is None)
+GROUPS=sorted(k for k,v in fields().items() if v['group'] is not None)
+ALL=sorted(fields())
+DEEP_BASE=['project_id','capture_id','seq','line_no','event_code','system','ts','t_rel_s','format_version','decoder_version','schema_version','decode_status','reasons','tokens','field_codes','unk_string','quoted']
+GROUP_BASE=['project_id','capture_id','seq','group_name','set_index']
+LIGHT_BASE=['project_id','capture_id','seq','seq_last','event_code','system','second','dimension','t_rel_s','decoder_version','schema_version','format_version','decode_status','reasons','unknown','n_records','n_partial']
+
+def copy_rows(db,table,columns,rows):
+    if not rows:return
+    connection=db.connection().connection.dbapi_connection
+    with connection.cursor() as cursor:
+        with cursor.copy('COPY '+table+' ('+','.join(columns)+') FROM STDIN') as copy:
+            for row in rows:copy.write_row(tuple(row.get(c) for c in columns))
+
+def read_deep(db,pid,cap):
+    params={'pid':pid,'cap':cap}
+    gs=iter(db.execute(text('SELECT * FROM nmf_event_group WHERE project_id=:pid AND capture_id=:cap ORDER BY seq,group_name,set_index'),params,execution_options={'stream_results':True}).mappings())
+    next_g=next(gs,None)
+    rows=db.execute(text('SELECT * FROM nmf_event_deep WHERE project_id=:pid AND capture_id=:cap ORDER BY seq'),params,execution_options={'stream_results':True}).mappings()
+    for row in rows:
+        d={k:row[k] for k in DEEP_BASE if k!='project_id'}
+        r=Record(**d);r.values={k:row[k] for k in HEADERS if row[k] is not None}
+        while next_g is not None and next_g['seq']==r.seq:
+            r.groups.append(dict(group_name=next_g['group_name'],set_index=next_g['set_index'],values={k:next_g[k] for k in GROUPS if next_g[k] is not None}))
+            next_g=next(gs,None)
+        yield r
+
+def write_light(db,pid,cap,light):
+    db.execute(text('DELETE FROM nmf_event_light WHERE project_id=:pid AND capture_id=:cap'),{'pid':pid,'cap':cap})
+    db.execute(text('DELETE FROM nmf_event_light_group WHERE project_id=:pid AND capture_id=:cap'),{'pid':pid,'cap':cap})
+    rows=[];groups=[]
+    for r in light.rows():
+        for g in r.pop('groups'):
+            groups.append(dict(project_id=pid,capture_id=cap,seq=r['seq'],group_name=g['group_name'],identity=g['identity'],set_index=g['set_index'],n_records=g['n_records'],**g['values']))
+        if len(groups)>=10000:
+            copy_rows(db,'nmf_event_light_group',GROUP_BASE+['identity','n_records']+GROUPS,groups);groups=[]
+        values=r.pop('values');r.update(values,project_id=pid,capture_id=cap,decoder_version=DECODER_VERSION,schema_version=DECODER_VERSION,
+            decode_status='partial' if r['n_partial'] else 'ok')
+        rows.append(r)
+        if len(rows)>=1000:copy_rows(db,'nmf_event_light',LIGHT_BASE+ALL,rows);rows=[]
+    copy_rows(db,'nmf_event_light',LIGHT_BASE+ALL,rows)
+    copy_rows(db,'nmf_event_light_group',GROUP_BASE+['identity','n_records']+GROUPS,groups)
+
+def decode_capture(db,pid,cap,level,*,force=False):
+    start=time.perf_counter();params={'pid':pid,'cap':cap}
+    db.execute(text('SELECT pg_advisory_xact_lock(hashtext(:k))'),{'k':'populate:'+pid})
+    old=db.execute(text('SELECT * FROM nmf_capture WHERE project_id=:pid AND capture_id=:cap'),params).mappings().first()
+    if old and old['decoder_version']==DECODER_VERSION and (old['decode_level']=='deep' or old['decode_level']==level) and not force:
+        return dict(capture_id=cap,skipped=True,elapsed_s=0)
+    file=db.execute(text('''SELECT DISTINCT n.id,n.source_path,n.sha256 FROM nmf_file n JOIN stg_event_raw r ON r.nmf_file_id=n.id
+        WHERE n.project_id=:pid AND r.capture_id=:cap UNION SELECT DISTINCT n.id,n.source_path,n.sha256 FROM nmf_file n JOIN stg_event r ON r.nmf_file_id=n.id
+        WHERE n.project_id=:pid AND r.capture_id=:cap'''),params).mappings().all()
+    if len(file)!=1 or not file[0]['source_path'] or not Path(file[0]['source_path']).is_file():raise ValueError('capture_source_unavailable')
+    file=file[0]
+    if old and old['decode_level']=='deep':level='deep'  # Never downgrade or erase retained observations.
+    if level=='deep':
+        db.execute(text('SELECT nmf_decoder_partition(:cap)'),params)
+        for table in ('nmf_event_group','nmf_event_deep'):
+            db.execute(text('DELETE FROM '+table+' WHERE project_id=:pid AND capture_id=:cap'),params)
+    light=Light();deep_rows=[];group_rows=[];n=partial=0;version='unknown'
+    for r in records(file['source_path'],cap,file['sha256']):
+        if r.excluded:continue
+        n+=1;partial+=r.decode_status=='partial';version=r.format_version
+        if level=='deep':
+            deep_rows.append(dict(project_id=pid,**{k:getattr(r,k) for k in DEEP_BASE if k!='project_id'},**r.values))
+            for g in r.groups:
+                group_rows.append(dict(project_id=pid,capture_id=cap,seq=r.seq,group_name=g['group_name'],set_index=g['set_index'],**g['values']))
+            if len(deep_rows)>=1000:copy_rows(db,'nmf_event_deep',DEEP_BASE+HEADERS,deep_rows);deep_rows=[]
+            if len(group_rows)>=10000:copy_rows(db,'nmf_event_group',GROUP_BASE+GROUPS,group_rows);group_rows=[]
+        else:light.add(r)
+    if level=='deep':
+        copy_rows(db,'nmf_event_deep',DEEP_BASE+HEADERS,deep_rows);copy_rows(db,'nmf_event_group',GROUP_BASE+GROUPS,group_rows)
+        # Deep is the sole stored truth. Light is rebuilt from the rows just written.
+        for r in read_deep(db,pid,cap):light.add(r)
+    write_light(db,pid,cap,light)
+    elapsed=time.perf_counter()-start
+    db.execute(text('''INSERT INTO nmf_capture(project_id,capture_id,nmf_file_id,decode_level,decoder_version,schema_version,format_version,
+        deep_decoded_at,n_records,n_partial,elapsed_s) VALUES(:pid,:cap,:fid,:level,:version,:version,:format,
+        CASE WHEN :level='deep' THEN now() END,:n,:partial,:elapsed)
+        ON CONFLICT(project_id,capture_id) DO UPDATE SET decode_level=excluded.decode_level,decoder_version=excluded.decoder_version,
+        schema_version=excluded.schema_version,format_version=excluded.format_version,deep_decoded_at=excluded.deep_decoded_at,
+        decoded_at=now(),n_records=excluded.n_records,n_partial=excluded.n_partial,elapsed_s=excluded.elapsed_s'''),
+        dict(params,fid=file['id'],level=level,version=DECODER_VERSION,format=version,n=n,partial=partial,elapsed=elapsed))
+    return dict(capture_id=cap,level=level,n_records=n,n_partial=partial,elapsed_s=elapsed)
+
+def ensure_light(db,pid):
+    caps=db.execute(text('SELECT DISTINCT capture_id FROM stg_event_raw WHERE project_id=:pid ORDER BY capture_id'),{'pid':pid}).scalars().all()
+    return [decode_capture(db,pid,cap,'light') for cap in caps]

@@ -29,7 +29,7 @@ from app.routes import (
 logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(name)s:%(message)s")
 logging.getLogger("app").setLevel(logging.INFO)
 
-app = FastAPI(title="bc4-back", version="0.56.0")
+app = FastAPI(title="bc4-back", version="0.57.0")
 
 # CORS (B2 / P1-1) : origines PILOTÉES par `BC4_CORS_ORIGINS` (jamais en
 # dur), méthodes/en-têtes explicites pour les uploads multipart
@@ -52,7 +52,8 @@ app.add_middleware(
 def health() -> dict[str, str]:
     with engine.connect() as conn:
         conn.execute(text("SELECT 1"))
-    return {"status": "ok", "env": settings.env, "version": "0.56.0"}
+    from app.nmf_decoder import DECODER_VERSION
+    return {"status": "ok", "env": settings.env, "version": "0.57.0", "decoder_version": DECODER_VERSION}
 
 
 app.include_router(auth.router)
@@ -76,3 +77,6 @@ from app.routes import settings_dict_templates
 app.include_router(settings_dict_templates.router)
 
 
+
+from app.routes import nmf_decode
+app.include_router(nmf_decode.router)

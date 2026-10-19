@@ -63,8 +63,6 @@ from app.measure.mapping import (
     rat_from_code,
     service_type_from,
 )
-from app.measure.profiling import CellmeasMapping, profile_cellmeas
-from app.measure.proof import mapping_from_proof, prove_rsrp_per_event, run_proof
 from app.measure.ranges import CQI as CQI_RANGE
 from app.measure.ranges import RSRP as RSRP_RANGE
 from app.measure.ranges import RSRQ as RSRQ_RANGE
@@ -321,94 +319,9 @@ def populate_measurement_points(
     )
     db.commit()
 
-    # 0.39.0 — Profiling CELLMEAS par le CONTENU : les noms de champs
-    # (`cell0_rsrp_dbm`, `cell0_rsrq_db`, …) sont trompeurs côté REF
-    # (cf. audit : `cell0_rsrp_dbm` tient en fait RSSI, `cell0_rsrq_db`
-    # tient RSRP). On re-affecte chaque métrique au champ dont la
-    # plus grande fraction de valeurs tombe dans la plage 3GPP.
-    # 0.44.0 — Profil par la PREUVE (G0/G2/G5). profile_cellmeas choisit
-    # le champ RSRP qui PASSE median|Δ| ≤ 2 dB (prove_rsrp_per_event),
-    # pas la meilleure moyenne. RSRQ/SINR/RSSI par plage + cohérence.
-    from app.measure.cellmeas_profile import ensure_table, persist_profile_row
-
-    ensure_table(db)
-    cm_map = profile_cellmeas(db, project_id)
-    report["cellmeas_mapping"] = {
-        "rssi": cm_map.rssi,
-        "rsrp": cm_map.rsrp,
-        "rsrq": cm_map.rsrq,
-        "sinr": cm_map.sinr,
-        "debug": cm_map.debug,
-    }
-
-    # Persist proofs RSRP (table cellmeas_profile).
-    for pr in cm_map.rsrp_proofs:
-        persist_profile_row(
-            db,
-            project_id=project_id,
-            metric="rsrp",
-            field=pr.field,
-            avg=None,
-            n=0,
-            n_pairs=pr.n_pairs,
-            median_abs_delta=pr.median_abs_delta,
-            p90_abs_delta=pr.p90_abs_delta,
-            verdict=pr.verdict,
-            reason=pr.reason,
-        )
-    # Persist mapping choisi pour les 3 autres métriques (RSRQ/SINR/RSSI).
-    for metric_name, field_name in (
-        ("rsrq", cm_map.rsrq),
-        ("sinr", cm_map.sinr),
-        ("rssi", cm_map.rssi),
-    ):
-        if field_name is None:
-            persist_profile_row(
-                db, project_id=project_id, metric=metric_name,
-                field=None, avg=None, n=0, n_pairs=None,
-                median_abs_delta=None, p90_abs_delta=None,
-                verdict="rejected", reason="aucun candidat ne satisfait la règle plage+cohérence",
-            )
-            continue
-        # Récupère stats du profil
-        prof = next((p for p in cm_map.profiles if p.field == field_name), None)
-        persist_profile_row(
-            db, project_id=project_id, metric=metric_name,
-            field=field_name,
-            avg=prof.avg if prof else None,
-            n=prof.n_valid if prof else 0,
-            n_pairs=None,
-            median_abs_delta=None, p90_abs_delta=None,
-            verdict="proven", reason="plage 3GPP + cohérence",
-        )
-    # Persist c8 ambigu
-    for p in cm_map.profiles:
-        if p.field == "cell0_c8":
-            persist_profile_row(
-                db, project_id=project_id, metric="ambigu",
-                field="cell0_c8", avg=p.avg, n=p.n_valid, n_pairs=None,
-                median_abs_delta=None, p90_abs_delta=None,
-                verdict="rejected",
-                reason="zone frontière RSRQ/SINR — non affecté",
-            )
-
-    # 0.44.0 — REFUS strict : si RSRP n'est pas prouvé, on arrête ici
-    # sans toucher à mp.rsrp (NULL déclaré plutôt que faux chiffre).
-    per_event_proof = None
-    if cm_map.rsrp:
-        per_event_proof = prove_rsrp_per_event(db, project_id, cm_map.rsrp)
-        report["per_event_proof_rsrp"] = per_event_proof.as_dict()
-        if per_event_proof.verdict != "proven":
-            report["refused_populate_rsrp"] = True
-            report["refused_reason"] = (
-                f"profiled field {cm_map.rsrp} rejected by ±2 dB proof "
-                f"(median|Δ|={per_event_proof.median_abs_delta})"
-            )
-            # On vide le mapping RSRP pour que les reads ultérieurs renvoient NULL
-            cm_map.rsrp = None
-    # Legacy distribution proof (traçabilité).
-    proof_rows = run_proof(db, project_id)
-    report["proof"] = [p.as_dict() for p in proof_rows]
+    from app.nmf_decoder.projection import observations
+    decoded = observations(db, project_id)
+    report['cellmeas_mapping'] = {'source':'nmf_decoder', 'decoder_version':'1.0.0'}
 
     file_meta = _file_meta_by_id(db, project_id)
 
@@ -573,50 +486,14 @@ def populate_measurement_points(
         service_type = service_type_from(service_name, service_action)
 
         # ------------------------------------------------------------
-        # Métriques (0.39.0) — profiling CELLMEAS + range-gating 3GPP.
-        # Un champ non reconnu / hors plage → NULL déclaré. Les 650400
-        # et autres placeholders sont filtrés par `is_placeholder`.
-        # ------------------------------------------------------------
-        rsrp = rsrq = sinr = rssi = None
-        cqi = tx_power = None
-        thrpt_dl = thrpt_ul = None
-        earfcn = None
-        band = None
-        rat = rat_from_code(rfields.get("rat_code"))
-
-        def _gated(field_key: str | None, rng) -> float | None:
-            """Lit `raw_fields[field_key]` → float, filtre placeholder,
-            vérifie la plage. None si l'un échoue."""
-            if not field_key:
-                return None
-            v = _try_float(rfields.get(field_key))
-            if v is None or is_placeholder(v):
-                return None
-            return v if rng.contains(v) else None
-
-        if category == "cellmeas":
-            rssi = _gated(cm_map.rssi, RSSI_RANGE)
-            rsrp = _gated(cm_map.rsrp, RSRP_RANGE)
-            rsrq = _gated(cm_map.rsrq, RSRQ_RANGE)
-            sinr = _gated(cm_map.sinr, SINR_RANGE)
-            # EARFCN et bande (par le CONTENU).
-            earfcn = _try_int(rfields.get("cell0_earfcn"))
-            if earfcn is not None:
-                band = band_from_earfcn(earfcn) if rat != "NR" else band_from_earfcn(earfcn)
-        elif category == "cqi":
-            # CQI_RANGE : 0..15, indice 3GPP. On tente `c7` puis `c23`
-            # (positions candidates vues sur REF). N'écrit QUE si plage OK.
-            for k in ("c7", "c23", "c21"):
-                v = _try_float(rfields.get(k))
-                if v is not None and CQI_RANGE.contains(v) and not is_placeholder(v):
-                    cqi = v
-                    break
-        elif category == "tx_power":
-            # TX_POWER : -40..+23 dBm UE LTE. Positions candidates sur REF :
-            # `c4` = puissance max (~23), `c8` = puissance mesurée (ex -6..-7).
-            v = _try_float(rfields.get("c8"))
-            if v is not None and TX_RANGE.contains(v) and not is_placeholder(v):
-                tx_power = v
+        # Numeric values come exclusively from the versioned decoder projection.
+        v = decoded.get((str(r.capture_id), int(r.seq)), {})
+        rsrp=v.get('rsrp');rsrq=v.get('rsrq');sinr=v.get('sinr');rssi=v.get('rssi')
+        cqi=v.get('cqi');tx_power=v.get('tx_power')
+        thrpt_dl=v.get('thr_dl');thrpt_ul=v.get('thr_ul')
+        earfcn=int(v['earfcn']) if v.get('earfcn') is not None else None
+        band=band_from_earfcn(earfcn) if earfcn is not None else None
+        rat=rat_from_code(rfields.get('rat_code') or rfields.get('c3'))
 
         # ------------------------------------------------------------
         # UPDATE si skeleton BC1 a déjà créé la ligne.

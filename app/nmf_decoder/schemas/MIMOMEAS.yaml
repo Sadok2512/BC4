@@ -1,0 +1,143 @@
+{
+  "event": "MIMOMEAS",
+  "systems": [
+    7
+  ],
+  "system_col": 4,
+  "min_format": "2.19",
+  "schema_version": "1.0.0",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 5,
+      "code": "mimo.hdr_n",
+      "label": "#Header params",
+      "type": "int",
+      "unit": "n",
+      "proof": "NFF 2.19 MIMOMEAS LTE #1",
+      "agg": "last",
+      "metric": false
+    }
+  ],
+  "groups": [
+    {
+      "name": "measurements",
+      "fields": [
+        {
+          "code": "mimo.band",
+          "label": "Band",
+          "type": "int",
+          "unit": "code",
+          "agg": "dominant",
+          "proof": "NFF 2.19 MIMOMEAS Parameters for LTE #1"
+        },
+        {
+          "code": "mimo.ch",
+          "label": "Channel (EARFCN)",
+          "type": "int",
+          "unit": "earfcn",
+          "agg": "dominant",
+          "proof": "NFF 2.19 MIMOMEAS Parameters for LTE #2"
+        },
+        {
+          "code": "mimo.pci",
+          "label": "PCI",
+          "type": "int",
+          "unit": "id",
+          "agg": "dominant",
+          "proof": "NFF 2.19 MIMOMEAS Parameters for LTE #3",
+          "range": [
+            0,
+            503
+          ]
+        },
+        {
+          "code": "mimo.port",
+          "label": "Antenna port",
+          "type": "int",
+          "unit": "enum",
+          "agg": "dominant",
+          "proof": "NFF 2.19 MIMOMEAS Parameters for LTE #4; NFF 2.19 p136 channel enumeration (seed range corrected)",
+          "enum": [
+            0,
+            1,
+            2,
+            3,
+            100,
+            101,
+            102,
+            103,
+            110,
+            111,
+            112,
+            113,
+            120,
+            121,
+            122,
+            123,
+            130,
+            131,
+            132,
+            133
+          ]
+        },
+        {
+          "code": "mimo.cell_type",
+          "label": "Cell type",
+          "type": "int",
+          "unit": "enum",
+          "agg": "dominant",
+          "proof": "NFF 2.19 MIMOMEAS Parameters for LTE #5"
+        },
+        {
+          "code": "mimo.rssi_p",
+          "label": "RSSI / antenna port",
+          "type": "float",
+          "unit": "dBm",
+          "agg": "mean",
+          "proof": "NFF 2.19 MIMOMEAS Parameters for LTE #6"
+        },
+        {
+          "code": "mimo.rsrq_p",
+          "label": "RSRQ / antenna port",
+          "type": "float",
+          "unit": "dB",
+          "agg": "mean",
+          "proof": "NFF 2.19 MIMOMEAS Parameters for LTE #7",
+          "range": [
+            -30,
+            0
+          ]
+        },
+        {
+          "code": "mimo.rsrp_p",
+          "label": "RSRP / antenna port",
+          "type": "float",
+          "unit": "dBm",
+          "agg": "mean",
+          "proof": "NFF 2.19 MIMOMEAS Parameters for LTE #8",
+          "range": [
+            -140,
+            0
+          ]
+        },
+        {
+          "code": "mimo.timing_p",
+          "label": "Timing / antenna port",
+          "type": "int",
+          "unit": "Ts",
+          "agg": "mean",
+          "proof": "NFF 2.19 MIMOMEAS Parameters for LTE #9"
+        }
+      ],
+      "start": {
+        "header_col": 5
+      },
+      "count_code": "mimomeas.n_measurements",
+      "params_code": "mimomeas.params_measurements",
+      "proof": "NFF 2.19 MIMOMEAS LTE #measurements count / params",
+      "aggregate_selection": "first",
+      "aggregation_note": "Light exposes first reported cell/port only; every set is retained in Deep, no averaging across cells/ports."
+    }
+  ]
+}

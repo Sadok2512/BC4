@@ -15,37 +15,18 @@ class Metric:
     kind: str
     sql: str
 
-METRICS = {}
-for code, label, unit, tech, kind in [
-    ('rsrp','RSRP','dBm','BOTH','numeric'),('rsrq','RSRQ','dB','BOTH','numeric'),
-    ('sinr','SINR','dB','BOTH','numeric'),('cqi','CQI','index','BOTH','numeric'),
-    ('rssi','RSSI','dBm','BOTH','numeric'),('tx_power','Puissance TX','dBm','BOTH','numeric'),
-    ('mimo_rank','Rang MIMO','index','BOTH','numeric'),
-    ('earfcn','EARFCN LTE','index','LTE','numeric'),
-    ('band','Bande','état','BOTH','categorical'),('rat','RAT','état','BOTH','categorical'),
-    ('latency','Latence','ms','BOTH','numeric'),
-]:
-    gate = " AND rat='LTE'" if code == 'earfcn' else ''
-    METRICS[code] = Metric(label, unit, 'measurement_points', code, tech, kind,
-        f'SELECT capture_id,seq,{code} AS value FROM measurement_points WHERE project_id=:pid AND {code} IS NOT NULL'+gate)
-METRICS['pci'] = Metric('PCI LTE','index','stg_event_raw','raw_fields.cell0_pci','LTE','categorical',
-    "SELECT capture_id,seq,raw_fields->>'cell0_pci' AS value FROM stg_event_raw WHERE project_id=:pid AND event_code='CELLMEAS' AND system='LTE' AND raw_fields->>'cell0_pci' ~ '^[0-9]+$'")
-for code, direction in [('thr_dl','HTTP_DL'),('thr_ul','HTTP_UL')]:
-    METRICS[code] = Metric('Débit '+('DL' if code=='thr_dl' else 'UL'),'Mbit/s','task_sample','bps','BOTH','numeric',
-        "SELECT t.capture_id,s.seq,s.bps/1000000.0 AS value FROM task_sample s JOIN task_run t ON t.id=s.task_id WHERE t.project_id=:pid AND t.task_type='"+direction+"' AND s.bps IS NOT NULL")
-METRICS['mos'] = Metric('MOS AQDL','index','stg_event_raw','raw_fields.c4','BOTH','numeric',
-    "SELECT capture_id,seq,CAST(raw_fields->>'c4' AS double precision) AS value FROM stg_event_raw WHERE project_id=:pid AND event_code='AQDL' AND raw_fields->>'c4' ~ '^[0-9]+([.][0-9]+)?$'")
-
 def metric_catalog(db):
-    """Registry rows are controlled definitions, not user-supplied SQL."""
-    import re
-    from sqlalchemy import text
-    result=dict(METRICS)
-    for row in db.execute(text('SELECT * FROM metric_def ORDER BY code')).mappings():
-        code=row['code']
-        if not re.fullmatch('[a-z][a-z0-9_]*',code) or code in result:
-            raise ValueError('invalid or conflicting metric definition: '+code)
-        result[code]=Metric(row['label'],row['unit'],'stg_event_raw',
-            f"raw_fields.c{row['field_index']}",row['tech'],'numeric',
-            "SELECT capture_id,seq,value FROM metric_sample WHERE project_id=:pid AND metric_code='"+code+"'")
+    from app.nmf_decoder.schema import fields
+    from app.nmf_decoder.projection import source_sql, ALIASES
+    result={}
+    for code,f in fields().items():
+        if f.get('metric') is False or f.get('agg') is None:continue
+        sql=source_sql(code);unit=f['unit']
+        if unit=='bit/s':
+            unit='Mbit/s';sql='SELECT capture_id,seq,value/1000000.0 AS value FROM ('+sql+') raw'
+        kind='categorical' if f.get('agg')=='dominant' else 'numeric'
+        result[code]=Metric(f['label'],unit,'nmf_event_group' if f['group'] else 'nmf_event_deep',code,
+            'BOTH' if f['event'] in ('DRATE','AQDL','RTPJITTER','PPPRATE') else 'LTE',kind,sql)
+    for alias,code in ALIASES.items():
+        if code in result:result[alias]=result[code]
     return result

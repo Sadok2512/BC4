@@ -1,0 +1,104 @@
+{
+  "event": "MACRATEU",
+  "systems": [
+    7
+  ],
+  "system_col": 4,
+  "min_format": "2.19",
+  "schema_version": "1.0.0",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 5,
+      "code": "mac.ul_bitrate",
+      "label": "MAC UL throughput",
+      "type": "int",
+      "unit": "bit/s",
+      "proof": "NFF 2.19 MACRATEU Parameters for LTE #1",
+      "agg": "mean",
+      "range": [
+        0.0,
+        null
+      ]
+    },
+    {
+      "col": 6,
+      "code": "mac.ul_block_rate",
+      "label": "MAC UL block rate",
+      "type": "int",
+      "unit": "blocks",
+      "proof": "NFF 2.19 MACRATEU Parameters for LTE #2",
+      "agg": "mean",
+      "range": [
+        0.0,
+        null
+      ]
+    },
+    {
+      "col": 7,
+      "code": "mac.ul_retx",
+      "label": "MAC UL retransmission rate",
+      "type": "float",
+      "unit": "%",
+      "proof": "NFF 2.19 MACRATEU Parameters for LTE #3",
+      "agg": "mean",
+      "range": [
+        0,
+        100
+      ]
+    },
+    {
+      "col": 8,
+      "code": "mac.ul_retx_1st",
+      "label": "MAC UL retx 1st",
+      "type": "float",
+      "unit": "%",
+      "proof": "NFF 2.19 MACRATEU Parameters for LTE #4",
+      "agg": "mean",
+      "range": [
+        0,
+        100
+      ]
+    },
+    {
+      "col": 9,
+      "code": "mac.ul_retx_2nd",
+      "label": "MAC UL retx 2nd",
+      "type": "float",
+      "unit": "%",
+      "proof": "NFF 2.19 MACRATEU Parameters for LTE #5",
+      "agg": "mean",
+      "range": [
+        0,
+        100
+      ]
+    },
+    {
+      "col": 10,
+      "code": "mac.ul_retx_3rd",
+      "label": "MAC UL retx 3rd+",
+      "type": "float",
+      "unit": "%",
+      "proof": "NFF 2.19 MACRATEU Parameters for LTE #6",
+      "agg": "mean",
+      "range": [
+        0,
+        100
+      ]
+    },
+    {
+      "col": 11,
+      "code": "mac.ul_residual_bler",
+      "label": "MAC UL residual BLER",
+      "type": "float",
+      "unit": "%",
+      "proof": "NFF 2.19 MACRATEU Parameters for LTE #7",
+      "agg": "mean",
+      "range": [
+        0,
+        100
+      ]
+    }
+  ],
+  "groups": []
+}

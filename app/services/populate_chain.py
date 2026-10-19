@@ -63,6 +63,9 @@ def _run_populate_chain(db: "Session", project: "Project") -> dict:
     acquire_project_lock(db, project.id)
     report: dict = {}
 
+    from app.nmf_decoder.store import ensure_light
+    report["decoder"] = ensure_light(db, project.id)
+
     # Étape A — populate_measurements (purge mp + skeleton depuis
     # stg_measurement_raw). `purge=True` = source de vérité propre.
     logger.info("[populate_chain] A measurements project=%s", project.id)

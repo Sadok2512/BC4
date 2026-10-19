@@ -23,6 +23,9 @@ class MetricInfo(BaseModel):
     tech: Literal['LTE','NR','BOTH']
     kind: Literal['numeric','categorical']
     n_in_project: int
+    decoder_version: str = "1.0.0"
+    event_code: str = ""
+    proof_ref: str = ""
 class CaptureInfo(BaseModel):
     capture_id: str
     label: str
@@ -75,11 +78,13 @@ class EventsResponse(BaseModel):
 def catalog(project_id: str, db: Session=Depends(get_db)):
     project(db,project_id)
     result=[]
+    from app.nmf_decoder.schema import fields
     for code,m in metric_catalog(db).items():
         n=db.execute(text('SELECT count(*) FROM ('+m.sql+') source'),{'pid':project_id}).scalar_one()
         if n:
             result.append(dict(code=code,label=m.label,unit=m.unit,source_table=m.source_table,
-                source_column=m.source_column,tech=m.tech,kind=m.kind,n_in_project=n))
+                source_column=m.source_column,tech=m.tech,kind=m.kind,n_in_project=n,
+                event_code=fields()[m.source_column]["event"],proof_ref=fields()[m.source_column]["proof"]))
     return result
 
 @router.get('/projects/{project_id}/metrics/captures', response_model=list[CaptureInfo])

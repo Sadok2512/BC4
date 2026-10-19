@@ -1,0 +1,314 @@
+{
+  "event": "PHRATE",
+  "systems": [
+    7
+  ],
+  "system_col": 4,
+  "min_format": "2.19",
+  "schema_version": "1.0.0",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 5,
+      "code": "phrate.ph_ch_type",
+      "label": "Physical channel type (1 PBCH,2 PDSCH,3 PUSCH)",
+      "type": "int",
+      "unit": "enum",
+      "proof": "NFF 2.19 PHRATE Parameters for LTE #1",
+      "agg": "dominant",
+      "range": [
+        1,
+        3
+      ]
+    },
+    {
+      "col": 6,
+      "code": "pdsch.bitrate_cw0",
+      "label": "PDSCH throughput codeword 0",
+      "type": "int",
+      "unit": "bit/s",
+      "proof": "NFF 2.19 PHRATE Parameters for LTE PDSCH #1",
+      "agg": "mean",
+      "range": [
+        0.0,
+        null
+      ],
+      "when": {
+        "col": 5,
+        "eq": 2
+      }
+    },
+    {
+      "col": 7,
+      "code": "pdsch.bitrate_cw1",
+      "label": "PDSCH throughput codeword 1",
+      "type": "int",
+      "unit": "bit/s",
+      "proof": "NFF 2.19 PHRATE Parameters for LTE PDSCH #2",
+      "agg": "mean",
+      "range": [
+        0.0,
+        null
+      ],
+      "when": {
+        "col": 5,
+        "eq": 2
+      }
+    },
+    {
+      "col": 8,
+      "code": "pdsch.block_rate",
+      "label": "PDSCH block rate",
+      "type": "int",
+      "unit": "blocks",
+      "proof": "NFF 2.19 PHRATE Parameters for LTE PDSCH #3",
+      "agg": "mean",
+      "range": [
+        0.0,
+        null
+      ],
+      "when": {
+        "col": 5,
+        "eq": 2
+      }
+    },
+    {
+      "col": 9,
+      "code": "pdsch.bler",
+      "label": "PDSCH BLER",
+      "type": "float",
+      "unit": "%",
+      "proof": "NFF 2.19 PHRATE Parameters for LTE PDSCH #4",
+      "agg": "mean",
+      "range": [
+        0,
+        100
+      ],
+      "when": {
+        "col": 5,
+        "eq": 2
+      }
+    },
+    {
+      "col": 10,
+      "code": "pdsch.sch_bitrate_per_prb",
+      "label": "PDSCH scheduled throughput/PRB",
+      "type": "int",
+      "unit": "bit/s",
+      "proof": "NFF 2.19 PHRATE Parameters for LTE PDSCH #5",
+      "agg": "mean",
+      "range": [
+        0.0,
+        null
+      ],
+      "when": {
+        "col": 5,
+        "eq": 2
+      }
+    },
+    {
+      "col": 11,
+      "code": "pdsch.bitrate",
+      "label": "PDSCH throughput",
+      "type": "int",
+      "unit": "bit/s",
+      "proof": "NFF 2.19 PHRATE Parameters for LTE PDSCH #6",
+      "agg": "mean",
+      "range": [
+        0.0,
+        null
+      ],
+      "when": {
+        "col": 5,
+        "eq": 2
+      }
+    },
+    {
+      "col": 6,
+      "code": "pusch.bitrate",
+      "label": "PUSCH throughput",
+      "type": "int",
+      "unit": "bit/s",
+      "proof": "NFF 2.19 PHRATE Parameters for LTE PUSCH #1",
+      "agg": "mean",
+      "range": [
+        0.0,
+        null
+      ],
+      "when": {
+        "col": 5,
+        "eq": 3
+      }
+    },
+    {
+      "col": 7,
+      "code": "pusch.cell_type",
+      "label": "Serving cell type (0 PCell,1 SCell)",
+      "type": "int",
+      "unit": "enum",
+      "proof": "NFF 2.19 PHRATE Parameters for LTE PUSCH #2",
+      "agg": "dominant",
+      "range": [
+        0,
+        1
+      ],
+      "dimension": true,
+      "when": {
+        "col": 5,
+        "eq": 3
+      }
+    },
+    {
+      "col": 6,
+      "code": "pbch.block_rate",
+      "label": "PBCH block rate",
+      "type": "int",
+      "unit": "blocks",
+      "proof": "NFF 2.19 PHRATE Parameters for LTE PBCH #1",
+      "agg": "mean",
+      "range": [
+        0.0,
+        null
+      ],
+      "when": {
+        "col": 5,
+        "eq": 1
+      }
+    },
+    {
+      "col": 7,
+      "code": "pbch.bler",
+      "label": "PBCH BLER",
+      "type": "float",
+      "unit": "%",
+      "proof": "NFF 2.19 PHRATE Parameters for LTE PBCH #2",
+      "agg": "mean",
+      "range": [
+        0,
+        100
+      ],
+      "when": {
+        "col": 5,
+        "eq": 1
+      }
+    },
+    {
+      "code": "pdsch.pdcch_bler_est",
+      "label": "pdsch.pdcch_bler_est",
+      "type": "float",
+      "unit": "%",
+      "agg": "mean",
+      "when": {
+        "col": 5,
+        "eq": 2
+      },
+      "dimension": false,
+      "proof": "NFF 2.19 pp156–157 PHRATE LTE PDSCH #7",
+      "range": [
+        0,
+        100
+      ],
+      "col": 12
+    },
+    {
+      "code": "pdsch.cell_type",
+      "label": "pdsch.cell_type",
+      "type": "int",
+      "unit": "enum",
+      "agg": "mean",
+      "when": {
+        "col": 5,
+        "eq": 2
+      },
+      "dimension": true,
+      "proof": "NFF 2.19 pp156–157 PHRATE LTE PDSCH #8",
+      "range": [
+        0,
+        1
+      ],
+      "col": 13
+    },
+    {
+      "code": "pdsch.cfi1",
+      "label": "pdsch.cfi1",
+      "type": "float",
+      "unit": "%",
+      "agg": "mean",
+      "when": {
+        "col": 5,
+        "eq": 2
+      },
+      "dimension": false,
+      "proof": "NFF 2.19 pp156–157 PHRATE LTE PDSCH #9",
+      "range": [
+        0,
+        100
+      ],
+      "col": 14
+    },
+    {
+      "code": "pdsch.cfi2",
+      "label": "pdsch.cfi2",
+      "type": "float",
+      "unit": "%",
+      "agg": "mean",
+      "when": {
+        "col": 5,
+        "eq": 2
+      },
+      "dimension": false,
+      "proof": "NFF 2.19 pp156–157 PHRATE LTE PDSCH #10",
+      "range": [
+        0,
+        100
+      ],
+      "col": 15
+    },
+    {
+      "code": "pdsch.cfi3",
+      "label": "pdsch.cfi3",
+      "type": "float",
+      "unit": "%",
+      "agg": "mean",
+      "when": {
+        "col": 5,
+        "eq": 2
+      },
+      "dimension": false,
+      "proof": "NFF 2.19 pp156–157 PHRATE LTE PDSCH #11",
+      "range": [
+        0,
+        100
+      ],
+      "col": 16
+    },
+    {
+      "code": "pbch.cell_type",
+      "label": "pbch.cell_type",
+      "type": "int",
+      "unit": "enum",
+      "agg": "mean",
+      "when": {
+        "col": 5,
+        "eq": 1
+      },
+      "dimension": true,
+      "proof": "NFF 2.19 p155 PHRATE LTE PBCH #3",
+      "range": [
+        0,
+        1
+      ],
+      "col": 8
+    }
+  ],
+  "groups": [],
+  "discriminator": {
+    "col": 5,
+    "name": "ph_ch_type",
+    "values": {
+      "1": "PBCH",
+      "2": "PDSCH",
+      "3": "PUSCH"
+    }
+  }
+}
