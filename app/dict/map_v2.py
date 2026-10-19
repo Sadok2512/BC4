@@ -1,8 +1,10 @@
 """Traceable RRC occurrences, never site positions or temporal interpolation."""
 from collections import Counter
+import re
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 from app.dict.geo_filters import geographic_scope
+from app.dict.catalog_v22 import selector_predicate
 
 COLORS = {"Orange": "#FF7900", "SFR": "#E2001A", "Bouygues": "#009FE3", "Free": "#7C8794"}
 
@@ -10,8 +12,28 @@ COLORS = {"Orange": "#FF7900", "SFR": "#E2001A", "Bouygues": "#009FE3", "Free": 
 def build_map(db: Session, project_id: str, keys: list[str], *, technology=None,
               operators=(), bands=(), geographic=None, limit=5000):
     cte, geo, params = geographic_scope(db, project_id, geographic)
-    params.update(pid=project_id, keys=keys, limit=limit)
-    scope = "param_occurrence.project_id = :pid AND param_key = ANY(:keys)" + geo
+    params.update(pid=project_id, limit=limit)
+    predicates = []
+    for index, key in enumerate(sorted(set(keys))):
+        predicate, bindings = selector_predicate(key, db, project_id)
+        # Independent bindings for each selection; overlapping parent/leaf
+        # selections match each occurrence once, just like a set union.
+        names = {name: f"map_{index}_{name}" for name in bindings}
+        predicate = re.sub(
+            r"(?<!:):([a-zA-Z_][a-zA-Z_0-9]*)",
+            lambda match: ":" + names.get(match[1], match[1]),
+            predicate,
+        )
+        params.update({names[name]: value for name, value in bindings.items()})
+        predicates.append("(" + predicate + ")")
+    selected = " OR ".join(predicates) or "FALSE"
+    # Resolve selectors before joining events: unqualified selector columns
+    # belong exclusively to param_occurrence, not the source event.
+    scope = (
+        "param_occurrence.project_id = :pid AND param_occurrence.id IN "
+        "(SELECT param_occurrence.id FROM param_occurrence "
+        "WHERE project_id = :pid AND (" + selected + "))"
+    ) + geo
     # Only decoded values exposed by the distribution, not identifiers or UE-report KPI redirects.
     scope += " AND COALESCE(value_converted, value) IS NOT NULL AND origin IS DISTINCT FROM 'ue_report'"
     if technology:

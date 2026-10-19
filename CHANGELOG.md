@@ -1,3 +1,9 @@
+## 0.57.1 (patch) — BC4 2026-10-19 — Carte RRC et clés agrégées (Agent BC1)
+
+- Résout les sélections dict22 avec le même sélecteur projet que les distributions avant de rechercher les coordonnées sources.
+- Union sans doublons des sélections parent/feuille ; filtres, coordonnées et références source inchangés. Aucun changement KPI ni migration.
+- Validation : tests cartographiques transactionnels, dont clés agrégées, filtres, isolation projet et clé invalide.
+
 ## 0.57.0 (minor) — BC4 2026-10-19 — Décodeur Nemo versionné Light/Deep (Agent BC2)
 
 Ajoute nmf_decoder 1.0.0, les schémas NFF 2.19 fournis, le stockage typé partitionné Deep et les agrégats Light reproductibles. Les métriques et les projections radio/app utilisent le décodeur ; les positions candidates historiques sont retirées. Les jobs admin `/decode` s'exécutent dans l'import worker, avec état par capture, version et reprise. `/health` expose `decoder_version`. Migration 0031 ; aucune modification ASN.1 ni front.
