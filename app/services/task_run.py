@@ -100,14 +100,15 @@ def reconstruct(rows,pid):
         if ev=='DRATE':t['_samples'].append(dict(id=stable(t['id'],seq),task_id=t['id'],seq=seq,_time=seconds(f.get('ts')),bps=number(f.get('_ul_bps') if t['task_type']=='HTTP_UL' else f.get('c6')),bytes_cum=integer(f.get('c8'))))
     close();return tasks
 
-def load_tasks(db,pid):
+def load_tasks(db,pid,captures=None):
     from app.nmf_decoder.projection import source_sql
     decoded={}
     for code in ('app_dl_bitrate','app_ul_bitrate','app_dl_bytes','aqdl_mos'):
         for r in db.execute(text(source_sql(code)),{'pid':pid}).mappings():
             decoded.setdefault((r['capture_id'],r['seq']),{})[code]=r['value']
     rows=[]
-    for r in db.execute(text(EVENT_SQL),{'pid':pid}).mappings():
+    event_sql=EVENT_SQL if captures is None else EVENT_SQL.replace(' ORDER BY', ' AND capture_id=ANY(:captures) ORDER BY')
+    for r in db.execute(text(event_sql),{'pid':pid,'captures':captures}).mappings():
         row=dict(r);f=dict(row['raw_fields']);v=decoded.get((row['capture_id'],row['seq']),{})
         if row['event_code']=='DRATE':
             f['c6']=v.get('app_dl_bitrate');f['c8']=v.get('app_dl_bytes');f['_ul_bps']=v.get('app_ul_bitrate')
@@ -128,9 +129,9 @@ def preceding_radio(index,cap,seq):
     if len({tuple(row.get(k) for k in fields) for row in previous_rows})>1:return {}
     return ms[i]
 
-def populate_tasks(db,pid):
+def populate_tasks(db,pid,captures=None):
     db.execute(text('SELECT pg_advisory_xact_lock(hashtext(:key))'),{'key':'tasks:'+pid})
-    tasks=load_tasks(db,pid)
+    tasks=load_tasks(db,pid,captures)
     # Deterministic upserts preserve source staging and all observed DRATE rows.
     radio=[dict(row) for row in db.execute(text("""SELECT capture_id,seq,event_code,rsrp,rsrq,sinr,cqi,earfcn,rat,operator,band,tech
         FROM measurement_points WHERE project_id=:pid AND seq IS NOT NULL
@@ -159,5 +160,5 @@ def populate_tasks(db,pid):
         for s in t['_samples']:
             row={k:v for k,v in s.items() if not k.startswith('_')};cols=list(row)
             db.execute(text(f"INSERT INTO task_sample ({','.join(cols)}) VALUES ({','.join(':'+k for k in cols)}) ON CONFLICT(id) DO UPDATE SET "+','.join(f'{k}=EXCLUDED.{k}' for k in cols if k!='id')),row);count+=1
-    db.execute(text('DELETE FROM task_run WHERE project_id=:pid AND NOT (id=ANY(:ids))'),{'pid':pid,'ids':[t['id'] for t in tasks]})
+    db.execute(text('DELETE FROM task_run WHERE project_id=:pid AND NOT (id=ANY(:ids))'+(' AND capture_id=ANY(:captures)' if captures is not None else '')),{'pid':pid,'ids':[t['id'] for t in tasks],'captures':captures})
     return {'tasks':len(tasks),'samples':count,'incomplete':sum(t['status']=='incomplete' for t in tasks)}

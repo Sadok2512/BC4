@@ -16,7 +16,7 @@ def process_next(db):
             db.execute(text('UPDATE nmf_decode_job SET done=:n,updated_at=now() WHERE id=:id'),{'id':jid,'n':i+1});db.commit()
         refresh_projections(db,job['project_id'])
         from app.services.task_run import populate_tasks
-        populate_tasks(db,job['project_id'])
+        populate_tasks(db,job['project_id'],captures=job['capture_ids'])
         db.execute(text("UPDATE nmf_decode_job SET status='done',updated_at=now(),elapsed_s=:s,error=NULL WHERE id=:id"),{'id':jid,'s':time.perf_counter()-start});db.commit()
     except Exception as exc:
         db.rollback()

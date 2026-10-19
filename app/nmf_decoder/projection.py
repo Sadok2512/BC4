@@ -36,6 +36,19 @@ def refresh_projections(db,pid):
     db.execute(text('''UPDATE measurement_points m SET rsrp=NULL,rsrq=NULL,rssi=NULL,sinr=NULL,cqi=NULL,tx_power=NULL
         WHERE m.project_id=:pid AND m.event_code IS NOT NULL AND EXISTS
         (SELECT 1 FROM nmf_capture c WHERE c.project_id=m.project_id AND c.capture_id=m.capture_id)'''),{'pid':pid})
+    # CI has its own measured sequence; do not put it on an interpolated CELLMEAS row.
+    ci_sql=source_sql('ci_rs_snr')
+    ci=db.execute(text("SELECT r.capture_id,r.seq,r.ts,r.lat,r.lon,n.dl,v.value FROM ("+ci_sql+") v JOIN stg_event_raw r ON r.project_id=:pid AND r.capture_id=v.capture_id AND r.seq=v.seq AND r.event_code='CI' JOIN nmf_file n ON n.id=r.nmf_file_id"),{'pid':pid}).mappings().all()
+    from app.measure.mapping import operator_from_dl
+    import hashlib
+    inserts=[]
+    for r in ci:
+        op=operator_from_dl(r['dl']);lat=r['lat'];lon=r['lon']
+        if lat==0 and lon==0:lat=lon=None
+        inserts.append(dict(id='nmf-ci-'+hashlib.sha256(f"{pid}:{r['capture_id']}:{r['seq']}".encode()).hexdigest()[:24],pid=pid,cap=r['capture_id'],seq=r['seq'],ts=r['ts'] or '',lat=lat,lon=lon,sinr=r['value'],operator=op,source='file' if op else 'none',geo='gps_fix' if lat is not None and lon is not None else None))
+    if inserts:db.execute(text("""INSERT INTO measurement_points(id,project_id,capture_id,seq,ts,lat,lng,sinr,operator,operator_source,geo_source,event_code,tech,rat)
+        VALUES(:id,:pid,:cap,:seq,:ts,:lat,:lon,:sinr,:operator,:source,:geo,'CI','LTE','LTE')
+        ON CONFLICT(id) DO UPDATE SET sinr=excluded.sinr,operator=excluded.operator,operator_source=excluded.operator_source"""),inserts)
     rows=[]
     for (cap,seq),v in values.items():
         if not any(k in v for k in ('rsrp','rsrq','rssi','sinr','cqi','tx_power')):continue

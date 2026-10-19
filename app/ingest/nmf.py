@@ -448,6 +448,11 @@ def ingest_upload(
             .one_or_none()
         )
         if existing is not None:
+            # Idempotent uploads also upgrade missing Light data, without re-ingesting RRC/staging.
+            from app.nmf_decoder.store import decode_capture
+            caps=db.execute(text('SELECT DISTINCT capture_id FROM stg_event_raw WHERE project_id=:pid AND nmf_file_id=:fid'),{'pid':project.id,'fid':existing.id}).scalars().all()
+            for cap in caps:decode_capture(db,project.id,cap,'light')
+            db.commit()
             return existing
 
         nmf_id = uuid.uuid4().hex[:16]
