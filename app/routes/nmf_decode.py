@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Literal
 import uuid
 from fastapi import APIRouter,Depends,HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, computed_field
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 from app.db import get_db
@@ -11,6 +11,10 @@ from app.deps import get_current_user
 from app.routes.tasks import project
 from app.nmf_decoder import DECODER_VERSION
 router=APIRouter(tags=['nmf-decoder'])
+# Planning assumption explicitly requested by BC2 user; not an observed duration.
+ESTIMATED_MINUTES_PER_CAPTURE = 2.3
+def estimate(remaining):
+    return round(ESTIMATED_MINUTES_PER_CAPTURE * remaining, 1)
 class DecodeJob(BaseModel):
     id:str
     project_id:str
@@ -24,6 +28,18 @@ class DecodeJob(BaseModel):
     updated_at:datetime
     elapsed_s:float|None=None
     error:str|None=None
+    @computed_field
+    @property
+    def captures_remaining(self) -> int:
+        return max(0, self.total-self.done)
+    @computed_field
+    @property
+    def estimated_remaining_minutes(self) -> float:
+        return estimate(self.captures_remaining)
+    @computed_field
+    @property
+    def progress_percent(self) -> float:
+        return round(100*self.done/self.total, 1) if self.total else 0
 class CaptureDecode(BaseModel):
     capture_id:str
     decode_level:Literal['light','deep']
@@ -34,6 +50,14 @@ class CaptureDecode(BaseModel):
     n_records:int
     n_partial:int
     elapsed_s:float
+    @computed_field
+    @property
+    def estimated_deep_minutes(self) -> float:
+        return estimate(0 if self.decode_level=='deep' and self.decoder_version==DECODER_VERSION else 1)
+class DecodeLevelCount(BaseModel):
+    level:Literal['light','deep']
+    decoder_version:str
+    captures:int
 class DecodeStatus(BaseModel):
     project_id:str
     decoder_version:str
@@ -42,12 +66,17 @@ class DecodeStatus(BaseModel):
     undecoded:int
     captures:list[CaptureDecode]
     jobs:list[DecodeJob]
+    levels:list[DecodeLevelCount]
+    captures_remaining:int
+    estimated_remaining_minutes:float
+    estimated_minutes_per_capture:float=ESTIMATED_MINUTES_PER_CAPTURE
+    estimate_basis:str='Estimation de planification : 2,3 min par capture restante ; durée réelle variable.' 
 class UnknownField(BaseModel):
     event_code:str
     code:str
     n_buckets:int
     selectable:bool=False
-    reason:str='position non prouvée'
+    reason:str='position non prouvée (NFF 2.19)'
 
 @router.post('/projects/{project_id}/decode',response_model=DecodeJob,status_code=202)
 def enqueue(project_id:str,level:Literal['light','deep']='deep',capture_id:str|None=None,db:Session=Depends(get_db),user=Depends(get_current_user)):
@@ -73,7 +102,10 @@ def status(project_id:str,db:Session=Depends(get_db),user=Depends(get_current_us
     caps=db.execute(text('SELECT * FROM nmf_capture WHERE project_id=:pid ORDER BY capture_id'),{'pid':project_id}).mappings().all()
     total=db.execute(text('SELECT count(*) FROM (SELECT capture_id FROM stg_event_raw WHERE project_id=:pid UNION SELECT capture_id FROM stg_event WHERE project_id=:pid) c'),{'pid':project_id}).scalar_one()
     jobs=db.execute(text('SELECT * FROM nmf_decode_job WHERE project_id=:pid ORDER BY created_at DESC LIMIT 20'),{'pid':project_id}).mappings().all()
-    return dict(project_id=project_id,decoder_version=DECODER_VERSION,light=sum(c['decode_level']=='light' for c in caps),deep=sum(c['decode_level']=='deep' for c in caps),undecoded=total-len(caps),captures=caps,jobs=jobs)
+    from collections import Counter
+    levels=Counter((c['decode_level'],c['decoder_version']) for c in caps)
+    remaining=total-sum(c['decode_level']=='deep' and c['decoder_version']==DECODER_VERSION for c in caps)
+    return dict(levels=[dict(level=k[0],decoder_version=k[1],captures=n) for k,n in sorted(levels.items())],captures_remaining=remaining,estimated_remaining_minutes=estimate(remaining),project_id=project_id,decoder_version=DECODER_VERSION,light=sum(c['decode_level']=='light' for c in caps),deep=sum(c['decode_level']=='deep' for c in caps),undecoded=total-len(caps),captures=caps,jobs=jobs)
 
 @router.get('/projects/{project_id}/metrics/unknown',response_model=list[UnknownField])
 def unknown(project_id:str,db:Session=Depends(get_db),user=Depends(get_current_user)):
