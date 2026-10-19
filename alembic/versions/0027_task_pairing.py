@@ -10,11 +10,7 @@ def upgrade():
     op.create_check_constraint('task_run_status_check','task_run',"status IN ('ok','incomplete','partial')")
     op.add_column('task_sample',sa.Column('seq_gap',sa.Integer()))
     op.add_column('task_sample',sa.Column('capture_time_s',sa.Float()))
-    from app.services.task_run import populate_tasks
-    from sqlalchemy.orm import Session
-    db=Session(bind=op.get_bind())
-    for pid in db.execute(sa.text('SELECT DISTINCT project_id FROM task_run')).scalars().all():
-        populate_tasks(db,pid)
+    # Data refresh is performed by 0028 after all provenance columns exist.
 
 def downgrade():
     op.execute("UPDATE task_run SET status='incomplete' WHERE status='partial'")

@@ -102,31 +102,40 @@ def reconstruct(rows,pid):
 
 def load_tasks(db,pid):return reconstruct(db.execute(text(EVENT_SQL),{'pid':pid}).mappings(),pid)
 
+def radio_index(rows):
+    bycap={}
+    for row in rows:bycap.setdefault(row['capture_id'],[]).append(dict(row))
+    return {cap:(ms,[m['seq'] for m in ms]) for cap,ms in bycap.items()}
+
+def preceding_radio(index,cap,seq):
+    ms,ss=index.get(cap,([],[]));i=bisect_left(ss,seq)-1
+    if i<0:return {}
+    previous_rows=ms[bisect_left(ss,ss[i]):i+1]
+    fields=('rsrp','rsrq','sinr','cqi','earfcn','rat','operator','band','tech')
+    if len({tuple(row.get(k) for k in fields) for row in previous_rows})>1:return {}
+    return ms[i]
+
 def populate_tasks(db,pid):
     db.execute(text('SELECT pg_advisory_xact_lock(hashtext(:key))'),{'key':'tasks:'+pid})
     tasks=load_tasks(db,pid)
     # Deterministic upserts preserve source staging and all observed DRATE rows.
-    radio=db.execute(text('''SELECT capture_id,seq,rsrp,rsrq,sinr,cqi,earfcn,rat,operator,band,tech
+    radio=[dict(row) for row in db.execute(text("""SELECT capture_id,seq,event_code,rsrp,rsrq,sinr,cqi,earfcn,rat,operator,band,tech
         FROM measurement_points WHERE project_id=:pid AND seq IS NOT NULL
-        AND (rsrp IS NOT NULL OR rsrq IS NOT NULL OR sinr IS NOT NULL OR cqi IS NOT NULL)
-        ORDER BY capture_id,seq,id'''),{'pid':pid}).mappings()
-    bycap={}
-    for m in radio:bycap.setdefault(m['capture_id'],[]).append(dict(m))
-    seqs={cap:[m['seq'] for m in ms] for cap,ms in bycap.items()}
+        AND (event_code='CELLMEAS' OR (event_code='CQI' AND cqi IS NOT NULL))
+        ORDER BY capture_id,seq,id"""),{'pid':pid}).mappings()]
+    cellmeas=radio_index(row for row in radio if row['event_code']=='CELLMEAS')
+    cqi=radio_index(row for row in radio if row['event_code']=='CQI')
     count=0
     for t in tasks:
-        ms=bycap.get(t['capture_id'],[]);ss=seqs.get(t['capture_id'],[])
         contexts={k:set() for k in ('operator','band','tech')}
         for sample in t['_samples']:
-            i=bisect_left(ss,sample['seq'])-1
-            m=ms[i] if i>=0 else {}
-            if i>=0:
-                previous_rows=ms[bisect_left(ss,ss[i]):i+1]
-                fields=('rsrp','rsrq','sinr','cqi','earfcn','rat','operator','band','tech')
-                if len({tuple(row.get(k) for k in fields) for row in previous_rows})>1:
-                    m={}  # Same source seq, conflicting radio rows: no arbitrary carrier choice.
-            sample.update({k:m.get(k) for k in ('rsrp','rsrq','sinr','cqi','earfcn','rat')})
-            sample.update(mp_seq=m.get('seq'),seq_gap=sample['seq']-m['seq'] if m else None,pci=None)
+            # Select the preceding CELLMEAS even when its validated metrics are NULL.
+            # CQI has its own event stream and provenance; it cannot hide CELLMEAS.
+            m=preceding_radio(cellmeas,t['capture_id'],sample['seq'])
+            q=preceding_radio(cqi,t['capture_id'],sample['seq'])
+            sample.update({k:m.get(k) for k in ('rsrp','rsrq','sinr','earfcn','rat')})
+            sample.update(mp_seq=m.get('seq'),seq_gap=sample['seq']-m['seq'] if m else None,pci=None,
+                          cqi=q.get('cqi'),cqi_seq=q.get('seq'),cqi_seq_gap=sample['seq']-q['seq'] if q else None)
             for k in ('operator','band','tech'):
                 if m.get(k) is not None:contexts[k].add(m[k])
         for k,values in contexts.items():t[k]=next(iter(values)) if len(values)==1 else None

@@ -1,3 +1,9 @@
+## 0.54.2 (patch) — KPI 2026-10-19 — CELLMEAS précédent par capture (Agent BC2)
+
+- RSRP/RSRQ/SINR : dernier CELLMEAS strictement précédent dans la même capture, sans frontière de tâche ni limite de distance ; les valeurs nulles restent nulles.
+- CQI : flux précédent indépendant avec cqi_seq/cqi_seq_gap ; /points expose la provenance adaptée à l’axe.
+- Migration 0028 : recalcul des tâches existantes. Audit TEST2 : 42 paires RSRP initiales car 2546 lignes CQI masquaient les CELLMEAS ; couverture attendue 1435/2993 (47,95 %), cible 80 % non atteinte faute de RSRP validé sur les CELLMEAS restants.
+
 ## 0.54.1 (patch) — KPI 2026-10-19 — Intégrale DRATE et axes (Agent BC2)
 
 - G14a compare Σ(bps×Δt)/8 à DCOMP sur les tâches ok ; écarts >5 % en partial avec raison.
