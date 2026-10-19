@@ -76,6 +76,7 @@ def reconstruct(rows,pid):
         gap = bool(t['_samples'] and integration_valid and t['bytes_dcomp'] is not None and
                    t['bytes_dcomp']>0 and abs(integrated-t['bytes_dcomp'])/t['bytes_dcomp']>.05)
         if gap:reasons.append('DRATE_integral_DCOMP_gap_gt_5pct')
+        if t['_samples'] and not integration_valid:reasons.append('invalid_DRATE_interval')
         t['mos_aqdl']=mean(t['_mos']) if t['_mos'] else None
         t['status']=('partial' if gap else 'incomplete') if reasons else 'ok';t['reason']=';'.join(sorted(set(reasons))) or None
         for key in ('_start','_end'):

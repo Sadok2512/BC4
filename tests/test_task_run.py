@@ -84,3 +84,8 @@ def test_axes_route_precedes_dynamic_kpi_route():
  scope={'type':'http','method':'GET','path':'/projects/TEST-project/kpi/axes'}
  route=next(r for r in app.router.routes if r.matches(scope)[0]==Match.FULL)
  assert route.endpoint.__name__=='axes'
+
+
+def test_first_zero_interval_cannot_be_ok():
+ t=reconstruct([start(),event(2,'DAA',{'ts':'10:00:00'}),event(3,'DRATE',{'ts':'10:00:00','c6':'800','c8':'1'}),event(4,'DCOMP',{'ts':'10:00:02','c10':'100'})],'TEST-project')[0]
+ assert t['status']=='incomplete' and 'invalid_DRATE_interval' in t['reason']
