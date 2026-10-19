@@ -54,15 +54,15 @@ def enqueue(project_id:str,level:Literal['light','deep']='deep',capture_id:str|N
     if user.role!='admin':raise HTTPException(403,'admin_required')
     project(db,project_id)
     db.execute(text('SELECT pg_advisory_xact_lock(hashtext(:k))'),{'k':'decode-job:'+project_id})
-    existing=db.execute(text("SELECT * FROM nmf_decode_job WHERE project_id=:pid AND status IN ('queued','running')"),{'pid':project_id}).mappings().first()
-    if existing:
-        if existing['level']==level and (capture_id is None or existing['capture_ids']==[capture_id]):return existing
-        raise HTTPException(409,'decode_job_already_active')
     caps=db.execute(text('SELECT DISTINCT capture_id FROM stg_event_raw WHERE project_id=:pid UNION SELECT DISTINCT capture_id FROM stg_event WHERE project_id=:pid ORDER BY capture_id'),{'pid':project_id}).scalars().all()
     if capture_id:
         if capture_id not in caps:raise HTTPException(404,'capture_not_found_in_project')
         caps=[capture_id]
     if not caps:raise HTTPException(409,'project_has_no_capture')
+    existing=db.execute(text("SELECT * FROM nmf_decode_job WHERE project_id=:pid AND status IN ('queued','running')"),{'pid':project_id}).mappings().first()
+    if existing:
+        if existing['level']==level and existing['capture_ids']==caps:return existing
+        raise HTTPException(409,'decode_job_already_active')
     row=db.execute(text('''INSERT INTO nmf_decode_job(id,project_id,level,capture_ids,decoder_version,status,total)
         VALUES(:id,:pid,:level,:caps,:version,'queued',:total) RETURNING *'''),dict(id=str(uuid.uuid4()),pid=project_id,level=level,caps=caps,version=DECODER_VERSION,total=len(caps))).mappings().one()
     result=dict(row);db.commit();return result
