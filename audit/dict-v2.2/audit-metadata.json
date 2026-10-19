@@ -1,0 +1,35 @@
+{
+  "timestamp_utc": "2026-10-19T12:40:51.866742+00:00",
+  "working_project": {
+    "name": "TEST2",
+    "id": "134af70a06eb"
+  },
+  "comparison_project": {
+    "name": "Test_3",
+    "id": "4b7bfd50ddb6"
+  },
+  "backend_version": "0.52.3",
+  "sql_execution": "docker exec -i bc4-db-1 psql -U bc4 -d bc4 -X -v ON_ERROR_STOP=1 < audit/dict-v2.2/<query>.sql",
+  "api": [
+    {
+      "method": "GET",
+      "url": "http://localhost:8000/openapi.json",
+      "headers": {}
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:8000/health",
+      "headers": {}
+    }
+  ],
+  "scope": "Read-only audit; production code and database unchanged",
+  "path_type_counts": {
+    "ENUMERATED": 1266,
+    "BIT STRING": 178,
+    "INTEGER": 1356,
+    "BOOLEAN": 101,
+    "CHOICE": 91,
+    "NULL": 28,
+    "SEQUENCE OF": 27
+  }
+}

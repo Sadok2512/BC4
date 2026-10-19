@@ -1,0 +1,89 @@
+PROJET DE TRAVAIL = TEST2 (134af70a06eb), conservé depuis le lot v2.1.
+PROJET DE COMPARAISON = Test_3 (4b7bfd50ddb6), uniquement pour expliquer 288/360.
+LOT = dict v2.2 / ÉTAPE 0 — audit avant code.
+VERSION LIVE = 0.52.3 (health-before.json). Aucun changement de version ni déploiement dans cette étape.
+HORODATAGE ET COMMANDES = audit-metadata.json.
+STATUT = audit documenté ; population hors padding et périmètre G13a encore ouverts.
+
+1. État réel
+Source : inspect.sql -> inspect.txt, schéma information_schema et tables vivantes.
+dict_category : id varchar PK, label varchar NOT NULL, position integer NOT NULL UNIQUE.
+dict_category_map : technology varchar + path_prefix varchar (PK composite), category_id FK.
+dict_template : category_id FK/PK, entries jsonb NOT NULL, revision integer NOT NULL default 1.
+Nombre de lignes : catégories 11 ; mappings 97 ; templates 11.
+dict_subcategory n’existe pas ; tech catégorie, discriminator et subcategory_id ne sont pas présents.
+Révision Alembic appliquée : 0024_dict_templates.
+
+Migration source : alembic/versions/0024_dict_templates.py:17–26.
+Seed source : app/dict/config/templates_v1.json.
+Affectation : app/dict/templates.py:category_maps et classify.
+Les lignes sont triées par longueur de path_prefix décroissante. Une ligne matche par technologie identique et égalité du param_key ou préfixe suivi de '/'.
+Il n’y a PAS de regex sur le nom dans cette affectation.
+Écart : comparaison sur param_key canonique (CHOICE collapsé), pas sur le chemin ASN.1 brut ; les indices et certaines alternatives ont déjà disparu.
+Source de la hiérarchie livrée : app/dict/service_v2.py:build_dict_tree.
+Elle reste technologie -> origine -> message -> catégorie -> feuilles. La clé de groupement inclut display_name, unité et discriminants.
+
+2. Le chiffre 288/360
+Source rejouable : reconfiguration-counts.sql -> reconfiguration-counts.txt.
+Test_3 : 360 feuilles RRCConnectionReconfiguration, dont 288 Autres.
+TEST2 : 327 feuilles, dont 255 Autres.
+Ces nombres comptent les groupes SQL de l’arbre livré, PAS des chemins distincts.
+uncovered.csv = les 288 feuilles Test_3 ; requête uncovered-test3.sql.
+Chaque ligne porte param_key, discriminants, unité, groupe et n_occurrences ; classement par préfixe ASN.1.
+uncovered-test2.csv = toutes les clés non couvertes de TEST2 ; requête uncovered.sql.
+Principaux manques Test_3, regroupement des 288 lignes par asn1_prefix :
+- measConfig/reportConfigToAddModList : 78 feuilles.
+- radioResourceConfigDedicated/physicalConfigDedicated : 54.
+- mobilityControlInfo/radioResourceConfigCommon : 44.
+- measConfig/measObjectToAddModList : 29.
+Le mapping livré ne couvre qu’un sous-ensemble exact des chemins observés. Autres est le fallback explicite, pas une catégorie issue d’une regex.
+
+3. Part Autres avant
+Source rejouable : category-coverage.sql -> category-coverage.txt.
+Population : param_key non null, is_identifier false ; AVANT exclusion sémantique du padding.
+TEST2 Configuration réseau : 408 / 517 clés = 78,92 %.
+TEST2 toutes origines : 633 / 742 clés = 85,31 %.
+Test_3 Configuration réseau : 787 / 896 clés = 87,83 %.
+Test_3 toutes origines : 1034 / 1143 clés = 90,46 %.
+Aucun chiffre après migration : migration non exécutée.
+
+4. Base de chemins
+paths.sql -> paths.csv : chemins distincts (technologie, origine, message, chemin) et n_occurrences de TEST2, is_identifier exclus.
+paths-detail.csv conserve la ventilation initiale avec param_key et discriminants.
+IMPORTANT : paths.csv est PROVISOIRE pour G13. L’exclusion « padding par type » n’y est pas déclarée réalisée.
+La table param_occurrence ne possède ni asn1_type ni marqueur sémantique padding.
+Inspection complémentaire en lecture seule :
+docker exec -i bc4-api-1 python - < audit/dict-v2.2/inspect_types.py > audit/dict-v2.2/path-types.json
+Le script résout les définitions pycrate à partir de system/message/channel/direction et du chemin réel ; aucune observation n’est redécodée ou modifiée.
+Les types ont été résolus pour tous les chemins interrogés. Le type BIT STRING contient aussi des paramètres utiles (codebookSubsetRestriction, neighCellConfig, systemFrameNumber).
+Interdire tous les BIT STRING supprimerait donc des données utiles. Aucun filtrage par nom, 'spare' ou regex de nom n’a été appliqué.
+padding-review.csv conserve les chemins BIT STRING / NULL nécessitant la décision sémantique d’exclusion.
+unmapped.csv est un inventaire d’audit avant configuration v2.2, PAS le résultat final d’un mapping achevé.
+
+5. Contrat
+openapi-before.json et health-before.json proviennent des URL live, headers vides.
+GET /projects/{project_id}/dict/v2/tree expose view et pas de filtre message.
+GET /projects/{project_id}/dict/v2/distribution expose keys.
+GET /projects/{project_id}/dict/v2/templates/{category}/summary expose group_by mais pas de sélection de clés agrégées.
+DictTreeResponse / DictOriginBucket décrivent aujourd’hui messages -> groups -> kpis.
+build_distribution utilise param_key=:k ; aggregate des templates joint p.param_key=r.param_key. Aucune résolution de nœud agrégé n’est implémentée.
+La somme des comptes d’un param_key peut aussi être tronquée par le GROUP BY des métadonnées + LIMIT 1 de build_distribution : ce point devra être corrigé avec l’agrégation, sans modifier les observations.
+
+6. Écarts ouverts / décisions avant migration
+- specs/dict_categories.html absent. La spécification inline du message utilisateur est disponible et constitue la source à reprendre ; aucun fichier local validé n’a été inventé.
+- G13a : préciser si le seuil porte sur Configuration réseau uniquement. Les racines Capacités terminal et Mesures rapportées sont annoncées inchangées alors que la règle de mapping parle de tous les chemins.
+- Padding : l’exclusion demande une règle sémantique typée traçable ; le type brut seul ne suffit pas. Aucun chemin n’a été supprimé par supposition.
+- La maquette donne des exemples et non des mesures : ses compteurs n’ont pas été repris.
+- La configuration actuelle ne porte aucune sous-catégorie. Aucune affectation sous-catégorie « plausible » n’a été fabriquée.
+
+G13a = NOT RUN (nouveau mapping non implémenté)
+G13b = NOT RUN
+G13c = NOT RUN
+G13d = NOT RUN
+MIGRATION = NOT RUN
+COMMIT / REBUILD = NOT RUN
+FRONTEND_CHANGED = FALSE
+BACKEND_RUNTIME_CHANGED = FALSE
+DATABASE_CHANGED = FALSE
+
+PROCHAINE ÉTAPE : fixer le périmètre de G13a, finaliser l’éligibilité typée de paths.csv puis implémenter migration, résolution de clés et contrat backend. Aucun « go front » demandé à ce stade.

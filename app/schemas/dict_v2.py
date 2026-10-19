@@ -46,10 +46,48 @@ class DictMessageBucket(BaseModel):
     groups:  list[DictGroup]
 
 
+class DictCatalogLeaf(DictLeaf):
+    message: str | None = None
+    subcategory_id: str | None = None
+    discriminator: dict = Field(default_factory=dict)
+    n_occurrences: int
+    n_captures: int
+    n_in_tech: int
+    source_param_keys: list[str] = Field(default_factory=list)
+
+
+class DictParameterNode(BaseModel):
+    param_key: str
+    display_name: str
+    unit: str | None = None
+    category_id: str
+    subcategory_id: str | None = None
+    n: int
+    n_occurrences: int
+    n_captures: int
+    n_in_tech: int
+    leaves: list[DictCatalogLeaf]
+
+
+class DictSubcategoryNode(BaseModel):
+    id: str | None
+    label: str
+    position: int
+    parameters: list[DictParameterNode]
+
+
+class DictCategoryNode(BaseModel):
+    id: str
+    label: str
+    position: int
+    subcategories: list[DictSubcategoryNode]
+
+
 class DictOriginBucket(BaseModel):
     """Origine (``network_config`` | ``ue_capability`` | ``ue_report``)."""
     origin:    Origin
-    messages:  list[DictMessageBucket]
+    messages:  list[DictMessageBucket] = Field(default_factory=list)
+    categories: list[DictCategoryNode] = Field(default_factory=list)
 
 
 class DictTechnoBucket(BaseModel):
@@ -60,6 +98,7 @@ class DictTechnoBucket(BaseModel):
 class DictTreeResponse(BaseModel):
     project_id:        str
     view:              DictView
+    available_messages: list[str] = Field(default_factory=list)
     total_rows:        int
     distinct_param_keys: int
     tree:              list[DictTechnoBucket]

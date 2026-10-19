@@ -1,0 +1,548 @@
+[
+  {
+    "technology": "LTE",
+    "path": "schedulingInfoSIB1-BR-r13",
+    "discriminator": {},
+    "question_id": "Q11",
+    "subcategory_id": "layering-idle.paging",
+    "exclusion": null
+  },
+  {
+    "technology": "LTE",
+    "path": "systemFrameNumber",
+    "discriminator": {},
+    "question_id": "Q12",
+    "subcategory_id": null,
+    "exclusion": "compteur courant, pas un paramètre"
+  },
+  {
+    "technology": "LTE",
+    "path": "systemInfoUnchanged-BR-r15",
+    "discriminator": {},
+    "question_id": "Q11",
+    "subcategory_id": "layering-idle.paging",
+    "exclusion": null
+  },
+  {
+    "technology": "LTE",
+    "path": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig",
+    "discriminator": {},
+    "question_id": "Q04",
+    "subcategory_id": "mobility.reports",
+    "exclusion": null
+  },
+  {
+    "technology": "LTE",
+    "path": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigEUTRA/triggerType",
+    "discriminator": {
+      "reportConfig_type": "EUTRA"
+    },
+    "question_id": "Q04",
+    "subcategory_id": "mobility.reports",
+    "exclusion": null
+  },
+  {
+    "technology": "LTE",
+    "path": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigEUTRA/triggerType/event/eventId",
+    "discriminator": {
+      "reportConfig_type": "EUTRA"
+    },
+    "question_id": "Q04",
+    "subcategory_id": "mobility.reports",
+    "exclusion": null
+  },
+  {
+    "technology": "LTE",
+    "path": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigInterRAT/triggerType",
+    "discriminator": {
+      "reportConfig_type": "InterRAT"
+    },
+    "question_id": "Q04",
+    "subcategory_id": "mobility.reports",
+    "exclusion": null
+  },
+  {
+    "technology": "LTE",
+    "path": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigInterRAT/triggerType/event/eventId",
+    "discriminator": {
+      "reportConfig_type": "InterRAT"
+    },
+    "question_id": "Q04",
+    "subcategory_id": "mobility.reports",
+    "exclusion": null
+  },
+  {
+    "technology": "LTE",
+    "path": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigInterRAT/triggerType/periodical/purpose",
+    "discriminator": {
+      "reportConfig_type": "InterRAT"
+    },
+    "question_id": "Q04",
+    "subcategory_id": "mobility.reports",
+    "exclusion": null
+  },
+  {
+    "technology": "LTE",
+    "path": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToRemoveList",
+    "discriminator": {},
+    "question_id": "Q04",
+    "subcategory_id": "mobility.reports",
+    "exclusion": null
+  },
+  {
+    "technology": "LTE",
+    "path": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/speedStatePars",
+    "discriminator": {},
+    "question_id": "Q16",
+    "subcategory_id": "mobility.speed",
+    "exclusion": null
+  },
+  {
+    "technology": "LTE",
+    "path": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/speedStatePars/release",
+    "discriminator": {},
+    "question_id": "Q16",
+    "subcategory_id": "mobility.speed",
+    "exclusion": null
+  },
+  {
+    "technology": "LTE",
+    "path": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/speedStatePars/setup/mobilityStateParameters/n-CellChangeHigh",
+    "discriminator": {},
+    "question_id": "Q16",
+    "subcategory_id": "mobility.speed",
+    "exclusion": null
+  },
+  {
+    "technology": "LTE",
+    "path": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/speedStatePars/setup/mobilityStateParameters/n-CellChangeMedium",
+    "discriminator": {},
+    "question_id": "Q16",
+    "subcategory_id": "mobility.speed",
+    "exclusion": null
+  },
+  {
+    "technology": "LTE",
+    "path": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/speedStatePars/setup/mobilityStateParameters/t-Evaluation",
+    "discriminator": {},
+    "question_id": "Q16",
+    "subcategory_id": "mobility.speed",
+    "exclusion": null
+  },
+  {
+    "technology": "LTE",
+    "path": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/speedStatePars/setup/mobilityStateParameters/t-HystNormal",
+    "discriminator": {},
+    "question_id": "Q16",
+    "subcategory_id": "mobility.speed",
+    "exclusion": null
+  },
+  {
+    "technology": "LTE",
+    "path": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/speedStatePars/setup/timeToTrigger-SF/sf-High",
+    "discriminator": {},
+    "question_id": "Q16",
+    "subcategory_id": "mobility.speed",
+    "exclusion": null
+  },
+  {
+    "technology": "LTE",
+    "path": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/speedStatePars/setup/timeToTrigger-SF/sf-Medium",
+    "discriminator": {},
+    "question_id": "Q16",
+    "subcategory_id": "mobility.speed",
+    "exclusion": null
+  },
+  {
+    "technology": "LTE",
+    "path": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/mobilityControlInfo/additionalSpectrumEmission",
+    "discriminator": {},
+    "question_id": "Q15",
+    "subcategory_id": "phy.carrier",
+    "exclusion": null
+  },
+  {
+    "technology": "LTE",
+    "path": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/mobilityControlInfo/radioResourceConfigCommon/rach-ConfigCommon/ra-SupervisionInfo/ra-ResponseWindowSize",
+    "discriminator": {},
+    "question_id": "Q10",
+    "subcategory_id": "phy.prach",
+    "exclusion": null
+  },
+  {
+    "technology": "LTE",
+    "path": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/drb-ToAddModList/[*]/logicalChannelConfig/logicalChannelSR-Mask-r9",
+    "discriminator": {
+      "bearer_kind": "DRB"
+    },
+    "question_id": "Q05",
+    "subcategory_id": "mac.logical",
+    "exclusion": null
+  },
+  {
+    "technology": "LTE",
+    "path": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/drb-ToAddModList/[*]/logicalChannelConfig/ul-SpecificParameters/bucketSizeDuration",
+    "discriminator": {
+      "bearer_kind": "DRB"
+    },
+    "question_id": "Q05",
+    "subcategory_id": "mac.logical",
+    "exclusion": null
+  },
+  {
+    "technology": "LTE",
+    "path": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/drb-ToAddModList/[*]/logicalChannelConfig/ul-SpecificParameters/prioritisedBitRate",
+    "discriminator": {
+      "bearer_kind": "DRB"
+    },
+    "question_id": "Q05",
+    "subcategory_id": "mac.logical",
+    "exclusion": null
+  },
+  {
+    "technology": "LTE",
+    "path": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/drb-ToAddModList/[*]/logicalChannelConfig/ul-SpecificParameters/priority",
+    "discriminator": {
+      "bearer_kind": "DRB"
+    },
+    "question_id": "Q05",
+    "subcategory_id": "mac.logical",
+    "exclusion": null
+  },
+  {
+    "technology": "LTE",
+    "path": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/drb-ToAddModList/[*]/rlc-Config",
+    "discriminator": {
+      "bearer_kind": "DRB"
+    },
+    "question_id": "Q07",
+    "subcategory_id": "rlc-pdcp.bearers",
+    "exclusion": null
+  },
+  {
+    "technology": "LTE",
+    "path": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/drb-ToAddModList/[*]/rlc-Config-v1510/reestablishRLC-r15",
+    "discriminator": {
+      "bearer_kind": "DRB"
+    },
+    "question_id": "Q03",
+    "subcategory_id": "rlc-pdcp.bearers",
+    "exclusion": null
+  },
+  {
+    "technology": "LTE",
+    "path": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/drb-ToReleaseList",
+    "discriminator": {},
+    "question_id": "Q03",
+    "subcategory_id": "rlc-pdcp.bearers",
+    "exclusion": null
+  },
+  {
+    "technology": "LTE",
+    "path": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/sps-Config/sps-ConfigDL/release",
+    "discriminator": {},
+    "question_id": "Q13",
+    "subcategory_id": "mac.sps",
+    "exclusion": null
+  },
+  {
+    "technology": "LTE",
+    "path": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/sps-Config/sps-ConfigUL/release",
+    "discriminator": {},
+    "question_id": "Q13",
+    "subcategory_id": "mac.sps",
+    "exclusion": null
+  },
+  {
+    "technology": "LTE",
+    "path": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/sps-Config/sps-ConfigUL/setup/implicitReleaseAfter",
+    "discriminator": {},
+    "question_id": "Q13",
+    "subcategory_id": "mac.sps",
+    "exclusion": null
+  },
+  {
+    "technology": "LTE",
+    "path": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/sps-Config/sps-ConfigUL/setup/semiPersistSchedIntervalUL",
+    "discriminator": {},
+    "question_id": "Q13",
+    "subcategory_id": "mac.sps",
+    "exclusion": null
+  },
+  {
+    "technology": "LTE",
+    "path": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/srb-ToAddModList/[*]/logicalChannelConfig/defaultValue",
+    "discriminator": {
+      "bearer_kind": "SRB"
+    },
+    "question_id": "Q05",
+    "subcategory_id": "mac.logical",
+    "exclusion": null
+  },
+  {
+    "technology": "LTE",
+    "path": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/srb-ToAddModList/[*]/logicalChannelConfig/explicitValue/ul-SpecificParameters/bucketSizeDuration",
+    "discriminator": {
+      "bearer_kind": "SRB"
+    },
+    "question_id": "Q05",
+    "subcategory_id": "mac.logical",
+    "exclusion": null
+  },
+  {
+    "technology": "LTE",
+    "path": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/srb-ToAddModList/[*]/logicalChannelConfig/explicitValue/ul-SpecificParameters/prioritisedBitRate",
+    "discriminator": {
+      "bearer_kind": "SRB"
+    },
+    "question_id": "Q05",
+    "subcategory_id": "mac.logical",
+    "exclusion": null
+  },
+  {
+    "technology": "LTE",
+    "path": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/srb-ToAddModList/[*]/logicalChannelConfig/explicitValue/ul-SpecificParameters/priority",
+    "discriminator": {
+      "bearer_kind": "SRB"
+    },
+    "question_id": "Q05",
+    "subcategory_id": "mac.logical",
+    "exclusion": null
+  },
+  {
+    "technology": "LTE",
+    "path": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/srb-ToAddModList/[*]/rlc-Config",
+    "discriminator": {
+      "bearer_kind": "SRB"
+    },
+    "question_id": "Q07",
+    "subcategory_id": "rlc-pdcp.bearers",
+    "exclusion": null
+  },
+  {
+    "technology": "LTE",
+    "path": "rrcConnectionRelease/rrcConnectionRelease-r8/releaseCause",
+    "discriminator": {},
+    "question_id": "Q02",
+    "subcategory_id": "access-barring.causes",
+    "exclusion": null
+  },
+  {
+    "technology": "LTE",
+    "path": "rrcConnectionRequest/rrcConnectionRequest-r8/establishmentCause",
+    "discriminator": {},
+    "question_id": "Q02",
+    "subcategory_id": "access-barring.causes",
+    "exclusion": null
+  },
+  {
+    "technology": "LTE",
+    "path": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/srb-ToAddModList/[*]/logicalChannelConfig/defaultValue",
+    "discriminator": {
+      "bearer_kind": "SRB"
+    },
+    "question_id": "Q05",
+    "subcategory_id": "mac.logical",
+    "exclusion": null
+  },
+  {
+    "technology": "LTE",
+    "path": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/srb-ToAddModList/[*]/logicalChannelConfig/explicitValue/ul-SpecificParameters/bucketSizeDuration",
+    "discriminator": {
+      "bearer_kind": "SRB"
+    },
+    "question_id": "Q05",
+    "subcategory_id": "mac.logical",
+    "exclusion": null
+  },
+  {
+    "technology": "LTE",
+    "path": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/srb-ToAddModList/[*]/logicalChannelConfig/explicitValue/ul-SpecificParameters/prioritisedBitRate",
+    "discriminator": {
+      "bearer_kind": "SRB"
+    },
+    "question_id": "Q05",
+    "subcategory_id": "mac.logical",
+    "exclusion": null
+  },
+  {
+    "technology": "LTE",
+    "path": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/srb-ToAddModList/[*]/logicalChannelConfig/explicitValue/ul-SpecificParameters/priority",
+    "discriminator": {
+      "bearer_kind": "SRB"
+    },
+    "question_id": "Q05",
+    "subcategory_id": "mac.logical",
+    "exclusion": null
+  },
+  {
+    "technology": "LTE",
+    "path": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/srb-ToAddModList/[*]/rlc-Config",
+    "discriminator": {
+      "bearer_kind": "SRB"
+    },
+    "question_id": "Q07",
+    "subcategory_id": "rlc-pdcp.bearers",
+    "exclusion": null
+  },
+  {
+    "technology": "LTE",
+    "path": "systemInformationBlockType1/cellAccessRelatedInfo/cellIdentity",
+    "discriminator": {},
+    "question_id": "Q14",
+    "subcategory_id": null,
+    "exclusion": "identifiant SIB1 : correction is_identifier=true"
+  },
+  {
+    "technology": "LTE",
+    "path": "systemInformationBlockType1/cellAccessRelatedInfo/plmn-IdentityList/[*]/plmn-Identity/mcc",
+    "discriminator": {},
+    "question_id": "Q14",
+    "subcategory_id": null,
+    "exclusion": "identifiant SIB1 : correction is_identifier=true"
+  },
+  {
+    "technology": "LTE",
+    "path": "systemInformationBlockType1/cellAccessRelatedInfo/plmn-IdentityList/[*]/plmn-Identity/mnc",
+    "discriminator": {},
+    "question_id": "Q14",
+    "subcategory_id": null,
+    "exclusion": "identifiant SIB1 : correction is_identifier=true"
+  },
+  {
+    "technology": "LTE",
+    "path": "systemInformationBlockType1/cellAccessRelatedInfo/trackingAreaCode",
+    "discriminator": {},
+    "question_id": "Q14",
+    "subcategory_id": null,
+    "exclusion": "identifiant SIB1 : correction is_identifier=true"
+  },
+  {
+    "technology": "LTE",
+    "path": "systemInformationBlockType1/schedulingInfoList/[*]/sib-MappingInfo",
+    "discriminator": {},
+    "question_id": "Q11",
+    "subcategory_id": "layering-idle.paging",
+    "exclusion": null
+  },
+  {
+    "technology": "LTE",
+    "path": "systemInformationBlockType1/schedulingInfoList/[*]/si-Periodicity",
+    "discriminator": {},
+    "question_id": "Q11",
+    "subcategory_id": "layering-idle.paging",
+    "exclusion": null
+  },
+  {
+    "technology": "LTE",
+    "path": "systemInformationBlockType1/systemInfoValueTag",
+    "discriminator": {},
+    "question_id": "Q11",
+    "subcategory_id": "layering-idle.paging",
+    "exclusion": null
+  },
+  {
+    "technology": "LTE",
+    "path": "systemInformation/systemInformation-r8/sib-TypeAndInfo/[*]/sib2/plmn-InfoList-r15/[*]/upperLayerIndication-r15",
+    "discriminator": {},
+    "question_id": "Q09",
+    "subcategory_id": "layering-connected.endc",
+    "exclusion": null
+  },
+  {
+    "technology": "LTE",
+    "path": "systemInformation/systemInformation-r8/sib-TypeAndInfo/[*]/sib2/radioResourceConfigCommon/bcch-Config/modificationPeriodCoeff",
+    "discriminator": {},
+    "question_id": "Q11",
+    "subcategory_id": "layering-idle.paging",
+    "exclusion": null
+  },
+  {
+    "technology": "LTE",
+    "path": "systemInformation/systemInformation-r8/sib-TypeAndInfo/[*]/sib2/radioResourceConfigCommon/pcch-Config/defaultPagingCycle",
+    "discriminator": {},
+    "question_id": "Q11",
+    "subcategory_id": "layering-idle.paging",
+    "exclusion": null
+  },
+  {
+    "technology": "LTE",
+    "path": "systemInformation/systemInformation-r8/sib-TypeAndInfo/[*]/sib2/radioResourceConfigCommon/pcch-Config/nB",
+    "discriminator": {},
+    "question_id": "Q11",
+    "subcategory_id": "layering-idle.paging",
+    "exclusion": null
+  },
+  {
+    "technology": "LTE",
+    "path": "systemInformation/systemInformation-r8/sib-TypeAndInfo/[*]/sib2/radioResourceConfigCommon/rach-ConfigCommon/ra-SupervisionInfo/ra-ResponseWindowSize",
+    "discriminator": {},
+    "question_id": "Q10",
+    "subcategory_id": "phy.prach",
+    "exclusion": null
+  },
+  {
+    "technology": "LTE",
+    "path": "systemInformation/systemInformation-r8/sib-TypeAndInfo/[*]/sib2/voiceServiceCauseIndication-r12",
+    "discriminator": {},
+    "question_id": "Q09",
+    "subcategory_id": "access-barring.causes",
+    "exclusion": null
+  },
+  {
+    "technology": "LTE",
+    "path": "ueInformationRequest-r9/ueInformationRequest-r9/rach-ReportReq-r9",
+    "discriminator": {},
+    "question_id": "Q06",
+    "subcategory_id": "timers-rlf.reports",
+    "exclusion": null
+  },
+  {
+    "technology": "LTE",
+    "path": "ueInformationRequest-r9/ueInformationRequest-r9/rlf-ReportReq-r9",
+    "discriminator": {},
+    "question_id": "Q06",
+    "subcategory_id": "timers-rlf.reports",
+    "exclusion": null
+  },
+  {
+    "technology": "NR",
+    "path": "[*]/bandInformationEUTRA/bandEUTRA",
+    "discriminator": {},
+    "question_id": "Q08",
+    "subcategory_id": "layering-connected.bands",
+    "exclusion": null
+  },
+  {
+    "technology": "NR",
+    "path": "[*]/bandInformationNR/bandNR",
+    "discriminator": {},
+    "question_id": "Q08",
+    "subcategory_id": "layering-connected.bands",
+    "exclusion": null
+  },
+  {
+    "technology": "NR",
+    "path": "mib/pdcch-ConfigSIB1/controlResourceSetZero",
+    "discriminator": {},
+    "question_id": "Q01",
+    "subcategory_id": "phy.carrier",
+    "exclusion": null
+  },
+  {
+    "technology": "NR",
+    "path": "mib/pdcch-ConfigSIB1/searchSpaceZero",
+    "discriminator": {},
+    "question_id": "Q01",
+    "subcategory_id": "phy.carrier",
+    "exclusion": null
+  },
+  {
+    "technology": "NR",
+    "path": "mib/systemFrameNumber",
+    "discriminator": {},
+    "question_id": "Q12",
+    "subcategory_id": null,
+    "exclusion": "compteur courant, pas un paramètre"
+  }
+]

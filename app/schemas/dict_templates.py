@@ -6,6 +6,7 @@ from app.schemas.dict_v2 import DistributionValue
 class ParameterRef(BaseModel):
     model_config = ConfigDict(extra='forbid')
     param_key: str = Field(min_length=1, max_length=2048)
+    path_prefix: str | None = Field(default=None, max_length=2048)
     technology: Literal['LTE','NR']
     discriminators: dict[str, str | bool | int] = Field(default_factory=dict)
 

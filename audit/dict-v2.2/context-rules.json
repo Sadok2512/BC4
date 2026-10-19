@@ -1,0 +1,2472 @@
+[
+  {
+    "technology": "LTE",
+    "path_prefix": "dl-Bandwidth",
+    "subcategory_id": "phy.carrier",
+    "category_id": "phy",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "phich-Config",
+    "subcategory_id": "phy.carrier",
+    "category_id": "phy",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/[*]/sib2/radioResourceConfigCommon/antennaInfoCommon",
+    "subcategory_id": "mimo-ca.antennas",
+    "category_id": "mimo-ca",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/[*]/sib2/radioResourceConfigCommon/p-Max",
+    "subcategory_id": "power-control.common",
+    "category_id": "power-control",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/[*]/sib2/radioResourceConfigCommon/phich-Config",
+    "subcategory_id": "phy.carrier",
+    "category_id": "phy",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/[*]/sib2/radioResourceConfigCommon/prach-Config",
+    "subcategory_id": "phy.prach",
+    "category_id": "phy",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/[*]/sib2/radioResourceConfigCommon/pucch-ConfigCommon",
+    "subcategory_id": "phy.reference",
+    "category_id": "phy",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/[*]/sib2/radioResourceConfigCommon/pusch-ConfigCommon",
+    "subcategory_id": "phy.reference",
+    "category_id": "phy",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/[*]/sib2/radioResourceConfigCommon/pusch-ConfigCommon-v1270",
+    "subcategory_id": "phy.reference",
+    "category_id": "phy",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/[*]/sib2/radioResourceConfigCommon/pdsch-ConfigCommon",
+    "subcategory_id": "phy.reference",
+    "category_id": "phy",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/[*]/sib2/radioResourceConfigCommon/soundingRS-UL-ConfigCommon",
+    "subcategory_id": "phy.reference",
+    "category_id": "phy",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/[*]/sib2/radioResourceConfigCommon/ul-CyclicPrefixLength",
+    "subcategory_id": "phy.carrier",
+    "category_id": "phy",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/[*]/sib2/radioResourceConfigCommon/uplinkPowerControlCommon",
+    "subcategory_id": "power-control.common",
+    "category_id": "power-control",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/[*]/sib2/radioResourceConfigCommon/uplinkPowerControlCommon-v1020",
+    "subcategory_id": "power-control.common",
+    "category_id": "power-control",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/[*]/sib2/radioResourceConfigCommon/rach-ConfigCommon/maxHARQ-Msg3Tx",
+    "subcategory_id": "mac.harq",
+    "category_id": "mac",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/[*]/sib2/radioResourceConfigCommon/rach-ConfigCommon/powerRampingParameters",
+    "subcategory_id": "power-control.random-access",
+    "category_id": "power-control",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/[*]/sib2/radioResourceConfigCommon/rach-ConfigCommon/preambleInfo/numberOfRA-Preambles",
+    "subcategory_id": "phy.prach",
+    "category_id": "phy",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/[*]/sib2/radioResourceConfigCommon/rach-ConfigCommon/preambleInfo/preamblesGroupAConfig",
+    "subcategory_id": "phy.prach",
+    "category_id": "phy",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/[*]/sib2/radioResourceConfigCommon/rach-ConfigCommon/ra-SupervisionInfo/mac-ContentionResolutionTimer",
+    "subcategory_id": "mac.random-access",
+    "category_id": "mac",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/[*]/sib2/radioResourceConfigCommon/rach-ConfigCommon/ra-SupervisionInfo/preambleTransMax",
+    "subcategory_id": "phy.prach",
+    "category_id": "phy",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/mobilityControlInfo/radioResourceConfigCommon/antennaInfoCommon",
+    "subcategory_id": "mimo-ca.antennas",
+    "category_id": "mimo-ca",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/mobilityControlInfo/radioResourceConfigCommon/p-Max",
+    "subcategory_id": "power-control.common",
+    "category_id": "power-control",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/mobilityControlInfo/radioResourceConfigCommon/phich-Config",
+    "subcategory_id": "phy.carrier",
+    "category_id": "phy",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/mobilityControlInfo/radioResourceConfigCommon/prach-Config",
+    "subcategory_id": "phy.prach",
+    "category_id": "phy",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/mobilityControlInfo/radioResourceConfigCommon/pucch-ConfigCommon",
+    "subcategory_id": "phy.reference",
+    "category_id": "phy",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/mobilityControlInfo/radioResourceConfigCommon/pusch-ConfigCommon",
+    "subcategory_id": "phy.reference",
+    "category_id": "phy",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/mobilityControlInfo/radioResourceConfigCommon/pusch-ConfigCommon-v1270",
+    "subcategory_id": "phy.reference",
+    "category_id": "phy",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/mobilityControlInfo/radioResourceConfigCommon/pdsch-ConfigCommon",
+    "subcategory_id": "phy.reference",
+    "category_id": "phy",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/mobilityControlInfo/radioResourceConfigCommon/soundingRS-UL-ConfigCommon",
+    "subcategory_id": "phy.reference",
+    "category_id": "phy",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/mobilityControlInfo/radioResourceConfigCommon/ul-CyclicPrefixLength",
+    "subcategory_id": "phy.carrier",
+    "category_id": "phy",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/mobilityControlInfo/radioResourceConfigCommon/uplinkPowerControlCommon",
+    "subcategory_id": "power-control.common",
+    "category_id": "power-control",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/mobilityControlInfo/radioResourceConfigCommon/uplinkPowerControlCommon-v1020",
+    "subcategory_id": "power-control.common",
+    "category_id": "power-control",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/mobilityControlInfo/radioResourceConfigCommon/rach-ConfigCommon/maxHARQ-Msg3Tx",
+    "subcategory_id": "mac.harq",
+    "category_id": "mac",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/mobilityControlInfo/radioResourceConfigCommon/rach-ConfigCommon/powerRampingParameters",
+    "subcategory_id": "power-control.random-access",
+    "category_id": "power-control",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/mobilityControlInfo/radioResourceConfigCommon/rach-ConfigCommon/preambleInfo/numberOfRA-Preambles",
+    "subcategory_id": "phy.prach",
+    "category_id": "phy",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/mobilityControlInfo/radioResourceConfigCommon/rach-ConfigCommon/preambleInfo/preamblesGroupAConfig",
+    "subcategory_id": "phy.prach",
+    "category_id": "phy",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/mobilityControlInfo/radioResourceConfigCommon/rach-ConfigCommon/ra-SupervisionInfo/mac-ContentionResolutionTimer",
+    "subcategory_id": "mac.random-access",
+    "category_id": "mac",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/mobilityControlInfo/radioResourceConfigCommon/rach-ConfigCommon/ra-SupervisionInfo/preambleTransMax",
+    "subcategory_id": "phy.prach",
+    "category_id": "phy",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/physicalConfigDedicated/antennaInfo",
+    "subcategory_id": "mimo-ca.antennas",
+    "category_id": "mimo-ca",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/physicalConfigDedicated/antennaInfo-r10",
+    "subcategory_id": "mimo-ca.antennas",
+    "category_id": "mimo-ca",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/physicalConfigDedicated/cqi-ReportConfig",
+    "subcategory_id": "phy.csi",
+    "category_id": "phy",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/physicalConfigDedicated/cqi-ReportConfig-r10",
+    "subcategory_id": "phy.csi",
+    "category_id": "phy",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/physicalConfigDedicated/cqi-ReportConfigPCell-v1250",
+    "subcategory_id": "phy.csi",
+    "category_id": "phy",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/physicalConfigDedicated/csi-RS-Config-r10",
+    "subcategory_id": "phy.csi",
+    "category_id": "phy",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/physicalConfigDedicated/pdsch-ConfigDedicated",
+    "subcategory_id": "phy.reference",
+    "category_id": "phy",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/physicalConfigDedicated/pdsch-ConfigDedicated-v1430",
+    "subcategory_id": "phy.reference",
+    "category_id": "phy",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/physicalConfigDedicated/pucch-ConfigDedicated",
+    "subcategory_id": "phy.reference",
+    "category_id": "phy",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/physicalConfigDedicated/pucch-ConfigDedicated-v1020",
+    "subcategory_id": "phy.reference",
+    "category_id": "phy",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/physicalConfigDedicated/pusch-ConfigDedicated",
+    "subcategory_id": "phy.reference",
+    "category_id": "phy",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/physicalConfigDedicated/pusch-ConfigDedicated-v1430",
+    "subcategory_id": "phy.reference",
+    "category_id": "phy",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/physicalConfigDedicated/schedulingRequestConfig",
+    "subcategory_id": "mac.sr",
+    "category_id": "mac",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/physicalConfigDedicated/soundingRS-UL-ConfigDedicated",
+    "subcategory_id": "phy.reference",
+    "category_id": "phy",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/physicalConfigDedicated/uplinkPowerControlDedicated",
+    "subcategory_id": "power-control.dedicated",
+    "category_id": "power-control",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/physicalConfigDedicated/tpc-PDCCH-ConfigPUCCH",
+    "subcategory_id": "power-control.dedicated",
+    "category_id": "power-control",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/physicalConfigDedicated/tpc-PDCCH-ConfigPUSCH",
+    "subcategory_id": "power-control.dedicated",
+    "category_id": "power-control",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/phr-Config",
+    "subcategory_id": "mac.bsr-phr",
+    "category_id": "mac",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/dualConnectivityPHR",
+    "subcategory_id": "mac.bsr-phr",
+    "category_id": "mac",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/mac-MainConfig-v1020/extendedBSR-Sizes-r10",
+    "subcategory_id": "mac.bsr-phr",
+    "category_id": "mac",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/mac-MainConfig-v1020/extendedPHR-r10",
+    "subcategory_id": "mac.bsr-phr",
+    "category_id": "mac",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/sr-ProhibitTimer-r9",
+    "subcategory_id": "mac.sr",
+    "category_id": "mac",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/timeAlignmentTimerDedicated",
+    "subcategory_id": "mac.timing",
+    "category_id": "mac",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/ul-SCH-Config/maxHARQ-Tx",
+    "subcategory_id": "mac.harq",
+    "category_id": "mac",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/ul-SCH-Config/ttiBundling",
+    "subcategory_id": "mac.harq",
+    "category_id": "mac",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/ul-SCH-Config/periodicBSR-Timer",
+    "subcategory_id": "mac.bsr-phr",
+    "category_id": "mac",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/ul-SCH-Config/retxBSR-Timer",
+    "subcategory_id": "mac.bsr-phr",
+    "category_id": "mac",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/drx-Config",
+    "subcategory_id": "drx.long",
+    "category_id": "drx",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/drx-Config/setup/shortDRX",
+    "subcategory_id": "drx.short",
+    "category_id": "drx",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/drx-Config/setup/onDurationTimer",
+    "subcategory_id": "drx.timers",
+    "category_id": "drx",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/drx-Config/setup/drx-InactivityTimer",
+    "subcategory_id": "drx.timers",
+    "category_id": "drx",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/drx-Config/setup/drx-RetransmissionTimer",
+    "subcategory_id": "drx.timers",
+    "category_id": "drx",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/drb-ToAddModList/[*]/pdcp-Config",
+    "subcategory_id": "rlc-pdcp.pdcp",
+    "category_id": "rlc-pdcp",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/drb-ToAddModList/[*]/rlc-Config/am/dl-AM-RLC",
+    "subcategory_id": "rlc-pdcp.am-dl",
+    "category_id": "rlc-pdcp",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/drb-ToAddModList/[*]/rlc-Config/am/ul-AM-RLC",
+    "subcategory_id": "rlc-pdcp.am-ul",
+    "category_id": "rlc-pdcp",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/drb-ToAddModList/[*]/rlc-Config/um-Bi-Directional",
+    "subcategory_id": "rlc-pdcp.um",
+    "category_id": "rlc-pdcp",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/drb-ToAddModList/[*]/rlc-Config/um-Uni-Directional-DL",
+    "subcategory_id": "rlc-pdcp.um",
+    "category_id": "rlc-pdcp",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/drb-ToAddModList/[*]/rlc-Config/um-Uni-Directional-UL",
+    "subcategory_id": "rlc-pdcp.um",
+    "category_id": "rlc-pdcp",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/srb-ToAddModList/[*]/pdcp-Config",
+    "subcategory_id": "rlc-pdcp.pdcp",
+    "category_id": "rlc-pdcp",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/srb-ToAddModList/[*]/rlc-Config/explicitValue/am/dl-AM-RLC",
+    "subcategory_id": "rlc-pdcp.am-dl",
+    "category_id": "rlc-pdcp",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/srb-ToAddModList/[*]/rlc-Config/explicitValue/am/ul-AM-RLC",
+    "subcategory_id": "rlc-pdcp.am-ul",
+    "category_id": "rlc-pdcp",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/srb-ToAddModList/[*]/rlc-Config/explicitValue/um-Bi-Directional",
+    "subcategory_id": "rlc-pdcp.um",
+    "category_id": "rlc-pdcp",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/srb-ToAddModList/[*]/rlc-Config/explicitValue/um-Uni-Directional-DL",
+    "subcategory_id": "rlc-pdcp.um",
+    "category_id": "rlc-pdcp",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/srb-ToAddModList/[*]/rlc-Config/explicitValue/um-Uni-Directional-UL",
+    "subcategory_id": "rlc-pdcp.um",
+    "category_id": "rlc-pdcp",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/rlf-TimersAndConstants-r9",
+    "subcategory_id": "timers-rlf.rlf",
+    "category_id": "timers-rlf",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/rlf-TimersAndConstants-r9/setup/t301-r9",
+    "subcategory_id": "timers-rlf.connection",
+    "category_id": "timers-rlf",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/physicalConfigDedicated/antennaInfo",
+    "subcategory_id": "mimo-ca.antennas",
+    "category_id": "mimo-ca",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/physicalConfigDedicated/antennaInfo-r10",
+    "subcategory_id": "mimo-ca.antennas",
+    "category_id": "mimo-ca",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/physicalConfigDedicated/cqi-ReportConfig",
+    "subcategory_id": "phy.csi",
+    "category_id": "phy",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/physicalConfigDedicated/cqi-ReportConfig-r10",
+    "subcategory_id": "phy.csi",
+    "category_id": "phy",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/physicalConfigDedicated/cqi-ReportConfigPCell-v1250",
+    "subcategory_id": "phy.csi",
+    "category_id": "phy",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/physicalConfigDedicated/csi-RS-Config-r10",
+    "subcategory_id": "phy.csi",
+    "category_id": "phy",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/physicalConfigDedicated/pdsch-ConfigDedicated",
+    "subcategory_id": "phy.reference",
+    "category_id": "phy",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/physicalConfigDedicated/pdsch-ConfigDedicated-v1430",
+    "subcategory_id": "phy.reference",
+    "category_id": "phy",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/physicalConfigDedicated/pucch-ConfigDedicated",
+    "subcategory_id": "phy.reference",
+    "category_id": "phy",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/physicalConfigDedicated/pucch-ConfigDedicated-v1020",
+    "subcategory_id": "phy.reference",
+    "category_id": "phy",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/physicalConfigDedicated/pusch-ConfigDedicated",
+    "subcategory_id": "phy.reference",
+    "category_id": "phy",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/physicalConfigDedicated/pusch-ConfigDedicated-v1430",
+    "subcategory_id": "phy.reference",
+    "category_id": "phy",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/physicalConfigDedicated/schedulingRequestConfig",
+    "subcategory_id": "mac.sr",
+    "category_id": "mac",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/physicalConfigDedicated/soundingRS-UL-ConfigDedicated",
+    "subcategory_id": "phy.reference",
+    "category_id": "phy",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/physicalConfigDedicated/uplinkPowerControlDedicated",
+    "subcategory_id": "power-control.dedicated",
+    "category_id": "power-control",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/physicalConfigDedicated/tpc-PDCCH-ConfigPUCCH",
+    "subcategory_id": "power-control.dedicated",
+    "category_id": "power-control",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/physicalConfigDedicated/tpc-PDCCH-ConfigPUSCH",
+    "subcategory_id": "power-control.dedicated",
+    "category_id": "power-control",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/phr-Config",
+    "subcategory_id": "mac.bsr-phr",
+    "category_id": "mac",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/dualConnectivityPHR",
+    "subcategory_id": "mac.bsr-phr",
+    "category_id": "mac",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/mac-MainConfig-v1020/extendedBSR-Sizes-r10",
+    "subcategory_id": "mac.bsr-phr",
+    "category_id": "mac",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/mac-MainConfig-v1020/extendedPHR-r10",
+    "subcategory_id": "mac.bsr-phr",
+    "category_id": "mac",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/sr-ProhibitTimer-r9",
+    "subcategory_id": "mac.sr",
+    "category_id": "mac",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/timeAlignmentTimerDedicated",
+    "subcategory_id": "mac.timing",
+    "category_id": "mac",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/ul-SCH-Config/maxHARQ-Tx",
+    "subcategory_id": "mac.harq",
+    "category_id": "mac",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/ul-SCH-Config/ttiBundling",
+    "subcategory_id": "mac.harq",
+    "category_id": "mac",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/ul-SCH-Config/periodicBSR-Timer",
+    "subcategory_id": "mac.bsr-phr",
+    "category_id": "mac",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/ul-SCH-Config/retxBSR-Timer",
+    "subcategory_id": "mac.bsr-phr",
+    "category_id": "mac",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/drx-Config",
+    "subcategory_id": "drx.long",
+    "category_id": "drx",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/drx-Config/setup/shortDRX",
+    "subcategory_id": "drx.short",
+    "category_id": "drx",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/drx-Config/setup/onDurationTimer",
+    "subcategory_id": "drx.timers",
+    "category_id": "drx",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/drx-Config/setup/drx-InactivityTimer",
+    "subcategory_id": "drx.timers",
+    "category_id": "drx",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/mac-MainConfig/explicitValue/drx-Config/setup/drx-RetransmissionTimer",
+    "subcategory_id": "drx.timers",
+    "category_id": "drx",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/drb-ToAddModList/[*]/pdcp-Config",
+    "subcategory_id": "rlc-pdcp.pdcp",
+    "category_id": "rlc-pdcp",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/drb-ToAddModList/[*]/rlc-Config/am/dl-AM-RLC",
+    "subcategory_id": "rlc-pdcp.am-dl",
+    "category_id": "rlc-pdcp",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/drb-ToAddModList/[*]/rlc-Config/am/ul-AM-RLC",
+    "subcategory_id": "rlc-pdcp.am-ul",
+    "category_id": "rlc-pdcp",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/drb-ToAddModList/[*]/rlc-Config/um-Bi-Directional",
+    "subcategory_id": "rlc-pdcp.um",
+    "category_id": "rlc-pdcp",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/drb-ToAddModList/[*]/rlc-Config/um-Uni-Directional-DL",
+    "subcategory_id": "rlc-pdcp.um",
+    "category_id": "rlc-pdcp",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/drb-ToAddModList/[*]/rlc-Config/um-Uni-Directional-UL",
+    "subcategory_id": "rlc-pdcp.um",
+    "category_id": "rlc-pdcp",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/srb-ToAddModList/[*]/pdcp-Config",
+    "subcategory_id": "rlc-pdcp.pdcp",
+    "category_id": "rlc-pdcp",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/srb-ToAddModList/[*]/rlc-Config/explicitValue/am/dl-AM-RLC",
+    "subcategory_id": "rlc-pdcp.am-dl",
+    "category_id": "rlc-pdcp",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/srb-ToAddModList/[*]/rlc-Config/explicitValue/am/ul-AM-RLC",
+    "subcategory_id": "rlc-pdcp.am-ul",
+    "category_id": "rlc-pdcp",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/srb-ToAddModList/[*]/rlc-Config/explicitValue/um-Bi-Directional",
+    "subcategory_id": "rlc-pdcp.um",
+    "category_id": "rlc-pdcp",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/srb-ToAddModList/[*]/rlc-Config/explicitValue/um-Uni-Directional-DL",
+    "subcategory_id": "rlc-pdcp.um",
+    "category_id": "rlc-pdcp",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/srb-ToAddModList/[*]/rlc-Config/explicitValue/um-Uni-Directional-UL",
+    "subcategory_id": "rlc-pdcp.um",
+    "category_id": "rlc-pdcp",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/rlf-TimersAndConstants-r9",
+    "subcategory_id": "timers-rlf.rlf",
+    "category_id": "timers-rlf",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/rlf-TimersAndConstants-r9/setup/t301-r9",
+    "subcategory_id": "timers-rlf.connection",
+    "category_id": "timers-rlf",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/measGapConfig",
+    "subcategory_id": "mobility.gaps",
+    "category_id": "mobility",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/mgta-r15",
+    "subcategory_id": "mobility.gaps",
+    "category_id": "mobility",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/quantityConfig",
+    "subcategory_id": "mobility.quantities",
+    "category_id": "mobility",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/s-Measure",
+    "subcategory_id": "mobility.quantities",
+    "category_id": "mobility",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/measObjectToRemoveList",
+    "subcategory_id": "mobility.objects",
+    "category_id": "mobility",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/measIdToRemoveList",
+    "subcategory_id": "layering-connected.switch",
+    "category_id": "layering-connected",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/measObjectToAddModList/[*]/measObject",
+    "subcategory_id": "mobility.objects",
+    "category_id": "mobility",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/measObjectToAddModList/[*]/measObject/measObjectEUTRA/carrierFreq",
+    "subcategory_id": "layering-connected.layers",
+    "category_id": "layering-connected",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/measObjectToAddModList/[*]/measObject/measObjectUTRA/carrierFreq",
+    "subcategory_id": "layering-connected.layers",
+    "category_id": "layering-connected",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/measObjectToAddModList/[*]/measObject/measObjectNR-r15/carrierFreq-r15",
+    "subcategory_id": "layering-connected.layers",
+    "category_id": "layering-connected",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigEUTRA/maxReportCells",
+    "subcategory_id": "mobility.quantities",
+    "category_id": "mobility",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigEUTRA/reportAddNeighMeas-r10",
+    "subcategory_id": "mobility.quantities",
+    "category_id": "mobility",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigEUTRA/reportAmount",
+    "subcategory_id": "mobility.quantities",
+    "category_id": "mobility",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigEUTRA/reportInterval",
+    "subcategory_id": "mobility.quantities",
+    "category_id": "mobility",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigEUTRA/reportQuantity",
+    "subcategory_id": "mobility.quantities",
+    "category_id": "mobility",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigEUTRA/triggerQuantity",
+    "subcategory_id": "mobility.quantities",
+    "category_id": "mobility",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigEUTRA/reportQuantityUTRA-FDD-r10",
+    "subcategory_id": "mobility.quantities",
+    "category_id": "mobility",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigEUTRA/reportQuantityCellNR-r15",
+    "subcategory_id": "mobility.quantities",
+    "category_id": "mobility",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigEUTRA/reportQuantityRS-IndexNR-r15",
+    "subcategory_id": "mobility.quantities",
+    "category_id": "mobility",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigEUTRA/reportRS-IndexResultsNR",
+    "subcategory_id": "mobility.quantities",
+    "category_id": "mobility",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigEUTRA/maxReportRS-Index-r15",
+    "subcategory_id": "mobility.quantities",
+    "category_id": "mobility",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigEUTRA/triggerType/event/eventId/eventA1",
+    "subcategory_id": "mobility.inter",
+    "category_id": "mobility",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigEUTRA/triggerType/event/eventId/eventA2",
+    "subcategory_id": "mobility.inter",
+    "category_id": "mobility",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigEUTRA/triggerType/event/eventId/eventA4",
+    "subcategory_id": "mobility.inter",
+    "category_id": "mobility",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigEUTRA/triggerType/event/eventId/eventA5",
+    "subcategory_id": "mobility.inter",
+    "category_id": "mobility",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigEUTRA/triggerType/event/eventId/eventA3",
+    "subcategory_id": "mobility.intra",
+    "category_id": "mobility",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigEUTRA/triggerType/event/eventId/eventA6-r10",
+    "subcategory_id": "mobility.intra",
+    "category_id": "mobility",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigEUTRA/triggerType/event/eventId/eventB1",
+    "subcategory_id": "mobility.inter-rat",
+    "category_id": "mobility",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigEUTRA/triggerType/event/eventId/eventB2",
+    "subcategory_id": "mobility.inter-rat",
+    "category_id": "mobility",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigEUTRA/triggerType/event/eventId/eventB1-NR-r15",
+    "subcategory_id": "mobility.inter-rat",
+    "category_id": "mobility",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigEUTRA/triggerType/event/eventId/eventB2-NR-r15",
+    "subcategory_id": "mobility.inter-rat",
+    "category_id": "mobility",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigInterRAT/maxReportCells",
+    "subcategory_id": "mobility.quantities",
+    "category_id": "mobility",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigInterRAT/reportAddNeighMeas-r10",
+    "subcategory_id": "mobility.quantities",
+    "category_id": "mobility",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigInterRAT/reportAmount",
+    "subcategory_id": "mobility.quantities",
+    "category_id": "mobility",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigInterRAT/reportInterval",
+    "subcategory_id": "mobility.quantities",
+    "category_id": "mobility",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigInterRAT/reportQuantity",
+    "subcategory_id": "mobility.quantities",
+    "category_id": "mobility",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigInterRAT/triggerQuantity",
+    "subcategory_id": "mobility.quantities",
+    "category_id": "mobility",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigInterRAT/reportQuantityUTRA-FDD-r10",
+    "subcategory_id": "mobility.quantities",
+    "category_id": "mobility",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigInterRAT/reportQuantityCellNR-r15",
+    "subcategory_id": "mobility.quantities",
+    "category_id": "mobility",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigInterRAT/reportQuantityRS-IndexNR-r15",
+    "subcategory_id": "mobility.quantities",
+    "category_id": "mobility",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigInterRAT/reportRS-IndexResultsNR",
+    "subcategory_id": "mobility.quantities",
+    "category_id": "mobility",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigInterRAT/maxReportRS-Index-r15",
+    "subcategory_id": "mobility.quantities",
+    "category_id": "mobility",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigInterRAT/triggerType/event/eventId/eventA1",
+    "subcategory_id": "mobility.inter",
+    "category_id": "mobility",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigInterRAT/triggerType/event/eventId/eventA2",
+    "subcategory_id": "mobility.inter",
+    "category_id": "mobility",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigInterRAT/triggerType/event/eventId/eventA4",
+    "subcategory_id": "mobility.inter",
+    "category_id": "mobility",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigInterRAT/triggerType/event/eventId/eventA5",
+    "subcategory_id": "mobility.inter",
+    "category_id": "mobility",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigInterRAT/triggerType/event/eventId/eventA3",
+    "subcategory_id": "mobility.intra",
+    "category_id": "mobility",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigInterRAT/triggerType/event/eventId/eventA6-r10",
+    "subcategory_id": "mobility.intra",
+    "category_id": "mobility",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigInterRAT/triggerType/event/eventId/eventB1",
+    "subcategory_id": "mobility.inter-rat",
+    "category_id": "mobility",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigInterRAT/triggerType/event/eventId/eventB2",
+    "subcategory_id": "mobility.inter-rat",
+    "category_id": "mobility",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigInterRAT/triggerType/event/eventId/eventB1-NR-r15",
+    "subcategory_id": "mobility.inter-rat",
+    "category_id": "mobility",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigInterRAT/triggerType/event/eventId/eventB2-NR-r15",
+    "subcategory_id": "mobility.inter-rat",
+    "category_id": "mobility",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/mobilityControlInfo/carrierBandwidth",
+    "subcategory_id": "phy.carrier",
+    "category_id": "phy",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/mobilityControlInfo/carrierFreq",
+    "subcategory_id": "phy.carrier",
+    "category_id": "phy",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/mobilityControlInfo/rach-ConfigDedicated",
+    "subcategory_id": "mobility.handover",
+    "category_id": "mobility",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/mobilityControlInfo/t304",
+    "subcategory_id": "mobility.handover",
+    "category_id": "mobility",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/mobilityControlInfo/targetPhysCellId",
+    "subcategory_id": "mobility.handover",
+    "category_id": "mobility",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/securityConfigHO/handoverType/intraLTE",
+    "subcategory_id": "security.algorithms",
+    "category_id": "security",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "securityModeCommand/securityModeCommand-r8/securityConfigSMC/securityAlgorithmConfig",
+    "subcategory_id": "security.algorithms",
+    "category_id": "security",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionRelease/rrcConnectionRelease-r8/idleModeMobilityControlInfo",
+    "subcategory_id": "layering-idle.release",
+    "category_id": "layering-idle",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionRelease/rrcConnectionRelease-r8/redirectedCarrierInfo",
+    "subcategory_id": "layering-idle.release",
+    "category_id": "layering-idle",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/[*]/sib2/freqInfo",
+    "subcategory_id": "phy.carrier",
+    "category_id": "phy",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/[*]/sib2/timeAlignmentTimerCommon",
+    "subcategory_id": "mac.timing",
+    "category_id": "mac",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/[*]/sib2/ac-BarringInfo",
+    "subcategory_id": "access-barring.barring",
+    "category_id": "access-barring",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/[*]/sib2/ac-BarringSkipForMMTELVideo-r12",
+    "subcategory_id": "access-barring.barring",
+    "category_id": "access-barring",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/[*]/sib2/ac-BarringSkipForMMTELVoice-r12",
+    "subcategory_id": "access-barring.barring",
+    "category_id": "access-barring",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/[*]/sib2/ac-BarringSkipForSMS-r12",
+    "subcategory_id": "access-barring.barring",
+    "category_id": "access-barring",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/[*]/sib2/ue-TimersAndConstants/t300",
+    "subcategory_id": "timers-rlf.connection",
+    "category_id": "timers-rlf",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/[*]/sib2/ue-TimersAndConstants/t301",
+    "subcategory_id": "timers-rlf.connection",
+    "category_id": "timers-rlf",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/[*]/sib2/ue-TimersAndConstants/t302",
+    "subcategory_id": "timers-rlf.connection",
+    "category_id": "timers-rlf",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/[*]/sib2/ue-TimersAndConstants/t303",
+    "subcategory_id": "timers-rlf.connection",
+    "category_id": "timers-rlf",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/[*]/sib2/ue-TimersAndConstants/t305",
+    "subcategory_id": "timers-rlf.connection",
+    "category_id": "timers-rlf",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/[*]/sib2/ue-TimersAndConstants/t306",
+    "subcategory_id": "timers-rlf.connection",
+    "category_id": "timers-rlf",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/[*]/sib2/ue-TimersAndConstants/t310",
+    "subcategory_id": "timers-rlf.rlf",
+    "category_id": "timers-rlf",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/[*]/sib2/ue-TimersAndConstants/n310",
+    "subcategory_id": "timers-rlf.rlf",
+    "category_id": "timers-rlf",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/[*]/sib2/ue-TimersAndConstants/n311",
+    "subcategory_id": "timers-rlf.rlf",
+    "category_id": "timers-rlf",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/[*]/sib2/ue-TimersAndConstants/t311",
+    "subcategory_id": "timers-rlf.rlf",
+    "category_id": "timers-rlf",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/[*]/sib3",
+    "subcategory_id": "layering-idle.serving",
+    "category_id": "layering-idle",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/[*]/sib4",
+    "subcategory_id": "layering-idle.intra",
+    "category_id": "layering-idle",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/[*]/sib5",
+    "subcategory_id": "layering-idle.inter",
+    "category_id": "layering-idle",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/[*]/sib6",
+    "subcategory_id": "layering-idle.inter-rat",
+    "category_id": "layering-idle",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/[*]/sib7",
+    "subcategory_id": "layering-idle.inter-rat",
+    "category_id": "layering-idle",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/[*]/sib24-v1530",
+    "subcategory_id": "layering-idle.inter-rat",
+    "category_id": "layering-idle",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "systemInformationBlockType1/cellSelectionInfo",
+    "subcategory_id": "layering-idle.access",
+    "category_id": "layering-idle",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "systemInformationBlockType1/cellAccessRelatedInfo/cellBarred",
+    "subcategory_id": "layering-idle.access",
+    "category_id": "layering-idle",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "systemInformationBlockType1/cellAccessRelatedInfo/csg-Indication",
+    "subcategory_id": "layering-idle.access",
+    "category_id": "layering-idle",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "systemInformationBlockType1/cellAccessRelatedInfo/intraFreqReselection",
+    "subcategory_id": "layering-idle.access",
+    "category_id": "layering-idle",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "systemInformationBlockType1/cellAccessRelatedInfo/plmn-IdentityList/[*]/cellReservedForOperatorUse",
+    "subcategory_id": "layering-idle.access",
+    "category_id": "layering-idle",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "systemInformationBlockType1/freqBandIndicator",
+    "subcategory_id": "layering-idle.access",
+    "category_id": "layering-idle",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "systemInformationBlockType1/p-Max",
+    "subcategory_id": "layering-idle.access",
+    "category_id": "layering-idle",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "systemInformationBlockType1/si-WindowLength",
+    "subcategory_id": "layering-idle.access",
+    "category_id": "layering-idle",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "NR",
+    "path_prefix": "mib/cellBarred",
+    "subcategory_id": "layering-idle.access",
+    "category_id": "layering-idle",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "NR",
+    "path_prefix": "mib/intraFreqReselection",
+    "subcategory_id": "layering-idle.access",
+    "category_id": "layering-idle",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "NR",
+    "path_prefix": "mib/dmrs-TypeA-Position",
+    "subcategory_id": "phy.reference",
+    "category_id": "phy",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "NR",
+    "path_prefix": "mib/ssb-SubcarrierOffset",
+    "subcategory_id": "phy.carrier",
+    "category_id": "phy",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "NR",
+    "path_prefix": "mib/subCarrierSpacingCommon",
+    "subcategory_id": "phy.carrier",
+    "category_id": "phy",
+    "discriminator": {},
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigEUTRA/triggerType/event/hysteresis",
+    "subcategory_id": "mobility.inter",
+    "category_id": "mobility",
+    "discriminator": {
+      "event": "A1"
+    },
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv ; event enregistré dans les discriminants"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigEUTRA/triggerType/event/hysteresis",
+    "subcategory_id": "mobility.inter",
+    "category_id": "mobility",
+    "discriminator": {
+      "event": "A2"
+    },
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv ; event enregistré dans les discriminants"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigEUTRA/triggerType/event/hysteresis",
+    "subcategory_id": "mobility.intra",
+    "category_id": "mobility",
+    "discriminator": {
+      "event": "A3"
+    },
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv ; event enregistré dans les discriminants"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigEUTRA/triggerType/event/hysteresis",
+    "subcategory_id": "mobility.inter",
+    "category_id": "mobility",
+    "discriminator": {
+      "event": "A4"
+    },
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv ; event enregistré dans les discriminants"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigEUTRA/triggerType/event/hysteresis",
+    "subcategory_id": "mobility.inter",
+    "category_id": "mobility",
+    "discriminator": {
+      "event": "A5"
+    },
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv ; event enregistré dans les discriminants"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigEUTRA/triggerType/event/hysteresis",
+    "subcategory_id": "mobility.intra",
+    "category_id": "mobility",
+    "discriminator": {
+      "event": "A6"
+    },
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv ; event enregistré dans les discriminants"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigEUTRA/triggerType/event/timeToTrigger",
+    "subcategory_id": "mobility.inter",
+    "category_id": "mobility",
+    "discriminator": {
+      "event": "A1"
+    },
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv ; event enregistré dans les discriminants"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigEUTRA/triggerType/event/timeToTrigger",
+    "subcategory_id": "mobility.inter",
+    "category_id": "mobility",
+    "discriminator": {
+      "event": "A2"
+    },
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv ; event enregistré dans les discriminants"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigEUTRA/triggerType/event/timeToTrigger",
+    "subcategory_id": "mobility.intra",
+    "category_id": "mobility",
+    "discriminator": {
+      "event": "A3"
+    },
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv ; event enregistré dans les discriminants"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigEUTRA/triggerType/event/timeToTrigger",
+    "subcategory_id": "mobility.inter",
+    "category_id": "mobility",
+    "discriminator": {
+      "event": "A4"
+    },
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv ; event enregistré dans les discriminants"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigEUTRA/triggerType/event/timeToTrigger",
+    "subcategory_id": "mobility.inter",
+    "category_id": "mobility",
+    "discriminator": {
+      "event": "A5"
+    },
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv ; event enregistré dans les discriminants"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigEUTRA/triggerType/event/timeToTrigger",
+    "subcategory_id": "mobility.intra",
+    "category_id": "mobility",
+    "discriminator": {
+      "event": "A6"
+    },
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv ; event enregistré dans les discriminants"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigInterRAT/triggerType/event/hysteresis",
+    "subcategory_id": "mobility.inter-rat",
+    "category_id": "mobility",
+    "discriminator": {
+      "event": "B1"
+    },
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv ; event enregistré dans les discriminants"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigInterRAT/triggerType/event/timeToTrigger",
+    "subcategory_id": "mobility.inter-rat",
+    "category_id": "mobility",
+    "discriminator": {
+      "event": "B1"
+    },
+    "note": "Spécification utilisateur dict_categories (inline), contexte ASN.1 vérifié dans paths.csv ; event enregistré dans les discriminants"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "schedulingInfoSIB1-BR-r13",
+    "subcategory_id": "layering-idle.paging",
+    "category_id": "layering-idle",
+    "discriminator": {},
+    "note": "Décision utilisateur Q11"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "systemInfoUnchanged-BR-r15",
+    "subcategory_id": "layering-idle.paging",
+    "category_id": "layering-idle",
+    "discriminator": {},
+    "note": "Décision utilisateur Q11"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig",
+    "subcategory_id": "mobility.reports",
+    "category_id": "mobility",
+    "discriminator": {},
+    "note": "Décision utilisateur Q04"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigEUTRA/triggerType",
+    "subcategory_id": "mobility.reports",
+    "category_id": "mobility",
+    "discriminator": {
+      "reportConfig_type": "EUTRA"
+    },
+    "note": "Décision utilisateur Q04"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigEUTRA/triggerType/event/eventId",
+    "subcategory_id": "mobility.reports",
+    "category_id": "mobility",
+    "discriminator": {
+      "reportConfig_type": "EUTRA"
+    },
+    "note": "Décision utilisateur Q04"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigInterRAT/triggerType",
+    "subcategory_id": "mobility.reports",
+    "category_id": "mobility",
+    "discriminator": {
+      "reportConfig_type": "InterRAT"
+    },
+    "note": "Décision utilisateur Q04"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigInterRAT/triggerType/event/eventId",
+    "subcategory_id": "mobility.reports",
+    "category_id": "mobility",
+    "discriminator": {
+      "reportConfig_type": "InterRAT"
+    },
+    "note": "Décision utilisateur Q04"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToAddModList/[*]/reportConfig/reportConfigInterRAT/triggerType/periodical/purpose",
+    "subcategory_id": "mobility.reports",
+    "category_id": "mobility",
+    "discriminator": {
+      "reportConfig_type": "InterRAT"
+    },
+    "note": "Décision utilisateur Q04"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/reportConfigToRemoveList",
+    "subcategory_id": "mobility.reports",
+    "category_id": "mobility",
+    "discriminator": {},
+    "note": "Décision utilisateur Q04"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/speedStatePars",
+    "subcategory_id": "mobility.speed",
+    "category_id": "mobility",
+    "discriminator": {},
+    "note": "Décision utilisateur Q16"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/speedStatePars/release",
+    "subcategory_id": "mobility.speed",
+    "category_id": "mobility",
+    "discriminator": {},
+    "note": "Décision utilisateur Q16"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/speedStatePars/setup/mobilityStateParameters/n-CellChangeHigh",
+    "subcategory_id": "mobility.speed",
+    "category_id": "mobility",
+    "discriminator": {},
+    "note": "Décision utilisateur Q16"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/speedStatePars/setup/mobilityStateParameters/n-CellChangeMedium",
+    "subcategory_id": "mobility.speed",
+    "category_id": "mobility",
+    "discriminator": {},
+    "note": "Décision utilisateur Q16"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/speedStatePars/setup/mobilityStateParameters/t-Evaluation",
+    "subcategory_id": "mobility.speed",
+    "category_id": "mobility",
+    "discriminator": {},
+    "note": "Décision utilisateur Q16"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/speedStatePars/setup/mobilityStateParameters/t-HystNormal",
+    "subcategory_id": "mobility.speed",
+    "category_id": "mobility",
+    "discriminator": {},
+    "note": "Décision utilisateur Q16"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/speedStatePars/setup/timeToTrigger-SF/sf-High",
+    "subcategory_id": "mobility.speed",
+    "category_id": "mobility",
+    "discriminator": {},
+    "note": "Décision utilisateur Q16"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/measConfig/speedStatePars/setup/timeToTrigger-SF/sf-Medium",
+    "subcategory_id": "mobility.speed",
+    "category_id": "mobility",
+    "discriminator": {},
+    "note": "Décision utilisateur Q16"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/mobilityControlInfo/additionalSpectrumEmission",
+    "subcategory_id": "phy.carrier",
+    "category_id": "phy",
+    "discriminator": {},
+    "note": "Décision utilisateur Q15"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/mobilityControlInfo/radioResourceConfigCommon/rach-ConfigCommon/ra-SupervisionInfo/ra-ResponseWindowSize",
+    "subcategory_id": "phy.prach",
+    "category_id": "phy",
+    "discriminator": {},
+    "note": "Décision utilisateur Q10"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/drb-ToAddModList/[*]/logicalChannelConfig/logicalChannelSR-Mask-r9",
+    "subcategory_id": "mac.logical",
+    "category_id": "mac",
+    "discriminator": {
+      "bearer_kind": "DRB"
+    },
+    "note": "Décision utilisateur Q05"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/drb-ToAddModList/[*]/logicalChannelConfig/ul-SpecificParameters/bucketSizeDuration",
+    "subcategory_id": "mac.logical",
+    "category_id": "mac",
+    "discriminator": {
+      "bearer_kind": "DRB"
+    },
+    "note": "Décision utilisateur Q05"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/drb-ToAddModList/[*]/logicalChannelConfig/ul-SpecificParameters/prioritisedBitRate",
+    "subcategory_id": "mac.logical",
+    "category_id": "mac",
+    "discriminator": {
+      "bearer_kind": "DRB"
+    },
+    "note": "Décision utilisateur Q05"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/drb-ToAddModList/[*]/logicalChannelConfig/ul-SpecificParameters/priority",
+    "subcategory_id": "mac.logical",
+    "category_id": "mac",
+    "discriminator": {
+      "bearer_kind": "DRB"
+    },
+    "note": "Décision utilisateur Q05"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/drb-ToAddModList/[*]/rlc-Config",
+    "subcategory_id": "rlc-pdcp.bearers",
+    "category_id": "rlc-pdcp",
+    "discriminator": {
+      "bearer_kind": "DRB"
+    },
+    "note": "Décision utilisateur Q07"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/drb-ToAddModList/[*]/rlc-Config-v1510/reestablishRLC-r15",
+    "subcategory_id": "rlc-pdcp.bearers",
+    "category_id": "rlc-pdcp",
+    "discriminator": {
+      "bearer_kind": "DRB"
+    },
+    "note": "Décision utilisateur Q03"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/drb-ToReleaseList",
+    "subcategory_id": "rlc-pdcp.bearers",
+    "category_id": "rlc-pdcp",
+    "discriminator": {},
+    "note": "Décision utilisateur Q03"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/sps-Config/sps-ConfigDL/release",
+    "subcategory_id": "mac.sps",
+    "category_id": "mac",
+    "discriminator": {},
+    "note": "Décision utilisateur Q13"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/sps-Config/sps-ConfigUL/release",
+    "subcategory_id": "mac.sps",
+    "category_id": "mac",
+    "discriminator": {},
+    "note": "Décision utilisateur Q13"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/sps-Config/sps-ConfigUL/setup/implicitReleaseAfter",
+    "subcategory_id": "mac.sps",
+    "category_id": "mac",
+    "discriminator": {},
+    "note": "Décision utilisateur Q13"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/sps-Config/sps-ConfigUL/setup/semiPersistSchedIntervalUL",
+    "subcategory_id": "mac.sps",
+    "category_id": "mac",
+    "discriminator": {},
+    "note": "Décision utilisateur Q13"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/srb-ToAddModList/[*]/logicalChannelConfig/defaultValue",
+    "subcategory_id": "mac.logical",
+    "category_id": "mac",
+    "discriminator": {
+      "bearer_kind": "SRB"
+    },
+    "note": "Décision utilisateur Q05"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/srb-ToAddModList/[*]/logicalChannelConfig/explicitValue/ul-SpecificParameters/bucketSizeDuration",
+    "subcategory_id": "mac.logical",
+    "category_id": "mac",
+    "discriminator": {
+      "bearer_kind": "SRB"
+    },
+    "note": "Décision utilisateur Q05"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/srb-ToAddModList/[*]/logicalChannelConfig/explicitValue/ul-SpecificParameters/prioritisedBitRate",
+    "subcategory_id": "mac.logical",
+    "category_id": "mac",
+    "discriminator": {
+      "bearer_kind": "SRB"
+    },
+    "note": "Décision utilisateur Q05"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/srb-ToAddModList/[*]/logicalChannelConfig/explicitValue/ul-SpecificParameters/priority",
+    "subcategory_id": "mac.logical",
+    "category_id": "mac",
+    "discriminator": {
+      "bearer_kind": "SRB"
+    },
+    "note": "Décision utilisateur Q05"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/srb-ToAddModList/[*]/rlc-Config",
+    "subcategory_id": "rlc-pdcp.bearers",
+    "category_id": "rlc-pdcp",
+    "discriminator": {
+      "bearer_kind": "SRB"
+    },
+    "note": "Décision utilisateur Q07"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionRelease/rrcConnectionRelease-r8/releaseCause",
+    "subcategory_id": "access-barring.causes",
+    "category_id": "access-barring",
+    "discriminator": {},
+    "note": "Décision utilisateur Q02"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionRequest/rrcConnectionRequest-r8/establishmentCause",
+    "subcategory_id": "access-barring.causes",
+    "category_id": "access-barring",
+    "discriminator": {},
+    "note": "Décision utilisateur Q02"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/srb-ToAddModList/[*]/logicalChannelConfig/defaultValue",
+    "subcategory_id": "mac.logical",
+    "category_id": "mac",
+    "discriminator": {
+      "bearer_kind": "SRB"
+    },
+    "note": "Décision utilisateur Q05"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/srb-ToAddModList/[*]/logicalChannelConfig/explicitValue/ul-SpecificParameters/bucketSizeDuration",
+    "subcategory_id": "mac.logical",
+    "category_id": "mac",
+    "discriminator": {
+      "bearer_kind": "SRB"
+    },
+    "note": "Décision utilisateur Q05"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/srb-ToAddModList/[*]/logicalChannelConfig/explicitValue/ul-SpecificParameters/prioritisedBitRate",
+    "subcategory_id": "mac.logical",
+    "category_id": "mac",
+    "discriminator": {
+      "bearer_kind": "SRB"
+    },
+    "note": "Décision utilisateur Q05"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/srb-ToAddModList/[*]/logicalChannelConfig/explicitValue/ul-SpecificParameters/priority",
+    "subcategory_id": "mac.logical",
+    "category_id": "mac",
+    "discriminator": {
+      "bearer_kind": "SRB"
+    },
+    "note": "Décision utilisateur Q05"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/srb-ToAddModList/[*]/rlc-Config",
+    "subcategory_id": "rlc-pdcp.bearers",
+    "category_id": "rlc-pdcp",
+    "discriminator": {
+      "bearer_kind": "SRB"
+    },
+    "note": "Décision utilisateur Q07"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "systemInformationBlockType1/schedulingInfoList/[*]/sib-MappingInfo",
+    "subcategory_id": "layering-idle.paging",
+    "category_id": "layering-idle",
+    "discriminator": {},
+    "note": "Décision utilisateur Q11"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "systemInformationBlockType1/schedulingInfoList/[*]/si-Periodicity",
+    "subcategory_id": "layering-idle.paging",
+    "category_id": "layering-idle",
+    "discriminator": {},
+    "note": "Décision utilisateur Q11"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "systemInformationBlockType1/systemInfoValueTag",
+    "subcategory_id": "layering-idle.paging",
+    "category_id": "layering-idle",
+    "discriminator": {},
+    "note": "Décision utilisateur Q11"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/[*]/sib2/plmn-InfoList-r15/[*]/upperLayerIndication-r15",
+    "subcategory_id": "layering-connected.endc",
+    "category_id": "layering-connected",
+    "discriminator": {},
+    "note": "Décision utilisateur Q09"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/[*]/sib2/radioResourceConfigCommon/bcch-Config/modificationPeriodCoeff",
+    "subcategory_id": "layering-idle.paging",
+    "category_id": "layering-idle",
+    "discriminator": {},
+    "note": "Décision utilisateur Q11"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/[*]/sib2/radioResourceConfigCommon/pcch-Config/defaultPagingCycle",
+    "subcategory_id": "layering-idle.paging",
+    "category_id": "layering-idle",
+    "discriminator": {},
+    "note": "Décision utilisateur Q11"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/[*]/sib2/radioResourceConfigCommon/pcch-Config/nB",
+    "subcategory_id": "layering-idle.paging",
+    "category_id": "layering-idle",
+    "discriminator": {},
+    "note": "Décision utilisateur Q11"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/[*]/sib2/radioResourceConfigCommon/rach-ConfigCommon/ra-SupervisionInfo/ra-ResponseWindowSize",
+    "subcategory_id": "phy.prach",
+    "category_id": "phy",
+    "discriminator": {},
+    "note": "Décision utilisateur Q10"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "systemInformation/systemInformation-r8/sib-TypeAndInfo/[*]/sib2/voiceServiceCauseIndication-r12",
+    "subcategory_id": "access-barring.causes",
+    "category_id": "access-barring",
+    "discriminator": {},
+    "note": "Décision utilisateur Q09"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "ueInformationRequest-r9/ueInformationRequest-r9/rach-ReportReq-r9",
+    "subcategory_id": "timers-rlf.reports",
+    "category_id": "timers-rlf",
+    "discriminator": {},
+    "note": "Décision utilisateur Q06"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "ueInformationRequest-r9/ueInformationRequest-r9/rlf-ReportReq-r9",
+    "subcategory_id": "timers-rlf.reports",
+    "category_id": "timers-rlf",
+    "discriminator": {},
+    "note": "Décision utilisateur Q06"
+  },
+  {
+    "technology": "NR",
+    "path_prefix": "[*]/bandInformationEUTRA/bandEUTRA",
+    "subcategory_id": "layering-connected.bands",
+    "category_id": "layering-connected",
+    "discriminator": {},
+    "note": "Décision utilisateur Q08"
+  },
+  {
+    "technology": "NR",
+    "path_prefix": "[*]/bandInformationNR/bandNR",
+    "subcategory_id": "layering-connected.bands",
+    "category_id": "layering-connected",
+    "discriminator": {},
+    "note": "Décision utilisateur Q08"
+  },
+  {
+    "technology": "NR",
+    "path_prefix": "mib/pdcch-ConfigSIB1/controlResourceSetZero",
+    "subcategory_id": "phy.carrier",
+    "category_id": "phy",
+    "discriminator": {},
+    "note": "Décision utilisateur Q01"
+  },
+  {
+    "technology": "NR",
+    "path_prefix": "mib/pdcch-ConfigSIB1/searchSpaceZero",
+    "subcategory_id": "phy.carrier",
+    "category_id": "phy",
+    "discriminator": {},
+    "note": "Décision utilisateur Q01"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/drb-ToAddModList/[*]/logicalChannelConfig/ul-SpecificParameters/logicalChannelGroup",
+    "subcategory_id": "mac.logical",
+    "category_id": "mac",
+    "discriminator": {},
+    "note": "Correction utilisateur Q05 : LCG du BSR"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/radioResourceConfigDedicated/srb-ToAddModList/[*]/logicalChannelConfig/explicitValue/ul-SpecificParameters/logicalChannelGroup",
+    "subcategory_id": "mac.logical",
+    "category_id": "mac",
+    "discriminator": {},
+    "note": "Correction utilisateur Q05 : LCG du BSR"
+  },
+  {
+    "technology": "LTE",
+    "path_prefix": "rrcConnectionSetup/rrcConnectionSetup-r8/radioResourceConfigDedicated/srb-ToAddModList/[*]/logicalChannelConfig/explicitValue/ul-SpecificParameters/logicalChannelGroup",
+    "subcategory_id": "mac.logical",
+    "category_id": "mac",
+    "discriminator": {},
+    "note": "Correction utilisateur Q05 : LCG du BSR"
+  }
+]

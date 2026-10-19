@@ -32,13 +32,25 @@ def references(entries):
 
 def aggregate(db,project_id,refs,group_by=None):
     if not refs:return []
+    aggregate_refs=[r for r in refs if r['param_key'].startswith('dict22:')]
+    if aggregate_refs:
+        from app.dict.service_v2 import build_distribution
+        result=[]
+        for ref in aggregate_refs:
+            block=build_distribution(db,project_id,[ref['param_key']],group_by or 'operator')['blocks'][0]
+            if not group_by:
+                result.append(dict(row_id=ref['row_id'],n=block['n_total']));continue
+            for value in block['values']:
+                for group in value['groups']:
+                    result.append(dict(row_id=ref['row_id'],value=value['value'],unit=block['unit'],operator=group.get('operator'),band=group.get('band'),n=group['n']))
+        return result+aggregate(db,project_id,[r for r in refs if r not in aggregate_refs],group_by)
     # Values are grouped once across the entire requested category, not one query per row.
     dims={'operator':('p.operator','NULL::text'),'band':('NULL::text','p.band'),'operator_band':('p.operator','p.band')}
     op,band=dims.get(group_by,('NULL::text','NULL::text'))
     value='COALESCE(p.value_converted,p.value)' if group_by else 'NULL::text'
-    sql=f'''WITH refs AS (SELECT * FROM jsonb_to_recordset(CAST(:refs AS jsonb)) AS r(row_id text,entry_id text,param_key text,technology text,discriminators jsonb))
+    sql=f'''WITH refs AS (SELECT * FROM jsonb_to_recordset(CAST(:refs AS jsonb)) AS r(row_id text,entry_id text,param_key text,technology text,discriminators jsonb,path_prefix text))
       SELECT r.row_id,{value} AS value,MIN(p.unit_converted) AS unit,{op} AS operator,{band} AS band,count(*) AS n
-      FROM refs r JOIN param_occurrence p ON p.project_id=:pid AND p.param_key=r.param_key AND p.system=r.technology
+      FROM refs r JOIN param_occurrence p ON p.project_id=:pid AND (CASE WHEN r.path_prefix IS NULL THEN p.param_key=r.param_key ELSE regexp_replace(p.path, '\\[[0-9]+\\]', '[*]', 'g')=r.path_prefix OR starts_with(regexp_replace(p.path, '\\[[0-9]+\\]', '[*]', 'g'),r.path_prefix||'/') END) AND p.system=r.technology
         AND COALESCE(p.discriminators,'{{}}'::jsonb) @> r.discriminators
       GROUP BY 1,2,4,5 ORDER BY 1,2,4,5'''
     return [dict(x) for x in db.execute(text(sql),{'pid':project_id,'refs':json.dumps(refs)}).mappings()]
@@ -48,18 +60,29 @@ def list_templates(db,project_id):
     cats=configuration(db);refs=references([e for c in cats for e in c['entries']]);counts=Counter()
     for row in aggregate(db,project_id,refs):counts[row['row_id']]+=row['n']
     # Category population is based on unique catalog occurrences, independent of overlapping templates.
-    maps=category_maps(db);cat_counts=Counter();cat_keys={}
-    for r in db.execute(text('SELECT system,param_key,count(*) n FROM param_occurrence WHERE project_id=:pid AND param_key IS NOT NULL AND NOT COALESCE(is_identifier,false) GROUP BY system,param_key'),{'pid':project_id}).mappings():
-        cid,_,_=classify(r['system'],r['param_key'],maps);cat_counts[cid]+=r['n'];cat_keys.setdefault(cid,set()).add((r['system'],r['param_key']))
+    from app.dict.catalog_v22 import network_catalog
+    cat_counts=Counter();cat_keys={}
+    for tech,categories in network_catalog(db,project_id).items():
+        for category in categories:
+            for sub in category['subcategories']:
+                for node in sub['parameters']:
+                    cid=category['id'];cat_counts[cid]+=node['n']
+                    for leaf in node['leaves']:
+                        cat_keys.setdefault(cid,set()).update((tech,key) for key in leaf['source_param_keys'])
     for c in cats:
         c['n_parameters']=len(cat_keys.get(c['id'],set()));c['n_in_project']=cat_counts[c['id']]
         c['entries']=[dict(e,n_in_project=sum(counts[f"{e['id']}:{i}"] for i in range(len(e['parameters']))),resolved=bool(e['parameters'])) for e in sorted(c['entries'],key=lambda e:(e['position'],e['id']))]
     return {'project_id':project_id,'categories':cats}
 
 
-def summarize(db,project_id,category,group_by):
+def summarize(db,project_id,category,group_by,keys=None):
     cat=next((x for x in configuration(db) if x['id']==category),None)
     if cat is None:raise HTTPException(404,'Catégorie introuvable')
+    if keys:
+        from app.dict.catalog_v22 import network_catalog
+        nodes=[(tech,node) for tech,categories in network_catalog(db,project_id).items() for c in categories if c['id']==category for sub in c['subcategories'] for node in sub['parameters'] if node['param_key'] in keys]
+        if {n['param_key'] for _,n in nodes} != set(keys):raise HTTPException(422,'Clé agrégée absente de cette catégorie/projet')
+        cat=dict(cat,entries=[dict(id='aggregate-'+str(i),label=n['display_name'],position=i,technology=tech,discriminators={},parameters=[dict(param_key=n['param_key'],technology=tech,discriminators={})]) for i,(tech,n) in enumerate(nodes)])
     refs=references(cat['entries']);grouped={}
     for row in aggregate(db,project_id,refs,group_by):grouped.setdefault(row['row_id'],[]).append(row)
     output=[]

@@ -1,0 +1,5 @@
+ eligible_keys | fully_mapped_keys | unresolved_keys | explicit_autres_keys | unresolved_or_autres_pct | eligible_occurrences | unresolved_occurrences 
+---------------+-------------------+-----------------+----------------------+--------------------------+----------------------+------------------------
+           513 |               453 |              60 |                    0 |                    11.70 |                58871 |                   7472
+(1 row)
+

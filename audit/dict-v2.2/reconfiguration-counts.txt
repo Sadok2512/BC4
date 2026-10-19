@@ -1,0 +1,6 @@
+  project_id  | leaves | autres 
+--------------+--------+--------
+ 134af70a06eb |    327 |    255
+ 4b7bfd50ddb6 |    360 |    288
+(2 rows)
+

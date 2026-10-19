@@ -41,7 +41,7 @@ def _band_color(band: str | None) -> str: return _BAND_COLORS.get(band or "N/D",
 # ---------------------------------------------------------------------------
 
 
-def build_dict_tree(db: Session, project_id: str, view: str) -> dict[str, Any]:
+def build_dict_tree(db: Session, project_id: str, view: str, message: str | None = None) -> dict[str, Any]:
     """Construit l'arbre dictionnaire.
 
     - ``view=catalog`` : grouping (techno → origin → message → functional_group → feuilles).
@@ -107,9 +107,17 @@ def build_dict_tree(db: Session, project_id: str, view: str) -> dict[str, Any]:
 
     from app.dict.templates import category_maps, classify
     maps = category_maps(db) if view == "catalog" else []
+    if view == 'catalog':
+        backup = db.execute(text("SELECT payload FROM dict_v22_backup WHERE name='dict_category_map'")).scalar()
+        labels = {r['category_id']:(r['label'],r['position']) for r in maps}
+        maps = [dict(r,label=labels.get(r['category_id'],(r['category_id'],99))[0],position=labels.get(r['category_id'],('',99))[1]) for r in backup]
     # Groupage python : techno → origin → message → group → feuilles
     tree: dict[str, dict[str, dict[str, dict[str, list[dict]]]]] = {}
     for r in rows:
+        if message is not None and r[2] != message:
+            continue
+        if view == 'catalog' and r[1] == 'network_config':
+            continue
         system = (r[0] or "LTE")
         origin = (r[1] or "network_config")
         msg    = (r[2] or "?")
@@ -143,9 +151,19 @@ def build_dict_tree(db: Session, project_id: str, view: str) -> dict[str, Any]:
             o_out.append({"origin": origin, "messages": m_out})
         tree_out.append({"techno": techno, "origins": o_out})
 
+    if view == 'catalog':
+        from app.dict.catalog_v22 import network_catalog
+        network = network_catalog(db,project_id,message)
+        for techno,categories in network.items():
+            bucket = next((t for t in tree_out if t['techno']==techno),None)
+            if bucket is None:
+                bucket={'techno':techno,'origins':[]};tree_out.append(bucket)
+            bucket['origins'].insert(0,{'origin':'network_config','categories':categories})
+    available_messages = db.execute(text('SELECT DISTINCT message FROM param_occurrence WHERE project_id=:pid AND message IS NOT NULL ORDER BY message'),{'pid':project_id}).scalars().all()
     return {
         "project_id":         project_id,
         "view":               view,
+        "available_messages": available_messages,
         "total_rows":         int(total_rows),
         "distinct_param_keys": int(distinct_param_keys),
         "tree":               tree_out,
@@ -185,6 +203,9 @@ def build_distribution(
     uniquement). Si la dimension est absente du cell_ref pour ce projet,
     renvoie le bloc avec ``status='UNAVAILABLE'`` + ``reason``.
     """
+    if group_by in CELL_REF_DIMS and any(key.startswith('dict22:') for key in keys):
+        from fastapi import HTTPException
+        raise HTTPException(422, detail={'code':'AGGREGATE_GEO_GROUP_UNSUPPORTED','message':'Clés agrégées : regroupement opérateur/bande uniquement ; les filtres géographiques restent utilisables.'})
     geo_cte, geo_predicate, geo_params = geographic_scope(db, project_id, geographic)
     if technology:
         geo_predicate += " AND param_occurrence.system = :technology"
@@ -230,6 +251,8 @@ def build_distribution(
         }
 
     for key in keys:
+        from app.dict.catalog_v22 import selector_predicate
+        key_predicate,key_params=selector_predicate(key)
         # Métadonnées communes (unit, origin, choice_of, discriminators).
         # 0.45.1 — distinct_values = COUNT(DISTINCT COALESCE(value_converted, value))
         # pour que les feuilles non-converties (ex. hysteresis en 0.45.0)
@@ -237,16 +260,15 @@ def build_distribution(
         meta = db.execute(
             text(
                 geo_cte + f"""
-                SELECT display_name, unit_converted, origin, choice_of,
+                SELECT MIN(display_name), MIN(unit_converted), MIN(origin), MIN(choice_of),
                        MIN(discriminators::text), COUNT(*) AS n_total,
                        COUNT(DISTINCT COALESCE(value_converted, value)) AS distinct_vals
                 FROM param_occurrence
-                WHERE project_id = :pid AND param_key = :k {geo_predicate}
-                GROUP BY display_name, unit_converted, origin, choice_of
-                ORDER BY COUNT(*) DESC LIMIT 1
+                WHERE project_id = :pid AND ({key_predicate}) {geo_predicate}
+                HAVING COUNT(*) > 0
                 """
             ),
-            {"pid": project_id, "k": key, **geo_params},
+            {"pid": project_id, **key_params, **geo_params},
         ).first()
         if meta is None:
             blocks.append({
@@ -324,12 +346,12 @@ def build_distribution(
                            {sel},
                            COUNT(*) AS n
                     FROM param_occurrence
-                    WHERE project_id = :pid AND param_key = :k {geo_predicate}
+                    WHERE project_id = :pid AND ({key_predicate}) {geo_predicate}
                     GROUP BY v, {sel}
                     ORDER BY v
                     """
                 ),
-                {"pid": project_id, "k": key, **geo_params},
+                {"pid": project_id, **key_params, **geo_params},
             ).fetchall()
             for r in rows:
                 v = r[0]

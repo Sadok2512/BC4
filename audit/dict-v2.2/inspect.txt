@@ -1,0 +1,73 @@
+    table_name     |   column_name    |     data_type     
+-------------------+------------------+-------------------
+ dict_category     | id               | character varying
+ dict_category     | label            | character varying
+ dict_category     | position         | integer
+ dict_category_map | technology       | character varying
+ dict_category_map | path_prefix      | character varying
+ dict_category_map | category_id      | character varying
+ dict_template     | category_id      | character varying
+ dict_template     | entries          | jsonb
+ dict_template     | revision         | integer
+ param_occurrence  | id               | bigint
+ param_occurrence  | project_id       | character varying
+ param_occurrence  | stg_event_id     | bigint
+ param_occurrence  | system           | character varying
+ param_occurrence  | channel          | character varying
+ param_occurrence  | message          | character varying
+ param_occurrence  | path             | text
+ param_occurrence  | value            | text
+ param_occurrence  | value_converted  | text
+ param_occurrence  | unit_converted   | character varying
+ param_occurrence  | operator         | character varying
+ param_occurrence  | band             | character varying
+ param_occurrence  | lat              | double precision
+ param_occurrence  | lon              | double precision
+ param_occurrence  | param_key        | text
+ param_occurrence  | display_name     | character varying
+ param_occurrence  | choice_of        | character varying
+ param_occurrence  | discriminators   | jsonb
+ param_occurrence  | origin           | character varying
+ param_occurrence  | is_identifier    | boolean
+ param_occurrence  | functional_group | character varying
+(30 rows)
+
+      source       | count 
+-------------------+-------
+ dict_category     |    11
+ dict_category_map |    97
+ dict_template     |    11
+(3 rows)
+
+      id      |  name  
+--------------+--------
+ 4b7bfd50ddb6 | Test_3
+ 134af70a06eb | TEST2
+(2 rows)
+
+  project_id  | n_occurrences | n_keys 
+--------------+---------------+--------
+ 134af70a06eb |        156131 |    773
+ 4b7bfd50ddb6 |        795766 |   1187
+(2 rows)
+
+         id         |       label        | position 
+--------------------+--------------------+----------
+ phy                | PHY                |        1
+ power-control      | Power control      |        2
+ mobility           | Mobility           |        3
+ layering-idle      | Layering Idle      |        4
+ layering-connected | Layering Connected |        5
+ mimo-ca            | MIMO / CA          |        6
+ mac                | MAC                |        7
+ rlc-pdcp           | RLC / PDCP         |        8
+ drx                | DRX                |        9
+ timers-rlf         | Timers & RLF       |       10
+ autres             | Autres             |       11
+(11 rows)
+
+     version_num     
+---------------------
+ 0024_dict_templates
+(1 row)
+

@@ -1,0 +1,12 @@
+Projet de travail : TEST2 134af70a06eb. Preuve secondaire : Test_3 4b7bfd50ddb6.
+Version 0.52.3 -> 0.53.0 minor. Migration 0025, avant task_run (stash conservé).
+Revue Q01-Q16 intégrée. TEST2 G13a-d PASS en transaction rollback : G13-TEST2-preview.jsonl contient SQL, paramètres et sorties.
+Tests : phase1-tests.txt. Commande : docker run --rm --network bc4_default -v /home/devmat/BC4/bc4-back:/app:ro -e PYTHONDONTWRITEBYTECODE=1 -e BC4_DSN=postgresql+psycopg://bc4:bc4@bc4-db-1:5432/bc4 -e BC4_JWT_SECRET=TEST-only-not-used-for-auth --entrypoint python bc4-api:latest -m pytest tests/test_dict_categories_v22.py tests/test_dict_templates.py tests/test_dict_geo_filters.py tests/test_dict_map_v2.py -o addopts='' -q -p no:cacheprovider
+Prévisualisation gardes : même conteneur, python scripts/_guard_G13_categories.py --preview 134af70a06eb.
+Aucune source supprimée : SFN reste en base, padding et identifiants exclus du catalogue seulement.
+UPDATE ciblés : alembic/versions/0025_dict_categories_v22.py::_correct_flags (chemins Q14 exacts normalisés, message SIB1 ; logicalChannelConfig/.../logicalChannelGroup=false). Anciennes valeurs des flags sauvegardées pour downgrade.
+ÉCART OUVERT : couverture de Test_3 hors chemins TEST2 approuvés (test3-unmapped.csv). Aucun classement plausible effectué. La clôture globale dict v2.2 n'est donc pas revendiquée.
+ÉCART OUVERT : sélecteur agrégé avec group_by géographique renvoie 422 explicite ; filtres géographiques opérateur/bande conservés.
+ÉCART OUVERT : vue croisée événement/couche et comptage SCell différés selon consigne.
+Frontend non modifié : go front reste nécessaire pour consommer categories/subcategories/parameters/leaves.
+Preuves live post-build seront enregistrées séparément après commit propre.

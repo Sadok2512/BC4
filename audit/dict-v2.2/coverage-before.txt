@@ -1,0 +1,57 @@
+  project_id  |               message               | leaves | autres_leaves | keys | autres_keys | occurrences 
+--------------+-------------------------------------+--------+---------------+------+-------------+-------------
+ 134af70a06eb | FreqBandList IE                     |      2 |             2 |    2 |           2 |          19
+ 134af70a06eb | MasterInformationBlock              |      8 |             7 |    8 |           7 |          32
+ 134af70a06eb | MeasurementReport                   |     53 |            53 |   53 |          53 |       79872
+ 134af70a06eb | MIB                                 |      9 |             9 |    9 |           9 |          81
+ 134af70a06eb | RRCConnectionReconfiguration        |    321 |           252 |  274 |         217 |       39252
+ 134af70a06eb | RRCConnectionRelease                |     11 |             7 |   11 |           7 |         418
+ 134af70a06eb | RRCConnectionRequest                |      2 |             2 |    2 |           2 |         112
+ 134af70a06eb | RRCConnectionSetup                  |     58 |            44 |   58 |          44 |        2535
+ 134af70a06eb | SecurityModeCommand                 |      2 |             2 |    2 |           2 |         112
+ 134af70a06eb | SystemInformationBlockType1         |     15 |            13 |   15 |          13 |        3038
+ 134af70a06eb | SystemInformation - SIB2            |     65 |            54 |   65 |          54 |        5741
+ 134af70a06eb | SystemInformation - SIB24           |     13 |            13 |   13 |          13 |         442
+ 134af70a06eb | SystemInformation - SIB3            |     24 |            17 |   24 |          17 |        1092
+ 134af70a06eb | SystemInformation - SIB4            |      2 |             2 |    2 |           2 |          30
+ 134af70a06eb | SystemInformation - SIB5            |     12 |             7 |   12 |           7 |        4390
+ 134af70a06eb | SystemInformation - SIB6            |      8 |             4 |    8 |           4 |         816
+ 134af70a06eb | SystemInformation - SIB7            |     10 |             6 |   10 |           6 |         720
+ 134af70a06eb | UECapabilityEnquiry                 |      1 |             1 |    1 |           1 |          59
+ 134af70a06eb | UEInformationRequest                |      2 |             2 |    2 |           2 |         114
+ 134af70a06eb | UEInformationResponse               |      2 |             2 |    2 |           2 |         114
+ 134af70a06eb | UE-MRDC-Capability IE               |     26 |            26 |   26 |          26 |         640
+ 134af70a06eb | UE-NR-Capability IE                 |    143 |           143 |  143 |         143 |        1026
+ 134af70a06eb |                                     |    789 |           668 |  742 |         633 |      140655
+ 4b7bfd50ddb6 | FreqBandList IE                     |      2 |             2 |    2 |           2 |         399
+ 4b7bfd50ddb6 | LoggedMeasurementConfiguration      |      5 |             5 |    5 |           5 |         800
+ 4b7bfd50ddb6 | MasterInformationBlock              |      8 |             7 |    8 |           7 |        3144
+ 4b7bfd50ddb6 | MeasurementReport                   |     58 |            58 |   58 |          58 |      194965
+ 4b7bfd50ddb6 | MIB                                 |      9 |             9 |    9 |           9 |         135
+ 4b7bfd50ddb6 | RRCConnectionReconfiguration        |    354 |           285 |  298 |         241 |      288120
+ 4b7bfd50ddb6 | RRCConnectionReestablishment        |     61 |            61 |   61 |          61 |         944
+ 4b7bfd50ddb6 | RRCConnectionReestablishmentRequest |      2 |             2 |    2 |           2 |          66
+ 4b7bfd50ddb6 | RRCConnectionRelease                |     11 |             7 |   11 |           7 |        4318
+ 4b7bfd50ddb6 | RRCConnectionRequest                |      2 |             2 |    2 |           2 |        1774
+ 4b7bfd50ddb6 | RRCConnectionSetup                  |     58 |            44 |   58 |          44 |       38757
+ 4b7bfd50ddb6 | RRCSetup                            |    182 |           182 |  182 |         182 |         640
+ 4b7bfd50ddb6 | RRCSetupRequest                     |      2 |             2 |    2 |           2 |           2
+ 4b7bfd50ddb6 | SCGFailureInformationNR             |      1 |             1 |    1 |           1 |           1
+ 4b7bfd50ddb6 | SecurityModeCommand                 |      2 |             2 |    2 |           2 |        1560
+ 4b7bfd50ddb6 | SIB1                                |     88 |            88 |   88 |          88 |         171
+ 4b7bfd50ddb6 | SystemInformationBlockType1         |     16 |            14 |   16 |          14 |       28157
+ 4b7bfd50ddb6 | SystemInformation - SIB2            |     74 |            63 |   74 |          63 |       54535
+ 4b7bfd50ddb6 | SystemInformation - SIB24           |     13 |            13 |   13 |          13 |         533
+ 4b7bfd50ddb6 | SystemInformation - SIB3            |     24 |            17 |   24 |          17 |       13057
+ 4b7bfd50ddb6 | SystemInformation - SIB4            |      2 |             2 |    2 |           2 |        3354
+ 4b7bfd50ddb6 | SystemInformation - SIB5            |     17 |            12 |   17 |          12 |       37416
+ 4b7bfd50ddb6 | SystemInformation - SIB6            |      8 |             4 |    8 |           4 |        5922
+ 4b7bfd50ddb6 | SystemInformation - SIB7            |     10 |             6 |   10 |           6 |        1040
+ 4b7bfd50ddb6 | UECapabilityEnquiry                 |      1 |             1 |    1 |           1 |         803
+ 4b7bfd50ddb6 | UEInformationRequest                |      2 |             2 |    2 |           2 |        1554
+ 4b7bfd50ddb6 | UEInformationResponse               |     18 |            18 |   18 |          18 |        1582
+ 4b7bfd50ddb6 | UE-MRDC-Capability IE               |     26 |            26 |   26 |          26 |        8510
+ 4b7bfd50ddb6 | UE-NR-Capability IE                 |    143 |           143 |  143 |         143 |        6555
+ 4b7bfd50ddb6 |                                     |   1199 |          1078 | 1143 |        1034 |      698814
+(53 rows)
+

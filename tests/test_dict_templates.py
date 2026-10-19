@@ -14,8 +14,9 @@ def db():
         for ddl in [
             'CREATE TEMP TABLE dict_category(id text primary key,label text,position integer) ON COMMIT DROP',
             'CREATE TEMP TABLE dict_category_map(technology text,path_prefix text,category_id text) ON COMMIT DROP',
+            'CREATE TEMP TABLE dict_subcategory(id text,category_id text,label text,position int) ON COMMIT DROP',
             'CREATE TEMP TABLE dict_template(category_id text,entries jsonb,revision integer default 1) ON COMMIT DROP',
-            'CREATE TEMP TABLE param_occurrence(project_id text,param_key text,system text,discriminators jsonb,value text,value_converted text,unit_converted text,operator text,band text,is_identifier boolean) ON COMMIT DROP',
+            'CREATE TEMP TABLE param_occurrence(project_id text,param_key text,system text,discriminators jsonb,value text,value_converted text,unit_converted text,operator text,band text,is_identifier boolean,path text,origin text,message text,display_name text,choice_of text,stg_event_id bigint) ON COMMIT DROP',
         ]:c.execute(text(ddl))
         data=json.loads(Path('app/dict/config/templates_v1.json').read_text())
         for cat in data['categories']:
@@ -42,7 +43,7 @@ def test_summary_population_null_ties_and_one_aggregate(db):
     entry=dict(id='drx-test',label='TEST-value',position=1,technology='LTE',discriminators={},parameters=[dict(param_key=key,technology='LTE',discriminators={'event':'A3'})],reason=None)
     db.execute(text("UPDATE dict_template SET entries=CAST(:v AS jsonb) WHERE category_id='drx'"),{'v':json.dumps([entry])})
     for pid,disc,value,op,band in [('TEST','A3','1','TEST-A','TEST-B'),('TEST','A3','1','TEST-A','TEST-B'),('TEST','A3',None,None,None),('OTHER','A3','99','TEST-A','TEST-B'),('TEST','A2','99','TEST-A','TEST-B')]:
-        db.execute(text('INSERT INTO param_occurrence VALUES (:pid,:key,\'LTE\',CAST(:d AS jsonb),:v,NULL,NULL,:op,:band,false)'),dict(pid=pid,key=key,d=json.dumps({'event':disc}),v=value,op=op,band=band))
+        db.execute(text('INSERT INTO param_occurrence(project_id,param_key,system,discriminators,value,value_converted,unit_converted,operator,band,is_identifier) VALUES (:pid,:key,\'LTE\',CAST(:d AS jsonb),:v,NULL,NULL,:op,:band,false)'),dict(pid=pid,key=key,d=json.dumps({'event':disc}),v=value,op=op,band=band))
     statements=[]
     def capture(conn,cursor,statement,parameters,context,executemany):statements.append(statement)
     event.listen(db.bind,'before_cursor_execute',capture)

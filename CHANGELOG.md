@@ -1,3 +1,11 @@
+## 0.53.0 (minor) — bc4-back 2026-10-19 — Dictionnaire catégories v2.2 (Agent BC1)
+
+- Migration 0025 : catégories/sous-catégories, préfixes ASN.1 normalisés `[*]`, discriminants et décisions Q01–Q16. Corrections ciblées des flags SIB1 et logicalChannelGroup ; SFN exclu du catalogue, conservé en base.
+- Arbre Configuration réseau sans niveau message, feuilles avec message et discriminants, compteurs de captures et clés agrégées. Racines Capacités/Mesures et vue Raw conservées. Filtre message et liste disponible dans OpenAPI.
+- Distribution et résumés Templates sur clés agrégées ; liaisons Templates par chemins approuvés, références absentes conservées. Modification de Template sans affectation automatique de taxonomie par libellé.
+- G13 sur TEST2 : preuves SQL et sorties dans audit/dict-v2.2. Couverture de Test_3 non clôturée : chemins supplémentaires non soumis à la revue Q01–Q16, conservés visibles dans Autres ; aucun classement supposé. Voir test3-unmapped.csv.
+- Écarts déclarés : vue événement × couche et comptage SCell différés ; regroupement géographique des clés agrégées non pris en charge dans ce lot. Le frontend n'est pas modifié et nécessite son lot d'adaptation.
+
 ## 0.52.3 (patch) — BC4-BACK 2026-10-18 — Bulk point validation
 
 - Validate compact overview points with one Pydantic list adapter instead of constructing keyword dictionaries for every observation.

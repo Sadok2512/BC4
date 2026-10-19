@@ -56,6 +56,7 @@ def _require_project(db: Session, project_id: str) -> Project:
 def dict_tree(
     project_id: str,
     view: str = Query(default="catalog"),
+    message: str | None = Query(default=None),
     db: Session = Depends(get_db),
 ) -> DictTreeResponse:
     _require_project(db, project_id)
@@ -67,7 +68,7 @@ def dict_tree(
                 "message": "view attendu ∈ {catalog, raw}",
             },
         )
-    return DictTreeResponse(**build_dict_tree(db, project_id, view))
+    return DictTreeResponse(**build_dict_tree(db, project_id, view, message))
 
 
 @router.get("/{project_id}/dict/v2/filters", response_model=DictFilterOptions)
@@ -165,6 +166,6 @@ def dict_templates(project_id: str, db: Session = Depends(get_db)):
     return list_templates(db, project_id)
 
 @router.get("/{project_id}/dict/v2/templates/{category}/summary", response_model=SummaryResponse)
-def dict_template_summary(project_id: str, category: str, group_by: Literal["operator", "band", "operator_band"] = "operator", db: Session = Depends(get_db)):
+def dict_template_summary(project_id: str, category: str, group_by: Literal["operator", "band", "operator_band"] = "operator", keys: str | None = None, db: Session = Depends(get_db)):
     _require_project(db, project_id)
-    return summarize(db, project_id, category, group_by)
+    return summarize(db, project_id, category, group_by, [k for k in keys.split(",") if k] if keys else None)

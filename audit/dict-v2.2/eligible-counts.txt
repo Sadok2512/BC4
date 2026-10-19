@@ -1,0 +1,8 @@
+     origin     | total_rows | eligible_occurrences | eligible_keys | eligible_paths 
+----------------+------------+----------------------+---------------+----------------
+ network_config |      69899 |                58871 |           513 |           1190
+ ue_capability  |       1843 |                 1725 |           170 |           1667
+ ue_report      |      84389 |                79986 |            55 |            186
+                |     156131 |               140582 |           738 |           3043
+(4 rows)
+

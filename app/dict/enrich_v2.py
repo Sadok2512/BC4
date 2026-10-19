@@ -105,7 +105,7 @@ _IDENTIFIER_SUFFIXES = {
     "ue-Identity",
     "shortI-RNTI", "fullI-RNTI",
     "cellIndex",
-    "logicalChannelGroup",
+    "cellIdentity", "trackingAreaCode", "mcc", "mnc",
     "securityConfigHO",
     "selectedPLMN-Identity",
 }

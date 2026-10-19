@@ -1,0 +1,29 @@
+{
+  "timestamp_utc": "2026-10-19T13:00:32.342580+00:00",
+  "project_id": "134af70a06eb",
+  "project_name": "TEST2",
+  "scope": "Step 1 draft only; no production migrations, commits or deployments",
+  "approved_exclusions": [
+    "ASN.1 field name exactly spare, spareN (N digits), dummy, reserved",
+    "is_identifier=true"
+  ],
+  "threshold_scope": "distinct (system,param_key) under network_config, after exclusions",
+  "production_health": {
+    "status": "ok",
+    "env": "development",
+    "version": "0.52.3"
+  },
+  "migration": "0026_dict_categories_v22",
+  "down_revision": "0025_task_run",
+  "concurrent_changes": "0025_task_run and pyproject 0.53.0 created by another active backend lot; not modified here",
+  "git_head": "d5574eb752b8827613de6470c4ba40b1b460af57",
+  "commands": [
+    "docker exec -i bc4-db-1 psql -U bc4 -d bc4 -X -q -v ON_ERROR_STOP=1 < audit/dict-v2.2/paths.sql > audit/dict-v2.2/paths.csv",
+    "docker exec -i bc4-db-1 psql -U bc4 -d bc4 -X -q -v ON_ERROR_STOP=1 < audit/dict-v2.2/path-populations.sql > audit/dict-v2.2/path-populations.csv",
+    "docker exec -i bc4-db-1 psql -U bc4 -d bc4 -X -q -v ON_ERROR_STOP=1 < audit/dict-v2.2/excluded.sql > audit/dict-v2.2/excluded.csv",
+    "python3 audit/dict-v2.2/prepare_seed.py",
+    "python3 audit/dict-v2.2/preview_mapping.py",
+    "docker run --rm --network bc4_default -v /home/devmat/BC4/bc4-back:/app:ro -e PYTHONDONTWRITEBYTECODE=1 -e BC4_DSN=postgresql+psycopg://bc4:bc4@bc4-db-1:5432/bc4 -e BC4_JWT_SECRET=TEST-only-not-used-for-auth --entrypoint python bc4-api:latest -m pytest tests/test_dict_categories_v22.py tests/test_dict_templates.py tests/test_dict_geo_filters.py tests/test_dict_map_v2.py -o addopts='' -q -p no:cacheprovider",
+    "curl -fsS http://localhost:8000/health"
+  ]
+}

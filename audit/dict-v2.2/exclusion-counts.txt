@@ -1,0 +1,5 @@
+ identifier_occurrences | padding_occurrences | missing_canonical_key 
+------------------------+---------------------+-----------------------
+                  15476 |                  73 |                     0
+(1 row)
+

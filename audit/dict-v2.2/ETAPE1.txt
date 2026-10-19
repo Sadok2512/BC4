@@ -1,0 +1,98 @@
+PROJET DE TRAVAIL = TEST2 (134af70a06eb)
+LOT = dict v2.2 / ÉTAPE 1
+STATUT = MIGRATION ET SEED PRÉPARÉS, REVUE MÉTIER EN ATTENTE
+COMMIT = NON (attente explicite de la réponse utilisateur à unmapped.csv)
+MIGRATION EN BASE ACTIVE = NON
+REBUILD = NON
+FRONTEND MODIFIÉ = NON
+ROUTES / DÉCODEUR / OBSERVATIONS MODIFIÉS PAR CE LOT = NON
+
+Population approuvée
+- Seuil Autres : Configuration réseau uniquement ; Capacités terminal et Mesures rapportées conservées, hors dénominateur.
+- Exclusions a+b uniquement : champ ASN.1 spare/spareN/dummy/reserved ; is_identifier=true.
+- BIT STRING utiles et valeurs constantes conservés.
+- paths.sql -> paths.csv : chemins distincts avec occurrences, toutes racines, après exclusions.
+- path-populations.sql -> path-populations.csv : même population avec param_key, CHOICE et discriminants nécessaires au mapping.
+- excluded.sql -> excluded.csv : toutes les exclusions, chacune avec sa raison et ses occurrences.
+- path-coverage.csv : chaque population d’entrée est MAPPED, UNRESOLVED ou PRESERVED_ROOT. Aucun chemin disparaît du bilan.
+- Le marqueur PRESERVED_ROOT concerne exclusivement les deux racines hors Configuration réseau ; il ne constitue pas un mapping vers Autres.
+
+Mesures SQL
+Sources : eligible-counts.sql/.txt, exclusion-counts.sql/.txt.
+Configuration réseau : 513 clés distinctes éligibles, 58 871 occurrences.
+Toutes racines : 140 582 occurrences éligibles.
+Exclusions : 15 476 occurrences is_identifier ; 73 occurrences padding supplémentaires ; aucune clé canonique manquante hors exclusions.
+L'ancien audit avant exclusions portait sur 517 clés réseau ; ce dénominateur est désormais remplacé par 513.
+
+Couverture avant / simulation après (pas un déploiement)
+Source avant : eligible-before.sql/.txt, même périmètre éligible.
+Avant : 404 / 513 clés de Configuration réseau sans mapping v2.1.
+Source seed provisoire : seed-preview.sql/.txt (SQL live, seed JSON intégré à une CTE en lecture seule).
+Après simulation : 453 / 513 clés entièrement classées ; 60 clés ont encore une population non résolue.
+Ces populations représentent 7 472 occurrences.
+La part non résolue est 11,70 % des clés. Ce n’est PAS une part Autres : aucune de ces clés n’est affectée par défaut à Autres.
+Le seuil final ne peut pas être déclaré conforme tant que les questions ne sont pas tranchées.
+Le précontrôle de complétude est donc NON CONFORME à ce stade. G13a final n’est pas validé.
+
+Configuration préparée
+- app/dict/config/categories_v22.json :
+  les 12 catégories de la spec + Autres position 99 ; tech LTE/NR/BOTH ; sous-catégories de la spec.
+  Chemins ASN.1 complets observés, alternatives CHOICE conservées, indices de listes normalisés en [*].
+  Discriminants exacts provenant des occurrences (champ event enregistré), jamais déduits du nom du paramètre.
+  Seed en REVIEW_REQUIRED ; les questions restent dans unresolved, sans ligne de mapping implicite.
+- app/dict/category_mapping.py :
+  comparaison exacte de segments ; préfixe le plus spécifique, puis discriminant et technologie.
+  Une absence de correspondance retourne None. Une ambiguïté équivalente est une erreur.
+  Le regex utilisé pour les seuls indices et noms de padding approuvés ne classe AUCUN paramètre.
+- alembic/versions/0026_dict_categories_v22.py :
+  catégorie.tech ; dict_subcategory ; dict_category_map avec subcategory_id, discriminator JSONB et note.
+  Conservation du champ technology existant pour ne pas inventer un deuxième champ tech incompatible.
+  FK composite garantit qu’une sous-catégorie appartient bien à la catégorie.
+  dict_template_subcategory relie chaque identifiant de ligne JSON existante à ses sous-catégories prouvées.
+  Les lignes templates qui couvrent plusieurs sous-catégories restent inchangées : liaison multiple, aucun éclatement ni renommage.
+  Les JSON entries et revision des templates ne sont pas modifiés.
+  Snapshot réel de l’ancienne configuration pour le downgrade.
+  Vérification du hash des templates au moment de migrer : refus si la configuration a changé depuis la revue.
+  Refus AVANT DDL tant que les questions de mapping et de liaison templates ne sont pas closes.
+
+Revue demandée
+1. unmapped.csv : chemins/discriminants à classer, colonnes category_id et subcategory_id laissées vides.
+   questions.txt regroupe ces mêmes questions par Qxx et donne les chemins correspondants.
+   Principaux sujets : planification SI/paging, logique des canaux MAC, SPS, choix du mode RLC,
+   états de mobilité communs, SFN, causes de procédures, identifiants réseau publics non marqués is_identifier.
+   La double présence de ra-ResponseWindowSize dans PHY/PRACH et MAC/Accès aléatoire demande une affectation unique.
+2. template-unmapped.csv : liaisons de lignes templates sans preuve complète.
+   Les anciennes références non résolues ne sont pas complétées à partir du seul libellé.
+   Résoudre un classement de paramètre et définir un chemin absent d’un template sont deux décisions distinctes.
+3. Aucun chemin non tranché n’est affecté à une catégorie « plausible ».
+
+Tests exécutés
+step1-tests.txt : 30 passed, 1 warning (dépréciation Starlette).
+- Exactitude des préfixes, pas de correspondance par nom.
+- Discriminants, ambiguïtés, distinction clé absente / null.
+- Exclusions a+b et conservation des champs utiles.
+- Toutes les populations SQL exportées sont comptabilisées dans le bilan du seed.
+- Blocage avant DDL d’un seed non approuvé.
+- Upgrade/downgrade en schéma PostgreSQL isolé, transaction annulée.
+- Contraintes FK et cohérence catégorie/sous-catégorie.
+- JSON templates strictement conservés.
+- Refus des liens si les templates ont changé depuis leur extraction.
+- Régressions templates, filtres géographiques et carte.
+Les schémas de test sont annulés par rollback ; aucun déploiement d’essai n’a été effectué sur les tables actives.
+Commandes exactes : step1-metadata.json.
+
+Version / concurrence
+La version live contrôlée est 0.52.3 (health-step1.json) ; Alembic live est encore 0024_dict_templates au contrôle.
+Pendant ce lot, un autre travail backend a introduit 0025_task_run et réservé pyproject.toml 0.53.0.
+Notre migration a donc été renumérotée 0026, chaînée après 0025_task_run ; cette dépendance reste à revérifier avant commit.
+L’entrée CHANGELOG est Unreleased, minor prévu. Le numéro final sera fixé après revue et réconciliation ; le pyproject du lot concurrent n’a pas été écrasé.
+Aucun commit ni rebuild ne doit être déduit de ce rapport.
+
+Gardes du lot complet
+G13a = NOT RUN (simulation préparatoire : complétude non conforme, questions ouvertes)
+G13b = NOT RUN (nouvel arbre non implémenté à l’étape 1)
+G13c = NOT RUN
+G13d = NOT RUN
+Les tests de schéma ne remplacent pas ces gardes.
+
+PROCHAINE ÉTAPE = réponse utilisateur à unmapped.csv / template-unmapped.csv, clôture du seed, puis poursuite des étapes autorisées.

@@ -19,9 +19,6 @@ def update_template(category: str, body: TemplateUpdate, actor: Actor=Depends(ge
     if any(not e.id.startswith(category+'-') for e in body.entries):raise HTTPException(422,'Les identifiants doivent commencer par la catégorie suivie de -.')
     entries=[e.model_dump() for e in body.entries]
     db.execute(text('UPDATE dict_template SET entries=CAST(:entries AS jsonb),revision=revision+1 WHERE category_id=:c'),{'c':category,'entries':json.dumps(entries)})
-    # Preserve existing explicit assignments; newly configured full paths get this category.
-    for e in entries:
-        for ref in e['parameters']:
-            db.execute(text('INSERT INTO dict_category_map(technology,path_prefix,category_id) VALUES (:technology,:param_key,:c) ON CONFLICT DO NOTHING'),dict(ref,c=category))
+    # Taxonomy assignments are reviewed exact-path configuration, not inferred from template category.
     db.commit()
     return TemplateUpdate(revision=body.revision+1,entries=body.entries)
