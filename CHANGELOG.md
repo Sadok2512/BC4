@@ -2,7 +2,7 @@
 
 Ajoute nmf_decoder 1.0.0, les schémas NFF 2.19 fournis, le stockage typé partitionné Deep et les agrégats Light reproductibles. Les métriques et les projections radio/app utilisent le décodeur ; les positions candidates historiques sont retirées. Les jobs admin `/decode` s'exécutent dans l'import worker, avec état par capture, version et reprise. `/health` expose `decoder_version`. Migrations 0031/0032 ; aucune modification ASN.1 ni front.
 
-Le KPI BLER DL utilise PHRATE.pdsch.bler ; les points SINR sont appariés au CI précédent avec séquence et distance propres.
+La projection restaure le contexte LTE des squelettes CELLMEAS non enrichis depuis les champs décodés. Le KPI BLER DL utilise PHRATE.pdsch.bler ; les points SINR sont appariés au CI précédent avec séquence et distance propres.
 
 Les extensions de format et systèmes sans schéma restent partial et sont conservés. Les chaînes inconnues sont hachées ; les nombres ne sont jamais filtrés sur leur longueur. Les gardes manuels sont dans `scripts/_guard_G16_decoder.py` ; résultats de livraison dans le rapport BC2.
 

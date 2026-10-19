@@ -55,6 +55,17 @@ def refresh_projections(db,pid):
         rows.append(dict(pid=pid,cap=cap,seq=seq,**{k:v.get(k) for k in ('rsrp','rsrq','rssi','sinr','cqi','tx_power')}))
     if rows:db.execute(text('''UPDATE measurement_points SET rsrp=:rsrp,rsrq=:rsrq,rssi=:rssi,sinr=:sinr,cqi=:cqi,tx_power=:tx_power
         WHERE project_id=:pid AND capture_id=:cap AND seq=:seq'''),rows)
+    # Restore capture context for CELLMEAS skeleton rows that predate enrichment.
+    # The closed cell schema is LTE-only; a validated PCI/channel is independent
+    # of whether RSRP happened to be present on that observation.
+    from app.measure.mapping import band_from_earfcn
+    context=[]
+    for (cap,seq),v in values.items():
+        if not any(k in v for k in ('pci','earfcn','rsrp','rsrq','rssi')):continue
+        earfcn=int(v['earfcn']) if v.get('earfcn') is not None else None
+        context.append(dict(pid=pid,cap=cap,seq=seq,earfcn=earfcn,band=band_from_earfcn(earfcn) if earfcn is not None else None))
+    if context:db.execute(text("""UPDATE measurement_points SET rat='LTE',tech='LTE',earfcn=:earfcn,band=:band
+        WHERE project_id=:pid AND capture_id=:cap AND seq=:seq AND event_code='CELLMEAS'"""),context)
     return {'observations':len(values),'updated_sequences':len(rows)}
 
 def metric_counts(db,pid):
