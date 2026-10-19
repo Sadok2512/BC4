@@ -1,3 +1,11 @@
+## 0.55.0 (minor) — bc4-back 2026-10-19 — Dictionnaire par IE, classement Test_3 (Agent BC1)
+
+- Intégration BC1 dans 0.55.0 expressément confirmée par l’utilisateur après livraison BC2 de ce numéro ; les fonctionnalités KPI BC2 sont conservées.
+- Mapping par préfixes exacts à partir des IE, indépendant du message ; indices normalisés et discriminants conservés.
+- Classement Test_3 approuvé, sous-catégories PDCCH & CORESET, Allocation temps-fréquence et MDT ; exclusions R2 par chemin, logicalChannelGroup conservé.
+- Migration de données 0029, sauvegarde des flags et mappings pour retour arrière, aucune suppression d’occurrence ni modification de valeur.
+- G13a-d prévalidés sur TEST2 et Test_3 ; preuve SIB1 NR et NCGI 36 bits. Audit dans audit/dict-v2.3.
+
 ## 0.55.0 (minor) — BC4 2026-10-19 — Métriques et chronogrammes par capture (Agent BC2)
 
 - Catalogue fermé et compté depuis les sources auditées, dont PCI CELLMEAS LTE ; métriques sans observations absentes.
