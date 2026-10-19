@@ -43,7 +43,7 @@ class Light:
         for code,value in r.values.items():add(code,value)
         for g in r.groups:
             definition=next(x for x in schemas()[r.event_code]['groups'] if x['name']==g['group_name'])
-            identity=str(g['set_index'])+'|'+ '|'.join(f'{k}={v}' for k,v in sorted(g['values'].items()) if k.endswith(('_pci','_ch','_port','_band')))
+            identity=str(g['set_index'])+'|'+ '|'.join(f'{k}={v}' for k,v in sorted(g['values'].items()) if v is not None and k.endswith(('_pci','_ch','_port','_band')))
             target=b['groupstats'].setdefault((g['group_name'],identity),dict(group_name=g['group_name'],identity=identity,set_index=g['set_index'],n_records=0,stats={}))
             target['n_records']+=1
             for field in definition['fields']:

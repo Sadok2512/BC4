@@ -53,3 +53,12 @@ def test_light_weighted_distribution_and_missing_time_not_lost():
 def test_application_type_is_not_inferred_from_an_unknown_extension():
     r=decode('AQDL,00:00:00.000,,9,4.2',format_version='2.62')
     assert not r.values and 'parameter_type_undocumented' in r.reasons
+
+def test_light_replay_normalizes_null_group_dimensions():
+    import copy
+    r=decode('CELLMEAS,00:00:00.000,,7,0,1,9,0,70007,2825,,-44,-71,-8,100,50',format_version='2.19',seq=1)
+    r.t_rel_s=0;stored=copy.deepcopy(r)
+    stored.values={k:v for k,v in stored.values.items() if v is not None}
+    for g in stored.groups:g['values']={k:v for k,v in g['values'].items() if v is not None}
+    one=Light();two=Light();one.add(r);two.add(stored)
+    assert list(one.rows())==list(two.rows())
