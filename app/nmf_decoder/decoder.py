@@ -16,8 +16,9 @@ def hashed(value):return hashlib.sha256(value.encode('utf-8')).hexdigest()[:16]
 
 def tokenize(line):
     """Preserve CSV quoting metadata (csv.reader alone discards it)."""
+    line=line.rstrip('\r\n')
     flags=[];quoted=False;at_start=True;inside=False;i=0
-    while i<len(line.rstrip('\r\n')):
+    while i<len(line):
         c=line[i]
         if at_start:
             quoted=c=='"';flags.append(quoted);inside=quoted;at_start=False

@@ -1,5 +1,6 @@
 """Source order and physical line provenance; ASN.1 is deliberately outside this component."""
 import hashlib
+import csv
 from decimal import Decimal
 from .decoder import decode,tokenize,TIME
 SIGNALLING={'RRCSM','L3SM','L2SM','MACSM','SIPSM'}  # Existing BC1 boundary, unchanged.
@@ -22,7 +23,7 @@ def records(path,capture_id,expected_sha=None):
                 continue
             seq+=1
             try:
-                fields,_=tokenize(line)
+                fields=next(csv.reader([line.rstrip('\r\n')],strict=True))
                 ts=fields[1] if len(fields)>1 else ''
             except Exception:fields=[];ts=''
             sec=None

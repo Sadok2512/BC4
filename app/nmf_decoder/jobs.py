@@ -4,13 +4,14 @@ from sqlalchemy import text
 from .store import decode_capture
 from .projection import refresh_projections
 
-def process_next(db):
+def process_next(db,stop_event=None):
     job=db.execute(text("SELECT * FROM nmf_decode_job WHERE status IN ('queued','running') ORDER BY created_at LIMIT 1")).mappings().first()
     if not job:return False
     jid=job['id'];start=time.perf_counter()
     db.execute(text("UPDATE nmf_decode_job SET status='running',updated_at=now() WHERE id=:id"),{'id':jid});db.commit()
     try:
         for i,cap in enumerate(job['capture_ids']):
+            if stop_event is not None and stop_event.is_set():return True
             if i<job['done']:continue
             decode_capture(db,job['project_id'],cap,job['level'])
             db.execute(text('UPDATE nmf_decode_job SET done=:n,updated_at=now() WHERE id=:id'),{'id':jid,'n':i+1});db.commit()

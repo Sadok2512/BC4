@@ -98,7 +98,7 @@ def process_next():
                 job = db.query(NmfImportJob).filter(NmfImportJob.status.in_(ACTIVE)).order_by(NmfImportJob.created_at).first()
                 if job is None:
                     from app.nmf_decoder.jobs import process_next as decode_next
-                    return decode_next(db)
+                    return decode_next(db,stop)
                 jid = job.id
                 try:
                     run_job(db, job)
