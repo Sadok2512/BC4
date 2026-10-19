@@ -1,0 +1,11 @@
+{
+  "at": "2026-10-19T14:38:09.813428+00:00",
+  "project_id": "4b7bfd50ddb6",
+  "parameters": {
+    "pid": "4b7bfd50ddb6"
+  },
+  "excluded_sql": "SELECT p.system technology,p.message,regexp_replace(p.path, '\\[[0-9]+\\]', '[*]', 'g') path,p.param_key,p.is_identifier,COALESCE(p.discriminators,'{}'::jsonb) discriminator,count(*) n_occurrences FROM param_occurrence p WHERE p.project_id=:pid GROUP BY 1,2,3,4,5,6 ORDER BY 1,2,3,4,6",
+  "eligible_sql": "SELECT p.system technology,p.message,regexp_replace(p.path, '\\[[0-9]+\\]', '[*]', 'g') path,p.param_key,COALESCE(p.discriminators,'{}'::jsonb) discriminator,count(*) n_occurrences FROM param_occurrence p WHERE p.project_id=:pid AND p.origin='network_config' AND p.param_key IS NOT NULL AND NOT COALESCE(p.is_identifier,false)\nAND regexp_replace(p.path,'^.*/','') !~ '^(spare[0-9]*|dummy|reserved)$'\nAND p.path NOT IN ('systemFrameNumber','mib/systemFrameNumber') GROUP BY 1,2,3,4,5 ORDER BY 1,2,3,4,5",
+  "mapping_sql": "SELECT * FROM dict_category_map",
+  "unknown_populations": 0
+}

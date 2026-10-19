@@ -17,6 +17,45 @@ def normalized_path(path: str) -> str:
     return "/".join("[*]" if _INDEX.fullmatch(part) else part for part in path.split("/"))
 
 
+# Approved IE boundaries: message wrappers do not participate in classification.
+_IE_ANCHORS = frozenset({
+    'radioResourceConfigDedicated', 'measConfig', 'mac-MainConfig',
+    'physicalConfigDedicated', 'CellGroupConfig', 'spCellConfigDedicated',
+    'mac-CellGroupConfig', 'physicalCellGroupConfig', 'rlc-BearerToAddModList',
+    'srb-ToAddModList', 'drb-ToAddModList',
+})
+
+
+def mapping_path(path: str) -> str:
+    parts = normalized_path(path).split('/')
+    indices = [i for i, part in enumerate(parts) if part in _IE_ANCHORS]
+    return '/'.join(parts[max(indices):]) if indices else '/'.join(parts)
+
+
+def identifier_path_rule(path: str) -> str | None:
+    """User-approved R2, applied to ASN.1 path segments, not display labels."""
+    parts = [p for p in normalized_path(path).split('/') if p != '[*]']
+    if not parts:
+        return None
+    # Release suffixes belong to the ASN.1 field version, not its semantic name.
+    names = [re.sub(r'-(?:r|v)[0-9]+$', '', p) for p in parts]
+    field = names[-1]
+    if field == 'logicalChannelGroup':
+        return None
+    if 'traceReference' in names:
+        return 'R2: traceReference subtree'
+    if field.endswith(('Id', 'ID', '-Identity')) or field in {
+        'mcc', 'mnc', 'cellIdentity', 'trackingAreaCode', 'physCellId',
+        'scramblingID', 'scramblingID0', 'scramblingID1', 'sequenceId', 'hoppingId',
+    }:
+        return 'R2: ASN.1 identifier field'
+    if field == 'start' and any(p in {'physCellIdRange', 'interFreqExcludedCellList', 'intraFreqExcludedCellList'} for p in names[:-1]):
+        return 'R2: PCI range start'
+    if 'measIdToAddModListExt' in names:
+        return 'R2: extended measurement identifiers'
+    return None
+
+
 def excluded_field(path: str, is_identifier: bool = False) -> bool:
     """Exactly the user-approved exclusions a+b. No BIT STRING/constant-value rule."""
     return bool(is_identifier or _PADDING.fullmatch(path.rsplit("/", 1)[-1]) or path in ("systemFrameNumber", "mib/systemFrameNumber"))
@@ -25,11 +64,11 @@ def excluded_field(path: str, is_identifier: bool = False) -> bool:
 def resolve_mapping(
     technology: str, path: str, discriminators: dict[str, Any] | None, mappings: list[dict],
 ) -> dict | None:
-    path = normalized_path(path)
+    path = mapping_path(path)
     discriminators = discriminators or {}
     candidates = []
     for row in mappings:
-        prefix = row["path_prefix"]
+        prefix = mapping_path(row["path_prefix"])
         if row["technology"] not in (technology, "BOTH"):
             continue
         if path != prefix and not path.startswith(prefix + "/"):

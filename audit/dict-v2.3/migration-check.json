@@ -1,0 +1,48 @@
+{
+  "at": "2026-10-19T14:38:34.395191+00:00",
+  "sql": "SELECT project_id,count(*) rows,bit_xor(hashtextextended(jsonb_build_array(id,stg_event_id,path,value,value_converted,param_key,discriminators)::text,0)) content_hash,bit_xor(hashtextextended(jsonb_build_array(id,is_identifier)::text,0)) flags_hash FROM param_occurrence WHERE project_id IN ('134af70a06eb','4b7bfd50ddb6') GROUP BY project_id ORDER BY project_id",
+  "before": [
+    {
+      "project_id": "134af70a06eb",
+      "rows": 156131,
+      "content_hash": -6671923098537979275,
+      "flags_hash": 487965925576076685
+    },
+    {
+      "project_id": "4b7bfd50ddb6",
+      "rows": 795766,
+      "content_hash": -3687481807986979284,
+      "flags_hash": -2726911814669856710
+    }
+  ],
+  "after": [
+    {
+      "project_id": "134af70a06eb",
+      "rows": 156131,
+      "content_hash": -6671923098537979275,
+      "flags_hash": -4155409712827344911
+    },
+    {
+      "project_id": "4b7bfd50ddb6",
+      "rows": 795766,
+      "content_hash": -3687481807986979284,
+      "flags_hash": -5555134868920468660
+    }
+  ],
+  "restored": [
+    {
+      "project_id": "134af70a06eb",
+      "rows": 156131,
+      "content_hash": -6671923098537979275,
+      "flags_hash": 487965925576076685
+    },
+    {
+      "project_id": "4b7bfd50ddb6",
+      "rows": 795766,
+      "content_hash": -3687481807986979284,
+      "flags_hash": -2726911814669856710
+    }
+  ],
+  "status": "PASS",
+  "persistent_mutations": false
+}
