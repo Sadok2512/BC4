@@ -1,5 +1,7 @@
-2026-10-19 — Reprise sérialisée après dict v2.2, version task_run 0.54.0.
-Migration 0026, ingestion privée et routes implémentées ; tests et G14 prévisualisés avec rollback.
-G14a FAIL (écarts DRATE/DCOMP réels, tâches signalées incomplete), G14b-e PASS en prévisualisation.
-Voir PHASE2.txt et G14-*-preview.jsonl. Livraison et preuves live en cours, ne pas confondre preview et runtime.
-Ancien blocage de concurrence levé : une seule session effectue commits et rebuilds.
+2026-10-19 — LIVRÉ 0.54.0, avec écarts ouverts explicites.
+Code HEAD 0f522e3 ; API et worker reconstruits depuis HEAD propre, migration 0026 appliquée, /health 0.54.0.
+TEST2 et Test_3 peuplés par étape D ; idempotence et fidélité DRATE contrôlées.
+G14a FAIL (écarts sources DRATE/DCOMP) ; G14b/c/d/e PASS live. Numéros masqués, aucun numéro clair dans les champs contrôlés.
+Voir PHASE2.txt, live/*.jsonl et live/curl-requests.json.
+G13a Test_3 reste FAIL ; chemins supplémentaires à classer dans audit/dict-v2.2/test3-unmapped.csv.
+STOP backend : pas de modification front sans nouveau lot.

@@ -1,0 +1,20 @@
+{
+  "result_id": "98e35279-e0c9-43b7-ba8a-80807a843ab6",
+  "project_id": "4b7bfd50ddb6",
+  "code": "THR_DL_APP",
+  "x_metric": "rsrp",
+  "x_unit": "dBm",
+  "y_unit": "Mbit/s",
+  "population": {
+    "tasks": 724,
+    "samples": 9079,
+    "admissible": 24,
+    "returned": 24,
+    "excluded": 9055,
+    "incomplete_tasks": 231
+  },
+  "points": [
+    {
+      "task_id": "32078b83-d1f5-5569-8cd6-614c874f6168",
+      "capture_id": "01bfc2fc5350",
+      "seq": 18269,

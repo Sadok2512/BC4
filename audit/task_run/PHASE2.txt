@@ -31,3 +31,17 @@ G14a est un écart des observations sources, non fermé par fabrication d'échan
 G13a Test_3 reste ouvert : classement des chemins hors TEST2 soumis dans audit/dict-v2.2/test3-unmapped.csv.
 Capture_time appartient au catalogue fermé mais /series v1 ne propose que task_time ; autres axes non supportés par cette route -> 422.
 Preuves live post-build, health, curls et résultat SQL admin seront enregistrés après livraison du HEAD propre.
+
+LIVRAISON LIVE
+HEAD de code : 0f522e3 ; image reconstruite depuis working tree propre, docker compose up -d api import-worker.
+health live : live/health.json, 0.54.0. Migration exécutée : 0026_task_run.
+UPDATE de confidentialité exécuté : live/startup.txt ; 4 payloads TEST2 et 15 Test_3. SELECT préalable dans pre-migration-preview.txt et PRIVACY_SELECT ; UPDATE paramétré PRIVACY_UPDATE, jamais de valeur en clair journalisée.
+Étape D exécutée sur TEST2 et Test_3 : live/populate.jsonl (SQL source, SQL des populations, paramètres, horodatage).
+Gardes live : live/G14-TEST2.jsonl et live/G14-Test_3.jsonl. G14a FAIL (49 TEST2, 231 Test_3) ; G14b/c/d/e PASS sur les deux projets. G14e compte zéro payload privé non masqué sur tous les projets contrôlés.
+Idempotence live et traçabilité radio : live/idempotence-radio.jsonl.
+Curls authentifiés : live/curl-requests.json. Réponses brutes tasks.json, series-task.json, series-orange-lte.json, points-rsrp.json (extrait 20 lignes aussi), result-admin.json.
+Axes inconnus et limite >5000 : 422 ; tâche hors projet : 404 (réponses brutes enregistrées).
+OpenAPI livré : live/openapi.json. SQL /results accessible admin uniquement, garde unitaire test_result_sql_is_admin_only.
+G14a n'est PAS masqué : les tâches en écart sont incomplete, leurs échantillons DRATE restent disponibles. Aucune extrapolation ni correction des octets source.
+Couverture RSRP limitée : live/points-rsrp.json déclare population admissible/exclue. La ligne radio immédiatement précédente ne possède pas toujours RSRP ; lignes ambiguës au même seq restent NULL.
+Aucune modification front. L'échec à l'écran signalé ensuite reste non identifié sans page/message exact ; /rrc et /health répondent HTTP 200, ce qui ne constitue pas une validation du parcours UI.

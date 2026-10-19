@@ -1,7 +1,8 @@
 """Category/subcategory configuration for dict v2.2 (BC1).
 
 Review gate is intentional: no migration can run while unmapped questions remain.
-No measurements, decoder rules, reference datasets or template JSON are changed.
+Preserves measurements and reference datasets; applies approved identifier flags
+and template path references, retaining the original configuration for downgrade.
 """
 from __future__ import annotations
 

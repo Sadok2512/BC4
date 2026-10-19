@@ -1,0 +1,14 @@
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade 0025_dict_categories_v22 -> 0026_task_run, Task runs, samples and server-side analytical evidence (BC1).
+INFO  [alembic.runtime.migration] Command privacy redactions by project: {'134af70a06eb': 4, '4b7bfd50ddb6': 15}
+[seed] admin admin@bc4.local déjà présent (idempotent)
+[seed] BC4_DEMO_EMAIL/BC4_DEMO_PASSWORD manquant — démo non seedée (optionnel)
+[seed] done.
+INFO:     Started server process [15]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:42982 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38944 - "GET /health HTTP/1.1" 200 OK
+INFO:     172.18.0.1:59796 - "GET /health HTTP/1.1" 200 OK

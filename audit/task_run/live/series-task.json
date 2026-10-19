@@ -1,0 +1,153 @@
+{
+  "result_id": "93a40ada-ea3e-4f47-88ae-17ecdab3e110",
+  "project_id": "4b7bfd50ddb6",
+  "code": "THR_DL_APP",
+  "x_metric": "task_time",
+  "x_unit": "s",
+  "y_unit": "Mbit/s",
+  "population": {
+    "tasks": 1,
+    "samples": 10,
+    "admissible": 10,
+    "returned": 10,
+    "excluded": 0,
+    "incomplete_tasks": 0
+  },
+  "points": [
+    {
+      "task_id": "2f43dc4e-ba5e-5294-9a67-599b93bc0f07",
+      "capture_id": "01bfc2fc5350",
+      "seq": 2522,
+      "mp_seq": 2497,
+      "t_rel_s": 1.261,
+      "x": null,
+      "value": 81.039352,
+      "p10": null,
+      "p50": null,
+      "p90": null,
+      "n": null
+    },
+    {
+      "task_id": "2f43dc4e-ba5e-5294-9a67-599b93bc0f07",
+      "capture_id": "01bfc2fc5350",
+      "seq": 2602,
+      "mp_seq": 2591,
+      "t_rel_s": 2.261,
+      "x": null,
+      "value": 149.285824,
+      "p10": null,
+      "p50": null,
+      "p90": null,
+      "n": null
+    },
+    {
+      "task_id": "2f43dc4e-ba5e-5294-9a67-599b93bc0f07",
+      "capture_id": "01bfc2fc5350",
+      "seq": 2710,
+      "mp_seq": 2691,
+      "t_rel_s": 3.261,
+      "x": null,
+      "value": 279.29696,
+      "p10": null,
+      "p50": null,
+      "p90": null,
+      "n": null
+    },
+    {
+      "task_id": "2f43dc4e-ba5e-5294-9a67-599b93bc0f07",
+      "capture_id": "01bfc2fc5350",
+      "seq": 2807,
+      "mp_seq": 2787,
+      "t_rel_s": 4.261,
+      "x": null,
+      "value": 283.90624,
+      "p10": null,
+      "p50": null,
+      "p90": null,
+      "n": null
+    },
+    {
+      "task_id": "2f43dc4e-ba5e-5294-9a67-599b93bc0f07",
+      "capture_id": "01bfc2fc5350",
+      "seq": 2906,
+      "mp_seq": 2885,
+      "t_rel_s": 5.263,
+      "x": null,
+      "value": 282.379113,
+      "p10": null,
+      "p50": null,
+      "p90": null,
+      "n": null
+    },
+    {
+      "task_id": "2f43dc4e-ba5e-5294-9a67-599b93bc0f07",
+      "capture_id": "01bfc2fc5350",
+      "seq": 3012,
+      "mp_seq": 2989,
+      "t_rel_s": 6.263,
+      "x": null,
+      "value": 299.412,
+      "p10": null,
+      "p50": null,
+      "p90": null,
+      "n": null
+    },
+    {
+      "task_id": "2f43dc4e-ba5e-5294-9a67-599b93bc0f07",
+      "capture_id": "01bfc2fc5350",
+      "seq": 3114,
+      "mp_seq": 3089,
+      "t_rel_s": 7.263,
+      "x": null,
+      "value": 378.89376,
+      "p10": null,
+      "p50": null,
+      "p90": null,
+      "n": null
+    },
+    {
+      "task_id": "2f43dc4e-ba5e-5294-9a67-599b93bc0f07",
+      "capture_id": "01bfc2fc5350",
+      "seq": 3211,
+      "mp_seq": 3191,
+      "t_rel_s": 8.266,
+      "x": null,
+      "value": 393.833507,
+      "p10": null,
+      "p50": null,
+      "p90": null,
+      "n": null
+    },
+    {
+      "task_id": "2f43dc4e-ba5e-5294-9a67-599b93bc0f07",
+      "capture_id": "01bfc2fc5350",
+      "seq": 3309,
+      "mp_seq": 3288,
+      "t_rel_s": 9.271,
+      "x": null,
+      "value": 390.71621,
+      "p10": null,
+      "p50": null,
+      "p90": null,
+      "n": null
+    },
+    {
+      "task_id": "2f43dc4e-ba5e-5294-9a67-599b93bc0f07",
+      "capture_id": "01bfc2fc5350",
+      "seq": 3406,
+      "mp_seq": 3384,
+      "t_rel_s": 10.275,
+      "x": null,
+      "value": 393.02945,
+      "p10": null,
+      "p50": null,
+      "p90": null,
+      "n": null
+    }
+  ],
+  "sampling": {
+    "method": "none",
+    "alignment": "exact decoded t_rel_s; no interpolation"
+  },
+  "pairing": null
+}

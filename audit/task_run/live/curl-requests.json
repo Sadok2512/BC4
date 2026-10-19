@@ -1,0 +1,42 @@
+[
+  {
+    "at": "2026-10-19T13:42:17.119529+00:00",
+    "command": "curl --silent --show-error http://localhost:8000/projects/4b7bfd50ddb6/tasks -H \"Authorization: Bearer [REDACTED]\"",
+    "status": 200
+  },
+  {
+    "at": "2026-10-19T13:42:17.155698+00:00",
+    "command": "curl --silent --show-error http://localhost:8000/projects/4b7bfd50ddb6/kpi/THR_DL_APP/series?x=task_time&task_id=2f43dc4e-ba5e-5294-9a67-599b93bc0f07 -H \"Authorization: Bearer [REDACTED]\"",
+    "status": 200
+  },
+  {
+    "at": "2026-10-19T13:42:17.481690+00:00",
+    "command": "curl --silent --show-error http://localhost:8000/projects/4b7bfd50ddb6/kpi/THR_DL_APP/series?x=task_time&operator=Orange&tech=LTE -H \"Authorization: Bearer [REDACTED]\"",
+    "status": 200
+  },
+  {
+    "at": "2026-10-19T13:42:17.700640+00:00",
+    "command": "curl --silent --show-error http://localhost:8000/projects/4b7bfd50ddb6/kpi/THR_DL_APP/points?x=rsrp&limit=5000 -H \"Authorization: Bearer [REDACTED]\"",
+    "status": 200
+  },
+  {
+    "at": "2026-10-19T13:42:17.724241+00:00",
+    "command": "curl --silent --show-error http://localhost:8000/results/93a40ada-ea3e-4f47-88ae-17ecdab3e110 -H \"Authorization: Bearer [REDACTED]\"",
+    "status": 200
+  },
+  {
+    "at": "2026-10-19T13:42:17.744899+00:00",
+    "command": "curl --silent --show-error http://localhost:8000/projects/4b7bfd50ddb6/kpi/THR_DL_APP/series?x=not_an_axis -H \"Authorization: Bearer [REDACTED]\"",
+    "status": 422
+  },
+  {
+    "at": "2026-10-19T13:42:17.769239+00:00",
+    "command": "curl --silent --show-error http://localhost:8000/projects/4b7bfd50ddb6/kpi/THR_DL_APP/points?x=rsrp&limit=5001 -H \"Authorization: Bearer [REDACTED]\"",
+    "status": 422
+  },
+  {
+    "at": "2026-10-19T13:42:17.792763+00:00",
+    "command": "curl --silent --show-error http://localhost:8000/projects/134af70a06eb/kpi/THR_DL_APP/series?x=task_time&task_id=2f43dc4e-ba5e-5294-9a67-599b93bc0f07 -H \"Authorization: Bearer [REDACTED]\"",
+    "status": 404
+  }
+]

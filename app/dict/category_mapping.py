@@ -1,4 +1,4 @@
-"""dict v2.2 configuration primitives. Not wired into routes until the service lot.
+"""dict v2.2 exact-path configuration primitives shared by catalogue and selectors.
 
 Categories use exact ASN.1 segment prefixes and proven discriminators, never
 parameter display names. Unresolved paths return None, never implicit Autres.

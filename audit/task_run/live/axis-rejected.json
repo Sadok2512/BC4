@@ -1,0 +1,15 @@
+{
+  "detail": {
+    "reason": "unsupported_axis",
+    "allowed": [
+      "task_time"
+    ],
+    "catalog": [
+      "task_time",
+      "rsrp",
+      "sinr",
+      "cqi",
+      "capture_time"
+    ]
+  }
+}
