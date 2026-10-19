@@ -1,3 +1,10 @@
+## 0.55.0 (minor) — BC4 2026-10-19 — Métriques et chronogrammes par capture (Agent BC2)
+
+- Catalogue fermé et compté depuis les sources auditées, dont PCI CELLMEAS LTE ; métriques sans observations absentes.
+- Séries bornées par seq, origine temporelle capture, min/max déterministe par buckets, transitions catégorielles et CSV ; provenance result_id.
+- Captures filtrées et marqueurs DAA/DCOMP, HO explicite mobilityControlInfo, rétablissement et setup/release RRC.
+- Contrat Pydantic/OpenAPI ; horodatages régressifs ou manquants rejetés, aucune interpolation. NR PCI/ARFCN et TA non prouvés restent exclus.
+
 ## 0.54.3 (patch) — KPI 2026-10-19 — Enrichissement CELLMEAS ciblé et exclusions (Agent BC2)
 
 - Rattrapage transactionnel UPDATE-only de deux captures LTE TEST2 depuis stg_event_raw et profils globaux prouvés ; aucun profil par capture créé.

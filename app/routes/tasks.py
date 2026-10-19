@@ -13,7 +13,7 @@ from app.schemas.settings import Actor
 from app.kpi.axes import AXES
 
 router=APIRouter(dependencies=[Depends(get_current_user)],tags=['task-analytics'])
-VERSION='0.54.3'
+VERSION='0.55.0'
 CODES={'THR_DL_APP':'HTTP_DL','THR_UL_APP':'HTTP_UL','AGG_APP_DL_THR':'HTTP_DL','AGG_APP_UL_THR':'HTTP_UL'}
 
 class Task(BaseModel):
