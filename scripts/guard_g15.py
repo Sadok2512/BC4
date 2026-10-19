@@ -65,8 +65,15 @@ window=get(f'/projects/{pid}/metrics/series?capture_id={cap}&codes=rsrp&from_seq
 assert all(1000<=p['seq']<=5000 for p in window['series'][0]['points'])
 assert client.get(f'/projects/{pid}/metrics/series?capture_id={cap}&codes=sql_injection').status_code==422
 assert client.get(f'/projects/{pid}/metrics/series?capture_id={cap},{other}&codes=rsrp').status_code==404
-assert client.get(f'/projects/4b7bfd50ddb6/metrics/series?capture_id={cap}&codes=rsrp').status_code==404
+assert client.get(f'/projects/{pid}/metrics/series?capture_id=TEST-absent-capture&codes=rsrp').status_code==404
+# Content-addressed capture IDs may legitimately occur in multiple projects.
+with SessionLocal() as db:
+    other_pid='4b7bfd50ddb6'
+    direct_cross=sql(db,'SELECT seq,rsrp FROM measurement_points WHERE project_id=:pid AND capture_id=:cap AND rsrp IS NOT NULL ORDER BY seq',{'pid':other_pid,'cap':cap})
+    cross=client.get(f'/projects/{other_pid}/metrics/series?capture_id={cap}&codes=rsrp').json()
+    assert cross['project_id']==other_pid
+    assert [(p['seq'],p['value']) for p in cross['series'][0]['points']]==[tuple(r) for r in direct_cross]
 (out/'requests.json').write_text(json.dumps(requests,indent=2))
 (out/'sql.json').write_text(json.dumps(sqls,indent=2))
-summary={'G15a':'PASS diff vide (2 captures)','G15b':'PASS non décroissant, égalités conservées','G15c':'PASS capture unique, valeurs directes isolées, cross-project 404','G15d':'PASS DAA/DCOMP exacts','sampling':'PASS déterministe <= max_points','window':'PASS','filtered_captures':'PASS SQL direct','version':health['version']}
+summary={'G15a':'PASS diff vide (2 captures)','G15b':'PASS non décroissant, égalités conservées','G15c':'PASS capture unique, valeurs directes isolées, scope projet vérifié par SELECT direct','G15d':'PASS DAA/DCOMP exacts','sampling':'PASS déterministe <= max_points','window':'PASS','filtered_captures':'PASS SQL direct','version':health['version']}
 (out/'guards.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2));print(json.dumps(summary,ensure_ascii=False))
