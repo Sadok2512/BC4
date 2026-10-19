@@ -79,8 +79,10 @@ def catalog(project_id: str, db: Session=Depends(get_db)):
     project(db,project_id)
     result=[]
     from app.nmf_decoder.schema import fields
+    from app.nmf_decoder.projection import metric_counts
+    counts=metric_counts(db,project_id)
     for code,m in metric_catalog(db).items():
-        n=db.execute(text('SELECT count(*) FROM ('+m.sql+') source'),{'pid':project_id}).scalar_one()
+        n=counts.get(m.source_column,0)
         if n:
             result.append(dict(code=code,label=m.label,unit=m.unit,source_table=m.source_table,
                 source_column=m.source_column,tech=m.tech,kind=m.kind,n_in_project=n,

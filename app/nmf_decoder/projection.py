@@ -56,3 +56,15 @@ def refresh_projections(db,pid):
     if rows:db.execute(text('''UPDATE measurement_points SET rsrp=:rsrp,rsrq=:rsrq,rssi=:rssi,sinr=:sinr,cqi=:cqi,tx_power=:tx_power
         WHERE project_id=:pid AND capture_id=:cap AND seq=:seq'''),rows)
     return {'observations':len(values),'updated_sequences':len(rows)}
+
+def metric_counts(db,pid):
+    """Count typed columns in three scans, rather than one project scan per metric."""
+    result={};definitions=fields()
+    for table,group,level in [('nmf_event_deep',False,'deep'),('nmf_event_group',True,'deep'),('nmf_event_light',None,'light')]:
+        codes=[k for k,f in definitions.items() if group is None or bool(f['group'])==group]
+        expressions=','.join(f'count(d.{k}) AS {k}' for k in codes)
+        row=db.execute(text(f"SELECT {expressions} FROM {table} d JOIN nmf_capture c USING(project_id,capture_id) WHERE d.project_id=:pid AND c.decode_level='{level}'"+(' AND d.set_index=0' if group is True else '')),{'pid':pid}).mappings().one()
+        for k,n in row.items():result[k]=result.get(k,0)+n
+    for k,f in definitions.items():
+        if f.get('weight'):result[k]=db.execute(text('SELECT count(*) FROM ('+source_sql(k)+') source'),{'pid':pid}).scalar_one()
+    return result
