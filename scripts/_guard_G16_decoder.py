@@ -96,6 +96,7 @@ with SessionLocal() as db:
                     for e in root.iter():
                         if local_name(e.tag) in PRIVATE_TAGS:
                             identities.update(x.strip() for x in [e.text or '',*e.attrib.values()] if x.strip() and x.strip()!='***')
+                        identities.update(v.strip() for k,v in e.attrib.items() if local_name(k) in PRIVATE_TAGS and v.strip() and v.strip()!='***')
                 except Exception:pass  # Non-XML repeat commands have no phone-number field.
         if pid==P:
             row=dict(query(db,"SELECT count(*) n,count(*) FILTER(WHERE decode_status='ok') ok,count(*) FILTER(WHERE decode_status='partial') partial FROM nmf_event_deep WHERE project_id=:pid AND capture_id=:cap",{'pid':pid,'cap':cap}).mappings().one())
