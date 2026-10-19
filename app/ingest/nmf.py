@@ -1087,3 +1087,4 @@ def refresh_project_summary(db: Session, project: Project, *, populate: bool = T
         _log.getLogger("app.ingest.nmf").warning(
             "populate_measurement_points (post-RRC) skipped: %r", e
         )
+        raise RuntimeError("CELLMEAS post-RRC enrichment incomplete") from e

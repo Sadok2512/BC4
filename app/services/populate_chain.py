@@ -52,7 +52,7 @@ def acquire_project_lock(db: "Session", project_id: str) -> None:
     )
 
 
-def run_populate_chain(db: "Session", project: "Project") -> dict:
+def _run_populate_chain(db: "Session", project: "Project") -> dict:
     """Enchaîne les 3 étapes populate pour `project` et met à jour les
     colonnes de suivi (`last_populate_at`, `n_points`).
 
@@ -89,6 +89,8 @@ def run_populate_chain(db: "Session", project: "Project") -> dict:
         logger.exception("[populate_chain] B measurement_points FAIL")
         report["mp_error"] = repr(exc)
         raise
+    from app.measure.cellmeas_repair import assert_lte_enriched
+    assert_lte_enriched(db, project.id)
     db.commit()
 
     # Étape C — populate_ecgi strict (sib1_strict_capture_earfcn).
@@ -137,4 +139,22 @@ def run_populate_chain(db: "Session", project: "Project") -> dict:
         "[populate_chain] DONE project=%s n_points=%d elapsed=%ss",
         project.id, n_points, report["elapsed_s"],
     )
+    return report
+
+
+def run_populate_chain(db, project):
+    """All stages commit together; legacy internal commits only release savepoints.
+
+    A failed/killed enrichment cannot persist a prefix of captures. The advisory
+    transaction lock is held by the outer transaction across every stage.
+    """
+    from sqlalchemy.orm import Session
+    from app.models import Project
+    from app.db import engine
+    with engine.begin() as connection:
+        with Session(bind=connection, join_transaction_mode='create_savepoint') as work:
+            connection.execute(text('SELECT pg_advisory_xact_lock(hashtext(:k))'),{'k':'populate:'+project.id})
+            stored=work.get(Project,project.id)
+            report=_run_populate_chain(work,stored)
+    db.refresh(project)
     return report

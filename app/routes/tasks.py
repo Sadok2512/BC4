@@ -13,7 +13,7 @@ from app.schemas.settings import Actor
 from app.kpi.axes import AXES
 
 router=APIRouter(dependencies=[Depends(get_current_user)],tags=['task-analytics'])
-VERSION='0.54.2'
+VERSION='0.54.3'
 CODES={'THR_DL_APP':'HTTP_DL','THR_UL_APP':'HTTP_UL','AGG_APP_DL_THR':'HTTP_DL','AGG_APP_UL_THR':'HTTP_UL'}
 
 class Task(BaseModel):
@@ -30,9 +30,13 @@ class Point(BaseModel):
     task_id:str|None=None;capture_id:str|None=None;seq:int|None=None;mp_seq:int|None=None;seq_gap:int|None=None
     t_rel_s:float|None=None;x:float|None=None;value:float|None=None
     p10:float|None=None;p50:float|None=None;p90:float|None=None;n:int|None=None
+class Excluded(BaseModel):
+    nr_no_profile:int=0;lte_not_enriched:int=0;other:int=0
+
 class Analytics(BaseModel):
     result_id:str;project_id:str;code:str;x_metric:str;x_unit:str;y_unit:str
     population:Population;points:list[Point];sampling:dict;pairing:str|None=None
+    excluded:Excluded|None=None
 
 def filters(operator:list[str]=Query(default=[]),band:list[str]=Query(default=[]),tech:list[str]=Query(default=[]),rat:list[str]=Query(default=[]),capture_id:str|None=None,
             service_type:list[str]=Query(default=[]),phase:list[str]=Query(default=[]),env:list[str]=Query(default=[]),dep:list[str]=Query(default=[]),dor:list[str]=Query(default=[]),dr:list[str]=Query(default=[]),plaque:list[str]=Query(default=[]),arcep:list[str]=Query(default=[]),commune:list[str]=Query(default=[]),insee:list[str]=Query(default=[])):
@@ -82,11 +86,21 @@ def samples(db,pid,code,f):
     project(db,pid)
     if code not in CODES:raise HTTPException(422,{'reason':'unsupported_KPI','allowed':list(CODES)})
     f={**f,'type':CODES[code]};cond,p=where(pid,f)
-    sql='SELECT s.*,t.capture_id,t.status FROM task_sample s JOIN task_run t ON t.id=s.task_id WHERE '+cond+' ORDER BY t.capture_id,s.seq'
+    sql="SELECT s.*,t.capture_id,t.status,r.system AS radio_system,m.rat AS normalized_rat FROM task_sample s JOIN task_run t ON t.id=s.task_id LEFT JOIN stg_event_raw r ON r.project_id=t.project_id AND r.capture_id=t.capture_id AND r.seq=s.mp_seq AND r.event_code='CELLMEAS' LEFT JOIN measurement_points m ON m.project_id=t.project_id AND m.capture_id=t.capture_id AND m.seq=s.mp_seq AND m.event_code='CELLMEAS' WHERE "+cond+' ORDER BY t.capture_id,s.seq'
     return [dict(r) for r in db.execute(text(sql),p).mappings()],sql,p
 
 def axis(x,allowed):
     if x not in allowed:raise HTTPException(422,{'reason':'unsupported_axis','allowed':allowed,'catalog':list(AXES)})
+
+def exclusion_reasons(rows,x,valid):
+    admitted={(r['task_id'],r['seq']) for r in valid}
+    counts={'nr_no_profile':0,'lte_not_enriched':0,'other':0}
+    for r in rows:
+        if (r['task_id'],r['seq']) in admitted:continue
+        if x=='rsrp' and r.get('rsrp') is None and r.get('radio_system')=='NR':counts['nr_no_profile']+=1
+        elif x=='rsrp' and r.get('rsrp') is None and r.get('radio_system')=='LTE' and r.get('normalized_rat') is None:counts['lte_not_enriched']+=1
+        else:counts['other']+=1
+    return counts
 
 def percentile(values,q):
     values=sorted(values);i=(len(values)-1)*q;lo=int(i);hi=min(lo+1,len(values)-1)
@@ -116,10 +130,11 @@ def points(project_id:str,code:str,x:str='rsrp',limit:int=Query(5000,ge=1,le=500
             row['mp_seq']=row['cqi_seq'];row['seq_gap']=row['cqi_seq_gap']
     column={'task_time':'t_rel_s','capture_time':'capture_time_s'}.get(x,x)
     valid=[r for r in rows if r[column] is not None and r['bps'] is not None and r['bps']>=0 and (x in ('task_time','capture_time') or r['mp_seq'] is not None)]
+    excluded=exclusion_reasons(rows,x,valid)
     n=len(valid);selected=valid if n<=limit else [valid[(i*n)//limit] for i in range(limit)]
     pts=[dict(task_id=r['task_id'],capture_id=r['capture_id'],seq=r['seq'],mp_seq=r['mp_seq'],seq_gap=r['seq_gap'],x=r[column],value=r['bps']/1e6,t_rel_s=r['t_rel_s']) for r in selected]
     pop=population(len({r['task_id'] for r in rows}),len(rows),n,len(pts));pop['incomplete_tasks']=len({r['task_id'] for r in rows if r['status']!='ok'})
-    return dict(result_id=evidence(db,project_id,sql,{**p,'x':x,'limit':limit},pop),project_id=project_id,code=code,x_metric=x,x_unit=AXES[x]['unit'],y_unit='Mbit/s',population=pop,points=pts,sampling={'method':'canonical evenly-spaced ranks' if n>limit else 'none','order':['capture_id','seq'],'limit':limit},pairing=('nearest strictly preceding CQI in same capture' if x=='cqi' else 'nearest strictly preceding CELLMEAS in same capture')+'; no task boundary or distance limit; conflicting rows at same seq -> NULL; no interpolation')
+    return dict(result_id=evidence(db,project_id,sql,{**p,'x':x,'limit':limit},pop),project_id=project_id,code=code,x_metric=x,x_unit=AXES[x]['unit'],y_unit='Mbit/s',population=pop,excluded=excluded,points=pts,sampling={'method':'canonical evenly-spaced ranks' if n>limit else 'none','order':['capture_id','seq'],'limit':limit},pairing=('nearest strictly preceding CQI in same capture' if x=='cqi' else 'nearest strictly preceding CELLMEAS in same capture')+'; no task boundary or distance limit; conflicting rows at same seq -> NULL; no interpolation')
 
 @router.get('/results/{result_id}')
 def result(result_id:str,actor:Actor=Depends(get_actor),db:Session=Depends(get_db)):

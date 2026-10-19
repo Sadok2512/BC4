@@ -118,3 +118,19 @@ def test_points_cqi_uses_its_own_provenance(monkeypatch):
  rsrp=routes.points('TEST-project','THR_DL_APP',x='rsrp',limit=10,f={},db=None)['points'][0]
  assert (cqi['mp_seq'],cqi['seq_gap'],cqi['x'])==(18,2,10)
  assert (rsrp['mp_seq'],rsrp['seq_gap'],rsrp['x'])==(5,15,-90)
+
+
+def test_excluded_counts_are_server_classified():
+ from app.routes.tasks import exclusion_reasons
+ rows=[dict(task_id='TEST',seq=1,rsrp=None,radio_system='NR',normalized_rat='NR'),
+       dict(task_id='TEST',seq=2,rsrp=None,radio_system='LTE',normalized_rat=None),
+       dict(task_id='TEST',seq=3,rsrp=-90,radio_system='LTE',normalized_rat='LTE')]
+ assert exclusion_reasons(rows,'rsrp',[rows[2]])==dict(nr_no_profile=1,lte_not_enriched=1,other=0)
+
+
+def test_cellmeas_gating_preserves_null_and_raw_value():
+ from app.measure.cellmeas_repair import gated
+ from app.measure.ranges import RSRP
+ assert gated({'TEST-field':'-92.7'},'TEST-field',RSRP)==-92.7
+ assert gated({'TEST-field':'650400'},'TEST-field',RSRP) is None
+ assert gated({},'TEST-field',RSRP) is None

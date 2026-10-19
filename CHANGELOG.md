@@ -1,3 +1,10 @@
+## 0.54.3 (patch) — KPI 2026-10-19 — Enrichissement CELLMEAS ciblé et exclusions (Agent BC2)
+
+- Rattrapage transactionnel UPDATE-only de deux captures LTE TEST2 depuis stg_event_raw et profils globaux prouvés ; aucun profil par capture créé.
+- populate_chain atomique malgré les commits internes : savepoints et verrou conservé jusqu'à la fin ; contrôle explicite des CELLMEAS LTE non enrichis avant de finaliser. Les erreurs post-RRC ne sont plus silencieuses.
+- /points expose excluded {nr_no_profile,lte_not_enriched,other}, classé côté serveur depuis la source brute et l'état normalisé.
+- Audit NR séparé, aucune normalisation NR activée.
+
 ## 0.54.2 (patch) — KPI 2026-10-19 — CELLMEAS précédent par capture (Agent BC2)
 
 - RSRP/RSRQ/SINR : dernier CELLMEAS strictement précédent dans la même capture, sans frontière de tâche ni limite de distance ; les valeurs nulles restent nulles.
