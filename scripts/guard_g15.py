@@ -32,7 +32,8 @@ def sql(db,query,params):
     sqls.append({'sql':query,'params':params})
     return db.execute(text(query),params).all()
 
-health=get('/health','health');assert health['version']=='0.55.0'
+from app.main import app
+health=get('/health','health');assert health['version']==app.version
 spec=get('/openapi.json','openapi')
 for route in ['/projects/{project_id}/metrics','/projects/{project_id}/metrics/series','/projects/{project_id}/captures/{capture_id}/events']:
     assert spec['paths'][route]['get']['responses']['200']['content']['application/json']['schema']

@@ -33,6 +33,7 @@ class KpiCatalogItem(BaseModel):
         ...,
         description="source back (table.col, path RRC, formule) — jamais omis",
     )
+    temporal_source: Optional[str] = Field(None, description="Source temporelle autorisée pour la vue Série ; null si source agrégée ou absente")
     formula: Optional[str] = None
     service_scope: list[str] = Field(default_factory=list)
     aliases: list[str] = Field(default_factory=list)

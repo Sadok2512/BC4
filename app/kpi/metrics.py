@@ -35,3 +35,17 @@ for code, direction in [('thr_dl','HTTP_DL'),('thr_ul','HTTP_UL')]:
         "SELECT t.capture_id,s.seq,s.bps/1000000.0 AS value FROM task_sample s JOIN task_run t ON t.id=s.task_id WHERE t.project_id=:pid AND t.task_type='"+direction+"' AND s.bps IS NOT NULL")
 METRICS['mos'] = Metric('MOS AQDL','index','stg_event_raw','raw_fields.c4','BOTH','numeric',
     "SELECT capture_id,seq,CAST(raw_fields->>'c4' AS double precision) AS value FROM stg_event_raw WHERE project_id=:pid AND event_code='AQDL' AND raw_fields->>'c4' ~ '^[0-9]+([.][0-9]+)?$'")
+
+def metric_catalog(db):
+    """Registry rows are controlled definitions, not user-supplied SQL."""
+    import re
+    from sqlalchemy import text
+    result=dict(METRICS)
+    for row in db.execute(text('SELECT * FROM metric_def ORDER BY code')).mappings():
+        code=row['code']
+        if not re.fullmatch('[a-z][a-z0-9_]*',code) or code in result:
+            raise ValueError('invalid or conflicting metric definition: '+code)
+        result[code]=Metric(row['label'],row['unit'],'stg_event_raw',
+            f"raw_fields.c{row['field_index']}",row['tech'],'numeric',
+            "SELECT capture_id,seq,value FROM metric_sample WHERE project_id=:pid AND metric_code='"+code+"'")
+    return result

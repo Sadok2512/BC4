@@ -233,6 +233,10 @@ def _enrich(code: str, name: str, techno: str, nature: str, family: str) -> dict
         "service_scope":     list(_FAMILY_SCOPE.get(family, _SERVICE_ALL)),
     }
 
+    # Unité explicitement confirmée par utilisateur BC2 (2026-10-19).
+    if code == "LTE_DL_BLER":
+        enriched["unit"] = "%"
+
     # Techno NR / ENDC : actuellement AUCUN NMF témoin NR / EN-DC n'a été
     # ingéré avec succès (REF = LTE pur). On refuse de simuler l'available —
     # UNAVAILABLE déclaré avec raison technologie. **Early return** : si

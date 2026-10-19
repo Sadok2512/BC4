@@ -10,7 +10,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 from app.db import get_db
 from app.deps import get_current_user
-from app.kpi.metrics import METRICS
+from app.kpi.metrics import metric_catalog
 from app.routes.tasks import project, evidence, filters
 
 router = APIRouter(tags=['metrics'], dependencies=[Depends(get_current_user)])
@@ -75,7 +75,7 @@ class EventsResponse(BaseModel):
 def catalog(project_id: str, db: Session=Depends(get_db)):
     project(db,project_id)
     result=[]
-    for code,m in METRICS.items():
+    for code,m in metric_catalog(db).items():
         n=db.execute(text('SELECT count(*) FROM ('+m.sql+') source'),{'pid':project_id}).scalar_one()
         if n:
             result.append(dict(code=code,label=m.label,unit=m.unit,source_table=m.source_table,
@@ -139,6 +139,7 @@ def sample(points,limit,kind):
 @router.get('/projects/{project_id}/metrics/series', response_model=SeriesResponse)
 def series(project_id: str,capture_id: str,codes: str,from_seq: int|None=Query(None,ge=0),to_seq: int|None=Query(None,ge=0),max_points: int=Query(5000,ge=2,le=100000),db: Session=Depends(get_db)):
     project(db,project_id)
+    definitions=metric_catalog(db)
     selected=list(dict.fromkeys(codes.split(',')))
     allowed={m['code'] for m in catalog(project_id,db)}
     if any(c not in allowed for c in selected):raise HTTPException(422,dict(reason='unknown_metric',allowed=sorted(allowed)))
@@ -147,7 +148,7 @@ def series(project_id: str,capture_id: str,codes: str,from_seq: int|None=Query(N
     params={'pid':project_id,'cap':capture_id,'lo':from_seq,'hi':to_seq}
     sqls=[];results=[];all_values={}
     for code in selected:
-        m=METRICS[code]
+        m=definitions[code]
         sql='SELECT seq,value FROM ('+m.sql+') source WHERE capture_id=:cap AND (CAST(:lo AS integer) IS NULL OR seq>=:lo) AND (CAST(:hi AS integer) IS NULL OR seq<=:hi) ORDER BY seq'
         sqls.append(sql)
         rows=db.execute(text(sql),params).mappings().all()
@@ -159,7 +160,7 @@ def series(project_id: str,capture_id: str,codes: str,from_seq: int|None=Query(N
         results.append(dict(segments=segments,code=code,label=m.label,unit=m.unit,kind=m.kind,n_total=len(points),n_returned=len(out),sampling=sampling,states=list(dict.fromkeys(p['value'] for p in points)) if m.kind=='categorical' else [],points=out))
     for result in results:
         for p in result['points']:
-            p['tooltip']='seq '+str(p['seq'])+' · '+str(p['t_rel_s'])+' s\n'+'\n'.join(METRICS[c].label+': '+str(all_values[p['seq']].get(c,'N/D'))+' '+METRICS[c].unit for c in selected)
+            p['tooltip']='seq '+str(p['seq'])+' · '+str(p['t_rel_s'])+' s\n'+'\n'.join(definitions[c].label+': '+str(all_values[p['seq']].get(c,'N/D'))+' '+definitions[c].unit for c in selected)
     rid=evidence(db,project_id,';\n'.join([TIME_SQL,*sqls]),{**params,'codes':selected,'max_points':max_points},{'series':[{k:r[k] for k in ('code','n_total','n_returned','sampling')} for r in results]})
     output=io.StringIO();writer=csv.writer(output);writer.writerow(['result_id','capture_id','code','unit','seq','t_rel_s','value'])
     for r in results:

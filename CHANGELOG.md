@@ -1,3 +1,9 @@
+## 0.56.0 (minor) — BC4 2026-10-19 — Registre Nemo sous preuve et capacité Série (Agent BC2)
+
+- Migration 0030 : metric_def et metric_sample, sans définition inventée ; extraction idempotente à l’étape E et lecture par /metrics/series.
+- Catalogue KPI : temporal_source explicite selon les task_sample présents, documenté dans OpenAPI ; LTE DL BLER en %.
+- Nemo File Format absent de specs : aucun champ Nemo supplémentaire activé, G15e et débits par couche bloqués par la preuve manquante.
+
 ## 0.55.0 (minor) — bc4-back 2026-10-19 — Dictionnaire par IE, classement Test_3 (Agent BC1)
 
 - Intégration BC1 dans 0.55.0 expressément confirmée par l’utilisateur après livraison BC2 de ce numéro ; les fonctionnalités KPI BC2 sont conservées.

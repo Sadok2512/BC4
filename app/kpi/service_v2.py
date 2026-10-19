@@ -303,6 +303,10 @@ def build_catalog_v2_response(
         counts_by_techno.setdefault(t, {})
         counts_by_techno[t][s] = counts_by_techno[t].get(s, 0) + 1
 
+    # Capability is explicit and scoped to observed task samples, never inferred from unit.
+    from app.routes.tasks import CODES
+    temporal_types = set(db.execute(text("SELECT DISTINCT t.task_type FROM task_run t JOIN task_sample s ON s.task_id=t.id WHERE t.project_id=:pid AND s.bps IS NOT NULL"), {"pid": project_id}).scalars())
+
     # Groupage Techno → Famille → entries
     tree: list[dict[str, Any]] = []
     for techno in TECHNO_ORDER:
@@ -326,6 +330,7 @@ def build_catalog_v2_response(
                     "nature":        e["nature"],
                     "unit":          e["unit"],
                     "source":        e["source"],
+                    "temporal_source": "task_sample.bps" if CODES.get(e["code"]) in temporal_types else None,
                     "formula":       e["formula"],
                     "service_scope": e.get("service_scope") or [],
                     "aliases":       e.get("aliases") or [],

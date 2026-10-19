@@ -116,7 +116,12 @@ def _run_populate_chain(db: "Session", project: "Project") -> dict:
     report["tasks"] = populate_tasks(db, project.id)
     db.commit()
 
-    # Étape E — snapshot n_points + last_populate_at sur projects.
+    # Étape E — métriques Nemo dont les positions sont prouvées.
+    from app.services.metric_samples import populate_metric_samples
+    report["metrics"] = populate_metric_samples(db, project.id)
+    db.commit()
+
+    # Étape F — snapshot n_points + last_populate_at sur projects.
     n_points_row = db.execute(
         text("SELECT COUNT(*) FROM measurement_points WHERE project_id = :pid"),
         {"pid": project.id},

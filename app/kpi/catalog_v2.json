@@ -10,7 +10,8 @@
   "normalizations": [
     "'EN-DC_' → 'ENDC_' (EN-DC_LAT_RTT)",
     "'EN-DC_' → 'ENDC_' (EN-DC_LAT_HTTP_RESPONSE)",
-    "'EN-DC_' → 'ENDC_' (EN-DC_LAT_TRANSFER_SETUP)"
+    "'EN-DC_' → 'ENDC_' (EN-DC_LAT_TRANSFER_SETUP)",
+    "BC2 instruction utilisateur 2026-10-19 : LTE_DL_BLER unit=% ; disponibilité temporelle inchangée sans preuve Nemo."
   ],
   "aliases": [
     {
@@ -836,7 +837,7 @@
       "aliases": [],
       "formula": null,
       "source": "(indisponible : règle non définie)",
-      "unit": null,
+      "unit": "%",
       "available_check": {
         "kind": "always_unavailable",
         "reason": "métrique mesurée LTE_DL_BLER sans mapping prouvé côté décodeur."
