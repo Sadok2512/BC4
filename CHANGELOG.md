@@ -1,3 +1,11 @@
+## 0.54.0 (minor) — bc4-back 2026-10-19 — task_run v1 (Agent BC1)
+
+- Migration 0026 après dict v2.2 : task_run, task_sample et preuves SQL serveur. Masquage ciblé des identités dans les commandes existantes, sans sauvegarde du clair ; prévention à l'ingestion avec `***`.
+- Étape D idempotente de populate_chain : ordre capture_id/seq, temps intra-capture, état incomplete et raison explicite pour les bornes absentes.
+- Suppression de la formule 8×DSUMMARY/Δt : débit par tâche = moyenne des bps DRATE, ou 8×bytes_dcomp/duration_s si les échantillons sont absents et les bornes prouvées.
+- Routes tasks, séries Task Time, enveloppe exacte sans interpolation, paires radio limitées à 5000 avec échantillonnage déterministe. Radio strictement précédente dans la même capture ; aucune coordonnée ou identité fabriquée.
+- Résultats avec result_id et SQL stocké serveur, /results réservé aux administrateurs. Axes fermés dans app/kpi/axes.py.
+
 ## 0.53.0 (minor) — bc4-back 2026-10-19 — Dictionnaire catégories v2.2 (Agent BC1)
 
 - Migration 0025 : catégories/sous-catégories, préfixes ASN.1 normalisés `[*]`, discriminants et décisions Q01–Q16. Corrections ciblées des flags SIB1 et logicalChannelGroup ; SFN exclu du catalogue, conservé en base.

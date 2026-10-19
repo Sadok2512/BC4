@@ -10,3 +10,6 @@ UPDATE ciblés : alembic/versions/0025_dict_categories_v22.py::_correct_flags (c
 ÉCART OUVERT : vue croisée événement/couche et comptage SCell différés selon consigne.
 Frontend non modifié : go front reste nécessaire pour consommer categories/subcategories/parameters/leaves.
 Preuves live post-build seront enregistrées séparément après commit propre.
+
+Preuves live finales : HEAD 6290646, health.json 0.53.0. G13-TEST2.jsonl : PASS a/b/c/d. G13-Test_3.jsonl : FAIL a, PASS b/c/d. SQL et paramètres dans chaque ligne JSON.
+Le tag/révision 0.49.0 est absent : commande demandée en échec conservée dans git-log-requested.txt ; historique disponible git-log-available.txt. Aucun tag artificiel créé.

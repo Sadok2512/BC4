@@ -92,13 +92,13 @@
       "nature": "Métrique mesurée",
       "family": "Débit applicatif",
       "aliases": [],
-      "formula": "percentile_cont sur transferts proven (compute_transfers) direction=dl — 1 ligne par DSUMMARY DL",
-      "source": "table des transferts (compute_transfers → DSUMMARY DL verdict=proven), jamais measurement_points.dl pondéré",
+      "formula": "Statistique par tâche complète : mean(DRATE.bps)/1e6, sinon 8×bytes_dcomp/duration_s/1e6 avec bornes prouvées",
+      "source": "DRATE.bps ou DCOMP.bytes/durée intra-capture — une valeur par tâche ; DSUMMARY exclu",
       "unit": "Mbit/s",
       "available_check": {
         "kind": "transfers_table",
         "arg": "dl",
-        "reason_if_null": "compute_transfers retourne 0 transfert `proven` DL — aucun DSUMMARY DL rattaché à un Start CMDREQ dans la plage 0..300 Mbit/s."
+        "reason_if_null": "Aucune tâche complète avec DRATE ou repli DCOMP et bornes valides"
       },
       "service_scope": [
         "HTTP_DOWNLOAD",
@@ -132,13 +132,13 @@
       "nature": "Métrique mesurée",
       "family": "Débit applicatif",
       "aliases": [],
-      "formula": "percentile_cont sur transferts proven (compute_transfers) direction=ul",
-      "source": "table des transferts (compute_transfers → DSUMMARY UL verdict=proven), jamais measurement_points.thrpt_ul pondéré",
+      "formula": "Statistique par tâche complète : mean(DRATE.bps)/1e6, sinon 8×bytes_dcomp/duration_s/1e6 avec bornes prouvées",
+      "source": "DRATE.bps ou DCOMP.bytes/durée intra-capture — une valeur par tâche ; DSUMMARY exclu",
       "unit": "Mbit/s",
       "available_check": {
         "kind": "transfers_table",
         "arg": "ul",
-        "reason_if_null": "compute_transfers retourne 0 transfert `proven` UL — aucun DSUMMARY UL rattaché à un Start CMDREQ dans la plage 0..300 Mbit/s."
+        "reason_if_null": "Aucune tâche complète avec DRATE ou repli DCOMP et bornes valides"
       },
       "service_scope": [
         "HTTP_DOWNLOAD",
@@ -153,12 +153,12 @@
       "family": "DMS DL",
       "aliases": [],
       "formula": "100 × count(measurement_points.dl ≥ 30) / count(measurement_points.dl IS NOT NULL)",
-      "source": "table des transferts (compute_transfers → DSUMMARY DL verdict=proven)",
+      "source": "DRATE.bps ou DCOMP.bytes/durée intra-capture — une valeur par tâche ; DSUMMARY exclu",
       "unit": "%",
       "available_check": {
         "kind": "transfers_dms",
         "arg": "dl",
-        "reason_if_null": "compute_transfers retourne 0 transfert DL `proven`."
+        "reason_if_null": "Aucune tâche complète avec DRATE ou repli DCOMP et bornes valides"
       },
       "service_scope": [
         "HTTP_DOWNLOAD",
@@ -173,12 +173,12 @@
       "family": "DMS DL",
       "aliases": [],
       "formula": "100 × count(measurement_points.dl ≥ 3) / count(measurement_points.dl IS NOT NULL)",
-      "source": "table des transferts (compute_transfers → DSUMMARY DL verdict=proven)",
+      "source": "DRATE.bps ou DCOMP.bytes/durée intra-capture — une valeur par tâche ; DSUMMARY exclu",
       "unit": "%",
       "available_check": {
         "kind": "transfers_dms",
         "arg": "dl",
-        "reason_if_null": "compute_transfers retourne 0 transfert DL `proven`."
+        "reason_if_null": "Aucune tâche complète avec DRATE ou repli DCOMP et bornes valides"
       },
       "service_scope": [
         "HTTP_DOWNLOAD",
@@ -193,12 +193,12 @@
       "family": "DMS DL",
       "aliases": [],
       "formula": "100 × count(measurement_points.dl ≥ 8) / count(measurement_points.dl IS NOT NULL)",
-      "source": "table des transferts (compute_transfers → DSUMMARY DL verdict=proven)",
+      "source": "DRATE.bps ou DCOMP.bytes/durée intra-capture — une valeur par tâche ; DSUMMARY exclu",
       "unit": "%",
       "available_check": {
         "kind": "transfers_dms",
         "arg": "dl",
-        "reason_if_null": "compute_transfers retourne 0 transfert DL `proven`."
+        "reason_if_null": "Aucune tâche complète avec DRATE ou repli DCOMP et bornes valides"
       },
       "service_scope": [
         "HTTP_DOWNLOAD",
@@ -213,12 +213,12 @@
       "family": "DMS UL",
       "aliases": [],
       "formula": "100 × count(measurement_points.thrpt_ul ≥ 1) / count(measurement_points.thrpt_ul IS NOT NULL)",
-      "source": "table des transferts (compute_transfers → DSUMMARY UL verdict=proven)",
+      "source": "DRATE.bps ou DCOMP.bytes/durée intra-capture — une valeur par tâche ; DSUMMARY exclu",
       "unit": "%",
       "available_check": {
         "kind": "transfers_dms",
         "arg": "ul",
-        "reason_if_null": "compute_transfers retourne 0 transfert UL `proven`."
+        "reason_if_null": "Aucune tâche complète avec DRATE ou repli DCOMP et bornes valides"
       },
       "service_scope": [
         "HTTP_DOWNLOAD",
@@ -233,12 +233,12 @@
       "family": "DMS UL",
       "aliases": [],
       "formula": "100 × count(measurement_points.thrpt_ul ≥ 3) / count(measurement_points.thrpt_ul IS NOT NULL)",
-      "source": "table des transferts (compute_transfers → DSUMMARY UL verdict=proven)",
+      "source": "DRATE.bps ou DCOMP.bytes/durée intra-capture — une valeur par tâche ; DSUMMARY exclu",
       "unit": "%",
       "available_check": {
         "kind": "transfers_dms",
         "arg": "ul",
-        "reason_if_null": "compute_transfers retourne 0 transfert UL `proven`."
+        "reason_if_null": "Aucune tâche complète avec DRATE ou repli DCOMP et bornes valides"
       },
       "service_scope": [
         "HTTP_DOWNLOAD",

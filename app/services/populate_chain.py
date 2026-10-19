@@ -108,7 +108,13 @@ def run_populate_chain(db: "Session", project: "Project") -> dict:
         raise
     db.commit()
 
-    # Étape D — snapshot n_points + last_populate_at sur projects.
+    # Étape D — task_run / task_sample from canonical staging events.
+    from app.services.task_run import populate_tasks
+    logger.info("[populate_chain] D task_run project=%s", project.id)
+    report["tasks"] = populate_tasks(db, project.id)
+    db.commit()
+
+    # Étape E — snapshot n_points + last_populate_at sur projects.
     n_points_row = db.execute(
         text("SELECT COUNT(*) FROM measurement_points WHERE project_id = :pid"),
         {"pid": project.id},

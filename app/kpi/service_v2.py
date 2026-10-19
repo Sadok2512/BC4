@@ -849,7 +849,7 @@ def compute_kpi_v2(
     from app.kpi.catalog_v2 import ALIAS_TO_CANONICAL, CATALOG_V2
 
     requested = code
-    canonical = code if code in CATALOG_V2 else ALIAS_TO_CANONICAL.get(code)
+    canonical = {"THR_DL_APP":"AGG_APP_DL_THR","THR_UL_APP":"AGG_APP_UL_THR"}.get(code) or (code if code in CATALOG_V2 else ALIAS_TO_CANONICAL.get(code))
     if canonical is None or canonical not in CATALOG_V2:
         return {
             "requested_code": requested,

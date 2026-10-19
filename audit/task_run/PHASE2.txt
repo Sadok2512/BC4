@@ -1,0 +1,33 @@
+Projet de travail : TEST2 134af70a06eb ; preuve Test_3 4b7bfd50ddb6.
+Version 0.53.0 -> 0.54.0 minor, migration 0026 après 0025_dict_categories_v22.
+Stash task_run-draft appliqué (conservé), conflit CHANGELOG résolu en gardant les deux lots.
+
+PRIVACY
+SELECT et UPDATE exacts : app/services/task_privacy.py PRIVACY_SELECT / PRIVACY_UPDATE.
+Migration 0026 exécute le SELECT ciblé CMDREQ puis UPDATE par id et project_id seulement si contenu privé modifié. Aucun numéro exporté, aucune sauvegarde du clair. Ingestion appelle la même redaction avant INSERT JSONB.
+Comptages avant : pre-migration-preview.txt et privacy-shape-before.json ; requête et script privacy_audit.py. Les payloads Call portent des valeurs masquées par *** ; StartRepeat contient un compteur, pas du XML compressé, et reste intact.
+G14e prévisualisation : PASS après migration transactionnelle rollback ; ne signifie pas encore déployé.
+
+RECONSTRUCTION
+Ordre exclusif capture_id,seq. Temps décimal intra-capture, aucune interpolation ni concaténation.
+Radio : séquence strictement précédente dans la capture, sans contrainte artificielle de début de tâche. Conflits de lignes radio au même seq -> NULL. PCI absent de measurement_points -> NULL déclaré, non fabriqué.
+Population dérivée task_run/task_sample par étape D, upserts déterministes et retrait des seules lignes dérivées devenues obsolètes. Aucun replay global A/B/C dans ce lot pour les projets existants.
+Débit moyen DRATE, repli octets DCOMP/durée prouvée en absence de DRATE. Ancienne formule DSUMMARY retirée du code. Échantillons conservés même si tâche incomplete.
+
+GARDES AVANT LIVRAISON
+scripts/_guard_G14_task_run.py --preview 134af70a06eb et --preview 4b7bfd50ddb6, transaction avec migration/population/double population et rollback.
+G14a FAIL : les incréments du compteur cumulatif DRATE.c8 ne couvrent pas toujours les octets DCOMP.c10 à 5 %. Écarts et requête dans les JSONL. Aucune extrapolation vers la fin DCOMP ; tâches concernées incomplete, raison DRATE_DCOMP_bytes_gap_gt_5pct.
+G14b PASS ; G14c PASS ; G14d PASS ; G14e PASS en preview. Idempotence PASS (hash des lignes triées identique).
+Tests ciblés : tests.txt (commande docker/pytest ci-dessous). Compilation Python et git diff --check exécutés.
+
+COMMANDES
+python -m pytest tests/test_task_run.py tests/test_dict_categories_v22.py tests/test_dict_templates.py tests/test_dict_geo_filters.py tests/test_dict_map_v2.py -o addopts='' -q -p no:cacheprovider
+python -m compileall -q app alembic scripts/_guard_G14_task_run.py
+git diff --check
+Exécution dans docker run --rm --network bc4_default -v /home/devmat/BC4/bc4-back:/app:ro avec DSN du conteneur DB et secret JWT de test (pas le secret réel).
+
+ÉCARTS OUVERTS
+G14a est un écart des observations sources, non fermé par fabrication d'échantillons.
+G13a Test_3 reste ouvert : classement des chemins hors TEST2 soumis dans audit/dict-v2.2/test3-unmapped.csv.
+Capture_time appartient au catalogue fermé mais /series v1 ne propose que task_time ; autres axes non supportés par cette route -> 422.
+Preuves live post-build, health, curls et résultat SQL admin seront enregistrés après livraison du HEAD propre.

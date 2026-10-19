@@ -1,0 +1,2 @@
+2026-10-19T13:28:24.196714+00:00
+curl --fail --silent --show-error http://localhost:8000/projects/4b7bfd50ddb6/dict/v2/tree?view=catalog -H "Authorization: Bearer [REDACTED]"

@@ -41,6 +41,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.models import NmfFile, Project
+from app.services.task_privacy import redact_command
 
 # ---------------------------------------------------------------------------
 # Limites & chemins
@@ -582,7 +583,7 @@ def ingest_upload(
                         "system": ev["system"],
                         "lat": ev["lat"],
                         "lon": ev["lon"],
-                        "raw_fields": _json_module.dumps(ev["raw_fields"]),
+                        "raw_fields": _json_module.dumps(redact_command(ev["raw_fields"])),
                     }
                 )
                 # Mirror BC1 : CELLMEAS → stg_measurement_raw (category='measurement')

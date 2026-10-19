@@ -1,0 +1,200 @@
+{
+  "project_id": "134af70a06eb",
+  "view": "catalog",
+  "available_messages": [
+    "DLInformationTransfer",
+    "FreqBandList IE",
+    "MasterInformationBlock",
+    "MeasurementReport",
+    "MIB",
+    "RRCConnectionReconfiguration",
+    "RRCConnectionReconfigurationComplete",
+    "RRCConnectionRelease",
+    "RRCConnectionRequest",
+    "RRCConnectionSetup",
+    "RRCConnectionSetupComplete",
+    "SecurityModeCommand",
+    "SecurityModeComplete",
+    "SystemInformationBlockType1",
+    "SystemInformation - SIB2",
+    "SystemInformation - SIB24",
+    "SystemInformation - SIB3",
+    "SystemInformation - SIB4",
+    "SystemInformation - SIB5",
+    "SystemInformation - SIB6",
+    "SystemInformation - SIB7",
+    "UECapabilityEnquiry",
+    "UECapabilityInformation",
+    "UEInformationRequest",
+    "UEInformationResponse",
+    "UE-MRDC-Capability IE",
+    "UE-NR-Capability IE"
+  ],
+  "total_rows": 156131,
+  "distinct_param_keys": 773,
+  "tree": [
+    {
+      "techno": "LTE",
+      "origins": [
+        {
+          "origin": "network_config",
+          "messages": [],
+          "categories": [
+            {
+              "id": "phy",
+              "label": "PHY",
+              "position": 1,
+              "subcategories": [
+                {
+                  "id": "phy.carrier",
+                  "label": "Porteuse & bande passante",
+                  "position": 1,
+                  "parameters": [
+                    {
+                      "param_key": "dict22:eyJjYXRlZ29yeSI6InBoeSIsIm5hbWUiOiJkbC1CYW5kd2lkdGgiLCJzdWJjYXRlZ29yeSI6InBoeS5jYXJyaWVyIiwidGVjaCI6IkxURSIsInVuaXQiOm51bGx9",
+                      "display_name": "dl-Bandwidth",
+                      "unit": null,
+                      "category_id": "phy",
+                      "subcategory_id": "phy.carrier",
+                      "n": 10,
+                      "n_occurrences": 10,
+                      "n_captures": 4,
+                      "n_in_tech": 10,
+                      "leaves": [
+                        {
+                          "category_id": "phy",
+                          "param_key": "dict22:eyJjYXRlZ29yeSI6InBoeSIsImRpc2NyaW1pbmF0b3JzIjp7fSwibWVzc2FnZSI6Ik1hc3RlckluZm9ybWF0aW9uQmxvY2siLCJuYW1lIjoiZGwtQmFuZHdpZHRoIiwic3ViY2F0ZWdvcnkiOiJwaHkuY2FycmllciIsInRlY2giOiJMVEUiLCJ1bml0IjpudWxsfQ",
+                          "display_name": "dl-Bandwidth",
+                          "unit": null,
+                          "choice_of": null,
+                          "discriminators": {},
+                          "origin": "network_config",
+                          "is_identifier": false,
+                          "n": 4,
+                          "sample_paths": [
+                            "dl-Bandwidth"
+                          ],
+                          "message": "MasterInformationBlock",
+                          "subcategory_id": "phy.carrier",
+                          "discriminator": {},
+                          "n_occurrences": 4,
+                          "n_captures": 2,
+                          "n_in_tech": 10,
+                          "source_param_keys": [
+                            "dl-Bandwidth"
+                          ]
+                        },
+                        {
+                          "category_id": "phy",
+                          "param_key": "dict22:eyJjYXRlZ29yeSI6InBoeSIsImRpc2NyaW1pbmF0b3JzIjp7fSwibWVzc2FnZSI6IlJSQ0Nvbm5lY3Rpb25SZWNvbmZpZ3VyYXRpb24iLCJuYW1lIjoiZGwtQmFuZHdpZHRoIiwic3ViY2F0ZWdvcnkiOiJwaHkuY2FycmllciIsInRlY2giOiJMVEUiLCJ1bml0IjpudWxsfQ",
+                          "display_name": "dl-Bandwidth",
+                          "unit": null,
+                          "choice_of": null,
+                          "discriminators": {},
+                          "origin": "network_config",
+                          "is_identifier": false,
+                          "n": 6,
+                          "sample_paths": [
+                            "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/mobilityControlInfo/carrierBandwidth/dl-Bandwidth"
+                          ],
+                          "message": "RRCConnectionReconfiguration",
+                          "subcategory_id": "phy.carrier",
+                          "discriminator": {},
+                          "n_occurrences": 6,
+                          "n_captures": 2,
+                          "n_in_tech": 10,
+                          "source_param_keys": [
+                            "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/mobilityControlInfo/carrierBandwidth/dl-Bandwidth"
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "param_key": "dict22:eyJjYXRlZ29yeSI6InBoeSIsIm5hbWUiOiJwaGljaC1EdXJhdGlvbiIsInN1YmNhdGVnb3J5IjoicGh5LmNhcnJpZXIiLCJ0ZWNoIjoiTFRFIiwidW5pdCI6bnVsbH0",
+                      "display_name": "phich-Duration",
+                      "unit": null,
+                      "category_id": "phy",
+                      "subcategory_id": "phy.carrier",
+                      "n": 58,
+                      "n_occurrences": 58,
+                      "n_captures": 3,
+                      "n_in_tech": 58,
+                      "leaves": [
+                        {
+                          "category_id": "phy",
+                          "param_key": "dict22:eyJjYXRlZ29yeSI6InBoeSIsImRpc2NyaW1pbmF0b3JzIjp7fSwibWVzc2FnZSI6Ik1hc3RlckluZm9ybWF0aW9uQmxvY2siLCJuYW1lIjoicGhpY2gtRHVyYXRpb24iLCJzdWJjYXRlZ29yeSI6InBoeS5jYXJyaWVyIiwidGVjaCI6IkxURSIsInVuaXQiOm51bGx9",
+                          "display_name": "phich-Duration",
+                          "unit": null,
+                          "choice_of": null,
+                          "discriminators": {},
+                          "origin": "network_config",
+                          "is_identifier": false,
+                          "n": 4,
+                          "sample_paths": [
+                            "phich-Config/phich-Duration"
+                          ],
+                          "message": "MasterInformationBlock",
+                          "subcategory_id": "phy.carrier",
+                          "discriminator": {},
+                          "n_occurrences": 4,
+                          "n_captures": 2,
+                          "n_in_tech": 58,
+                          "source_param_keys": [
+                            "phich-Config/phich-Duration"
+                          ]
+                        },
+                        {
+                          "category_id": "phy",
+                          "param_key": "dict22:eyJjYXRlZ29yeSI6InBoeSIsImRpc2NyaW1pbmF0b3JzIjp7fSwibWVzc2FnZSI6IlJSQ0Nvbm5lY3Rpb25SZWNvbmZpZ3VyYXRpb24iLCJuYW1lIjoicGhpY2gtRHVyYXRpb24iLCJzdWJjYXRlZ29yeSI6InBoeS5jYXJyaWVyIiwidGVjaCI6IkxURSIsInVuaXQiOm51bGx9",
+                          "display_name": "phich-Duration",
+                          "unit": null,
+                          "choice_of": null,
+                          "discriminators": {},
+                          "origin": "network_config",
+                          "is_identifier": false,
+                          "n": 54,
+                          "sample_paths": [
+                            "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/mobilityControlInfo/radioResourceConfigCommon/phich-Config/phich-Duration"
+                          ],
+                          "message": "RRCConnectionReconfiguration",
+                          "subcategory_id": "phy.carrier",
+                          "discriminator": {},
+                          "n_occurrences": 54,
+                          "n_captures": 3,
+                          "n_in_tech": 58,
+                          "source_param_keys": [
+                            "rrcConnectionReconfiguration/rrcConnectionReconfiguration-r8/mobilityControlInfo/radioResourceConfigCommon/phich-Config/phich-Duration"
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "param_key": "dict22:eyJjYXRlZ29yeSI6InBoeSIsIm5hbWUiOiJwaGljaC1SZXNvdXJjZSIsInN1YmNhdGVnb3J5IjoicGh5LmNhcnJpZXIiLCJ0ZWNoIjoiTFRFIiwidW5pdCI6bnVsbH0",
+                      "display_name": "phich-Resource",
+                      "unit": null,
+                      "category_id": "phy",
+                      "subcategory_id": "phy.carrier",
+                      "n": 58,
+                      "n_occurrences": 58,
+                      "n_captures": 3,
+                      "n_in_tech": 58,
+                      "leaves": [
+                        {
+                          "category_id": "phy",
+                          "param_key": "dict22:eyJjYXRlZ29yeSI6InBoeSIsImRpc2NyaW1pbmF0b3JzIjp7fSwibWVzc2FnZSI6Ik1hc3RlckluZm9ybWF0aW9uQmxvY2siLCJuYW1lIjoicGhpY2gtUmVzb3VyY2UiLCJzdWJjYXRlZ29yeSI6InBoeS5jYXJyaWVyIiwidGVjaCI6IkxURSIsInVuaXQiOm51bGx9",
+                          "display_name": "phich-Resource",
+                          "unit": null,
+                          "choice_of": null,
+                          "discriminators": {},
+                          "origin": "network_config",
+                          "is_identifier": false,
+                          "n": 4,
+                          "sample_paths": [
+                            "phich-Config/phich-Resource"
+                          ],
+                          "message": "MasterInformationBlock",
+                          "subcategory_id": "phy.carrier",
+                          "discriminator": {},
+                          "n_occurrences": 4,
+                          "n_captures": 2,
+                          "n_in_tech": 58,
