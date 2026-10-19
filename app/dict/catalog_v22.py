@@ -19,7 +19,7 @@ def selector_key(selector):
     return 'dict22:'+base64.urlsafe_b64encode(raw).decode().rstrip('=')
 
 
-def selector_predicate(key):
+def selector_predicate(key, db=None, project_id=None):
     """All selector contents are SQL values, never SQL identifiers or expressions."""
     if not key.startswith('dict22:'):
         return 'param_key=:k', {'k':key}
@@ -30,23 +30,24 @@ def selector_predicate(key):
         if s['tech'] not in ('LTE','NR'): raise ValueError()
     except Exception:
         raise HTTPException(422,'Clé agrégée dict v2.2 invalide')
-    # Classification is the very same longest normalized segment prefix as the tree.
+    # Classify distinct path/discriminator populations once, not every occurrence.
+    # SQL then uses a hashed membership test; source values remain untouched.
+    if db is None or project_id is None:
+        raise ValueError('Aggregate selectors require a server-scoped project')
+    candidates=db.execute(text(f"SELECT DISTINCT {NORMALIZED} path,COALESCE(p.discriminators,'{{}}'::jsonb) discriminators FROM param_occurrence p WHERE p.project_id=:pid AND p.system=:tech AND p.display_name=:name AND p.unit_converted IS NOT DISTINCT FROM :unit AND p.origin='network_config' AND {ELIGIBLE}"),dict(pid=project_id,tech=s['tech'],name=s['name'],unit=s['unit'])).mappings()
+    maps=list(db.execute(text('SELECT * FROM dict_category_map')).mappings())
+    resolved=[]
+    for row in candidates:
+        match=resolve_mapping(s['tech'],row['path'],row['discriminators'],maps)
+        cid=match['category_id'] if match else 'autres';sid=match['subcategory_id'] if match else None
+        if (cid,sid)==(s['category'],s['subcategory']):resolved.append(dict(row))
     norm=NORMALIZED.replace('p.path','param_occurrence.path')
     clause=f"""system=:sel_tech AND origin='network_config' AND display_name=:sel_name
       AND unit_converted IS NOT DISTINCT FROM :sel_unit
       AND {ELIGIBLE.replace('p.', 'param_occurrence.')}
-      AND EXISTS (SELECT 1 FROM (SELECT category_id,subcategory_id FROM dict_category_map m
-        WHERE m.technology IN (param_occurrence.system,'BOTH')
-        AND ({norm}=m.path_prefix OR starts_with({norm},m.path_prefix||'/'))
-        AND COALESCE(param_occurrence.discriminators,'{{}}'::jsonb) @> m.discriminator
-        ORDER BY array_length(string_to_array(m.path_prefix,'/'),1) DESC,
-          (SELECT count(*) FROM jsonb_object_keys(m.discriminator)) DESC,
-          (m.technology=param_occurrence.system) DESC LIMIT 1) chosen
-        WHERE chosen.category_id=:sel_category AND chosen.subcategory_id IS NOT DISTINCT FROM :sel_subcategory)"""
-    params={'sel_'+k:v for k,v in s.items() if k not in ('message','discriminators')}
-    if s['category']=='autres':
-        # Unreviewed paths remain visible and their population remains queryable.
-        clause=clause[:clause.index('AND EXISTS')] + f"""AND NOT EXISTS (SELECT 1 FROM dict_category_map m WHERE m.technology IN (param_occurrence.system,'BOTH') AND ({norm}=m.path_prefix OR starts_with({norm},m.path_prefix||'/')) AND COALESCE(param_occurrence.discriminators,'{{}}'::jsonb) @> m.discriminator)"""
+      AND ({norm},COALESCE(discriminators,'{{}}'::jsonb)) IN
+        (SELECT path,discriminators FROM jsonb_to_recordset(CAST(:sel_paths AS jsonb)) AS r(path text,discriminators jsonb))"""
+    params={'sel_tech':s['tech'],'sel_name':s['name'],'sel_unit':s['unit'],'sel_paths':json.dumps(resolved)}
     if 'message' in s:
         clause+=' AND message IS NOT DISTINCT FROM :sel_message';params['sel_message']=s['message']
     if 'discriminators' in s:

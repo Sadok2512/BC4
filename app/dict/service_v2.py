@@ -252,7 +252,7 @@ def build_distribution(
 
     for key in keys:
         from app.dict.catalog_v22 import selector_predicate
-        key_predicate,key_params=selector_predicate(key)
+        key_predicate,key_params=selector_predicate(key,db,project_id)
         # Métadonnées communes (unit, origin, choice_of, discriminators).
         # 0.45.1 — distinct_values = COUNT(DISTINCT COALESCE(value_converted, value))
         # pour que les feuilles non-converties (ex. hysteresis en 0.45.0)
