@@ -1,0 +1,45 @@
+BC1 — dictionnaire backend, suffixes IE et classement Test_3
+Projet de travail TEST2 134af70a06eb ; preuve Test_3 4b7bfd50ddb6.
+
+Prévalidation (transaction annulée, pas une livraison live) :
+G13a TEST2 PASS : 0/502 clés éligibles Configuration réseau non classées.
+G13a Test_3 PASS : 0/833 clés éligibles Configuration réseau non classées.
+G13b TEST2 PASS : 116715 occurrences éligibles = somme des feuilles.
+G13b Test_3 PASS : 620894 occurrences éligibles = somme des feuilles.
+G13c-d PASS pour les deux projets ; sorties et SQL dans G13-preview-*.jsonl.
+Avant Test_3 : 373/886 clés non couvertes ; source horodatée et SQL dans
+../dict-v2.2/unmapped_test3.source.json. Le dénominateur baisse avec R2,
+pas par suppression des occurrences : seuls les flags is_identifier changent.
+
+R1 : préfixes exacts à partir des IE, indices normalisés [*], discriminants
+conservés. Déduplication des règles indépendamment du message racine.
+R2 : classification identifiant à partir du chemin ASN.1 ; suffixes de version
+retirés pour reconnaître les noms Id-r12/Id-v1250. logicalChannelGroup conservé.
+Les champs BIT STRING constants restent inclus, sauf exclusions explicites.
+Nouvelles sous-catégories : PDCCH & CORESET, Allocation temps-fréquence, MDT.
+Aucun mapping implicite Autres ajouté. CSV résiduels vides après classement.
+Fichiers excluded-*.csv : chemins normalisés, populations, règle d'exclusion.
+Les templates, formules, données de référence et fichiers KPI ne sont pas modifiés.
+
+NR SA : requêtes, événements source et preuve pycrate dans nr-sa-proof.json.
+Test_3 : 1 capture contenant SIB1 NR et 1 événement SIB1 NR ; 1 capture et
+1 événement RRCSetup NR. SIB1 : capture c6b62d43a6be, seq 39318,
+event_id 131996. cellIdentity=25906605, longueur décodée=36 bits.
+PLMN présents dans le même groupe SIB1 : MCC [2,0,8] + MNC [1,5] et [1,6].
+NCGI lisible : oui. Aucun dump complet de PDU ni identité d'abonné exporté.
+
+Commandes de validation :
+PYTHONPATH=. python audit/dict-v2.3/build_seed.py
+python scripts/_guard_G13_categories.py --preview-v23 134af70a06eb
+python scripts/_guard_G13_categories.py --preview-v23 4b7bfd50ddb6
+python -m pytest tests/test_dict_categories_v22.py tests/test_dict_categories_v23.py tests/test_dict_templates.py tests/test_dict_geo_filters.py tests/test_dict_map_v2.py -o addopts='' -q -p no:cacheprovider
+python audit/dict-v2.3/check_migration.py
+Exécution dans bc4-api:latest avec le worktree BC1 monté /app et le réseau bc4_default.
+Les variables d'authentification ne sont jamais affichées.
+
+Livraison en attente : accord pour fichiers communs (app/main.py, pyproject.toml,
+CHANGELOG.md). Base live passée de 0.54.1 à 0.54.2 pendant le travail BC2 ;
+cible minor 0.55.0. Aucun fichier KPI ne sera modifié.
+Migration Alembic : wrapper à numéroter au merge après pull, jamais réservé.
+Avant merge/rebuild : DEPLOY_LOCK obligatoire, pull/rebase main, HEAD propre.
+La validation HTTP live et curl NR restent NOT RUN tant que non déployé.

@@ -1,0 +1,56 @@
+{
+  "at": "2026-10-19T14:38:01.576063+00:00",
+  "project_id": "4b7bfd50ddb6",
+  "parameters": {
+    "pid": "4b7bfd50ddb6"
+  },
+  "source_sql": "SELECT DISTINCT e.id,e.capture_id,e.seq,e.system,e.channel,e.direction,e.message,e.payload_hex\nFROM stg_event e JOIN param_occurrence p ON p.stg_event_id=e.id AND p.project_id=e.project_id\nWHERE p.project_id=:pid AND p.system='NR' AND p.path LIKE 'systemInformationBlockType1/%'\nORDER BY e.capture_id,e.seq",
+  "count_sql": "SELECT count(DISTINCT e.capture_id) captures,count(DISTINCT e.id) events FROM stg_event e JOIN param_occurrence p ON p.stg_event_id=e.id AND p.project_id=e.project_id WHERE p.project_id=:pid AND p.system='NR' AND p.path LIKE 'systemInformationBlockType1/%'",
+  "counts": {
+    "captures": 1,
+    "events": 1
+  },
+  "setup_sql": "SELECT count(DISTINCT e.capture_id) captures,count(DISTINCT e.id) events FROM stg_event e JOIN param_occurrence p ON p.stg_event_id=e.id AND p.project_id=e.project_id WHERE p.project_id=:pid AND p.system='NR' AND p.path LIKE 'rrcSetup/%'",
+  "setup": {
+    "captures": 1,
+    "events": 1
+  },
+  "proof": [
+    {
+      "event_id": 131996,
+      "capture_id": "c6b62d43a6be",
+      "seq": 39318,
+      "groups": [
+        {
+          "cellIdentity": 25906605,
+          "bit_length": 36,
+          "plmns": [
+            {
+              "mcc": [
+                2,
+                0,
+                8
+              ],
+              "mnc": [
+                1,
+                5
+              ]
+            },
+            {
+              "mcc": [
+                2,
+                0,
+                8
+              ],
+              "mnc": [
+                1,
+                6
+              ]
+            }
+          ],
+          "ncgi_readable": true
+        }
+      ]
+    }
+  ]
+}

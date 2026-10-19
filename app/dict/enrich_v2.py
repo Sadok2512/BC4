@@ -361,7 +361,10 @@ def enrich(path: str, message: str | None) -> dict[str, Any]:
     last_seg = segs[-1] if segs else path
     discs = extract_discriminators(segs)
     origin = infer_origin(message)
-    identif = is_identifier(display_name)
+    from app.dict.category_mapping import identifier_path_rule
+    identif = (is_identifier(display_name) or identifier_path_rule(path) is not None)
+    if display_name == "logicalChannelGroup":
+        identif = False
     group = functional_group(param_key, message)
     return {
         "param_key":        param_key,

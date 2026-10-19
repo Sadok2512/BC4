@@ -1,0 +1,23 @@
+BC1 — projet de travail TEST2 134af70a06eb ; preuve Test_3 4b7bfd50ddb6
+Branche : feat/bc1-dict
+
+Export live : unmapped_test3.csv. Source rejouable, paramètres et horodatage :
+unmapped_test3.source.json. Exporteur : export_unmapped_test3.py (PYTHONPATH=.).
+Périmètre : Configuration réseau, exclusions existantes, chemins normalisés [*],
+matching par préfixe exact et discriminant via resolve_mapping.
+374 populations chemin/clé/message/discriminant ; 373 clés distinctes non couvertes
+sur 886 clés éligibles. G13a reste FAIL. Aucune ligne de mapping ajoutée, aucun seed
+Autres. Le fallback d'affichage existant n'a pas été changé.
+Validation CSV exécutée : cohérence des comptes avec source, unicité des populations,
+questions présentes, catégories et sous-catégories vides : PASS.
+Les gardes G13b-d ne sont pas rejouées : aucune modification du service ni des données.
+
+Attente du classement utilisateur pour T3-0001…T3-0374. Migration de données ensuite,
+numéro attribué au merge après pull. Aucun numéro réservé.
+
+Nouvelle règle de circulation reçue pendant l'audit G14 en lecture seule :
+aucun code KPI modifié. Résultats et script transférés hors dépôt dans
+/home/devmat/BC4/handoff-bc2-g14-0.54.1 pour BC2. Aucun payload CMDREQ exporté.
+La version, le CHANGELOG commun et le déploiement ne sont pas modifiés par BC1 :
+le patch demandé 0.54.1 reste à coordonner avec BC2 et nécessite l'OK pour fichiers
+communs. Aucun merge main ni rebuild exécuté ; DEPLOY_LOCK sera obligatoire.

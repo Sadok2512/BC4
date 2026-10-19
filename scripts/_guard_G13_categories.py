@@ -22,7 +22,13 @@ with engine.connect() as conn:
    path=Path(__file__).resolve().parents[1]/'alembic/versions/0025_dict_categories_v22.py'
    spec=importlib.util.spec_from_file_location('migration',path);migration=importlib.util.module_from_spec(spec);spec.loader.exec_module(migration)
    migration.op=Operations(MigrationContext.configure(conn));migration.upgrade()
+  if '--preview-v23' in sys.argv:
+   from app.dict.migrate_v23 import upgrade_data
+   upgrade_data(conn)
   db=Session(bind=conn)
+  if "--export-v23" in sys.argv:
+   import runpy
+   runpy.run_path(str(Path(__file__).resolve().parents[1]/"audit/dict-v2.3/export_populations.py"))["export"](db,pid)
   query=f"SELECT p.system,{NORMALIZED} path,p.param_key,p.discriminators,count(*) n FROM param_occurrence p WHERE p.project_id=:pid AND p.origin='network_config' AND {ELIGIBLE} GROUP BY 1,2,3,4"
   rows=list(db.execute(text(query),{'pid':pid}).mappings());maps=list(db.execute(text('SELECT * FROM dict_category_map')).mappings())
   keys=set();other=set();unmapped=[]
