@@ -835,12 +835,12 @@
       "nature": "Métrique mesurée",
       "family": "DL",
       "aliases": [],
-      "formula": null,
-      "source": "(indisponible : règle non définie)",
+      "formula": "percentile_cont sur PHRATE PDSCH BLER documenté",
+      "source": "nmf_decoder PHRATE.pdsch.bler — NFF 2.19, unité %",
       "unit": "%",
       "available_check": {
-        "kind": "always_unavailable",
-        "reason": "métrique mesurée LTE_DL_BLER sans mapping prouvé côté décodeur."
+        "kind": "nmf_metric",
+        "arg": "pdsch_bler"
       },
       "service_scope": [
         "HTTP_DOWNLOAD",

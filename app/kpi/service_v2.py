@@ -177,6 +177,10 @@ def compute_status_v2(
     if kind == "always_unavailable":
         return KpiStatusV2("UNAVAILABLE", check.get("reason"))
 
+    if kind == "nmf_metric":
+        from app.kpi.nmf import available
+        return KpiStatusV2("AVAILABLE", None) if available(db, project_id, check['arg']) else KpiStatusV2("PENDING", "aucune mesure Nemo documentée décodée")
+
     if kind == "mp_metric":
         col = check.get("arg") or ""
         if _mp_metric_available(db, project_id, col):
@@ -1035,6 +1039,16 @@ def compute_kpi_v2(
             "table":          groups,
             "comparability":  _comparability(groups),
         }
+
+    if kind == "nmf_metric":
+        from app.kpi.nmf import stats
+        if group_by in CELL_REF_DIMS or phases:
+            return {**base, "status": "UNAVAILABLE", "reason": "attribution de cette dimension non prouvée pour les observations Nemo", "value": None, "n": 0, "groups": [], "table": []}
+        total, raw_groups = stats(db, project_id, check['arg'], group_cols, operators)
+        groups = _decorate_groups(raw_groups, group_cols, expected_ops)
+        return {**base, **total, "value": total['p50'], "status": "AVAILABLE" if total['n'] else "PENDING",
+                "reason": None if total['n'] else "aucune mesure Nemo documentée décodée", "groups": groups, "table": groups,
+                "comparability": _comparability(groups)}
 
     if kind == "mp_metric":
         col = check.get("arg") or ""

@@ -125,16 +125,16 @@ def series(project_id:str,code:str,x:str='task_time',task_id:str|None=None,f:dic
 @router.get('/projects/{project_id}/kpi/{code}/points',response_model=Analytics)
 def points(project_id:str,code:str,x:str='rsrp',limit:int=Query(5000,ge=1,le=5000),f:dict=Depends(filters),db:Session=Depends(get_db)):
     axis(x,list(AXES));rows,sql,p=samples(db,project_id,code,f)
-    if x=='cqi':
+    if x in ('cqi','sinr'):
         for row in rows:
-            row['mp_seq']=row['cqi_seq'];row['seq_gap']=row['cqi_seq_gap']
+            row['mp_seq']=row[x+'_seq'];row['seq_gap']=row[x+'_seq_gap']
     column={'task_time':'t_rel_s','capture_time':'capture_time_s'}.get(x,x)
     valid=[r for r in rows if r[column] is not None and r['bps'] is not None and r['bps']>=0 and (x in ('task_time','capture_time') or r['mp_seq'] is not None)]
     excluded=exclusion_reasons(rows,x,valid)
     n=len(valid);selected=valid if n<=limit else [valid[(i*n)//limit] for i in range(limit)]
     pts=[dict(task_id=r['task_id'],capture_id=r['capture_id'],seq=r['seq'],mp_seq=r['mp_seq'],seq_gap=r['seq_gap'],x=r[column],value=r['bps']/1e6,t_rel_s=r['t_rel_s']) for r in selected]
     pop=population(len({r['task_id'] for r in rows}),len(rows),n,len(pts));pop['incomplete_tasks']=len({r['task_id'] for r in rows if r['status']!='ok'})
-    return dict(result_id=evidence(db,project_id,sql,{**p,'x':x,'limit':limit},pop),project_id=project_id,code=code,x_metric=x,x_unit=AXES[x]['unit'],y_unit='Mbit/s',population=pop,excluded=excluded,points=pts,sampling={'method':'canonical evenly-spaced ranks' if n>limit else 'none','order':['capture_id','seq'],'limit':limit},pairing=('nearest strictly preceding CQI in same capture' if x=='cqi' else 'nearest strictly preceding CELLMEAS in same capture')+'; no task boundary or distance limit; conflicting rows at same seq -> NULL; no interpolation')
+    return dict(result_id=evidence(db,project_id,sql,{**p,'x':x,'limit':limit},pop),project_id=project_id,code=code,x_metric=x,x_unit=AXES[x]['unit'],y_unit='Mbit/s',population=pop,excluded=excluded,points=pts,sampling={'method':'canonical evenly-spaced ranks' if n>limit else 'none','order':['capture_id','seq'],'limit':limit},pairing=('nearest strictly preceding CQI in same capture' if x=='cqi' else 'nearest strictly preceding CI in same capture' if x=='sinr' else 'nearest strictly preceding CELLMEAS in same capture')+'; no task boundary or distance limit; conflicting rows at same seq -> NULL; no interpolation')
 
 @router.get('/results/{result_id}')
 def result(result_id:str,actor:Actor=Depends(get_actor),db:Session=Depends(get_db)):
