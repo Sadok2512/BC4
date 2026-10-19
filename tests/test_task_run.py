@@ -67,3 +67,20 @@ def test_result_sql_is_admin_only():
  with pytest.raises(HTTPException) as denied:
   result('TEST-result',actor=Actor(login='TEST-reader',role='viewer'),db=None)
  assert denied.value.status_code==403
+
+
+def test_integral_not_cumulative_counter_and_partial_gap():
+ rows=[start(),event(2,'DAA',{'ts':'10:00:00'}),event(3,'DRATE',{'ts':'10:00:01','c6':'800','c8':'10'}),event(4,'DRATE',{'ts':'10:00:03','c6':'400','c8':'20'}),event(5,'DCOMP',{'ts':'10:00:04','c10':'200'})]
+ assert reconstruct(rows,'TEST-project')[0]['status']=='ok'
+ rows[-1]['raw_fields']['c10']='400'
+ t=reconstruct(rows,'TEST-project')[0]
+ assert t['status']=='partial'
+ assert t['reason']=='DRATE_integral_DCOMP_gap_gt_5pct'
+
+
+def test_axes_route_precedes_dynamic_kpi_route():
+ from app.main import app
+ from starlette.routing import Match
+ scope={'type':'http','method':'GET','path':'/projects/TEST-project/kpi/axes'}
+ route=next(r for r in app.router.routes if r.matches(scope)[0]==Match.FULL)
+ assert route.endpoint.__name__=='axes'

@@ -1,0 +1,230 @@
+{
+  "at": "2026-10-19T14:20:33.221169+00:00",
+  "project_id": "134af70a06eb",
+  "counts": {
+    "sql": "SELECT count(*),count(rsrp) rsrp,count(sinr) sinr,count(cqi) cqi FROM task_sample WHERE task_id IN (SELECT id FROM task_run WHERE project_id=:pid)",
+    "parameters": {
+      "pid": "134af70a06eb"
+    },
+    "rows": [
+      {
+        "count": 2993,
+        "rsrp": 42,
+        "sinr": 30,
+        "cqi": 2546
+      }
+    ]
+  },
+  "status": {
+    "sql": "SELECT status,reason,count(*) n FROM task_run WHERE project_id=:pid GROUP BY status,reason ORDER BY status,reason",
+    "parameters": {
+      "pid": "134af70a06eb"
+    },
+    "rows": [
+      {
+        "status": "incomplete",
+        "reason": "invalid_duration;missing_DAA;missing_DCOMP",
+        "n": 8
+      },
+      {
+        "status": "incomplete",
+        "reason": "invalid_duration;missing_DCOMP;missing_DCOMP_bytes;missing_DRATE_and_fallback",
+        "n": 11
+      },
+      {
+        "status": "ok",
+        "reason": null,
+        "n": 138
+      },
+      {
+        "status": "partial",
+        "reason": "DRATE_integral_DCOMP_gap_gt_5pct",
+        "n": 50
+      }
+    ]
+  },
+  "gaps": {
+    "sql": "SELECT percentile_cont(ARRAY[.5,.9]) WITHIN GROUP(ORDER BY s.seq_gap) all_radio,percentile_cont(ARRAY[.5,.9]) WITHIN GROUP(ORDER BY s.seq_gap) FILTER(WHERE s.rsrp IS NOT NULL) rsrp FROM task_sample s JOIN task_run t ON t.id=s.task_id WHERE t.project_id=:pid",
+    "parameters": {
+      "pid": "134af70a06eb"
+    },
+    "rows": [
+      {
+        "all_radio": [
+          13.0,
+          24.0
+        ],
+        "rsrp": [
+          45.0,
+          47.0
+        ]
+      }
+    ]
+  },
+  "previous_rsrp": {
+    "sql": "SELECT percentile_cont(ARRAY[.5,.9]) WITHIN GROUP(ORDER BY s.seq-m.seq) gaps FROM task_sample s JOIN task_run t ON t.id=s.task_id JOIN LATERAL (SELECT seq FROM measurement_points WHERE project_id=t.project_id AND capture_id=t.capture_id AND seq<s.seq AND rsrp IS NOT NULL ORDER BY seq DESC LIMIT 1) m ON true WHERE t.project_id=:pid",
+    "parameters": {
+      "pid": "134af70a06eb"
+    },
+    "rows": [
+      {
+        "gaps": [
+          49.0,
+          66.0
+        ]
+      }
+    ]
+  },
+  "five_worst": [
+    {
+      "id": "eacd8fea-6ac1-51a1-b420-b3dc50a5aeaa",
+      "capture_id": "b930aefc6bf8",
+      "seq_start": 25850,
+      "integral_ratio": 0.7764369854756275,
+      "first_after_daa_s": 1.268,
+      "max_internal_interval_s": 1.007,
+      "stop_before_dcomp_s": 0.622,
+      "first_before_daa": false,
+      "threads": {
+        "sql": "SELECT threads FROM task_run WHERE project_id=:pid AND capture_id=:cap AND seq_start=:start",
+        "parameters": {
+          "pid": "134af70a06eb",
+          "cap": "b930aefc6bf8",
+          "start": 25850
+        },
+        "rows": [
+          {
+            "threads": 1
+          }
+        ]
+      },
+      "source_sql": "SELECT capture_id,seq,event_code,raw_fields FROM stg_event_raw WHERE project_id=:pid AND capture_id=:cap AND seq BETWEEN :start AND :end AND event_code IN ('DAA','DRATE','DCOMP') ORDER BY capture_id,seq",
+      "source_parameters": {
+        "pid": "134af70a06eb",
+        "cap": "b930aefc6bf8",
+        "start": 25850,
+        "end": 26432
+      }
+    },
+    {
+      "id": "3037d56c-0403-5faa-8121-bcb9f058abe3",
+      "capture_id": "ff6a1a2d0d13",
+      "seq_start": 48538,
+      "integral_ratio": 0.8419134953201356,
+      "first_after_daa_s": 1.267,
+      "max_internal_interval_s": 1.002,
+      "stop_before_dcomp_s": 0.497,
+      "first_before_daa": false,
+      "threads": {
+        "sql": "SELECT threads FROM task_run WHERE project_id=:pid AND capture_id=:cap AND seq_start=:start",
+        "parameters": {
+          "pid": "134af70a06eb",
+          "cap": "ff6a1a2d0d13",
+          "start": 48538
+        },
+        "rows": [
+          {
+            "threads": 1
+          }
+        ]
+      },
+      "source_sql": "SELECT capture_id,seq,event_code,raw_fields FROM stg_event_raw WHERE project_id=:pid AND capture_id=:cap AND seq BETWEEN :start AND :end AND event_code IN ('DAA','DRATE','DCOMP') ORDER BY capture_id,seq",
+      "source_parameters": {
+        "pid": "134af70a06eb",
+        "cap": "ff6a1a2d0d13",
+        "start": 48538,
+        "end": 48960
+      }
+    },
+    {
+      "id": "cfdcd8c0-bd2d-530c-bc88-8dc23e8e03b0",
+      "capture_id": "cd2ced4774f5",
+      "seq_start": 20493,
+      "integral_ratio": 0.8156484924797118,
+      "first_after_daa_s": 1.301,
+      "max_internal_interval_s": 1.422,
+      "stop_before_dcomp_s": 0.802,
+      "first_before_daa": false,
+      "threads": {
+        "sql": "SELECT threads FROM task_run WHERE project_id=:pid AND capture_id=:cap AND seq_start=:start",
+        "parameters": {
+          "pid": "134af70a06eb",
+          "cap": "cd2ced4774f5",
+          "start": 20493
+        },
+        "rows": [
+          {
+            "threads": 1
+          }
+        ]
+      },
+      "source_sql": "SELECT capture_id,seq,event_code,raw_fields FROM stg_event_raw WHERE project_id=:pid AND capture_id=:cap AND seq BETWEEN :start AND :end AND event_code IN ('DAA','DRATE','DCOMP') ORDER BY capture_id,seq",
+      "source_parameters": {
+        "pid": "134af70a06eb",
+        "cap": "cd2ced4774f5",
+        "start": 20493,
+        "end": 22866
+      }
+    },
+    {
+      "id": "6ac36047-a370-55e8-baf9-db2e54110886",
+      "capture_id": "41c13c9b4ce0",
+      "seq_start": 48252,
+      "integral_ratio": 0.8449851549420799,
+      "first_after_daa_s": 1.261,
+      "max_internal_interval_s": 1.003,
+      "stop_before_dcomp_s": 0.703,
+      "first_before_daa": false,
+      "threads": {
+        "sql": "SELECT threads FROM task_run WHERE project_id=:pid AND capture_id=:cap AND seq_start=:start",
+        "parameters": {
+          "pid": "134af70a06eb",
+          "cap": "41c13c9b4ce0",
+          "start": 48252
+        },
+        "rows": [
+          {
+            "threads": 1
+          }
+        ]
+      },
+      "source_sql": "SELECT capture_id,seq,event_code,raw_fields FROM stg_event_raw WHERE project_id=:pid AND capture_id=:cap AND seq BETWEEN :start AND :end AND event_code IN ('DAA','DRATE','DCOMP') ORDER BY capture_id,seq",
+      "source_parameters": {
+        "pid": "134af70a06eb",
+        "cap": "41c13c9b4ce0",
+        "start": 48252,
+        "end": 48820
+      }
+    },
+    {
+      "id": "0c0c28e5-2484-51a0-9c8b-19dd66e22a03",
+      "capture_id": "cd2ced4774f5",
+      "seq_start": 14235,
+      "integral_ratio": 0.8430281392361086,
+      "first_after_daa_s": 1.14,
+      "max_internal_interval_s": 1.103,
+      "stop_before_dcomp_s": 0.947,
+      "first_before_daa": false,
+      "threads": {
+        "sql": "SELECT threads FROM task_run WHERE project_id=:pid AND capture_id=:cap AND seq_start=:start",
+        "parameters": {
+          "pid": "134af70a06eb",
+          "cap": "cd2ced4774f5",
+          "start": 14235
+        },
+        "rows": [
+          {
+            "threads": 1
+          }
+        ]
+      },
+      "source_sql": "SELECT capture_id,seq,event_code,raw_fields FROM stg_event_raw WHERE project_id=:pid AND capture_id=:cap AND seq BETWEEN :start AND :end AND event_code IN ('DAA','DRATE','DCOMP') ORDER BY capture_id,seq",
+      "source_parameters": {
+        "pid": "134af70a06eb",
+        "cap": "cd2ced4774f5",
+        "start": 14235,
+        "end": 16190
+      }
+    }
+  ]
+}

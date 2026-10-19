@@ -13,7 +13,7 @@ from app.schemas.settings import Actor
 from app.kpi.axes import AXES
 
 router=APIRouter(dependencies=[Depends(get_current_user)],tags=['task-analytics'])
-VERSION='0.54.0'
+VERSION='0.54.1'
 CODES={'THR_DL_APP':'HTTP_DL','THR_UL_APP':'HTTP_UL','AGG_APP_DL_THR':'HTTP_DL','AGG_APP_UL_THR':'HTTP_UL'}
 
 class Task(BaseModel):
@@ -27,7 +27,7 @@ class Population(BaseModel):
 class TaskList(BaseModel):
     result_id:str;project_id:str;tasks:list[Task];population:Population
 class Point(BaseModel):
-    task_id:str|None=None;capture_id:str|None=None;seq:int|None=None;mp_seq:int|None=None
+    task_id:str|None=None;capture_id:str|None=None;seq:int|None=None;mp_seq:int|None=None;seq_gap:int|None=None
     t_rel_s:float|None=None;x:float|None=None;value:float|None=None
     p10:float|None=None;p50:float|None=None;p90:float|None=None;n:int|None=None
 class Analytics(BaseModel):
@@ -65,12 +65,17 @@ def evidence(db,pid,sql,params,pop):
 
 def population(tasks,samples,admissible,returned):return dict(tasks=tasks,samples=samples,admissible=admissible,returned=returned,excluded=samples-admissible)
 
+@router.get('/projects/{project_id}/kpi/axes')
+def axes(project_id:str,db:Session=Depends(get_db)):
+    project(db,project_id)
+    return [dict(code=code,**meta) for code,meta in AXES.items()]
+
 @router.get('/projects/{project_id}/tasks',response_model=TaskList)
 def tasks(project_id:str,type:Literal['HTTP_DL','HTTP_UL','VOICE','PING','OTHER']|None=None,f:dict=Depends(filters),db:Session=Depends(get_db)):
     project(db,project_id)
     if type:f['type']=type
     cond,p=where(project_id,f);sql='SELECT t.* FROM task_run t WHERE '+cond+' ORDER BY t.capture_id,t.seq_start'
-    rows=[dict(r) for r in db.execute(text(sql),p).mappings()];pop=population(len(rows),len(rows),len(rows),len(rows));pop['incomplete_tasks']=sum(r['status']=='incomplete' for r in rows)
+    rows=[dict(r) for r in db.execute(text(sql),p).mappings()];pop=population(len(rows),len(rows),len(rows),len(rows));pop['incomplete_tasks']=sum(r['status']!='ok' for r in rows)
     return dict(result_id=evidence(db,project_id,sql,p,pop),project_id=project_id,tasks=rows,population=pop)
 
 def samples(db,pid,code,f):
@@ -100,16 +105,17 @@ def series(project_id:str,code:str,x:str='task_time',task_id:str|None=None,f:dic
         buckets={}
         for r in valid:buckets.setdefault(r['t_rel_s'],[]).append(r['bps']/1e6)
         points=[dict(t_rel_s=t,p10=percentile(v,.1),p50=percentile(v,.5),p90=percentile(v,.9),n=len(v)) for t,v in sorted(buckets.items())]
-    pop=population(len({r['task_id'] for r in rows}),len(rows),len(valid),len(points));pop['incomplete_tasks']=len({r['task_id'] for r in rows if r['status']=='incomplete'})
+    pop=population(len({r['task_id'] for r in rows}),len(rows),len(valid),len(points));pop['incomplete_tasks']=len({r['task_id'] for r in rows if r['status']!='ok'})
     return dict(result_id=evidence(db,project_id,sql,p,pop),project_id=project_id,code=code,x_metric=x,x_unit='s',y_unit='Mbit/s',population=pop,points=points,sampling={'method':'none','alignment':'exact decoded t_rel_s; no interpolation'})
 
 @router.get('/projects/{project_id}/kpi/{code}/points',response_model=Analytics)
 def points(project_id:str,code:str,x:str='rsrp',limit:int=Query(5000,ge=1,le=5000),f:dict=Depends(filters),db:Session=Depends(get_db)):
-    axis(x,['rsrp','sinr','cqi']);rows,sql,p=samples(db,project_id,code,f)
-    valid=[r for r in rows if r[x] is not None and r['bps'] is not None and r['bps']>=0 and r['mp_seq'] is not None]
+    axis(x,list(AXES));rows,sql,p=samples(db,project_id,code,f)
+    column={'task_time':'t_rel_s','capture_time':'capture_time_s'}.get(x,x)
+    valid=[r for r in rows if r[column] is not None and r['bps'] is not None and r['bps']>=0 and (x in ('task_time','capture_time') or r['mp_seq'] is not None)]
     n=len(valid);selected=valid if n<=limit else [valid[(i*n)//limit] for i in range(limit)]
-    pts=[dict(task_id=r['task_id'],capture_id=r['capture_id'],seq=r['seq'],mp_seq=r['mp_seq'],x=r[x],value=r['bps']/1e6,t_rel_s=r['t_rel_s']) for r in selected]
-    pop=population(len({r['task_id'] for r in rows}),len(rows),n,len(pts));pop['incomplete_tasks']=len({r['task_id'] for r in rows if r['status']=='incomplete'})
+    pts=[dict(task_id=r['task_id'],capture_id=r['capture_id'],seq=r['seq'],mp_seq=r['mp_seq'],seq_gap=r['seq_gap'],x=r[column],value=r['bps']/1e6,t_rel_s=r['t_rel_s']) for r in selected]
+    pop=population(len({r['task_id'] for r in rows}),len(rows),n,len(pts));pop['incomplete_tasks']=len({r['task_id'] for r in rows if r['status']!='ok'})
     return dict(result_id=evidence(db,project_id,sql,{**p,'x':x,'limit':limit},pop),project_id=project_id,code=code,x_metric=x,x_unit=AXES[x]['unit'],y_unit='Mbit/s',population=pop,points=pts,sampling={'method':'canonical evenly-spaced ranks' if n>limit else 'none','order':['capture_id','seq'],'limit':limit},pairing='nearest strictly preceding radio row in same capture; conflicting rows at same seq -> NULL; no interpolation')
 
 @router.get('/results/{result_id}')

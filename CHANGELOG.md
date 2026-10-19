@@ -1,3 +1,9 @@
+## 0.54.1 (patch) — KPI 2026-10-19 — Intégrale DRATE et axes (Agent BC2)
+
+- G14a compare Σ(bps×Δt)/8 à DCOMP sur les tâches ok ; écarts >5 % en partial avec raison.
+- Catalogue GET /kpi/axes, validation des axes et distance radio seq_gap persistée et exposée ; appariement précédent strict, même capture, sans interpolation.
+- Migration 0027 : recalcul des tâches existantes.
+
 ## 0.54.0 (minor) — bc4-back 2026-10-19 — task_run v1 (Agent BC1)
 
 - Migration 0026 après dict v2.2 : task_run, task_sample et preuves SQL serveur. Masquage ciblé des identités dans les commandes existantes, sans sauvegarde du clair ; prévention à l'ingestion avec `***`.

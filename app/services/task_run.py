@@ -58,19 +58,26 @@ def reconstruct(rows,pid):
         t['duration_s']=float(t['_end']-t['_start']) if t['_end'] is not None and t['_start'] is not None else None
         if t['duration_s'] is None or t['duration_s']<=0:reasons.append('invalid_duration')
         prev=None
+        integrated=0.0; integration_valid=True; previous_time=0.0
         for s in t['_samples']:
+            s['capture_time_s']=float(s['_time']) if s['_time'] is not None else None
             s['t_rel_s']=float(s.pop('_time')-t['_start']) if s['_time'] is not None and t['_start'] is not None else None
             if s['t_rel_s'] is None or s['t_rel_s']<0 or (prev is not None and s['t_rel_s']<=prev):reasons.append('invalid_task_time')
             if s['t_rel_s'] is not None:prev=s['t_rel_s']
             if s['bps'] is None or s['bps']<0:reasons.append('invalid_DRATE')
+            dt=s['t_rel_s']-previous_time if s['t_rel_s'] is not None else None
+            if dt is None or dt<=0 or s['bps'] is None or s['bps']<0:integration_valid=False
+            else:integrated+=s['bps']*dt/8
+            if s['t_rel_s'] is not None:previous_time=s['t_rel_s']
         if t['task_type'].startswith('HTTP') and not t['_samples'] and not (t['bytes_dcomp'] is not None and t['duration_s'] is not None and t['duration_s']>0):reasons.append('missing_DRATE_and_fallback')
         if t['task_type'].startswith('HTTP') and t['bytes_dcomp'] is None:reasons.append('missing_DCOMP_bytes')
         counters=[s['bytes_cum'] for s in t['_samples'] if s['bytes_cum'] is not None]
         if any(b<a for a,b in zip(counters,counters[1:])):reasons.append('nonmonotonic_DRATE_bytes')
-        if counters and t['bytes_dcomp'] is not None and t['bytes_dcomp']>0 and abs(counters[-1]-t['bytes_dcomp'])/t['bytes_dcomp']>.05:
-            reasons.append('DRATE_DCOMP_bytes_gap_gt_5pct')
+        gap = bool(t['_samples'] and integration_valid and t['bytes_dcomp'] is not None and
+                   t['bytes_dcomp']>0 and abs(integrated-t['bytes_dcomp'])/t['bytes_dcomp']>.05)
+        if gap:reasons.append('DRATE_integral_DCOMP_gap_gt_5pct')
         t['mos_aqdl']=mean(t['_mos']) if t['_mos'] else None
-        t['status']='incomplete' if reasons else 'ok';t['reason']=';'.join(sorted(set(reasons))) or None
+        t['status']=('partial' if gap else 'incomplete') if reasons else 'ok';t['reason']=';'.join(sorted(set(reasons))) or None
         for key in ('_start','_end'):
             if t[key] is not None:t[key]=float(t[key])
         tasks.append(t)
@@ -118,7 +125,7 @@ def populate_tasks(db,pid):
                 if len({tuple(row.get(k) for k in fields) for row in previous_rows})>1:
                     m={}  # Same source seq, conflicting radio rows: no arbitrary carrier choice.
             sample.update({k:m.get(k) for k in ('rsrp','rsrq','sinr','cqi','earfcn','rat')})
-            sample.update(mp_seq=m.get('seq'),pci=None)
+            sample.update(mp_seq=m.get('seq'),seq_gap=sample['seq']-m['seq'] if m else None,pci=None)
             for k in ('operator','band','tech'):
                 if m.get(k) is not None:contexts[k].add(m[k])
         for k,values in contexts.items():t[k]=next(iter(values)) if len(values)==1 else None

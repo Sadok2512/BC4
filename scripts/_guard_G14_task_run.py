@@ -32,18 +32,21 @@ with engine.connect() as conn:
    second=populate_tasks(db,pid)
    after=db.execute(text("SELECT md5(string_agg(to_jsonb(s)::text,',' ORDER BY s.task_id,s.seq)) FROM task_sample s JOIN task_run t ON t.id=s.task_id WHERE t.project_id=:pid"),{'pid':pid}).scalar()
    emit('IDEMPOTENCE','PASS' if first==second and before==after else 'FAIL','populate_tasks twice; md5 ordered task_sample rows',first=first,second=second,sample_hash_before=before,sample_hash_after=after)
-  byte_sql="""WITH increments AS (
-   SELECT t.id,t.capture_id,t.seq_start,t.bytes_dcomp,s.seq,s.bytes_cum,
-    s.bytes_cum-COALESCE(lag(s.bytes_cum) OVER(PARTITION BY t.id ORDER BY s.seq),0) delta
-   FROM task_run t JOIN task_sample s ON s.task_id=t.id WHERE t.project_id=:pid), totals AS (
-   SELECT id,capture_id,seq_start,bytes_dcomp,sum(delta) drate_bytes,bool_or(delta<0) counter_reset
-   FROM increments GROUP BY 1,2,3,4)
+  byte_sql="""WITH intervals AS (
+   SELECT t.id,t.capture_id,t.seq_start,t.bytes_dcomp,s.seq,s.bps,s.t_rel_s,
+    s.t_rel_s-lag(s.t_rel_s,1,0::double precision) OVER(PARTITION BY t.id ORDER BY s.seq) dt
+   FROM task_run t JOIN task_sample s ON s.task_id=t.id WHERE t.project_id=:pid AND t.status='ok'), totals AS (
+   SELECT id,capture_id,seq_start,bytes_dcomp,
+    CASE WHEN bool_and(dt>0 AND bps IS NOT NULL AND bps>=0) THEN sum(bps*dt/8) END drate_bytes
+   FROM intervals GROUP BY 1,2,3,4)
    SELECT *,abs(drate_bytes-bytes_dcomp)/NULLIF(bytes_dcomp,0)::float relative_gap
    FROM totals ORDER BY capture_id,seq_start"""
   rows=[dict(r) for r in db.execute(text(byte_sql),{'pid':pid}).mappings()]
-  eligible=[r for r in rows if r['bytes_dcomp'] is not None and r['bytes_dcomp']>0 and r['drate_bytes'] is not None]
-  failed=[r for r in eligible if r['counter_reset'] or r['relative_gap']>.05]
-  emit('G14a','PASS' if eligible and not failed else 'FAIL',byte_sql,eligible=len(eligible),excluded=len(rows)-len(eligible),failed=len(failed),failures=failed,interpretation='DRATE.c8 is cumulative: sum successive increments, no extrapolation to DCOMP.')
+  eligible=[r for r in rows if r['bytes_dcomp'] is not None and r['bytes_dcomp']>0]
+  failed=[r for r in eligible if r['drate_bytes'] is None or r['relative_gap']>.05]
+  reasons_sql="SELECT reason,count(*) n FROM task_run WHERE project_id=:pid AND status='partial' GROUP BY reason ORDER BY reason"
+  partial=[dict(r) for r in db.execute(text(reasons_sql),{'pid':pid}).mappings()]
+  emit('G14a','PASS' if eligible and not failed else 'FAIL',byte_sql,eligible=len(eligible),excluded=len(rows)-len(eligible),failed=len(failed),failures=failed,partial_by_reason=partial,partial_sql=reasons_sql,interpretation='SUM(bps * delta_t) / 8 vs DCOMP; first interval starts at DAA, no extrapolation.')
   time_sql="""WITH samples AS (SELECT s.*,lag(t_rel_s) OVER(PARTITION BY s.task_id ORDER BY s.seq) previous
    FROM task_sample s JOIN task_run t ON t.id=s.task_id WHERE t.project_id=:pid)
    SELECT task_id,seq,t_rel_s,previous FROM samples WHERE t_rel_s IS NULL OR t_rel_s<0 OR t_rel_s<=previous"""
