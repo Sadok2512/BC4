@@ -22,5 +22,13 @@
     }
   ],
   "groups": [],
-  "tech": "BOTH"
+  "tech": "BOTH",
+  "parameter_types": {
+    "col": 4,
+    "values": [
+      1,
+      2,
+      3
+    ]
+  }
 }

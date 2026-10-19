@@ -95,6 +95,8 @@ def decode(line,system=None,format_version='unknown',*,capture_id='',seq=0,line_
             r.field_codes[i]=label;known.add(i)
     schema=schemas().get(code)
     active=bool(schema and (schema['systems']=='any_numeric' or r.system in schema['systems']))
+    if schema and schema.get('parameter_types') and r.system not in schema['parameter_types']['values']:
+        active=False;r.partial('parameter_type_undocumented')
     if not schema:r.schema_version='none';r.partial('event_undocumented')
     elif not active:r.partial('system_undocumented')
     try:

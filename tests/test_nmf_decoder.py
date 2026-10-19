@@ -49,3 +49,7 @@ def test_light_weighted_distribution_and_missing_time_not_lost():
     for r in (a,b,c):light.add(r)
     rows=list(light.rows());assert sum(r['n_records'] for r in rows)==3
     assert next(r for r in rows if r['second']==0)['values']['tad_ta']==3
+
+def test_application_type_is_not_inferred_from_an_unknown_extension():
+    r=decode('AQDL,00:00:00.000,,9,4.2',format_version='2.62')
+    assert not r.values and 'parameter_type_undocumented' in r.reasons
