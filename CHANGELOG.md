@@ -1,6 +1,7 @@
 ## 0.57.1 (patch) — BC4 2026-10-19 — Contrat de progression Deep (Agent BC2)
 
 - Decode expose les niveaux/version du projet, la progression et les durées estimées calculées côté API selon l’hypothèse demandée de 2,3 min par capture restante.
+- Les séries valident uniquement les sources demandées au lieu de recompter toutes les métriques du projet à chaque interaction ; les codes sans source restent rejetés.
 - Les captures exposent leur estimation ; les champs inconnus indiquent NFF 2.19. Aucun changement de décodage ni de version du décodeur.
 
 ## 0.57.0 (minor) — BC4 2026-10-19 — Décodeur Nemo versionné Light/Deep (Agent BC2)

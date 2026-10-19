@@ -155,8 +155,10 @@ def series(project_id: str,capture_id: str,codes: str,from_seq: int|None=Query(N
     project(db,project_id)
     definitions=metric_catalog(db)
     selected=list(dict.fromkeys(codes.split(',')))
-    allowed={m['code'] for m in catalog(project_id,db)}
-    if any(c not in allowed for c in selected):raise HTTPException(422,dict(reason='unknown_metric',allowed=sorted(allowed)))
+    def reject_metric():
+        allowed=sorted(m['code'] for m in catalog(project_id,db))
+        raise HTTPException(422,dict(reason='unknown_metric',allowed=allowed))
+    if any(c not in definitions for c in selected):reject_metric()
     if from_seq is not None and to_seq is not None and from_seq>to_seq:raise HTTPException(422,'from_seq_after_to_seq')
     times,origin_seq,origin_ts=clock(db,project_id,capture_id)
     params={'pid':project_id,'cap':capture_id,'lo':from_seq,'hi':to_seq}
@@ -166,6 +168,10 @@ def series(project_id: str,capture_id: str,codes: str,from_seq: int|None=Query(N
         sql='SELECT seq,value FROM ('+m.sql+') source WHERE capture_id=:cap AND (CAST(:lo AS integer) IS NULL OR seq>=:lo) AND (CAST(:hi AS integer) IS NULL OR seq<=:hi) ORDER BY seq'
         sqls.append(sql)
         rows=db.execute(text(sql),params).mappings().all()
+        # A valid capture may have no observations of a project metric. Only
+        # check project availability in that case, without recounting all fields.
+        if not rows and not db.execute(text('SELECT EXISTS(SELECT 1 FROM ('+m.sql+') available LIMIT 1)'),{'pid':project_id}).scalar_one():
+            reject_metric()
         if any(r['seq'] not in times for r in rows):raise HTTPException(409,dict(reason='metric_timestamp_missing',code=code))
         points=[dict(seq=r['seq'],t_rel_s=times[r['seq']],value=str(r['value']) if m.kind=='categorical' else float(r['value'])) for r in rows]
         for p in points:all_values.setdefault(p['seq'],{})[code]=p['value']
