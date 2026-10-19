@@ -1,6 +1,6 @@
 ## 0.57.0 (minor) — BC4 2026-10-19 — Décodeur Nemo versionné Light/Deep (Agent BC2)
 
-Ajoute nmf_decoder 1.0.0, les schémas NFF 2.19 fournis, le stockage typé partitionné Deep et les agrégats Light reproductibles. Les métriques et les projections radio/app utilisent le décodeur ; les positions candidates historiques sont retirées. Les jobs admin `/decode` s'exécutent dans l'import worker, avec état par capture, version et reprise. `/health` expose `decoder_version`. Migrations 0031/0032 ; aucune modification ASN.1 ni front.
+Ajoute nmf_decoder 1.0.0, les schémas NFF 2.19 fournis, le stockage typé partitionné Deep et les agrégats Light reproductibles. Les métriques et les projections radio/app utilisent le décodeur ; les positions candidates historiques sont retirées. Les jobs admin `/decode` s'exécutent dans l'import worker, avec état par capture, version et reprise. `/health` expose `decoder_version`. Le catalogue et les séries déclarent leur provenance Light/Deep ; les comptages des métriques sont regroupés en trois lectures. Migrations 0031/0032 ; aucune modification ASN.1 ni front.
 
 La projection restaure le contexte LTE des squelettes CELLMEAS non enrichis depuis les champs décodés. Le KPI BLER DL utilise PHRATE.pdsch.bler ; les points SINR sont appariés au CI précédent avec séquence et distance propres.
 

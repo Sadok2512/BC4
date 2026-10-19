@@ -69,13 +69,26 @@ def refresh_projections(db,pid):
     return {'observations':len(values),'updated_sequences':len(rows)}
 
 def metric_counts(db,pid):
-    """Count typed columns in three scans, rather than one project scan per metric."""
-    result={};definitions=fields()
+    """Count observations and actual storage sources in three scans.
+
+    A weighted Deep observation exists if any set at that seq has a value
+    and positive weight. Counting those seqs avoids evaluating every weighted
+    projection separately (and repeatedly reading the complete group table).
+    """
+    from .schema import column
+    result={};sources={};definitions=fields()
     for table,group,level in [('nmf_event_deep',False,'deep'),('nmf_event_group',True,'deep'),('nmf_event_light',None,'light')]:
         codes=[k for k,f in definitions.items() if group is None or bool(f['group'])==group]
-        expressions=','.join(f'count(d.{k}) AS {k}' for k in codes)
-        row=db.execute(text(f"SELECT {expressions} FROM {table} d JOIN nmf_capture c USING(project_id,capture_id) WHERE d.project_id=:pid AND c.decode_level='{level}'"+(' AND d.set_index=0' if group is True else '')),{'pid':pid}).mappings().one()
-        for k,n in row.items():result[k]=result.get(k,0)+n
-    for k,f in definitions.items():
-        if f.get('weight'):result[k]=db.execute(text('SELECT count(*) FROM ('+source_sql(k)+') source'),{'pid':pid}).scalar_one()
-    return result
+        expressions=[]
+        for k in codes:
+            f=definitions[k]
+            if group is True and f.get('weight'):
+                weight=column(f['code'].split('.')[0]+'.'+f['weight'])
+                expressions.append(f'count(DISTINCT (d.capture_id,d.seq)) FILTER(WHERE d.{k} IS NOT NULL AND d.{weight}>0) AS {k}')
+            else:
+                expressions.append(f'count(d.{k})'+(' FILTER(WHERE d.set_index=0)' if group is True else '')+f' AS {k}')
+        row=db.execute(text('SELECT '+','.join(expressions)+f" FROM {table} d JOIN nmf_capture c USING(project_id,capture_id) WHERE d.project_id=:pid AND c.decode_level='{level}'"),{'pid':pid}).mappings().one()
+        for k,n in row.items():
+            result[k]=result.get(k,0)+n
+            if n:sources.setdefault(k,[]).append(table)
+    return result,sources

@@ -19,6 +19,7 @@ class MetricInfo(BaseModel):
     label: str
     unit: str
     source_table: str
+    source_tables: list[str]
     source_column: str
     tech: Literal['LTE','NR','BOTH']
     kind: Literal['numeric','categorical']
@@ -43,6 +44,8 @@ class Segment(BaseModel):
     end_s: float
     value: str
 class MetricSeries(BaseModel):
+    source_table: str
+    source_column: str
     code: str
     label: str
     unit: str
@@ -84,11 +87,11 @@ def catalog(project_id: str, db: Session=Depends(get_db)):
     result=[]
     from app.nmf_decoder.schema import fields
     from app.nmf_decoder.projection import metric_counts
-    counts=metric_counts(db,project_id)
+    counts,sources=metric_counts(db,project_id)
     for code,m in metric_catalog(db).items():
         n=counts.get(m.source_column,0)
         if n:
-            result.append(dict(code=code,label=m.label,unit=m.unit,source_table=m.source_table,
+            result.append(dict(code=code,label=m.label,unit=m.unit,source_table=sources[m.source_column][0],source_tables=sources[m.source_column],
                 source_column=m.source_column,tech=m.tech,kind=m.kind,n_in_project=n,
                 event_code=fields()[m.source_column]["event"],proof_ref=fields()[m.source_column]["proof"]))
     return result
@@ -178,6 +181,9 @@ def series(project_id: str,capture_id: str,codes: str,from_seq: int|None=Query(N
         for p in r['points']:writer.writerow([rid,capture_id,r['code'],r['unit'],p['seq'],p['t_rel_s'],p['value']])
     state=db.execute(text('SELECT decoder_version,schema_version,decode_level FROM nmf_capture WHERE project_id=:pid AND capture_id=:cap'),{'pid':project_id,'cap':capture_id}).mappings().first()
     if state is None:raise HTTPException(409,'capture_requires_decode')
+    for result in results:
+        metric=definitions[result['code']]
+        result.update(source_table='nmf_event_light' if state['decode_level']=='light' else metric.source_table,source_column=metric.source_column)
     return dict(**state,aggregation='schema per capture-second' if state['decode_level']=='light' else 'none',project_id=project_id,capture_id=capture_id,result_id=rid,origin_seq=origin_seq,origin_ts=origin_ts,duration_s=max(times.values()),series=results,csv=output.getvalue(),time_policy='ts - premier ts valide en ordre seq ; égalités conservées ; régression rejetée ; aucune interpolation')
 
 EVENT_SQL = '''SELECT e.seq,e.message, EXISTS(SELECT 1 FROM param_occurrence p WHERE p.project_id=:pid AND p.stg_event_id=e.id AND p.path LIKE '%mobilityControlInfo%') mobility
