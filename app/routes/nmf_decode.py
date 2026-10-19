@@ -45,7 +45,7 @@ class DecodeStatus(BaseModel):
 class UnknownField(BaseModel):
     event_code:str
     code:str
-    n_records:int
+    n_buckets:int
     selectable:bool=False
     reason:str='position non prouvée'
 
@@ -78,5 +78,5 @@ def status(project_id:str,db:Session=Depends(get_db),user=Depends(get_current_us
 @router.get('/projects/{project_id}/metrics/unknown',response_model=list[UnknownField])
 def unknown(project_id:str,db:Session=Depends(get_db),user=Depends(get_current_user)):
     project(db,project_id)
-    return db.execute(text('''SELECT event_code,code,sum(n_records)::bigint n_records FROM nmf_event_light
+    return db.execute(text('''SELECT event_code,code,count(*)::bigint n_buckets FROM nmf_event_light
       CROSS JOIN LATERAL unnest(unknown) code WHERE project_id=:pid GROUP BY event_code,code ORDER BY event_code,code'''),{'pid':project_id}).mappings().all()

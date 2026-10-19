@@ -111,7 +111,7 @@ def load_tasks(db,pid,captures=None):
     for r in db.execute(text(event_sql),{'pid':pid,'captures':captures}).mappings():
         row=dict(r);f=dict(row['raw_fields']);v=decoded.get((row['capture_id'],row['seq']),{})
         if row['event_code']=='DRATE':
-            f['c6']=v.get('app_dl_bitrate');f['c8']=v.get('app_dl_bytes');f['_ul_bps']=v.get('app_ul_bitrate')
+            f['c6']=v.get('app_dl_bitrate');f['c8']=int(v['app_dl_bytes']) if v.get('app_dl_bytes') is not None else None;f['_ul_bps']=v.get('app_ul_bitrate')
         if row['event_code']=='AQDL':f['c4']=v.get('aqdl_mos')
         row['raw_fields']=f;rows.append(row)
     return reconstruct(rows,pid)

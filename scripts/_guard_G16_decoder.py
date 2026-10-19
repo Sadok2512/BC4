@@ -12,7 +12,10 @@ p=argparse.ArgumentParser();p.add_argument('--phase',choices=['before','after'],
 out=Path(a.out);out.mkdir(parents=True,exist_ok=True);sqls=[]
 def query(db,q,params=None,private=False):
     sqls.append(dict(sql=q,params='<identity literals kept in memory only>' if private else params))
-    return db.execute(text(q),params or {})
+    try:return db.execute(text(q),params or {})
+    except Exception:
+        if private:raise RuntimeError('privacy_scan_failed; identity parameters suppressed') from None
+        raise
 def baseline(db):
     radio=dict(query(db,'SELECT count(rsrp) n,percentile_cont(0.5) WITHIN GROUP(ORDER BY rsrp) p50 FROM measurement_points WHERE project_id=:pid',{'pid':P}).mappings().one())
     samples=dict(query(db,"SELECT count(s.bps) n,percentile_cont(0.5) WITHIN GROUP(ORDER BY s.bps) p50 FROM task_sample s JOIN task_run t ON t.id=s.task_id WHERE t.project_id=:pid AND t.task_type='HTTP_DL'",{'pid':P}).mappings().one())
@@ -39,7 +42,7 @@ with SessionLocal() as db:
         if x is None and y is None:break
         count+=1
         if x is None or y is None:diff.append({'kind':'missing_record'});break
-        same=(x.seq,x.line_no,x.tokens,x.field_codes,x.unk_string,x.decode_status,x.reasons)==(y.seq,y.line_no,y.tokens,y.field_codes,y.unk_string,y.decode_status,y.reasons)
+        same=(x.seq,x.line_no,x.system,x.ts,x.t_rel_s,x.format_version,x.decoder_version,x.schema_version,x.tokens,x.quoted,x.field_codes,x.unk_string,x.decode_status,x.reasons)==(y.seq,y.line_no,y.system,y.ts,y.t_rel_s,y.format_version,y.decoder_version,y.schema_version,y.tokens,y.quoted,y.field_codes,y.unk_string,y.decode_status,y.reasons)
         same=same and {k:v for k,v in x.values.items() if v is not None}==y.values
         ex=sorted([(g['group_name'],g['set_index'],{k:v for k,v in g['values'].items() if v is not None}) for g in x.groups],key=lambda v:(v[0],v[1]))
         ac=[(g['group_name'],g['set_index'],g['values']) for g in y.groups]
@@ -52,6 +55,7 @@ with SessionLocal() as db:
         witness['75']['values']['plaid_n_prb_indexes']==75]
     save('G16a-diff.json',diff);save('G16a-witnesses.json',dict(filename=file['filename'],capture_id=C,witnesses=witness))
     results['G16a']=dict(pass_=not diff and all(checks),records=count,witnesses=checks)
+    print('G16a completed',flush=True)
     caps=query(db,"SELECT capture_id FROM nmf_capture WHERE project_id=:pid AND decode_level='deep' ORDER BY capture_id LIMIT 3",{'pid':T}).scalars().all()
     comparisons=[]
     def rounded(v):
@@ -63,8 +67,17 @@ with SessionLocal() as db:
         file=filemap[T,cap];one=Light();two=Light()
         for r in records(file['source_path'],cap,file['sha256']):one.add(r)
         for r in read_deep(db,T,cap):two.add(r)
-        comparisons.append(dict(capture_id=cap,equal=rounded(list(one.rows()))==rounded(list(two.rows()))))
-    results['G16b']=dict(pass_=len(comparisons)==3 and all(r['equal'] for r in comparisons),captures=comparisons)
+        computed=list(two.rows());stored=query(db,'SELECT * FROM nmf_event_light WHERE project_id=:pid AND capture_id=:cap',{'pid':T,'cap':cap}).mappings().all()
+        stored={(r['event_code'],r['system'],r['second'],r['dimension']):r for r in stored}
+        persisted_equal=len(stored)==len(computed)
+        for r in computed:
+            saved=stored.get((r['event_code'],r['system'],r['second'],r['dimension']))
+            if saved is None:persisted_equal=False;continue
+            persisted_equal &= all(rounded(saved[k])==rounded(r[k]) for k in ('seq','seq_last','t_rel_s','n_records','n_partial','reasons','unknown'))
+            persisted_equal &= all(rounded(saved[k])==rounded(v) for k,v in r['values'].items())
+        comparisons.append(dict(capture_id=cap,equal=rounded(list(one.rows()))==rounded(computed),persisted_equal=bool(persisted_equal)))
+    results['G16b']=dict(pass_=len(comparisons)==3 and all(r['equal'] and r['persisted_equal'] for r in comparisons),captures=comparisons)
+    print('G16b completed',flush=True)
     identities=set();coverage=[];formats=Counter()
     for (pid,cap),file in sorted(filemap.items()):
         expected_count=0;source_path=Path(file['source_path'])
@@ -88,6 +101,7 @@ with SessionLocal() as db:
             row=dict(query(db,"SELECT count(*) n,count(*) FILTER(WHERE decode_status='ok') ok,count(*) FILTER(WHERE decode_status='partial') partial FROM nmf_event_deep WHERE project_id=:pid AND capture_id=:cap",{'pid':pid,'cap':cap}).mappings().one())
             coverage.append(dict(capture_id=cap,source=expected_count,**row))
     results['G16c']=dict(pass_=all(r['source']==r['n']==r['ok']+r['partial'] for r in coverage),captures=coverage)
+    print('G16c completed',flush=True)
     invalid=[];conditions={'nmf_event_deep':[],'nmf_event_group':[]}
     for name,f in fields().items():
         table='nmf_event_group' if f['group'] else 'nmf_event_deep';predicates=[];lo,hi=f.get('range',[None,None])
@@ -101,12 +115,14 @@ with SessionLocal() as db:
     from app.kpi.metrics import metric_catalog
     no_unknown=all(not m.source_column.startswith('unk_') for m in metric_catalog(db).values())
     results['G16d']=dict(pass_=not invalid and no_unknown,invalid=invalid,unknown_metrics=not no_unknown)
+    print('G16d completed',flush=True)
     private_counts={}
     # All Deep/Light tables, all stored columns. Literal identities never appear in logs/files.
     for table in ('nmf_event_deep','nmf_event_group','nmf_event_light','nmf_event_light_group'):
         q=f"SELECT count(*) FROM {table} d WHERE EXISTS (SELECT 1 FROM unnest(CAST(:identities AS text[])) identity WHERE strpos(jsonb_strip_nulls(to_jsonb(d))::text,identity)>0)"
         private_counts[table]=query(db,q,{'identities':sorted(identities)},private=True).scalar_one()
     results['G16e']=dict(pass_=not any(private_counts.values()),identities_checked=len(identities),occurrences=private_counts)
+    print('G16e completed',flush=True)
     before=json.loads((out/'baseline.json').read_text());after=baseline(db);save('after.json',after)
     # The live KPI result includes provenance/elapsed metadata: compare its actual statistical payload explicitly in report.
     results['G16f']=dict(pass_=before['rsrp']==after['rsrp'] and before['app_samples']==after['app_samples'] and before['kpi']==after['kpi'],before=before,after=after)

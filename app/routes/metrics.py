@@ -54,6 +54,10 @@ class MetricSeries(BaseModel):
     segments: list[Segment]
     points: list[Sample]
 class SeriesResponse(BaseModel):
+    decoder_version: str
+    schema_version: str
+    decode_level: Literal["light","deep"]
+    aggregation: str
     project_id: str
     capture_id: str
     result_id: str
@@ -172,7 +176,9 @@ def series(project_id: str,capture_id: str,codes: str,from_seq: int|None=Query(N
     output=io.StringIO();writer=csv.writer(output);writer.writerow(['result_id','capture_id','code','unit','seq','t_rel_s','value'])
     for r in results:
         for p in r['points']:writer.writerow([rid,capture_id,r['code'],r['unit'],p['seq'],p['t_rel_s'],p['value']])
-    return dict(project_id=project_id,capture_id=capture_id,result_id=rid,origin_seq=origin_seq,origin_ts=origin_ts,duration_s=max(times.values()),series=results,csv=output.getvalue(),time_policy='ts - premier ts valide en ordre seq ; égalités conservées ; régression rejetée ; aucune interpolation')
+    state=db.execute(text('SELECT decoder_version,schema_version,decode_level FROM nmf_capture WHERE project_id=:pid AND capture_id=:cap'),{'pid':project_id,'cap':capture_id}).mappings().first()
+    if state is None:raise HTTPException(409,'capture_requires_decode')
+    return dict(**state,aggregation='schema per capture-second' if state['decode_level']=='light' else 'none',project_id=project_id,capture_id=capture_id,result_id=rid,origin_seq=origin_seq,origin_ts=origin_ts,duration_s=max(times.values()),series=results,csv=output.getvalue(),time_policy='ts - premier ts valide en ordre seq ; égalités conservées ; régression rejetée ; aucune interpolation')
 
 EVENT_SQL = '''SELECT e.seq,e.message, EXISTS(SELECT 1 FROM param_occurrence p WHERE p.project_id=:pid AND p.stg_event_id=e.id AND p.path LIKE '%mobilityControlInfo%') mobility
  FROM stg_event e WHERE e.project_id=:pid AND e.capture_id=:cap AND e.message IN
