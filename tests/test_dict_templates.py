@@ -49,7 +49,7 @@ def test_summary_population_null_ties_and_one_aggregate(db):
     event.listen(db.bind,'before_cursor_execute',capture)
     try:r=SummaryResponse(**summarize(db,'TEST','drx','operator'))
     finally:event.remove(db.bind,'before_cursor_execute',capture)
-    assert len([s for s in statements if 'JOIN param_occurrence' in s])==1
+    assert len([s for s in statements if 'FROM param_occurrence' in s])==1
     row=r.rows[0];assert row.n_in_project==3
     assert row.distribution[0].groups[0].n==2
     assert row.cells[0].dominant_value is None or row.cells[0].dominant_value=='1'
@@ -77,3 +77,16 @@ def test_admin_permissions_revision_and_update(db):
 def test_overlapping_discriminators_rejected():
     with pytest.raises(ValueError,match='Overlapping'):
         TemplateUpdate(revision=1,entries=[dict(id='drx-test',label='TEST',position=1,technology='LTE',parameters=[dict(param_key='TEST/x',technology='LTE',discriminators={}),dict(param_key='TEST/x',technology='LTE',discriminators={'event':'A3'})])])
+
+
+def test_normalized_population_preserves_overlapping_refs_and_units(db):
+    from app.dict.templates import aggregate
+    for path,unit in [('TEST/items[0]/value','ms'),('TEST/items[1]/value','s')]:
+        db.execute(text("INSERT INTO param_occurrence(project_id,param_key,system,path,discriminators,value,unit_converted) VALUES ('TEST','TEST-key','LTE',:path,'{}','0',:unit)"),dict(path=path,unit=unit))
+    refs=[dict(row_id='TEST-prefix',entry_id='TEST-entry',param_key='unused',technology='LTE',discriminators={},path_prefix='TEST/items[*]'),dict(row_id='TEST-key',entry_id='TEST-entry',param_key='TEST-key',technology='LTE',discriminators={})]
+    for mode in [None,'operator','band','operator_band']:
+        rows=aggregate(db,'TEST',refs,mode)
+        assert len(rows)==2
+        assert all(row['n']==2 and row['unit']=='ms' for row in rows)
+        assert all(row['value']==('0' if mode else None) for row in rows)
+        assert aggregate(db,'OTHER',refs,mode)==[]

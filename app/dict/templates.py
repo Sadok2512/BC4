@@ -48,10 +48,22 @@ def aggregate(db,project_id,refs,group_by=None):
     dims={'operator':('p.operator','NULL::text'),'band':('NULL::text','p.band'),'operator_band':('p.operator','p.band')}
     op,band=dims.get(group_by,('NULL::text','NULL::text'))
     value='COALESCE(p.value_converted,p.value)' if group_by else 'NULL::text'
-    sql=f'''WITH refs AS (SELECT * FROM jsonb_to_recordset(CAST(:refs AS jsonb)) AS r(row_id text,entry_id text,param_key text,technology text,discriminators jsonb,path_prefix text))
-      SELECT r.row_id,{value} AS value,MIN(p.unit_converted) AS unit,{op} AS operator,{band} AS band,count(*) AS n
-      FROM refs r JOIN param_occurrence p ON p.project_id=:pid AND (CASE WHEN r.path_prefix IS NULL THEN p.param_key=r.param_key ELSE regexp_replace(p.path, '\\[[0-9]+\\]', '[*]', 'g')=r.path_prefix OR starts_with(regexp_replace(p.path, '\\[[0-9]+\\]', '[*]', 'g'),r.path_prefix||'/') END) AND p.system=r.technology
-        AND COALESCE(p.discriminators,'{{}}'::jsonb) @> r.discriminators
+    # Normalize and collapse the project population once before matching refs.
+    # Matching each template against each raw occurrence repeated both regex
+    # normalization and discriminator checks across the entire project.
+    sql=f'''WITH refs AS (SELECT * FROM jsonb_to_recordset(CAST(:refs AS jsonb)) AS r(row_id text,entry_id text,param_key text,technology text,discriminators jsonb,path_prefix text)),
+      population AS MATERIALIZED (
+        SELECT p.param_key,p.system,regexp_replace(p.path, '\\[[0-9]+\\]', '[*]', 'g') AS path,
+          COALESCE(p.discriminators,'{{}}'::jsonb) AS discriminators,
+          {value} AS value,p.unit_converted,{op} AS operator,{band} AS band,count(*) AS n
+        FROM param_occurrence p WHERE p.project_id=:pid
+        GROUP BY 1,2,3,4,5,6,7,8
+      )
+      SELECT r.row_id,p.value AS value,MIN(p.unit_converted) AS unit,p.operator,p.band,sum(p.n)::bigint AS n
+      FROM refs r JOIN population p ON
+        (CASE WHEN r.path_prefix IS NULL THEN p.param_key=r.param_key
+         ELSE p.path=r.path_prefix OR starts_with(p.path,r.path_prefix||'/') END)
+        AND p.system=r.technology AND p.discriminators @> r.discriminators
       GROUP BY 1,2,4,5 ORDER BY 1,2,4,5'''
     return [dict(x) for x in db.execute(text(sql),{'pid':project_id,'refs':json.dumps(refs)}).mappings()]
 

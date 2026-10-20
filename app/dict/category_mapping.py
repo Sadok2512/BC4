@@ -6,6 +6,7 @@ parameter display names. Unresolved paths return None, never implicit Autres.
 from __future__ import annotations
 
 import re
+from functools import lru_cache
 from typing import Any
 
 _INDEX = re.compile(r"\[\d+\]")
@@ -26,6 +27,7 @@ _IE_ANCHORS = frozenset({
 })
 
 
+@lru_cache(maxsize=8192)
 def mapping_path(path: str) -> str:
     parts = normalized_path(path).split('/')
     indices = [i for i, part in enumerate(parts) if part in _IE_ANCHORS]
