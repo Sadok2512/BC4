@@ -2,20 +2,22 @@
 from app.measure.mapping import DL_TO_OPERATOR
 
 
-def context_sql():
+def context_sql(scoped=False):
     # File #DL remains authoritative, exactly as measure.mapping.operator_from_dl.
     values = ','.join(f"('{key}','{value}')" for key, value in DL_TO_OPERATOR.items())
     dims = ('operator','band','tech','rat','service_type','phase','env','dep','ecgi','ecgi_source')
     projected = ','.join(f'CASE WHEN count(DISTINCT {k})=1 THEN min({k}) END AS {k}' for k in dims)
+    scope = " AND (capture_id,seq) IN (SELECT capture_id,seq FROM context_sequences)" if scoped else ""
+    event_scope = " AND (e.capture_id,e.seq) IN (SELECT capture_id,seq FROM context_sequences)" if scoped else ""
     return f"""WITH mp AS (
       SELECT capture_id,seq,{projected} FROM measurement_points
-      WHERE project_id=:pid AND (CAST(:ctx_cap AS text) IS NULL OR capture_id=:ctx_cap)
+      WHERE project_id=:pid AND (CAST(:ctx_cap AS text) IS NULL OR capture_id=:ctx_cap){scope}
       GROUP BY capture_id,seq
     ), raw AS (
       SELECT capture_id,seq,nmf_file_id,system FROM stg_event_raw WHERE project_id=:pid
-        AND (CAST(:ctx_cap AS text) IS NULL OR capture_id=:ctx_cap)
+        AND (CAST(:ctx_cap AS text) IS NULL OR capture_id=:ctx_cap){scope}
       UNION SELECT capture_id,seq,nmf_file_id,system FROM stg_event WHERE project_id=:pid
-        AND (CAST(:ctx_cap AS text) IS NULL OR capture_id=:ctx_cap)
+        AND (CAST(:ctx_cap AS text) IS NULL OR capture_id=:ctx_cap){scope}
     ), file_op AS (
       SELECT r.capture_id,r.seq,CASE WHEN count(DISTINCT r.system)=1 THEN min(r.system) END system,CASE WHEN count(DISTINCT d.operator)=1 THEN min(d.operator) END operator
       FROM raw r JOIN nmf_file n ON n.id=r.nmf_file_id AND n.project_id=:pid
@@ -23,7 +25,7 @@ def context_sql():
     ), rrc AS (
       SELECT e.capture_id,e.seq,CASE WHEN count(DISTINCT p.operator)=1 THEN min(p.operator) END operator
       FROM stg_event e JOIN param_occurrence p ON p.project_id=e.project_id AND p.stg_event_id=e.id
-      WHERE e.project_id=:pid AND (CAST(:ctx_cap AS text) IS NULL OR e.capture_id=:ctx_cap)
+      WHERE e.project_id=:pid AND (CAST(:ctx_cap AS text) IS NULL OR e.capture_id=:ctx_cap){event_scope}
       GROUP BY e.capture_id,e.seq
     ) SELECT coalesce(f.capture_id,m.capture_id) capture_id,coalesce(f.seq,m.seq) seq,
       coalesce(f.operator,m.operator,r.operator) operator,{','.join('m.'+k for k in dims if k!='operator')}

@@ -1,3 +1,10 @@
+## 0.58.1 (patch) — BC4 2026-10-20 — BLER : requêtes projet sans timeout (Agent BC2)
+
+- Migration 0033 : index couvrant les références de fichier/système au même (projet, capture, seq), sans lecture du payload brut.
+- Limite le contexte opérateur/bande aux séquences des mesures utiles, sans changer les règles d’attribution.
+- Calcule total et groupes en une requête ; percentiles calculés sur les observations, jamais sur les moyennes de groupes.
+- Sans regroupement ni filtre, ne construit pas de contexte inutile. Les buckets Light filtrés conservent le contrôle de tous leurs événements sources.
+
 ## 0.58.0 (minor) — BC4 2026-10-20 — Population opérateur cohérente (Agent BC2)
 
 - La sélection existante N/D filtre les attributions NULL ; elle reste distincte de Tous et de la sélection vide.
