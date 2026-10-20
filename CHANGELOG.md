@@ -1,3 +1,11 @@
+## 0.58.0 (minor) — BC4 2026-10-20 — Population opérateur cohérente (Agent BC2)
+
+- Contrat explicite Tous/sélection/vide et capture pour les requêtes KPI, séries et événements ; validation contre les opérateurs du projet.
+- Filtrage des observations Nemo par attribution existante au même (capture_id, seq), #DL prioritaire ; aucun opérateur déduit de la seule présence dans une capture.
+- Agrégats globaux et groupes sur la même population ; taux recalculés depuis leurs numérateurs/dénominateurs, preuves SQL via result_id. Groupement absent explicite : none.
+- Les buckets Light mixtes/non attribués sont exclus d’une sélection explicite lorsqu’ils ne sont pas intégralement admissibles. Aucune mesure brute modifiée.
+- Séries Task Time limitées à une capture ; une demande multi-captures renvoie 422.
+
 ## 0.57.1 (patch) — BC4 2026-10-19 — Contrat de progression Deep (Agent BC2)
 
 - Decode expose les niveaux/version du projet, la progression et les durées estimées calculées côté API selon l’hypothèse demandée de 2,3 min par capture restante.

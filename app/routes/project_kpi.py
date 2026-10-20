@@ -41,6 +41,9 @@ from app.schemas.project_kpi import (
     ProjectKpiFilters,
 )
 from app.schemas.settings import Actor
+from app.routes.tasks import filters as analytics_filters
+from app.kpi.population import validate_operators, QueryTrace
+from app.routes.tasks import evidence
 
 
 router = APIRouter(
@@ -143,13 +146,14 @@ def kpi_detail(
     operator: list[str] = Query(default_factory=list),
     service_type: list[str] = Query(default_factory=list),
     phase: list[str] = Query(default_factory=list),
-    group_by: str = Query(default="operator"),
+    group_by: str = Query(default="none"),
+    applied: dict = Depends(analytics_filters),
     db: Session = Depends(get_db),
 ) -> dict:
     _require_project(db, project_id)
     # 0.46.1 — Alignement avec service_v2.GroupBy (dim cell_ref géo
     # peuvent toutes servir de group_by si cell_ref.{col} est peuplé).
-    if group_by not in ("operator", "band", "operator_band", "dor", "dr", "plaque", "arcep_zone"):
+    if group_by not in ("none", "operator", "band", "operator_band", "dor", "dr", "plaque", "arcep_zone"):
         raise HTTPException(
             400,
             {
@@ -158,15 +162,22 @@ def kpi_detail(
                 "Valeurs admises : operator | band | operator_band | dor | dr | plaque | arcep_zone.",
             },
         )
-    return compute_kpi_v2(
-        db,
+    validate_operators(db,project_id,applied)
+    trace=QueryTrace(db)
+    result=compute_kpi_v2(
+        trace,
         project_id,
         code,
         operators=tuple(operator),
+        filters=applied,
         services=tuple(service_type),
         phases=tuple(phase),
         group_by=group_by,  # type: ignore[arg-type]
     )
+    result['result_id']=evidence(db,project_id,';\n'.join(q['sql'] for q in trace.queries),
+        {'applied_filters':applied,'code':code,'group_by':group_by,'queries':trace.queries},
+        {'n':result.get('n'),'denominator':result.get('denominator')})
+    return result
 
 
 # ---------------------------------------------------------------------------

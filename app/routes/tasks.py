@@ -11,9 +11,10 @@ from app.deps import get_current_user,get_actor,require_role
 from app.models import Project
 from app.schemas.settings import Actor
 from app.kpi.axes import AXES
+from app.kpi.population import validate_operators
 
 router=APIRouter(dependencies=[Depends(get_current_user)],tags=['task-analytics'])
-VERSION='0.56.0'
+VERSION='0.58.0'
 CODES={'THR_DL_APP':'HTTP_DL','THR_UL_APP':'HTTP_UL','AGG_APP_DL_THR':'HTTP_DL','AGG_APP_UL_THR':'HTTP_UL'}
 
 class Task(BaseModel):
@@ -38,8 +39,10 @@ class Analytics(BaseModel):
     population:Population;points:list[Point];sampling:dict;pairing:str|None=None
     excluded:Excluded|None=None
 
-def filters(operator:list[str]=Query(default=[]),band:list[str]=Query(default=[]),tech:list[str]=Query(default=[]),rat:list[str]=Query(default=[]),capture_id:str|None=None,
+def filters(operator:list[str]=Query(default=[]),band:list[str]=Query(default=[]),tech:list[str]=Query(default=[]),rat:list[str]=Query(default=[]),capture_id:str|None=None,operator_mode:Literal["all","selected","none"]|None=None,
             service_type:list[str]=Query(default=[]),phase:list[str]=Query(default=[]),env:list[str]=Query(default=[]),dep:list[str]=Query(default=[]),dor:list[str]=Query(default=[]),dr:list[str]=Query(default=[]),plaque:list[str]=Query(default=[]),arcep:list[str]=Query(default=[]),commune:list[str]=Query(default=[]),insee:list[str]=Query(default=[])):
+    if operator_mode=="all" and operator:raise HTTPException(422,{"reason":"contradictory_operator_selection"})
+    if operator_mode=="selected" and not operator:operator_mode="none"
     return {k:v for k,v in locals().items() if v}
 
 def project(db,pid):
@@ -47,6 +50,7 @@ def project(db,pid):
 
 def where(pid,f):
     clauses=['t.project_id=:pid'];p={'pid':pid}
+    if f.get('operator_mode')=='none':clauses.append('FALSE')
     for k,col in {'operator':'operator','band':'band','tech':'tech','rat':'tech'}.items():
         if f.get(k):clauses.append(f't.{col}=ANY(:{k})');p[k]=f[k]
     if f.get('capture_id'):clauses.append('t.capture_id=:capture_id');p['capture_id']=f['capture_id']
@@ -77,6 +81,7 @@ def axes(project_id:str,db:Session=Depends(get_db)):
 @router.get('/projects/{project_id}/tasks',response_model=TaskList)
 def tasks(project_id:str,type:Literal['HTTP_DL','HTTP_UL','VOICE','PING','OTHER']|None=None,f:dict=Depends(filters),db:Session=Depends(get_db)):
     project(db,project_id)
+    validate_operators(db,project_id,f)
     if type:f['type']=type
     cond,p=where(project_id,f);sql='SELECT t.* FROM task_run t WHERE '+cond+' ORDER BY t.capture_id,t.seq_start'
     rows=[dict(r) for r in db.execute(text(sql),p).mappings()];pop=population(len(rows),len(rows),len(rows),len(rows));pop['incomplete_tasks']=sum(r['status']!='ok' for r in rows)
@@ -84,6 +89,7 @@ def tasks(project_id:str,type:Literal['HTTP_DL','HTTP_UL','VOICE','PING','OTHER'
 
 def samples(db,pid,code,f):
     project(db,pid)
+    validate_operators(db,pid,f)
     if code not in CODES:raise HTTPException(422,{'reason':'unsupported_KPI','allowed':list(CODES)})
     f={**f,'type':CODES[code]};cond,p=where(pid,f)
     sql="SELECT s.*,t.capture_id,t.status,r.system AS radio_system,m.rat AS normalized_rat FROM task_sample s JOIN task_run t ON t.id=s.task_id LEFT JOIN stg_event_raw r ON r.project_id=t.project_id AND r.capture_id=t.capture_id AND r.seq=s.mp_seq AND r.event_code='CELLMEAS' LEFT JOIN measurement_points m ON m.project_id=t.project_id AND m.capture_id=t.capture_id AND m.seq=s.mp_seq AND m.event_code='CELLMEAS' WHERE "+cond+' ORDER BY t.capture_id,s.seq'
@@ -112,7 +118,9 @@ def series(project_id:str,code:str,x:str='task_time',task_id:str|None=None,f:dic
     if task_id:
         f['task_id']=task_id
         if not db.execute(text('SELECT 1 FROM task_run WHERE id=:id AND project_id=:p'),{'id':task_id,'p':project_id}).scalar():raise HTTPException(404,'task_not_in_project')
-    rows,sql,p=samples(db,project_id,code,f);valid=[r for r in rows if r['t_rel_s'] is not None and r['t_rel_s']>=0 and r['bps'] is not None and r['bps']>=0]
+    rows,sql,p=samples(db,project_id,code,f)
+    if len({r['capture_id'] for r in rows})>1:raise HTTPException(422,{'reason':'capture_required','message':'Sélectionner une capture ; aucune concaténation inter-captures.'})
+    valid=[r for r in rows if r['t_rel_s'] is not None and r['t_rel_s']>=0 and r['bps'] is not None and r['bps']>=0]
     if task_id:
         points=[dict(task_id=r['task_id'],capture_id=r['capture_id'],seq=r['seq'],mp_seq=r['mp_seq'],t_rel_s=r['t_rel_s'],value=r['bps']/1e6 if r['bps'] is not None else None) for r in rows]
     else:

@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.deps import get_current_user
 from app.kpi.metrics import metric_catalog
+from app.kpi.population import attributed_source, context_sql, predicate, validate_operators
 from app.routes.tasks import project, evidence, filters
 
 router = APIRouter(tags=['metrics'], dependencies=[Depends(get_current_user)])
@@ -99,7 +100,9 @@ def catalog(project_id: str, db: Session=Depends(get_db)):
 @router.get('/projects/{project_id}/metrics/captures', response_model=list[CaptureInfo])
 def captures(project_id: str,f: dict=Depends(filters),db: Session=Depends(get_db)):
     project(db,project_id)
+    validate_operators(db,project_id,f)
     clauses=['m.project_id=:pid','m.capture_id IS NOT NULL'];p={'pid':project_id}
+    if f.get('operator_mode')=='none':clauses.append('FALSE')
     for key in ('operator','band','rat','tech','service_type','phase','env','dep'):
         if f.get(key):
             clauses.append(f'm.{key}=ANY(:{key})');p[key]=f[key]
@@ -151,8 +154,9 @@ def sample(points,limit,kind):
     return out,dict(method='seq_bucket_min_max',factor=n/len(out),seq_bucket_width=width)
 
 @router.get('/projects/{project_id}/metrics/series', response_model=SeriesResponse)
-def series(project_id: str,capture_id: str,codes: str,from_seq: int|None=Query(None,ge=0),to_seq: int|None=Query(None,ge=0),max_points: int=Query(5000,ge=2,le=100000),db: Session=Depends(get_db)):
+def series(project_id: str,capture_id: str,codes: str,from_seq: int|None=Query(None,ge=0),to_seq: int|None=Query(None,ge=0),max_points: int=Query(5000,ge=2,le=100000),f: dict=Depends(filters),db: Session=Depends(get_db)):
     project(db,project_id)
+    validate_operators(db,project_id,f)
     definitions=metric_catalog(db)
     selected=list(dict.fromkeys(codes.split(',')))
     def reject_metric():
@@ -161,11 +165,28 @@ def series(project_id: str,capture_id: str,codes: str,from_seq: int|None=Query(N
     if any(c not in definitions for c in selected):reject_metric()
     if from_seq is not None and to_seq is not None and from_seq>to_seq:raise HTTPException(422,'from_seq_after_to_seq')
     times,origin_seq,origin_ts=clock(db,project_id,capture_id)
-    params={'pid':project_id,'cap':capture_id,'lo':from_seq,'hi':to_seq}
+    params={'pid':project_id,'cap':capture_id,'ctx_cap':capture_id,'lo':from_seq,'hi':to_seq}
     sqls=[];results=[];all_values={}
+    state=db.execute(text('SELECT decoder_version,schema_version,decode_level FROM nmf_capture WHERE project_id=:pid AND capture_id=:cap'),params).mappings().first()
+    if state is None:raise HTTPException(409,'capture_requires_decode')
+    condition,fp=predicate(f);params.update(fp)
+    if condition!='TRUE':
+        filter_sql='SELECT seq FROM ('+context_sql()+') c WHERE '+condition
+        params['allowed_seq']=[r[0] for r in db.execute(text(filter_sql),params)]
+        sqls.append(filter_sql)
+        if state['decode_level']=='light':
+            bucket_sql="""SELECT l.seq FROM nmf_event_light l WHERE l.project_id=:pid AND l.capture_id=:cap
+              AND l.seq=ANY(:allowed_seq) AND NOT EXISTS(SELECT 1 FROM stg_event_raw r
+                WHERE r.project_id=l.project_id AND r.capture_id=l.capture_id AND r.event_code=l.event_code
+                AND r.seq BETWEEN l.seq AND l.seq_last AND NOT(r.seq=ANY(:allowed_seq)))"""
+            params['admissible_buckets']=[r[0] for r in db.execute(text(bucket_sql),params)]
+            sqls.append(bucket_sql)
     for code in selected:
         m=definitions[code]
         sql='SELECT seq,value FROM ('+m.sql+') source WHERE capture_id=:cap AND (CAST(:lo AS integer) IS NULL OR seq>=:lo) AND (CAST(:hi AS integer) IS NULL OR seq<=:hi) ORDER BY seq'
+        if condition!='TRUE':
+            key='admissible_buckets' if state['decode_level']=='light' else 'allowed_seq'
+            sql=sql.replace(' ORDER BY seq',' AND seq=ANY(:'+key+') ORDER BY seq')
         sqls.append(sql)
         rows=db.execute(text(sql),params).mappings().all()
         # A valid capture may have no observations of a project metric. Only
@@ -181,12 +202,10 @@ def series(project_id: str,capture_id: str,codes: str,from_seq: int|None=Query(N
     for result in results:
         for p in result['points']:
             p['tooltip']='seq '+str(p['seq'])+' · '+str(p['t_rel_s'])+' s\n'+'\n'.join(definitions[c].label+': '+str(all_values[p['seq']].get(c,'N/D'))+' '+definitions[c].unit for c in selected)
-    rid=evidence(db,project_id,';\n'.join([TIME_SQL,*sqls]),{**params,'codes':selected,'max_points':max_points},{'series':[{k:r[k] for k in ('code','n_total','n_returned','sampling')} for r in results]})
+    rid=evidence(db,project_id,';\n'.join([TIME_SQL,*sqls]),{**params,'applied_filters':f,'codes':selected,'max_points':max_points},{'series':[{k:r[k] for k in ('code','n_total','n_returned','sampling')} for r in results]})
     output=io.StringIO();writer=csv.writer(output);writer.writerow(['result_id','capture_id','code','unit','seq','t_rel_s','value'])
     for r in results:
         for p in r['points']:writer.writerow([rid,capture_id,r['code'],r['unit'],p['seq'],p['t_rel_s'],p['value']])
-    state=db.execute(text('SELECT decoder_version,schema_version,decode_level FROM nmf_capture WHERE project_id=:pid AND capture_id=:cap'),{'pid':project_id,'cap':capture_id}).mappings().first()
-    if state is None:raise HTTPException(409,'capture_requires_decode')
     for result in results:
         metric=definitions[result['code']]
         result.update(source_table='nmf_event_light' if state['decode_level']=='light' else metric.source_table,source_column=metric.source_column)
@@ -197,12 +216,15 @@ EVENT_SQL = '''SELECT e.seq,e.message, EXISTS(SELECT 1 FROM param_occurrence p W
  ('RRCConnectionReconfiguration','RRCConnectionReestablishmentRequest','RRCConnectionSetup','RRCConnectionRelease','RRCSetup','RRCRelease') ORDER BY e.seq'''
 TASK_SQL = 'SELECT seq_daa,seq_dcomp,task_type FROM task_run WHERE project_id=:pid AND capture_id=:cap ORDER BY seq_start'
 @router.get('/projects/{project_id}/captures/{capture_id}/events',response_model=EventsResponse)
-def events(project_id: str,capture_id: str,types: str='task,ho,rlf,rrc',db: Session=Depends(get_db)):
-    project(db,project_id);wanted=set(types.split(','))
+def events(project_id: str,capture_id: str,types: str='task,ho,rlf,rrc',f: dict=Depends(filters),db: Session=Depends(get_db)):
+    project(db,project_id);validate_operators(db,project_id,f);wanted=set(types.split(','))
     if not wanted<={'task','ho','rlf','rrc'}:raise HTTPException(422,dict(allowed=['task','ho','rlf','rrc']))
     times,_,_=clock(db,project_id,capture_id);params={'pid':project_id,'cap':capture_id};markers=[]
+    condition,fp=predicate(f);params.update(fp);params['ctx_cap']=capture_id
+    filter_sql='SELECT seq FROM ('+context_sql()+') c WHERE '+condition
+    allowed=None if condition=='TRUE' else {r[0] for r in db.execute(text(filter_sql),params)}
     def add(seq,kind,label):
-        if seq is None:return
+        if seq is None or (allowed is not None and seq not in allowed):return
         if seq not in times:raise HTTPException(409,dict(reason='event_timestamp_missing',seq=seq))
         markers.append(dict(seq=seq,t_rel_s=times[seq],type=kind,label=label))
     if 'task' in wanted:
@@ -213,5 +235,5 @@ def events(project_id: str,capture_id: str,types: str='task,ho,rlf,rrc',db: Sess
             name=r['message'];kind='ho' if name=='RRCConnectionReconfiguration' and r['mobility'] else 'rlf' if name=='RRCConnectionReestablishmentRequest' else 'rrc' if name in ('RRCConnectionSetup','RRCConnectionRelease','RRCSetup','RRCRelease') else None
             if kind in wanted:add(r['seq'],kind,name)
     markers.sort(key=lambda r:(r['seq'],r['type'],r['label']))
-    rid=evidence(db,project_id,';\n'.join([TIME_SQL,TASK_SQL,EVENT_SQL]),{**params,'types':sorted(wanted)},{'markers':len(markers)})
+    rid=evidence(db,project_id,';\n'.join([TIME_SQL,TASK_SQL,EVENT_SQL,filter_sql]),{**params,'applied_filters':f,'types':sorted(wanted)},{'markers':len(markers)})
     return dict(project_id=project_id,capture_id=capture_id,result_id=rid,markers=markers)
