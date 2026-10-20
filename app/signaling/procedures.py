@@ -8,6 +8,7 @@ from hashlib import sha256
 
 RULES = {
     'rrc_setup': (('RRCConnectionRequest', 'RRCSetupRequest'), ('RRCConnectionSetup', 'RRCSetup'), ('RRCConnectionSetupComplete', 'RRCSetupComplete')),
+    'rrc_connection': (('RRA',), ('RRC',), ('RRD',)),
     'ho': (('HOA',), ('HOS',)),
     'call': (('CAA',), ('CAC',), ('CAD',)),
     'data_session': (('DAA',), ('DAC',), ('DAD',)),

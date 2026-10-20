@@ -1,3 +1,15 @@
+## 0.65.2 (patch) — BC4 2026-10-20 — Signaling: rrc_connection procedure + live guards G18a/b/d/e (Agent BC3)
+
+- `app/signaling/procedures.py` : nouvelle procédure `rrc_connection` (RRA → RRC → RRD) alignée sur l'énumération décodeur BC2 1.x. Même mécanique d'inférence que `call`/`data_session`/`attach`/`bearer` : rejoue sur `message_name = event_code` pour les markers d'état.
+- `scripts/_guard_G18_procedures.py` : cas déterministes supplémentaires pour `rrc_connection` (ok 3 stages + incomplete milieu manquant).
+- `scripts/_guard_G18_signaling_live.py` (nouveau) : 4 gardes live contre TEST2 (`134af70a06eb` / `723547b196b3`) :
+  - **G18a** — `population()` seqs = union SQL directe `stg_event (RRCSM+L3SM) + stg_event_raw (markers)`.
+  - **G18b** — 1 000 messages RRCSM : hex masqué sur `RRCConnectionRequest/SetupComplete/UL-DLInformationTransfer`, aucune occurrence de `rnti|guti|tmsi|imsi|imei|msisdn` dans aucune réponse.
+  - **G18d** — 20 `RRCConnectionReconfiguration` : `len(details.parameters)` = `count(*) FROM param_occurrence …sanitized` par seq.
+  - **G18e** — capture outdoor : chaque point avec `lat/lng != NULL` provient d'un `GPS` fix stg_event_raw rejouable (pas de fabrication) ; capture indoor → 0 point.
+- Résultat du run live : `G18a PASS n=10175`, `G18b PASS 1000 scanned, 2/2 identity masked`, `G18d PASS 20 reco`, `G18e PASS 9847 positioned / 47 GPS fixes`.
+- Additif, pas de migration, pas de rebuild obligatoire pour exécuter les guards (fichiers scripts seulement, chargeables via `docker cp`). Rebuild requis pour que la route `/procedures` 0.65.1 et la procédure `rrc_connection` soient live.
+
 ## 0.65.1 (patch) — BC4 2026-10-20 — Signaling: dedicated /procedures endpoint (Agent BC3)
 
 - New route `GET /projects/{id}/signaling/procedures?capture_id=&type=` returning the same procedures already reconstructed by `app.signaling.procedures.reconstruct`, exposed as a standalone endpoint for clients that only need the procedure list and type counts without pulling the full line population.
