@@ -1,3 +1,8 @@
+## 0.59.4 (patch) — BC4-BACK 2026-10-20 — RRC population denominators (Agent BC1)
+
+- Add explicit `group_totals` to dictionary distributions using SQL window counts over the same parameter, server filters and operator/band grouping. Includes missing-value occurrences; no denominator inferred from visible buckets. Existing counts, conversions and source data unchanged.
+- Regression covers null values, technology scope, operator, band and combined grouping.
+
 ## 0.59.3 (patch) — BC4 2026-10-20 — Catégories RRC sans attente des compteurs (Agent BC1)
 
 - GET /dict/v2/templates?include_counts=false lit uniquement la configuration ; compteurs explicitement null tant qu’ils ne sont pas calculés. Le mode par défaut et ses compteurs restent inchangés.
