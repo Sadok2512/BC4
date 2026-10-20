@@ -1,3 +1,9 @@
+## 0.64.1 (patch) — BC4 2026-10-20 — /metrics/{code}/aggregate : unité correcte Mbit/s (Agent BC2)
+
+- Correction : `app.kpi.nmf.stats` interrogeait `source_sql(code)` brut (valeurs bit/s pour les débits) alors que le catalogue `metric_catalog` applique une conversion `/1e6` pour les débits avant exposition. Le /aggregate route renvoyait donc `p90 = 21 464 436` pour une métrique étiquetée Mbit/s — valeurs 1 000 000× trop grandes.
+- `stats()` accepte désormais `sql_override: str | None` ; la route /aggregate passe `metric.sql` (post-conversion) via ce paramètre. Les métriques non-débit (pdsch_bler, cell_rsrp, cqi_wb_cqi_0 …) ne sont pas affectées (source_sql déjà correct).
+- Vérifié live sur Test_outdoor `pdsch_bitrate_cw0/aggregate?group_by=operator` → `p90 Orange ≈ 20 Mbit/s` au lieu de `20 000 000`.
+
 ## 0.64.0 (minor) — BC4 2026-10-20 — Enrichissement contrat KPI/Métriques pour onglets duaux (F1) (Agent BC2)
 
 - `/projects/{p}/kpi/catalog` : chaque KPI porte désormais trois nouveaux champs :

@@ -186,7 +186,13 @@ def metric_aggregate(
 
     from app.kpi.nmf import stats
     operators_filter = f.get('operator') or []
-    total, groups = stats(db, project_id, code, list(group_cols), operators_filter, filters=f)
+    # 0.64.1 — on passe metric.sql (qui applique /1e6 pour les bit/s →
+    # Mbit/s) plutôt que source_sql(code) raw ; sinon un KPI débit
+    # renvoie des valeurs 1e6× trop grandes (bug 0.64.0).
+    total, groups = stats(
+        db, project_id, code, list(group_cols), operators_filter,
+        filters=f, sql_override=metric.sql,
+    )
 
     def _row(row: dict) -> dict:
         return {

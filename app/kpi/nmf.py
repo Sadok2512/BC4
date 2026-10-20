@@ -7,14 +7,19 @@ def available(db,pid,code):
     if code not in fields():return False
     return bool(db.execute(text('SELECT EXISTS(SELECT 1 FROM ('+source_sql(code)+') s)'),{'pid':pid}).scalar())
 
-def stats(db,pid,code,group_cols,operators,filters=None):
+def stats(db,pid,code,group_cols,operators,filters=None,sql_override=None):
+    # 0.64.1 — ``sql_override`` : permet au /aggregate route de passer la
+    # ``metric.sql`` du ``metric_catalog`` (qui convertit déjà bit/s →
+    # Mbit/s pour les débits). Sans override, on retombe sur
+    # ``source_sql(code)`` brut (valeurs b/s).
     from app.kpi.population import context_sql, predicate
     if code not in fields() or any(c not in ('operator','band') for c in group_cols):
         raise ValueError('unsupported_decoded_metric_group')
     f={**(filters or {}),'operator':list(operators)}
     condition,params=predicate(f)
     params.update(pid=pid,ctx_cap=f.get('capture_id'))
-    measured='WITH measured AS MATERIALIZED (SELECT * FROM ('+source_sql(code)+') raw WHERE CAST(:ctx_cap AS text) IS NULL OR capture_id=:ctx_cap)'
+    base_sql = sql_override if sql_override is not None else source_sql(code)
+    measured='WITH measured AS MATERIALIZED (SELECT * FROM ('+base_sql+') raw WHERE CAST(:ctx_cap AS text) IS NULL OR capture_id=:ctx_cap)'
     has_light = condition!='TRUE' and db.execute(text("SELECT EXISTS(SELECT 1 FROM nmf_capture WHERE project_id=:pid AND decode_level='light' AND (CAST(:ctx_cap AS text) IS NULL OR capture_id=:ctx_cap))"),params).scalar()
     if condition=='TRUE' and not group_cols:
         source=measured+', observations AS (SELECT value FROM measured) '
