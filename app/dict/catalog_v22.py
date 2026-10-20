@@ -65,7 +65,7 @@ def network_catalog(db,pid,message=None):
      FROM param_occurrence p LEFT JOIN stg_event e ON e.id=p.stg_event_id
      WHERE p.project_id=:pid AND p.origin='network_config' AND {ELIGIBLE}
      AND (CAST(:message AS text) IS NULL OR p.message=:message)
-     GROUP BY 1,2,3,4,5,6,7,8,9 ORDER BY 1,3,4,5,9::text"""
+     GROUP BY 1,2,3,p.path,5,6,7,8,9 ORDER BY 1,3,4,5,9::text"""
     # positional jsonb ordering is supported; avoid an ordinal cast interpreted as a constant.
     sql=sql.replace('9::text','p.discriminators::text')
     rows=[dict(r) for r in db.execute(text(sql),{'pid':pid,'message':message}).mappings()]

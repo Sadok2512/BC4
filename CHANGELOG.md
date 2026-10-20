@@ -1,7 +1,8 @@
 ## 0.59.1 (patch) — BC4 2026-10-20 — Chargement des catégories RRC (Agent BC1)
 
 - Préagrège la population du projet avant les correspondances des modèles : normalisation ASN.1 calculée une fois par occurrence, totaux et groupes conservés.
-- Cache borné de la fonction pure de normalisation des chemins IE ; aucune réponse analytique ni donnée de projet mise en cache.
+- Cache séparé de la liste des catégories pendant 30 secondes, par projet, avec déduplication des requêtes simultanées ; réutilise le composant de cache existant sans modifier le module KPI. Les nouveaux compteurs peuvent prendre ce délai à apparaître.
+- Cache borné de la fonction pure de normalisation des chemins IE ; cette transformation ne contient aucune donnée de projet.
 - Tests des recouvrements de préfixes, valeurs nulles, unités et isolation projet ; comparaisons complètes TEST2/Test_3. Aucun changement de classification ni migration.
 
 ## 0.59.0 (minor) — BC4 2026-10-20 — Moteur générique Metric vs Time (Agent BC2)

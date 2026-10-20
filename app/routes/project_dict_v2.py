@@ -159,11 +159,16 @@ def dict_map(
 from typing import Literal
 from app.schemas.dict_templates import TemplatesResponse, SummaryResponse
 from app.dict.templates import list_templates, summarize
+from app.kpi.catalog_cache import CatalogCache
+
+# Reuse the existing bounded, single-flight cache implementation.
+# Only template-list responses are retained, separately from KPI entries.
+_template_list_cache = CatalogCache(ttl=30, capacity=64)
 
 @router.get("/{project_id}/dict/v2/templates", response_model=TemplatesResponse)
 def dict_templates(project_id: str, db: Session = Depends(get_db)):
     _require_project(db, project_id)
-    return list_templates(db, project_id)
+    return _template_list_cache.get(project_id, lambda: list_templates(db, project_id))
 
 @router.get("/{project_id}/dict/v2/templates/{category}/summary", response_model=SummaryResponse)
 def dict_template_summary(project_id: str, category: str, group_by: Literal["operator", "band", "operator_band"] = "operator", keys: str | None = None, db: Session = Depends(get_db)):
