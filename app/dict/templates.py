@@ -52,12 +52,14 @@ def aggregate(db,project_id,refs,group_by=None):
     # Matching each template against each raw occurrence repeated both regex
     # normalization and discriminator checks across the entire project.
     sql=f'''WITH refs AS (SELECT * FROM jsonb_to_recordset(CAST(:refs AS jsonb)) AS r(row_id text,entry_id text,param_key text,technology text,discriminators jsonb,path_prefix text)),
-      population AS MATERIALIZED (
-        SELECT p.param_key,p.system,regexp_replace(p.path, '\\[[0-9]+\\]', '[*]', 'g') AS path,
+      raw_population AS MATERIALIZED (
+        SELECT p.param_key,p.system,p.path AS raw_path,
           COALESCE(p.discriminators,'{{}}'::jsonb) AS discriminators,
           {value} AS value,p.unit_converted,{op} AS operator,{band} AS band,count(*) AS n
         FROM param_occurrence p WHERE p.project_id=:pid
         GROUP BY 1,2,3,4,5,6,7,8
+      ), population AS MATERIALIZED (
+        SELECT raw_population.*,regexp_replace(raw_path, '\\[[0-9]+\\]', '[*]', 'g') AS path FROM raw_population
       )
       SELECT r.row_id,p.value AS value,MIN(p.unit_converted) AS unit,p.operator,p.band,sum(p.n)::bigint AS n
       FROM refs r JOIN population p ON
