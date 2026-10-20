@@ -158,7 +158,7 @@ def dict_map(
 # Templates: project identity is always supplied by the route, never by configuration.
 from typing import Literal
 from app.schemas.dict_templates import TemplatesResponse, SummaryResponse
-from app.dict.templates import list_templates, summarize
+from app.dict.templates import list_templates, summarize, template_metadata
 from app.kpi.catalog_cache import CatalogCache
 
 # Reuse the existing bounded, single-flight cache implementation.
@@ -166,8 +166,10 @@ from app.kpi.catalog_cache import CatalogCache
 _template_list_cache = CatalogCache(ttl=30, capacity=64)
 
 @router.get("/{project_id}/dict/v2/templates", response_model=TemplatesResponse)
-def dict_templates(project_id: str, db: Session = Depends(get_db)):
+def dict_templates(project_id: str, include_counts: bool = True, db: Session = Depends(get_db)):
     _require_project(db, project_id)
+    if not include_counts:
+        return template_metadata(db, project_id)
     return _template_list_cache.get(project_id, lambda: list_templates(db, project_id))
 
 @router.get("/{project_id}/dict/v2/templates/{category}/summary", response_model=SummaryResponse)

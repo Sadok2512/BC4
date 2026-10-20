@@ -90,3 +90,17 @@ def test_normalized_population_preserves_overlapping_refs_and_units(db):
         assert all(row['n']==2 and row['unit']=='ms' for row in rows)
         assert all(row['value']==('0' if mode else None) for row in rows)
         assert aggregate(db,'OTHER',refs,mode)==[]
+
+
+def test_metadata_has_no_invented_counts_and_does_not_scan_occurrences(db):
+    from app.dict.templates import template_metadata
+    statements=[]
+    def capture(conn,cursor,statement,parameters,context,executemany):statements.append(statement)
+    event.listen(db.bind,'before_cursor_execute',capture)
+    try:result=TemplatesResponse(**template_metadata(db,'TEST'))
+    finally:event.remove(db.bind,'before_cursor_execute',capture)
+    assert result.categories
+    assert all(c.n_parameters is None and c.n_in_project is None for c in result.categories)
+    assert all(e.n_in_project is None for c in result.categories for e in c.entries)
+    assert len(statements)==1
+    assert all('param_occurrence' not in s for s in statements)

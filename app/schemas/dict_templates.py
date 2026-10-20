@@ -42,7 +42,7 @@ class TemplateUpdate(BaseModel):
         return self
 
 class TemplateRow(TemplateEntry):
-    n_in_project: int
+    n_in_project: int | None
     resolved: bool
 
 class TemplateCategory(BaseModel):
@@ -50,8 +50,8 @@ class TemplateCategory(BaseModel):
     label: str
     position: int
     revision: int
-    n_parameters: int
-    n_in_project: int
+    n_parameters: int | None
+    n_in_project: int | None
     entries: list[TemplateRow]
 
 class TemplatesResponse(BaseModel):

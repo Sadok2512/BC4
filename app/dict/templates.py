@@ -70,6 +70,16 @@ def aggregate(db,project_id,refs,group_by=None):
     return [dict(x) for x in db.execute(text(sql),{'pid':project_id,'refs':json.dumps(refs)}).mappings()]
 
 
+def template_metadata(db, project_id):
+    """Configuration only: unknown project counts stay null, never zero."""
+    cats=configuration(db)
+    for category in cats:
+        category.update(n_parameters=None,n_in_project=None)
+        category['entries']=[dict(entry,n_in_project=None,resolved=bool(entry['parameters']))
+            for entry in sorted(category['entries'],key=lambda e:(e['position'],e['id']))]
+    return dict(project_id=project_id,categories=cats)
+
+
 def list_templates(db,project_id):
     cats=configuration(db);refs=references([e for c in cats for e in c['entries']]);counts=Counter()
     for row in aggregate(db,project_id,refs):counts[row['row_id']]+=row['n']
