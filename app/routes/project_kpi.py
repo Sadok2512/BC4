@@ -79,8 +79,13 @@ def kpi_catalog(
     ``NOT_APPLICABLE`` dans l'arbre (jamais filtrés silencieusement).
     """
     _require_project(db, project_id)
-    return build_catalog_v2_response(
-        db, project_id, services=tuple(service_type),
+    from app.kpi.catalog_cache import catalog_cache
+    # Authorization and project existence are checked before cache access.
+    # Only catalogue statuses are cached, for at most 30 seconds.
+    services = tuple(sorted(set(service_type)))
+    return catalog_cache.get(
+        (project_id, services),
+        lambda: build_catalog_v2_response(db, project_id, services=services),
     )
 
 

@@ -27,6 +27,7 @@ Discipline :
 from __future__ import annotations
 
 from dataclasses import dataclass
+import json
 from typing import Any, Iterable, Literal
 
 from sqlalchemy import text
@@ -290,10 +291,17 @@ def build_catalog_v2_response(
         from app.measure.throughput import compute_transfers
         transfers_cache = compute_transfers(db, project_id)
     status_cache: dict[str, KpiStatusV2] = {}
+    check_cache: dict[str, KpiStatusV2] = {}
     for e in entries:
-        status_cache[e["code"]] = compute_status_v2(
-            db, project_id, e, services=services, transfers_cache=transfers_cache,
-        )
+        check_key = json.dumps(e.get("available_check") or {}, sort_keys=True)
+        if services and not is_in_service_scope(e, services):
+            status_cache[e["code"]] = compute_status_v2(db, project_id, e, services=services, transfers_cache=transfers_cache)
+        else:
+            if check_key not in check_cache:
+                check_cache[check_key] = compute_status_v2(
+                    db, project_id, e, services=services, transfers_cache=transfers_cache,
+                )
+            status_cache[e["code"]] = check_cache[check_key]
 
     # Comptes par statut
     counts_by_status: dict[str, int] = {}

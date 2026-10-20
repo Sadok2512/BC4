@@ -106,3 +106,28 @@ def test_map_api_query_contract_and_auth(mapped_db, monkeypatch):
             assert client.get('/projects/p/dict/v2/map?' + query).status_code == 422
         app.dependency_overrides.pop(get_current_user)
         assert client.get('/projects/p/dict/v2/map?keys=param').status_code == 401
+
+
+def test_aggregate_keys_resolve_source_occurrences_without_duplicates(mapped_db):
+    from app.dict.catalog_v22 import selector_key
+    mapped_db.execute(text("ALTER TABLE param_occurrence ADD is_identifier boolean DEFAULT false, ADD message text DEFAULT 'TEST-message'"))
+    mapped_db.execute(text("CREATE TEMP TABLE dict_category_map(path_prefix text) ON COMMIT DROP"))
+    identity = dict(tech='LTE', category='autres', subcategory=None, name='Parameter', unit='ms')
+    parent = selector_key(identity)
+    leaf = selector_key(dict(identity, message='TEST-message', discriminators={}))
+    original = build_map(mapped_db, 'p', ['param'])
+    for keys in [[parent], [leaf], [parent, leaf, 'param', parent]]:
+        actual = build_map(mapped_db, 'p', keys)
+        assert actual == original
+    assert build_map(mapped_db, 'p', [parent], operators=['N/D'])['points'][0]['occurrence_id'] == '6'
+    assert build_map(mapped_db, 'p', [parent], technology='NR')['points'] == []
+    assert build_map(mapped_db, 'other', [parent])['points'] == []
+    different = selector_key(dict(identity, name='TEST-absent'))
+    assert build_map(mapped_db, 'p', [different])['points'] == []
+    assert build_map(mapped_db, 'p', [different, parent]) == original
+
+
+def test_malformed_aggregate_map_key_rejected(mapped_db):
+    with pytest.raises(HTTPException) as error:
+        build_map(mapped_db, 'p', ['dict22:invalid'])
+    assert error.value.status_code == 422
