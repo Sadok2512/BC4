@@ -1,5 +1,5 @@
 {
-  "catalog_version": "2.0.0",
+  "catalog_version": "2.0.0-bc2-nmf-2026-10-20",
   "source_xlsx": "BC4_Catalogue_KPI_LTE_NR_ENDC_Agreges.xlsx",
   "source_xlsx_sha256": "6869c001c1b61009fe4570241775d3ede9df78320a142c096eb8a0a6b347833d",
   "generated_from": "scripts/import_kpi_catalog_v2.py",
@@ -932,10 +932,10 @@
       "aliases": [],
       "formula": null,
       "source": "(indisponible : règle non définie)",
-      "unit": null,
+      "unit": "Mbit/s",
       "available_check": {
-        "kind": "always_unavailable",
-        "reason": "métrique mesurée LTE_DL_MAC_THR sans mapping prouvé côté décodeur."
+        "kind": "nmf_metric",
+        "arg": "mac_dl_bitrate"
       },
       "service_scope": [
         "HTTP_DOWNLOAD",
@@ -951,10 +951,10 @@
       "aliases": [],
       "formula": null,
       "source": "(indisponible : règle non définie)",
-      "unit": null,
+      "unit": "index",
       "available_check": {
-        "kind": "always_unavailable",
-        "reason": "métrique mesurée LTE_DL_MCS sans mapping prouvé côté décodeur."
+        "kind": "nmf_metric",
+        "arg": "plaid_mcs0"
       },
       "service_scope": [
         "HTTP_DOWNLOAD",
@@ -970,10 +970,10 @@
       "aliases": [],
       "formula": null,
       "source": "(indisponible : règle non définie)",
-      "unit": null,
+      "unit": "Mbit/s",
       "available_check": {
-        "kind": "always_unavailable",
-        "reason": "métrique mesurée LTE_DL_PDCP_THR sans mapping prouvé côté décodeur."
+        "kind": "nmf_metric",
+        "arg": "pdcp_dl_bitrate"
       },
       "service_scope": [
         "HTTP_DOWNLOAD",
@@ -989,10 +989,10 @@
       "aliases": [],
       "formula": null,
       "source": "(indisponible : règle non définie)",
-      "unit": null,
+      "unit": "Mbit/s",
       "available_check": {
-        "kind": "always_unavailable",
-        "reason": "métrique mesurée LTE_DL_PHY_THR sans mapping prouvé côté décodeur."
+        "kind": "nmf_metric",
+        "arg": "pdsch_bitrate"
       },
       "service_scope": [
         "HTTP_DOWNLOAD",
@@ -1008,10 +1008,10 @@
       "aliases": [],
       "formula": null,
       "source": "(indisponible : règle non définie)",
-      "unit": null,
+      "unit": "%",
       "available_check": {
-        "kind": "always_unavailable",
-        "reason": "métrique mesurée LTE_DL_PRB_UTILIZATION sans mapping prouvé côté décodeur."
+        "kind": "nmf_metric",
+        "arg": "plaid_prb_util_dl"
       },
       "service_scope": [
         "HTTP_DOWNLOAD",
@@ -1027,10 +1027,10 @@
       "aliases": [],
       "formula": null,
       "source": "(indisponible : règle non définie)",
-      "unit": null,
+      "unit": "Mbit/s",
       "available_check": {
-        "kind": "always_unavailable",
-        "reason": "métrique mesurée LTE_DL_RLC_THR sans mapping prouvé côté décodeur."
+        "kind": "nmf_metric",
+        "arg": "rlc_dl_bitrate"
       },
       "service_scope": [
         "HTTP_DOWNLOAD",
@@ -1956,10 +1956,10 @@
       "aliases": [],
       "formula": null,
       "source": "(indisponible : règle non définie)",
-      "unit": null,
+      "unit": "%",
       "available_check": {
-        "kind": "always_unavailable",
-        "reason": "métrique mesurée LTE_UL_BLER sans mapping prouvé côté décodeur."
+        "kind": "nmf_metric",
+        "arg": "mac_ul_residual_bler"
       },
       "service_scope": [
         "HTTP_DOWNLOAD",
@@ -2051,10 +2051,10 @@
       "aliases": [],
       "formula": null,
       "source": "(indisponible : règle non définie)",
-      "unit": null,
+      "unit": "Mbit/s",
       "available_check": {
-        "kind": "always_unavailable",
-        "reason": "métrique mesurée LTE_UL_MAC_THR sans mapping prouvé côté décodeur."
+        "kind": "nmf_metric",
+        "arg": "mac_ul_bitrate"
       },
       "service_scope": [
         "HTTP_DOWNLOAD",
@@ -2070,10 +2070,10 @@
       "aliases": [],
       "formula": null,
       "source": "(indisponible : règle non définie)",
-      "unit": null,
+      "unit": "index",
       "available_check": {
-        "kind": "always_unavailable",
-        "reason": "métrique mesurée LTE_UL_MCS sans mapping prouvé côté décodeur."
+        "kind": "nmf_metric",
+        "arg": "plaiu_mcs0"
       },
       "service_scope": [
         "HTTP_DOWNLOAD",
@@ -2089,10 +2089,10 @@
       "aliases": [],
       "formula": null,
       "source": "(indisponible : règle non définie)",
-      "unit": null,
+      "unit": "Mbit/s",
       "available_check": {
-        "kind": "always_unavailable",
-        "reason": "métrique mesurée LTE_UL_PDCP_THR sans mapping prouvé côté décodeur."
+        "kind": "nmf_metric",
+        "arg": "pdcp_ul_bitrate"
       },
       "service_scope": [
         "HTTP_DOWNLOAD",
@@ -2108,10 +2108,10 @@
       "aliases": [],
       "formula": null,
       "source": "(indisponible : règle non définie)",
-      "unit": null,
+      "unit": "Mbit/s",
       "available_check": {
-        "kind": "always_unavailable",
-        "reason": "métrique mesurée LTE_UL_PHY_THR sans mapping prouvé côté décodeur."
+        "kind": "nmf_metric",
+        "arg": "pusch_bitrate"
       },
       "service_scope": [
         "HTTP_DOWNLOAD",
@@ -2127,10 +2127,10 @@
       "aliases": [],
       "formula": null,
       "source": "(indisponible : règle non définie)",
-      "unit": null,
+      "unit": "%",
       "available_check": {
-        "kind": "always_unavailable",
-        "reason": "métrique mesurée LTE_UL_PRB_UTILIZATION sans mapping prouvé côté décodeur."
+        "kind": "nmf_metric",
+        "arg": "plaiu_prb_util_ul"
       },
       "service_scope": [
         "HTTP_DOWNLOAD",
@@ -2146,10 +2146,10 @@
       "aliases": [],
       "formula": null,
       "source": "(indisponible : règle non définie)",
-      "unit": null,
+      "unit": "Mbit/s",
       "available_check": {
-        "kind": "always_unavailable",
-        "reason": "métrique mesurée LTE_UL_RLC_THR sans mapping prouvé côté décodeur."
+        "kind": "nmf_metric",
+        "arg": "rlc_ul_bitrate"
       },
       "service_scope": [
         "HTTP_DOWNLOAD",
@@ -3572,5 +3572,6 @@
         "VOICE"
       ]
     }
-  ]
+  ],
+  "patch_notes": "0.61.0 BC2 : bascule des KPI LTE always_unavailable vers nmf_metric quand le décodeur Nemo expose un champ homonyme (voir scripts/patch_kpi_catalog_nmf_metrics.py MAPPINGS). Divergence vis-à-vis du xlsx source — à ré-aligner au prochain ré-import."
 }

@@ -1,3 +1,29 @@
+## 0.61.0 (minor) — BC4 2026-10-20 — Catalogue KPI : 13 LTE basculés sur nmf_metric (Agent BC2)
+
+- Script `scripts/patch_kpi_catalog_nmf_metrics.py` applique un mapping curé des KPI LTE `always_unavailable` qui ont un champ décodeur homonyme vers `available_check.kind = nmf_metric`. Chaque mapping est traçable à un champ de `app.nmf_decoder.schema.fields()` avec `agg != None` (validation défensive dans le script — refuse si le champ n'existe pas).
+- 13 KPIs patchés :
+
+| KPI | NMF arg | Unit | Source |
+|-----|---------|------|--------|
+| LTE_DL_MCS | plaid_mcs0 | index | PLAID.mcs0 |
+| LTE_UL_MCS | plaiu_mcs0 | index | PLAIU.mcs0 |
+| LTE_UL_BLER | mac_ul_residual_bler | % | MACRATEU |
+| LTE_DL_MAC_THR | mac_dl_bitrate | Mbit/s | MACRATE |
+| LTE_UL_MAC_THR | mac_ul_bitrate | Mbit/s | MACRATEU |
+| LTE_DL_RLC_THR | rlc_dl_bitrate | Mbit/s | RLCRATE |
+| LTE_UL_RLC_THR | rlc_ul_bitrate | Mbit/s | RLCRATEU |
+| LTE_DL_PDCP_THR | pdcp_dl_bitrate | Mbit/s | PDCPRATED |
+| LTE_UL_PDCP_THR | pdcp_ul_bitrate | Mbit/s | PDCPRATEU |
+| LTE_DL_PHY_THR | pdsch_bitrate | Mbit/s | PHRATE |
+| LTE_UL_PHY_THR | pusch_bitrate | Mbit/s | PHRATE |
+| LTE_DL_PRB_UTILIZATION | plaid_prb_util_dl | % | PLAID |
+| LTE_UL_PRB_UTILIZATION | plaiu_prb_util_ul | % | PLAIU |
+
+- Chacun de ces KPI passera `AVAILABLE` sur un projet dont la source Nemo contient au moins une observation du champ cible, et sera servable en Metric vs Time via `/time-series`. Les débits `bit/s` sont auto-convertis en `Mbit/s` par `metric_catalog(db)` (`app/kpi/metrics.py` lignes 25-26).
+- **NR laissé `always_unavailable`** : le décodeur Nemo n'expose pas d'événements NR distincts (CELLMEAS, MACRATE, PHRATE sont LTE-only). Mapper un KPI NR vers un champ LTE serait une mis-attribution (règle n°1 BC4).
+- **Divergence xlsx signalée** : `catalog_version` devient `2.0.0-bc2-nmf-2026-10-20` + nouveau champ `patch_notes`. Le prochain ré-import du xlsx devra intégrer les mêmes mappings pour que le `source_xlsx_sha256` reste cohérent.
+- `source_xlsx_sha256` inchangé — le fichier xlsx source n'a pas été modifié ; seul le JSON généré a été patché.
+
 ## 0.60.2 (patch) — BC4 2026-10-20 — Route /kpi/{code}/captures (Agent BC2)
 
 - Nouvelle route `GET /projects/{pid}/kpi/{code}/captures` : liste les captures du projet qui ont au moins une observation décodée du KPI (`metric_catalog(db)[arg].sql` filtrée par `project_id`, agrégée par `capture_id`). Retourne `[{capture_id, decode_level, n_observations}]`.
