@@ -1,3 +1,9 @@
+## 0.65.1 (patch) — BC4 2026-10-20 — Signaling: dedicated /procedures endpoint (Agent BC3)
+
+- New route `GET /projects/{id}/signaling/procedures?capture_id=&type=` returning the same procedures already reconstructed by `app.signaling.procedures.reconstruct`, exposed as a standalone endpoint for clients that only need the procedure list and type counts without pulling the full line population.
+- Additive — no change to existing `/signaling`, `/timeline`, `/points`, `/context`, `/details`, `/export`, `/captures` responses. Same `svc.population()` call, same `Procedure` schema already in OpenAPI.
+- Response envelope: `{project_id, capture_id, result_id, procedures:[Procedure], total, types:{type:count}}`. Filter `type` matches `Procedure.type` values (`rrc_setup`, `ho`, `call`, `data_session`).
+
 ## 0.65.0 (minor) — BC4 2026-10-20 — Signaling View (Agent BC2)
 
 - Capture-local signaling API: messages, protocol timeline, preceding GPS, radio context, sanitized details and CSV. OpenAPI response models and deterministic result IDs.

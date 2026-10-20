@@ -187,6 +187,22 @@ def details(project_id:str,capture_id:str,seq:int=Query(...,ge=0),db:Session=Dep
     data=svc.details(db,project_id,capture_id,seq)
     return dict(**envelope(project_id,capture_id,data,dict(seq=seq)),seq=seq,**data)
 
+class Procedures(Envelope):
+    procedures:list[Procedure]
+    total:int
+    types:dict[str,int]
+
+@router.get('/procedures',response_model=Procedures)
+def procedures(project_id:str,capture_id:str,type:str|None=None,db:Session=Depends(get_db)):
+    """Reconstructed procedures (RRC setup, HO, call, data session) for one capture.
+    Same live reconstruction as the /signaling response; isolated endpoint so clients
+    can list and filter procedures without pulling the full line population."""
+    _,procs,_,_=svc.population(db,project_id,capture_id)
+    types={p['type']:sum(1 for q in procs if q['type']==p['type']) for p in procs}
+    selected=[p for p in procs if type is None or p['type']==type]
+    return dict(**envelope(project_id,capture_id,selected,dict(type=type)),
+      procedures=selected,total=len(selected),types=types)
+
 class Export(BaseModel):
     csv:str
     filename:str
