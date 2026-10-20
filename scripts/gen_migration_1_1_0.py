@@ -68,8 +68,19 @@ def main() -> None:
         ], text=True)
         return {c.strip() for c in out.splitlines() if c.strip()}
 
-    live_h = _db_columns("nmf_event_deep")
-    live_g = _db_columns("nmf_event_group")
+    # Colonnes de méta-base (clé primaire + typage/trace) exclues de la
+    # VIEW nmf_metric_value : elles ne sont pas des valeurs métrique
+    # (string, tableau, timestamp) et planteraient le cast `::double precision`.
+    BASE_COLS = {
+        "project_id", "capture_id", "seq", "line_no", "event_code", "system",
+        "ts", "t_rel_s", "format_version", "decoder_version", "schema_version",
+        "decode_status", "reasons", "tokens", "field_codes", "unk_string",
+        "quoted", "seq_last", "second", "dimension", "unknown", "n_records",
+        "n_partial", "group_name", "set_index", "identity",
+    }
+
+    live_h = _db_columns("nmf_event_deep") - BASE_COLS
+    live_g = _db_columns("nmf_event_group") - BASE_COLS
     all_h, all_g = _collect_fields([LIVE, PENDING], require_promotable=True)
 
     new_h = {c: t for c, t in all_h.items() if c not in live_h}
