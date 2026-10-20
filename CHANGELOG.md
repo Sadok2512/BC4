@@ -1,3 +1,10 @@
+## 0.58.2 (patch) — BC4 2026-10-20 — Chargement du catalogue KPI (Agent BC1, autorisé sur KPI)
+
+- Mutualise les contrôles de disponibilité identiques dans une requête.
+- Charge ensemble les quatre champs scalaires des tâches depuis les mêmes sources Light/Deep ; reconstruction, formules et ordre inchangés.
+- Cache catalogue borné à 64 entrées par processus et 30 secondes, isolé par projet/services, sans erreurs mises en cache ; calcul partagé entre appels simultanés. Les changements de disponibilité peuvent apparaître avec ce délai maximal côté serveur.
+- Vérification comparative complète des catalogues et tâches TEST2/Test_3, et 23 tests ciblés réussis.
+
 ## 0.58.1 (patch) — BC4 2026-10-20 — BLER : requêtes projet sans timeout (Agent BC2)
 
 - Migration 0034 : index couvrant les intervalles de séquence par événement pour le contrôle des buckets Light filtrés.

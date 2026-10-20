@@ -101,11 +101,18 @@ def reconstruct(rows,pid):
     close();return tasks
 
 def load_tasks(db,pid,captures=None):
-    from app.nmf_decoder.projection import source_sql
     decoded={}
-    for code in ('app_dl_bitrate','app_ul_bitrate','app_dl_bytes','aqdl_mos'):
-        for r in db.execute(text(source_sql(code)),{'pid':pid}).mappings():
-            decoded.setdefault((r['capture_id'],r['seq']),{})[code]=r['value']
+    # These four scalar header fields share the same source population.
+    # Read each physical source once rather than scanning it per field.
+    codes=('app_dl_bitrate','app_ul_bitrate','app_dl_bytes','aqdl_mos')
+    columns=','.join(f'd.{code}::double precision AS {code}' for code in codes)
+    present=' OR '.join(f'd.{code} IS NOT NULL' for code in codes)
+    sources=[]
+    for table,level in [('nmf_event_deep','deep'),('nmf_event_light','light')]:
+        sources.append(f"SELECT d.capture_id,d.seq,{columns} FROM {table} d JOIN nmf_capture c USING(project_id,capture_id) WHERE d.project_id=:pid AND c.decode_level='{level}' AND ({present})")
+    for r in db.execute(text(' UNION ALL '.join(sources)),{'pid':pid}).mappings():
+        values=decoded.setdefault((r['capture_id'],r['seq']),{})
+        values.update({code:r[code] for code in codes if r[code] is not None})
     rows=[]
     event_sql=EVENT_SQL if captures is None else EVENT_SQL.replace(' ORDER BY', ' AND capture_id=ANY(:captures) ORDER BY')
     for r in db.execute(text(event_sql),{'pid':pid,'captures':captures}).mappings():
