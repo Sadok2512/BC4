@@ -16,7 +16,8 @@
       "unit": "n",
       "proof": "NFF 2.19 CI LTE #1",
       "agg": "last",
-      "metric": false
+      "metric": false,
+      "category": "terminal_cell"
     },
     {
       "col": 6,
@@ -25,7 +26,8 @@
       "type": "float",
       "unit": "dB",
       "proof": "NFF 2.19 CI Parameters for LTE #2",
-      "agg": "mean"
+      "agg": "mean",
+      "category": "radio_serving"
     },
     {
       "col": 7,
@@ -39,7 +41,8 @@
         0,
         1
       ],
-      "dimension": true
+      "dimension": true,
+      "category": "terminal_cell"
     }
   ],
   "groups": [
@@ -52,7 +55,8 @@
           "type": "float",
           "unit": "dB",
           "agg": "mean",
-          "proof": "NFF 2.19 CI LTE antennas #1"
+          "proof": "NFF 2.19 CI LTE antennas #1",
+          "category": "neighbours"
         },
         {
           "code": "ci.port",
@@ -82,7 +86,8 @@
             132,
             133
           ],
-          "proof": "NFF 2.19 CI LTE antennas #2"
+          "proof": "NFF 2.19 CI LTE antennas #2",
+          "category": "mimo_port"
         }
       ],
       "start": {

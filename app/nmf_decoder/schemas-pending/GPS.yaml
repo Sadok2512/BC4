@@ -19,7 +19,8 @@
       "proof": "NFF 2.19 GPS Parameters #1",
       "agg": null,
       "metric": false,
-      "col": 4
+      "col": 4,
+      "category": "position"
     },
     {
       "code": "gps.lat",
@@ -29,7 +30,8 @@
       "proof": "NFF 2.19 GPS Parameters #2",
       "agg": null,
       "metric": false,
-      "col": 5
+      "col": 5,
+      "category": "position"
     },
     {
       "code": "gps.height",
@@ -39,7 +41,8 @@
       "proof": "NFF 2.19 GPS Parameters #3",
       "agg": null,
       "metric": false,
-      "col": 6
+      "col": 6,
+      "category": "position"
     },
     {
       "code": "gps.distance",
@@ -49,7 +52,8 @@
       "proof": "NFF 2.19 GPS Parameters #4",
       "agg": null,
       "metric": false,
-      "col": 7
+      "col": 7,
+      "category": "position"
     },
     {
       "code": "gps.gps_fix",
@@ -59,7 +63,8 @@
       "proof": "NFF 2.19 GPS Parameters #5",
       "agg": null,
       "metric": false,
-      "col": 8
+      "col": 8,
+      "category": "position"
     },
     {
       "code": "gps.satellites",
@@ -69,7 +74,8 @@
       "proof": "NFF 2.19 GPS Parameters #6",
       "agg": null,
       "metric": false,
-      "col": 9
+      "col": 9,
+      "category": "position"
     },
     {
       "code": "gps.velocity",
@@ -79,7 +85,8 @@
       "proof": "NFF 2.19 GPS Parameters #7",
       "agg": null,
       "metric": false,
-      "col": 10
+      "col": 10,
+      "category": "position"
     }
   ]
 }

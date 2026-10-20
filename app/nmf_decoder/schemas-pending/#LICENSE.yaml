@@ -19,7 +19,8 @@
       "proof": "NFF 2.19 #LICENSE Parameters #1",
       "agg": null,
       "metric": false,
-      "col": 4
+      "col": 4,
+      "category": "terminal_cell"
     }
   ]
 }

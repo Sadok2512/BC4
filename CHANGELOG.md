@@ -1,3 +1,12 @@
+## 0.62.0 (minor) — BC4 2026-10-20 — Catégories + markers signalisation + capture.forcing (nmf_decoder 1.1.0 P2) (Agent BC2)
+
+- **Taxonomie 14 catégories** sur les 87 YAMLs du décodeur (19 live + 68 pending-1.1.0) : radio_serving · neighbours · throughput_layers · link_quality · allocation_mcs · csi · mimo_port · ul_power · voice · services · position · signalling_states · session · terminal_cell. 366/366 champs catégorisés par heuristique (`scripts/apply_categories.py`), 0 unknown.
+- **`GET /projects/{pid}/captures/{cid}/events`** enrichi : 23 nouveaux `types` disponibles mappés depuis les event_codes 1.1.0 (`stg_event_raw.event_code`) → `rrc_lte` (RRA/RRC/RRD), `attach` (GAA/GAC), `detach` (GAD), `bearer` (PBA/PBC/PBD), `call` (CAA/CAC/CAD/PAA/PAC/PAD), `reselection` (CREL), `ho_info` (HOI/HOA/HOS), `meas_event` (MEI/NLIST/SEI), `roam` · `lock` · `mark` · `channel` · `audio` (AQRX/AQI) · `voip` (VOIPI) · `rach` (RACHI) · `l3sm`. Types existants `task · ho · rlf · rrc` inchangés (sémantique RRC ASN.1 préservée).
+- Nouveau champ `Marker.event_code: str | None` sur chaque marker — traçabilité directe au code Nemo.
+- **`capture_forcing`** exposé dans la réponse `/events` : `{active: bool, lock_count: int, first_seq, first_t_rel_s}`. Détection à partir des événements `LOCK` dans `stg_event_raw`. Payload détaillé (bande forcée, PCI forcé, HO forcing) attendu après re-décodage Deep en 1.1.0 (P3) — note explicite dans la réponse.
+- 3 YAMLs baseline flaggés `needs_refinement: true` (CHI, DNSQUERY, LOCK — codes dupliqués entre sections multiples) : non promus en P3 avant lecture du txt NFF pour scinder correctement les groupes.
+- **DECODER_VERSION reste 1.0.0** à ce stade : la promotion vers 1.1.0 (schemas-pending → schemas, migration DB, re-décodage Deep TEST2) est l'objet de P3.
+
 ## 0.61.1 (patch) — BC4-BACK 2026-10-20 — Finalisation import sans transaction inactive (Agent BC1)
 
 - Capture l’identifiant projet puis termine la courte transaction de métadonnées avant la transaction indépendante de population ; évite la transaction implicite ouverte par la lecture ORM expirée et son idle-in-transaction timeout pendant les traitements longs. Atomicité et verrou de population conservés.

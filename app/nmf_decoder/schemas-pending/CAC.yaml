@@ -19,7 +19,8 @@
       "proof": "NFF 2.19 CAC Parameters #1",
       "agg": null,
       "metric": false,
-      "col": 4
+      "col": 4,
+      "category": "signalling_states"
     },
     {
       "code": "cac.call_type",
@@ -29,7 +30,8 @@
       "proof": "NFF 2.19 CAC Parameters #2",
       "agg": null,
       "metric": false,
-      "col": 5
+      "col": 5,
+      "category": "signalling_states"
     },
     {
       "code": "cac.call_connection",
@@ -39,7 +41,8 @@
       "proof": "NFF 2.19 CAC Parameters #3",
       "agg": null,
       "metric": false,
-      "col": 6
+      "col": 6,
+      "category": "signalling_states"
     },
     {
       "code": "cac.parameters",
@@ -49,7 +52,8 @@
       "proof": "NFF 2.19 CAC Parameters #4",
       "agg": null,
       "metric": false,
-      "col": 7
+      "col": 7,
+      "category": "signalling_states"
     }
   ]
 }

@@ -16,7 +16,8 @@
       "unit": "n",
       "proof": "NFF 2.19 MIMOMEAS LTE #1",
       "agg": "last",
-      "metric": false
+      "metric": false,
+      "category": "terminal_cell"
     }
   ],
   "groups": [
@@ -29,7 +30,8 @@
           "type": "int",
           "unit": "code",
           "agg": "dominant",
-          "proof": "NFF 2.19 MIMOMEAS Parameters for LTE #1"
+          "proof": "NFF 2.19 MIMOMEAS Parameters for LTE #1",
+          "category": "mimo_port"
         },
         {
           "code": "mimo.ch",
@@ -37,7 +39,8 @@
           "type": "int",
           "unit": "earfcn",
           "agg": "dominant",
-          "proof": "NFF 2.19 MIMOMEAS Parameters for LTE #2"
+          "proof": "NFF 2.19 MIMOMEAS Parameters for LTE #2",
+          "category": "mimo_port"
         },
         {
           "code": "mimo.pci",
@@ -49,7 +52,8 @@
           "range": [
             0,
             503
-          ]
+          ],
+          "category": "mimo_port"
         },
         {
           "code": "mimo.port",
@@ -79,7 +83,8 @@
             131,
             132,
             133
-          ]
+          ],
+          "category": "mimo_port"
         },
         {
           "code": "mimo.cell_type",
@@ -87,7 +92,8 @@
           "type": "int",
           "unit": "enum",
           "agg": "dominant",
-          "proof": "NFF 2.19 MIMOMEAS Parameters for LTE #5"
+          "proof": "NFF 2.19 MIMOMEAS Parameters for LTE #5",
+          "category": "terminal_cell"
         },
         {
           "code": "mimo.rssi_p",
@@ -95,7 +101,8 @@
           "type": "float",
           "unit": "dBm",
           "agg": "mean",
-          "proof": "NFF 2.19 MIMOMEAS Parameters for LTE #6"
+          "proof": "NFF 2.19 MIMOMEAS Parameters for LTE #6",
+          "category": "mimo_port"
         },
         {
           "code": "mimo.rsrq_p",
@@ -107,7 +114,8 @@
           "range": [
             -30,
             0
-          ]
+          ],
+          "category": "mimo_port"
         },
         {
           "code": "mimo.rsrp_p",
@@ -119,7 +127,8 @@
           "range": [
             -140,
             0
-          ]
+          ],
+          "category": "mimo_port"
         },
         {
           "code": "mimo.timing_p",
@@ -127,7 +136,8 @@
           "type": "int",
           "unit": "Ts",
           "agg": "mean",
-          "proof": "NFF 2.19 MIMOMEAS Parameters for LTE #9"
+          "proof": "NFF 2.19 MIMOMEAS Parameters for LTE #9",
+          "category": "mimo_port"
         }
       ],
       "start": {

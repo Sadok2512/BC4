@@ -16,7 +16,8 @@
       "unit": "n",
       "proof": "NFF 2.19 PLAID LTE #1",
       "agg": "last",
-      "metric": false
+      "metric": false,
+      "category": "terminal_cell"
     },
     {
       "col": 6,
@@ -29,7 +30,8 @@
       "range": [
         0.0,
         null
-      ]
+      ],
+      "category": "terminal_cell"
     },
     {
       "col": 7,
@@ -42,7 +44,8 @@
       "range": [
         0,
         100
-      ]
+      ],
+      "category": "allocation_mcs"
     },
     {
       "col": 8,
@@ -55,7 +58,8 @@
       "range": [
         0.0,
         null
-      ]
+      ],
+      "category": "allocation_mcs"
     },
     {
       "col": 9,
@@ -68,7 +72,8 @@
       "range": [
         0.0,
         null
-      ]
+      ],
+      "category": "allocation_mcs"
     },
     {
       "col": 10,
@@ -82,7 +87,8 @@
         0,
         1
       ],
-      "dimension": true
+      "dimension": true,
+      "category": "terminal_cell"
     }
   ],
   "groups": [
@@ -99,7 +105,8 @@
             0,
             100
           ],
-          "proof": "NFF 2.19 PLAID LTE pla #1"
+          "proof": "NFF 2.19 PLAID LTE pla #1",
+          "category": "allocation_mcs"
         },
         {
           "code": "plaid.rank",
@@ -112,7 +119,8 @@
             0,
             4
           ],
-          "proof": "NFF 2.19 PLAID LTE pla #2"
+          "proof": "NFF 2.19 PLAID LTE pla #2",
+          "category": "allocation_mcs"
         },
         {
           "code": "plaid.mod0",
@@ -125,7 +133,8 @@
             1,
             3
           ],
-          "proof": "NFF 2.19 PLAID LTE pla #3"
+          "proof": "NFF 2.19 PLAID LTE pla #3",
+          "category": "link_quality"
         },
         {
           "code": "plaid.mcs0",
@@ -138,7 +147,8 @@
             0,
             31
           ],
-          "proof": "NFF 2.19 PLAID LTE pla #4"
+          "proof": "NFF 2.19 PLAID LTE pla #4",
+          "category": "allocation_mcs"
         },
         {
           "code": "plaid.mod1",
@@ -151,7 +161,8 @@
             1,
             3
           ],
-          "proof": "NFF 2.19 PLAID LTE pla #5"
+          "proof": "NFF 2.19 PLAID LTE pla #5",
+          "category": "link_quality"
         },
         {
           "code": "plaid.mcs1",
@@ -164,7 +175,8 @@
             0,
             31
           ],
-          "proof": "NFF 2.19 PLAID LTE pla #6"
+          "proof": "NFF 2.19 PLAID LTE pla #6",
+          "category": "allocation_mcs"
         }
       ],
       "start": {
@@ -187,7 +199,8 @@
             0,
             100
           ],
-          "proof": "NFF 2.19 PLAID LTE prbs #1"
+          "proof": "NFF 2.19 PLAID LTE prbs #1",
+          "category": "allocation_mcs"
         },
         {
           "code": "plaid.prbs",
@@ -200,7 +213,8 @@
             0,
             100
           ],
-          "proof": "NFF 2.19 PLAID LTE prbs #2"
+          "proof": "NFF 2.19 PLAID LTE prbs #2",
+          "category": "allocation_mcs"
         }
       ],
       "start": "previous_end",
@@ -221,7 +235,8 @@
             0,
             100
           ],
-          "proof": "NFF 2.19 PLAID LTE prb_indexes #1"
+          "proof": "NFF 2.19 PLAID LTE prb_indexes #1",
+          "category": "allocation_mcs"
         },
         {
           "code": "plaid.prb_index",
@@ -233,7 +248,8 @@
             0,
             99
           ],
-          "proof": "NFF 2.19 PLAID LTE prb_indexes #2"
+          "proof": "NFF 2.19 PLAID LTE prb_indexes #2",
+          "category": "allocation_mcs"
         }
       ],
       "start": "previous_end",

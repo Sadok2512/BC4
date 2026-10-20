@@ -19,7 +19,8 @@
       "proof": "NFF 2.19 RRA Parameters #1",
       "agg": null,
       "metric": false,
-      "col": 4
+      "col": 4,
+      "category": "signalling_states"
     },
     {
       "code": "rra.est_cause",
@@ -29,7 +30,8 @@
       "proof": "NFF 2.19 RRA Parameters for LTE #1",
       "agg": null,
       "metric": false,
-      "col": 5
+      "col": 5,
+      "category": "signalling_states"
     }
   ],
   "marker": true

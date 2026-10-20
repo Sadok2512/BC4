@@ -16,7 +16,8 @@
       "unit": "n",
       "proof": "NFF 2.19 RLCRATE LTE #1",
       "agg": "last",
-      "metric": false
+      "metric": false,
+      "category": "terminal_cell"
     },
     {
       "col": 6,
@@ -29,7 +30,8 @@
       "range": [
         0.0,
         null
-      ]
+      ],
+      "category": "throughput_layers"
     },
     {
       "col": 7,
@@ -42,7 +44,8 @@
       "range": [
         0.0,
         null
-      ]
+      ],
+      "category": "link_quality"
     },
     {
       "col": 8,
@@ -55,7 +58,8 @@
       "range": [
         0,
         100
-      ]
+      ],
+      "category": "link_quality"
     }
   ],
   "groups": [
@@ -72,7 +76,8 @@
             0,
             34
           ],
-          "proof": "NFF 2.19 RLCRATE LTE radio_bearers #1"
+          "proof": "NFF 2.19 RLCRATE LTE radio_bearers #1",
+          "category": "terminal_cell"
         },
         {
           "code": "rlc.dl_bitrate_rb",
@@ -84,7 +89,8 @@
             0,
             null
           ],
-          "proof": "NFF 2.19 RLCRATE LTE radio_bearers #2"
+          "proof": "NFF 2.19 RLCRATE LTE radio_bearers #2",
+          "category": "throughput_layers"
         },
         {
           "code": "rlc.dl_blocks_rb",
@@ -96,7 +102,8 @@
             0,
             null
           ],
-          "proof": "NFF 2.19 RLCRATE LTE radio_bearers #3"
+          "proof": "NFF 2.19 RLCRATE LTE radio_bearers #3",
+          "category": "link_quality"
         },
         {
           "code": "rlc.dl_bler_rb",
@@ -108,7 +115,8 @@
             0,
             100
           ],
-          "proof": "NFF 2.19 RLCRATE LTE radio_bearers #4"
+          "proof": "NFF 2.19 RLCRATE LTE radio_bearers #4",
+          "category": "link_quality"
         }
       ],
       "start": {

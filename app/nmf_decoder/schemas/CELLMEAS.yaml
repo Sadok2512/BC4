@@ -16,7 +16,8 @@
       "unit": "n",
       "proof": "NFF 2.19 CELLMEAS LTE #1",
       "agg": "last",
-      "metric": false
+      "metric": false,
+      "category": "terminal_cell"
     }
   ],
   "groups": [
@@ -29,7 +30,8 @@
           "type": "int",
           "unit": "enum",
           "agg": "dominant",
-          "proof": "NFF 2.19 CELLMEAS Parameters for LTE cell #1"
+          "proof": "NFF 2.19 CELLMEAS Parameters for LTE cell #1",
+          "category": "neighbours"
         },
         {
           "code": "cell.band",
@@ -37,7 +39,8 @@
           "type": "int",
           "unit": "code",
           "agg": "dominant",
-          "proof": "NFF 2.19 CELLMEAS Parameters for LTE cell #2"
+          "proof": "NFF 2.19 CELLMEAS Parameters for LTE cell #2",
+          "category": "neighbours"
         },
         {
           "code": "cell.ch",
@@ -45,7 +48,8 @@
           "type": "int",
           "unit": "earfcn",
           "agg": "dominant",
-          "proof": "NFF 2.19 CELLMEAS Parameters for LTE cell #3"
+          "proof": "NFF 2.19 CELLMEAS Parameters for LTE cell #3",
+          "category": "neighbours"
         },
         {
           "code": "cell.pci",
@@ -57,7 +61,8 @@
           "range": [
             0,
             503
-          ]
+          ],
+          "category": "neighbours"
         },
         {
           "code": "cell.rssi",
@@ -65,7 +70,8 @@
           "type": "float",
           "unit": "dBm",
           "agg": "mean",
-          "proof": "NFF 2.19 CELLMEAS Parameters for LTE cell #5"
+          "proof": "NFF 2.19 CELLMEAS Parameters for LTE cell #5",
+          "category": "neighbours"
         },
         {
           "code": "cell.rsrp",
@@ -77,7 +83,8 @@
           "range": [
             -140,
             0
-          ]
+          ],
+          "category": "neighbours"
         },
         {
           "code": "cell.rsrq",
@@ -89,7 +96,8 @@
           "range": [
             -30,
             0
-          ]
+          ],
+          "category": "neighbours"
         },
         {
           "code": "cell.timing",
@@ -101,7 +109,8 @@
           "range": [
             0,
             307199
-          ]
+          ],
+          "category": "neighbours"
         },
         {
           "code": "cell.pathloss",
@@ -113,7 +122,8 @@
           "range": [
             0,
             170
-          ]
+          ],
+          "category": "neighbours"
         }
       ],
       "start": {

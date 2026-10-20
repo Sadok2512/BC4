@@ -19,7 +19,8 @@
       "proof": "NFF 2.19 MARK Parameters #1",
       "agg": null,
       "metric": false,
-      "col": 4
+      "col": 4,
+      "category": "signalling_states"
     },
     {
       "code": "mark.marker",
@@ -33,7 +34,8 @@
         0,
         9
       ],
-      "col": 5
+      "col": 5,
+      "category": "signalling_states"
     }
   ],
   "marker": true

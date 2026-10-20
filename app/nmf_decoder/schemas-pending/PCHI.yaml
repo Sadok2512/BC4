@@ -19,7 +19,8 @@
       "proof": "NFF 2.19 PCHI Parameters #1",
       "agg": null,
       "metric": false,
-      "col": 4
+      "col": 4,
+      "category": "signalling_states"
     },
     {
       "code": "pchi.packet_tech",
@@ -29,7 +30,8 @@
       "proof": "NFF 2.19 PCHI Parameters for LTE #1",
       "agg": null,
       "metric": false,
-      "col": 5
+      "col": 5,
+      "category": "signalling_states"
     },
     {
       "code": "pchi.packet_state",
@@ -39,7 +41,8 @@
       "proof": "NFF 2.19 PCHI Parameters for LTE #2",
       "agg": null,
       "metric": false,
-      "col": 6
+      "col": 6,
+      "category": "signalling_states"
     }
   ],
   "marker": true

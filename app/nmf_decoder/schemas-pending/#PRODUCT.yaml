@@ -20,7 +20,8 @@
       "agg": null,
       "metric": false,
       "redact": true,
-      "col": 4
+      "col": 4,
+      "category": "terminal_cell"
     },
     {
       "code": "product.product_version",
@@ -31,7 +32,8 @@
       "agg": null,
       "metric": false,
       "redact": true,
-      "col": 5
+      "col": 5,
+      "category": "terminal_cell"
     }
   ]
 }

@@ -16,7 +16,8 @@
       "unit": "n",
       "proof": "NFF 2.19 PDCPRATEU LTE #1",
       "agg": "last",
-      "metric": false
+      "metric": false,
+      "category": "terminal_cell"
     },
     {
       "col": 6,
@@ -29,7 +30,8 @@
       "range": [
         0.0,
         null
-      ]
+      ],
+      "category": "throughput_layers"
     },
     {
       "col": 7,
@@ -42,7 +44,8 @@
       "range": [
         0.0,
         null
-      ]
+      ],
+      "category": "link_quality"
     }
   ],
   "groups": [
@@ -59,7 +62,8 @@
             0,
             34
           ],
-          "proof": "NFF 2.19 PDCPRATEU LTE radio_bearers #1"
+          "proof": "NFF 2.19 PDCPRATEU LTE radio_bearers #1",
+          "category": "terminal_cell"
         },
         {
           "code": "pdcp.ul_bitrate_rb",
@@ -71,7 +75,8 @@
             0,
             null
           ],
-          "proof": "NFF 2.19 PDCPRATEU LTE radio_bearers #2"
+          "proof": "NFF 2.19 PDCPRATEU LTE radio_bearers #2",
+          "category": "throughput_layers"
         },
         {
           "code": "pdcp.ul_blocks_rb",
@@ -83,7 +88,8 @@
             0,
             null
           ],
-          "proof": "NFF 2.19 PDCPRATEU LTE radio_bearers #3"
+          "proof": "NFF 2.19 PDCPRATEU LTE radio_bearers #3",
+          "category": "link_quality"
         }
       ],
       "start": {

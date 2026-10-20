@@ -19,7 +19,8 @@
       "proof": "NFF 2.19 PBC Parameters #1",
       "agg": null,
       "metric": false,
-      "col": 4
+      "col": 4,
+      "category": "signalling_states"
     },
     {
       "code": "pbc.pb_id",
@@ -33,7 +34,8 @@
         5,
         15
       ],
-      "col": 5
+      "col": 5,
+      "category": "signalling_states"
     },
     {
       "code": "pbc.linked_pb_id",
@@ -47,7 +49,8 @@
         5,
         15
       ],
-      "col": 6
+      "col": 6,
+      "category": "signalling_states"
     }
   ],
   "marker": true

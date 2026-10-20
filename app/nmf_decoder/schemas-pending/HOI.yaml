@@ -19,7 +19,8 @@
       "proof": "NFF 2.19 HOI Parameters #1",
       "agg": null,
       "metric": false,
-      "col": 4
+      "col": 4,
+      "category": "signalling_states"
     },
     {
       "code": "hoi.ho_duration",
@@ -33,7 +34,8 @@
         0,
         null
       ],
-      "col": 5
+      "col": 5,
+      "category": "signalling_states"
     },
     {
       "code": "hoi.ho_to",
@@ -47,7 +49,8 @@
         0,
         null
       ],
-      "col": 6
+      "col": 6,
+      "category": "signalling_states"
     },
     {
       "code": "hoi.ho_u_plane",
@@ -61,7 +64,8 @@
         0,
         null
       ],
-      "col": 7
+      "col": 7,
+      "category": "signalling_states"
     }
   ],
   "marker": true

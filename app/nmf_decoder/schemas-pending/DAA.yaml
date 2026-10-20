@@ -19,7 +19,8 @@
       "proof": "NFF 2.19 DAA Parameters #1",
       "agg": null,
       "metric": false,
-      "col": 4
+      "col": 4,
+      "category": "services"
     },
     {
       "code": "daa.host_address",
@@ -29,7 +30,8 @@
       "proof": "NFF 2.19 DAA Parameters #2",
       "agg": null,
       "metric": false,
-      "col": 5
+      "col": 5,
+      "category": "services"
     },
     {
       "code": "daa.host_port",
@@ -39,7 +41,8 @@
       "proof": "NFF 2.19 DAA Parameters #3",
       "agg": null,
       "metric": false,
-      "col": 6
+      "col": 6,
+      "category": "services"
     },
     {
       "code": "daa.connection_timeout",
@@ -49,7 +52,8 @@
       "proof": "NFF 2.19 DAA Parameters #4",
       "agg": null,
       "metric": false,
-      "col": 7
+      "col": 7,
+      "category": "services"
     },
     {
       "code": "daa.security_protocol",
@@ -59,7 +63,8 @@
       "proof": "NFF 2.19 DAA Parameters #5",
       "agg": null,
       "metric": false,
-      "col": 8
+      "col": 8,
+      "category": "services"
     }
   ]
 }

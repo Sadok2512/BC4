@@ -9,7 +9,7 @@
   "unknown_tail": "keep",
   "generated_from": "specs/nmf_all_events_lte_fields_2.19.csv",
   "inactive": true,
-  "inactive_reason": "baseline généré en 1.1.0 ; agg/metric/group raffinements P2",
+  "inactive_reason": "baseline généré en 1.1.0 ; multi-sections → codes dupliqués ; raffinement txt NFF requis avant P3",
   "header": [
     {
       "code": "chi.serving_sys",
@@ -19,7 +19,8 @@
       "proof": "NFF 2.19 CHI Parameters #1",
       "agg": null,
       "metric": false,
-      "col": 4
+      "col": 4,
+      "category": "terminal_cell"
     },
     {
       "code": "chi.band",
@@ -29,7 +30,8 @@
       "proof": "NFF 2.19 CHI Parameters for LTE #1",
       "agg": null,
       "metric": false,
-      "col": 5
+      "col": 5,
+      "category": "terminal_cell"
     },
     {
       "code": "chi.rrc_state",
@@ -39,7 +41,8 @@
       "proof": "NFF 2.19 CHI Parameters for LTE #2",
       "agg": null,
       "metric": false,
-      "col": 6
+      "col": 6,
+      "category": "terminal_cell"
     },
     {
       "code": "chi.dl_bandwidth",
@@ -49,7 +52,8 @@
       "proof": "NFF 2.19 CHI Parameters for LTE #3",
       "agg": null,
       "metric": false,
-      "col": 7
+      "col": 7,
+      "category": "terminal_cell"
     },
     {
       "code": "chi.ch",
@@ -59,7 +63,8 @@
       "proof": "NFF 2.19 CHI Parameters for LTE #4",
       "agg": null,
       "metric": false,
-      "col": 8
+      "col": 8,
+      "category": "terminal_cell"
     },
     {
       "code": "chi.pci",
@@ -73,7 +78,8 @@
         0,
         503
       ],
-      "col": 9
+      "col": 9,
+      "category": "terminal_cell"
     },
     {
       "code": "chi.cell_id",
@@ -87,7 +93,8 @@
         0,
         268435455
       ],
-      "col": 10
+      "col": 10,
+      "category": "terminal_cell"
     },
     {
       "code": "chi.tac",
@@ -101,7 +108,8 @@
         0,
         65535
       ],
-      "col": 11
+      "col": 11,
+      "category": "terminal_cell"
     },
     {
       "code": "chi.max_tx_power",
@@ -111,7 +119,8 @@
       "proof": "NFF 2.19 CHI Parameters for LTE #8",
       "agg": null,
       "metric": false,
-      "col": 12
+      "col": 12,
+      "category": "terminal_cell"
     },
     {
       "code": "chi.tm",
@@ -121,7 +130,8 @@
       "proof": "NFF 2.19 CHI Parameters for LTE #9",
       "agg": null,
       "metric": false,
-      "col": 13
+      "col": 13,
+      "category": "terminal_cell"
     },
     {
       "code": "chi.antenna_ports",
@@ -131,7 +141,8 @@
       "proof": "NFF 2.19 CHI Parameters for LTE #10",
       "agg": null,
       "metric": false,
-      "col": 14
+      "col": 14,
+      "category": "terminal_cell"
     },
     {
       "code": "chi.ul_dl_config",
@@ -141,7 +152,8 @@
       "proof": "NFF 2.19 CHI Parameters for LTE #11",
       "agg": null,
       "metric": false,
-      "col": 15
+      "col": 15,
+      "category": "terminal_cell"
     },
     {
       "code": "chi.19_8_2015_cp",
@@ -151,7 +163,8 @@
       "proof": "NFF 2.19 CHI Parameters for LTE #12",
       "agg": null,
       "metric": false,
-      "col": 16
+      "col": 16,
+      "category": "terminal_cell"
     },
     {
       "code": "chi.root_sequence",
@@ -165,7 +178,8 @@
         0,
         837
       ],
-      "col": 17
+      "col": 17,
+      "category": "terminal_cell"
     },
     {
       "code": "chi.c_rnti",
@@ -175,7 +189,8 @@
       "proof": "NFF 2.19 CHI Parameters for LTE #14",
       "agg": null,
       "metric": false,
-      "col": 18
+      "col": 18,
+      "category": "terminal_cell"
     },
     {
       "code": "chi.scells",
@@ -189,7 +204,8 @@
         0,
         1
       ],
-      "col": 19
+      "col": 19,
+      "category": "terminal_cell"
     },
     {
       "code": "chi.params_scell",
@@ -199,7 +215,8 @@
       "proof": "NFF 2.19 CHI Parameters for LTE #16",
       "agg": null,
       "metric": false,
-      "col": 20
+      "col": 20,
+      "category": "terminal_cell"
     },
     {
       "code": "chi.cell_type",
@@ -209,7 +226,8 @@
       "proof": "NFF 2.19 CHI Parameters for LTE #17",
       "agg": null,
       "metric": false,
-      "col": 21
+      "col": 21,
+      "category": "terminal_cell"
     },
     {
       "code": "chi.band",
@@ -219,7 +237,8 @@
       "proof": "NFF 2.19 CHI Parameters for LTE #18",
       "agg": null,
       "metric": false,
-      "col": 22
+      "col": 22,
+      "category": "terminal_cell"
     },
     {
       "code": "chi.bandwidth",
@@ -229,7 +248,8 @@
       "proof": "NFF 2.19 CHI Parameters for LTE #19",
       "agg": null,
       "metric": false,
-      "col": 23
+      "col": 23,
+      "category": "terminal_cell"
     },
     {
       "code": "chi.channel",
@@ -239,7 +259,8 @@
       "proof": "NFF 2.19 CHI Parameters for LTE #20",
       "agg": null,
       "metric": false,
-      "col": 24
+      "col": 24,
+      "category": "terminal_cell"
     },
     {
       "code": "chi.pci",
@@ -253,7 +274,8 @@
         0,
         503
       ],
-      "col": 25
+      "col": 25,
+      "category": "terminal_cell"
     },
     {
       "code": "chi.tm",
@@ -263,7 +285,8 @@
       "proof": "NFF 2.19 CHI Parameters for LTE #22",
       "agg": null,
       "metric": false,
-      "col": 26
+      "col": 26,
+      "category": "terminal_cell"
     },
     {
       "code": "chi.antenna_ports",
@@ -273,7 +296,8 @@
       "proof": "NFF 2.19 CHI Parameters for LTE #23",
       "agg": null,
       "metric": false,
-      "col": 27
+      "col": 27,
+      "category": "terminal_cell"
     },
     {
       "code": "chi.ul_dl_config",
@@ -283,7 +307,8 @@
       "proof": "NFF 2.19 CHI Parameters for LTE #24",
       "agg": null,
       "metric": false,
-      "col": 28
+      "col": 28,
+      "category": "terminal_cell"
     },
     {
       "code": "chi.cp",
@@ -293,7 +318,9 @@
       "proof": "NFF 2.19 CHI Parameters for LTE #25",
       "agg": null,
       "metric": false,
-      "col": 29
+      "col": 29,
+      "category": "terminal_cell"
     }
-  ]
+  ],
+  "needs_refinement": true
 }

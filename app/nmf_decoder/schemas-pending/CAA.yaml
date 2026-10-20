@@ -19,7 +19,8 @@
       "proof": "NFF 2.19 CAA Parameters #1",
       "agg": null,
       "metric": false,
-      "col": 4
+      "col": 4,
+      "category": "signalling_states"
     },
     {
       "code": "caa.call_type",
@@ -29,7 +30,8 @@
       "proof": "NFF 2.19 CAA Parameters #2",
       "agg": null,
       "metric": false,
-      "col": 5
+      "col": 5,
+      "category": "signalling_states"
     },
     {
       "code": "caa.call_direction",
@@ -39,7 +41,8 @@
       "proof": "NFF 2.19 CAA Parameters #3",
       "agg": null,
       "metric": false,
-      "col": 6
+      "col": 6,
+      "category": "signalling_states"
     },
     {
       "code": "caa.phone_number",
@@ -49,7 +52,8 @@
       "proof": "NFF 2.19 CAA Parameters #4",
       "agg": null,
       "metric": false,
-      "col": 7
+      "col": 7,
+      "category": "signalling_states"
     },
     {
       "code": "caa.own_phone_number",
@@ -59,7 +63,8 @@
       "proof": "NFF 2.19 CAA Parameters #5",
       "agg": null,
       "metric": false,
-      "col": 8
+      "col": 8,
+      "category": "signalling_states"
     },
     {
       "code": "caa.call_timeout",
@@ -69,7 +74,8 @@
       "proof": "NFF 2.19 CAA Parameters #6",
       "agg": null,
       "metric": false,
-      "col": 9
+      "col": 9,
+      "category": "signalling_states"
     },
     {
       "code": "caa.unique_id",
@@ -79,7 +85,8 @@
       "proof": "NFF 2.19 CAA Parameters #7",
       "agg": null,
       "metric": false,
-      "col": 10
+      "col": 10,
+      "category": "signalling_states"
     }
   ]
 }

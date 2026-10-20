@@ -1,6 +1,6 @@
 [project]
 name = "bc4-back"
-version = "0.61.1"
+version = "0.62.0"
 description = "BC4 backend FastAPI — réconciliation 0.48.0 (perf /kpi/catalog ×10 + /kpi/filters ×7 + 3 fixes structurels) + 0.48.1 (indoor mp conservé, replay REF+TEST2) + reliquat 0.46.0 (chaînage populate post-ingest, ingest_status) jamais committé jusqu'ici"
 requires-python = ">=3.10"
 

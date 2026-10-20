@@ -9,7 +9,7 @@
   "unknown_tail": "keep",
   "generated_from": "specs/nmf_all_events_lte_fields_2.19.csv",
   "inactive": true,
-  "inactive_reason": "baseline généré en 1.1.0 ; agg/metric/group raffinements P2",
+  "inactive_reason": "baseline généré en 1.1.0 ; multi-sections → codes dupliqués ; raffinement txt NFF requis avant P3",
   "header": [
     {
       "code": "lock.forcings",
@@ -19,7 +19,8 @@
       "proof": "NFF 2.19 LOCK Parameters #1",
       "agg": null,
       "metric": false,
-      "col": 4
+      "col": 4,
+      "category": "signalling_states"
     },
     {
       "code": "lock.lock_type",
@@ -29,7 +30,8 @@
       "proof": "NFF 2.19 LOCK Parameters #2",
       "agg": null,
       "metric": false,
-      "col": 5
+      "col": 5,
+      "category": "signalling_states"
     },
     {
       "code": "lock.params",
@@ -39,7 +41,8 @@
       "proof": "NFF 2.19 LOCK Parameters #3",
       "agg": null,
       "metric": false,
-      "col": 6
+      "col": 6,
+      "category": "signalling_states"
     },
     {
       "code": "lock.locked",
@@ -49,7 +52,8 @@
       "proof": "NFF 2.19 LOCK Parameters #4",
       "agg": null,
       "metric": false,
-      "col": 7
+      "col": 7,
+      "category": "signalling_states"
     },
     {
       "code": "lock.locked_band",
@@ -59,7 +63,8 @@
       "proof": "NFF 2.19 LOCK Parameters #5",
       "agg": null,
       "metric": false,
-      "col": 8
+      "col": 8,
+      "category": "signalling_states"
     },
     {
       "code": "lock.locked_pci",
@@ -73,7 +78,8 @@
         0,
         503
       ],
-      "col": 9
+      "col": 9,
+      "category": "signalling_states"
     },
     {
       "code": "lock.locked",
@@ -83,7 +89,8 @@
       "proof": "NFF 2.19 LOCK Parameters for LTE sector lock #2",
       "agg": null,
       "metric": false,
-      "col": 10
+      "col": 10,
+      "category": "signalling_states"
     },
     {
       "code": "lock.locked_band",
@@ -93,7 +100,8 @@
       "proof": "NFF 2.19 LOCK Parameters for LTE sector lock #3",
       "agg": null,
       "metric": false,
-      "col": 11
+      "col": 11,
+      "category": "signalling_states"
     },
     {
       "code": "lock.ho_forcing",
@@ -103,7 +111,8 @@
       "proof": "NFF 2.19 LOCK Parameters for LTE handover forcing #1",
       "agg": null,
       "metric": false,
-      "col": 12
+      "col": 12,
+      "category": "signalling_states"
     },
     {
       "code": "lock.ho_forcing",
@@ -113,7 +122,8 @@
       "proof": "NFF 2.19 LOCK Parameters for LTE handover forcing #2",
       "agg": null,
       "metric": false,
-      "col": 13
+      "col": 13,
+      "category": "signalling_states"
     },
     {
       "code": "lock.19_8_2015_ho_forcing",
@@ -127,8 +137,10 @@
         0,
         503
       ],
-      "col": 14
+      "col": 14,
+      "category": "signalling_states"
     }
   ],
-  "marker": true
+  "marker": true,
+  "needs_refinement": true
 }

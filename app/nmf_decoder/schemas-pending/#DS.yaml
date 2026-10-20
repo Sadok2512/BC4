@@ -19,7 +19,8 @@
       "proof": "NFF 2.19 #DS Parameters #1",
       "agg": null,
       "metric": false,
-      "col": 4
+      "col": 4,
+      "category": "terminal_cell"
     },
     {
       "code": "ds.supported_systems",
@@ -29,7 +30,8 @@
       "proof": "NFF 2.19 #DS Parameters #2",
       "agg": null,
       "metric": false,
-      "col": 5
+      "col": 5,
+      "category": "terminal_cell"
     }
   ]
 }

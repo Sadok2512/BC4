@@ -20,7 +20,8 @@
       "agg": null,
       "metric": false,
       "redact": true,
-      "col": 4
+      "col": 4,
+      "category": "terminal_cell"
     }
   ]
 }

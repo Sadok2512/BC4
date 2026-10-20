@@ -19,7 +19,8 @@
       "proof": "NFF 2.19 RRCSM Parameters #1",
       "agg": null,
       "metric": false,
-      "col": 4
+      "col": 4,
+      "category": "session"
     },
     {
       "code": "rrcsm.direction",
@@ -29,7 +30,8 @@
       "proof": "NFF 2.19 RRCSM Parameters for LTE #1",
       "agg": null,
       "metric": false,
-      "col": 5
+      "col": 5,
+      "category": "session"
     },
     {
       "code": "rrcsm.rrc_msg",
@@ -39,7 +41,8 @@
       "proof": "NFF 2.19 RRCSM Parameters for LTE #2",
       "agg": null,
       "metric": false,
-      "col": 6
+      "col": 6,
+      "category": "session"
     },
     {
       "code": "rrcsm.subchannel",
@@ -49,7 +52,8 @@
       "proof": "NFF 2.19 RRCSM Parameters for LTE #3",
       "agg": null,
       "metric": false,
-      "col": 7
+      "col": 7,
+      "category": "session"
     },
     {
       "code": "rrcsm.19_8_2015_earfcn",
@@ -59,7 +63,8 @@
       "proof": "NFF 2.19 RRCSM Parameters for LTE #4",
       "agg": null,
       "metric": false,
-      "col": 8
+      "col": 8,
+      "category": "session"
     },
     {
       "code": "rrcsm.pci",
@@ -73,7 +78,8 @@
         0,
         503
       ],
-      "col": 9
+      "col": 9,
+      "category": "session"
     },
     {
       "code": "rrcsm.rrc_data",
@@ -83,7 +89,8 @@
       "proof": "NFF 2.19 RRCSM Parameters for LTE #6",
       "agg": null,
       "metric": false,
-      "col": 10
+      "col": 10,
+      "category": "session"
     }
   ]
 }

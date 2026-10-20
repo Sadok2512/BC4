@@ -19,7 +19,8 @@
       "proof": "NFF 2.19 HOA Parameters #1",
       "agg": null,
       "metric": false,
-      "col": 4
+      "col": 4,
+      "category": "signalling_states"
     },
     {
       "code": "hoa.hoa_type",
@@ -29,7 +30,8 @@
       "proof": "NFF 2.19 HOA Parameters #2",
       "agg": null,
       "metric": false,
-      "col": 5
+      "col": 5,
+      "category": "signalling_states"
     },
     {
       "code": "hoa.current_system",
@@ -39,7 +41,8 @@
       "proof": "NFF 2.19 HOA Parameters #3",
       "agg": null,
       "metric": false,
-      "col": 6
+      "col": 6,
+      "category": "signalling_states"
     },
     {
       "code": "hoa.number_of",
@@ -49,7 +52,8 @@
       "proof": "NFF 2.19 HOA Parameters #4",
       "agg": null,
       "metric": false,
-      "col": 7
+      "col": 7,
+      "category": "signalling_states"
     },
     {
       "code": "hoa.ch_number",
@@ -59,7 +63,8 @@
       "proof": "NFF 2.19 HOA Parameters for LTE #1",
       "agg": null,
       "metric": false,
-      "col": 8
+      "col": 8,
+      "category": "signalling_states"
     },
     {
       "code": "hoa.pci",
@@ -73,7 +78,8 @@
         0,
         503
       ],
-      "col": 9
+      "col": 9,
+      "category": "signalling_states"
     },
     {
       "code": "hoa.band",
@@ -83,7 +89,8 @@
       "proof": "NFF 2.19 HOA Parameters for LTE #3",
       "agg": null,
       "metric": false,
-      "col": 10
+      "col": 10,
+      "category": "signalling_states"
     },
     {
       "code": "hoa.att_ch",
@@ -93,7 +100,8 @@
       "proof": "NFF 2.19 HOA Parameters for LTE #1",
       "agg": null,
       "metric": false,
-      "col": 11
+      "col": 11,
+      "category": "signalling_states"
     },
     {
       "code": "hoa.att_pci",
@@ -107,7 +115,8 @@
         0,
         503
       ],
-      "col": 12
+      "col": 12,
+      "category": "signalling_states"
     },
     {
       "code": "hoa.att_band",
@@ -117,7 +126,8 @@
       "proof": "NFF 2.19 HOA Parameters for LTE #3",
       "agg": null,
       "metric": false,
-      "col": 13
+      "col": 13,
+      "category": "signalling_states"
     }
   ]
 }

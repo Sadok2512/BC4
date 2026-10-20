@@ -9,7 +9,7 @@
   "unknown_tail": "keep",
   "generated_from": "specs/nmf_all_events_lte_fields_2.19.csv",
   "inactive": true,
-  "inactive_reason": "baseline généré en 1.1.0 ; agg/metric/group raffinements P2",
+  "inactive_reason": "baseline généré en 1.1.0 ; multi-sections → codes dupliqués ; raffinement txt NFF requis avant P3",
   "header": [
     {
       "code": "dnsquery.dns_query",
@@ -19,7 +19,8 @@
       "proof": "NFF 2.19 DNSQUERY Parameters #1",
       "agg": null,
       "metric": false,
-      "col": 4
+      "col": 4,
+      "category": "services"
     },
     {
       "code": "dnsquery.dns_query",
@@ -29,7 +30,8 @@
       "proof": "NFF 2.19 DNSQUERY Parameters #2",
       "agg": null,
       "metric": false,
-      "col": 5
+      "col": 5,
+      "category": "services"
     },
     {
       "code": "dnsquery.dns_query_result",
@@ -39,7 +41,8 @@
       "proof": "NFF 2.19 DNSQUERY Parameters #3",
       "agg": null,
       "metric": false,
-      "col": 6
+      "col": 6,
+      "category": "services"
     },
     {
       "code": "dnsquery.results",
@@ -49,7 +52,8 @@
       "proof": "NFF 2.19 DNSQUERY Parameters #4",
       "agg": null,
       "metric": false,
-      "col": 7
+      "col": 7,
+      "category": "services"
     },
     {
       "code": "dnsquery.params_result",
@@ -59,7 +63,8 @@
       "proof": "NFF 2.19 DNSQUERY Parameters #5",
       "agg": null,
       "metric": false,
-      "col": 8
+      "col": 8,
+      "category": "services"
     },
     {
       "code": "dnsquery.dns_address",
@@ -69,7 +74,8 @@
       "proof": "NFF 2.19 DNSQUERY Parameters #6",
       "agg": null,
       "metric": false,
-      "col": 9
+      "col": 9,
+      "category": "services"
     },
     {
       "code": "dnsquery.dns_cache",
@@ -79,7 +85,9 @@
       "proof": "NFF 2.19 DNSQUERY Parameters #7",
       "agg": null,
       "metric": false,
-      "col": 10
+      "col": 10,
+      "category": "services"
     }
-  ]
+  ],
+  "needs_refinement": true
 }

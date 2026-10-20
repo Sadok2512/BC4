@@ -74,13 +74,31 @@ class SeriesResponse(BaseModel):
 class Marker(BaseModel):
     seq: int
     t_rel_s: float
-    type: Literal['task','ho','rlf','rrc']
+    type: str
     label: str
+    event_code: str | None = None
+class CaptureForcing(BaseModel):
+    """0.62.0 — Exposition capture-level du forçage techno/bande.
+
+    Détecté à partir des événements NMF ``LOCK`` présents dans la
+    capture. Le payload (bande / PCI / HO forcing) n'est accessible
+    qu'après re-décodage Deep en 1.1.0 (phase P3) ; pour l'instant,
+    on expose uniquement la **présence** et le compte."""
+    active: bool
+    lock_count: int = 0
+    first_seq: int | None = None
+    first_t_rel_s: float | None = None
+    note: str = (
+        "LOCK présent — forçage techno/bande actif dans la capture. "
+        "Payload détaillé (bande, PCI, HO forcing) disponible après "
+        "re-décodage Deep en nmf_decoder 1.1.0 (P3)."
+    )
 class EventsResponse(BaseModel):
     project_id: str
     capture_id: str
     result_id: str
     markers: list[Marker]
+    capture_forcing: CaptureForcing | None = None
 
 @router.get('/projects/{project_id}/metrics', response_model=list[MetricInfo])
 def catalog(project_id: str, db: Session=Depends(get_db)):
@@ -215,25 +233,108 @@ EVENT_SQL = '''SELECT e.seq,e.message, EXISTS(SELECT 1 FROM param_occurrence p W
  FROM stg_event e WHERE e.project_id=:pid AND e.capture_id=:cap AND e.message IN
  ('RRCConnectionReconfiguration','RRCConnectionReestablishmentRequest','RRCConnectionSetup','RRCConnectionRelease','RRCSetup','RRCRelease') ORDER BY e.seq'''
 TASK_SQL = 'SELECT seq_daa,seq_dcomp,task_type FROM task_run WHERE project_id=:pid AND capture_id=:cap ORDER BY seq_start'
+
+# 0.62.0 — Mapping événements NMF 1.1.0 (schemas-pending) vers les types
+# de markers exposés par /captures/{cid}/events. Les clés sont les
+# ``event_code`` tels qu'ils apparaissent dans ``stg_event_raw.event_code``.
+# Les types sont les buckets sémantiques demandés par la mission :
+# attach · detach · bearer · reselection · meas_event · roam · lock ·
+# mark · channel · audio · voip · ho_info · rach · l3sm · rrc_lte ·
+# call. ``rrc`` reste réservé aux messages RRC décodés ASN.1 (via
+# ``stg_event``).
+_RAW_EVENT_TYPE: dict[str, tuple[str, str]] = {
+    # RRC-level LTE events (différents des messages ASN.1 déjà exposés via `rrc`)
+    'RRA':  ('rrc_lte', 'RRC Attach request (LTE)'),
+    'RRC':  ('rrc_lte', 'RRC Attach complete (LTE)'),
+    'RRD':  ('rrc_lte', 'RRC Detach (LTE)'),
+    # Attach / detach GPRS/EPS
+    'GAA':  ('attach',  'GPRS/EPS attach attempt'),
+    'GAC':  ('attach',  'GPRS/EPS attach complete'),
+    'GAD':  ('detach',  'GPRS/EPS detach'),
+    # Bearer / PDP context
+    'PBA':  ('bearer',  'PDP context activate attempt'),
+    'PBC':  ('bearer',  'PDP context activate complete'),
+    'PBD':  ('bearer',  'PDP context deactivate'),
+    # Call events (ajoutés en bonus, hors mission mais cohérents)
+    'CAA':  ('call',    'Call attempt'),
+    'CAC':  ('call',    'Call complete'),
+    'CAD':  ('call',    'Call disconnect'),
+    'PAA':  ('call',    'Packet call attempt'),
+    'PAC':  ('call',    'Packet call complete'),
+    'PAD':  ('call',    'Packet call disconnect'),
+    # Reselection / handover
+    'CREL': ('reselection', 'Cell reselection'),
+    'HOI':  ('ho_info', 'Handover info'),
+    'HOA':  ('ho_info', 'Handover attempt'),
+    'HOS':  ('ho_info', 'Handover success'),
+    # Measurement events
+    'MEI':  ('meas_event',    'Measurement event'),
+    'NLIST':('meas_event',    'Neighbour list'),
+    'SEI':  ('meas_event',    'Serving cell event'),
+    # Divers
+    'ROAM': ('roam',    'Roaming event'),
+    'LOCK': ('lock',    'Lock/forcing event'),
+    'MARK': ('mark',    'User mark'),
+    'PCHI': ('channel', 'Channel info'),
+    'RACHI':('rach',    'RACH info'),
+    'AQRX': ('audio',   'Audio quality RX'),
+    'AQI':  ('audio',   'Audio quality info'),
+    'VOIPI':('voip',    'VoIP event'),
+    'L3SM': ('l3sm',    'L3 state machine'),
+}
+_RAW_TYPES_ALLOWED: set[str] = {t for t, _l in _RAW_EVENT_TYPE.values()}
+_EVENTS_TYPES_ALLOWED: set[str] = {'task', 'ho', 'rlf', 'rrc'} | _RAW_TYPES_ALLOWED
+
+RAW_EVENT_SQL = '''SELECT seq, event_code FROM stg_event_raw
+ WHERE project_id=:pid AND capture_id=:cap AND event_code = ANY(:raw_codes)
+ ORDER BY seq'''
+LOCK_SQL = '''SELECT seq FROM stg_event_raw
+ WHERE project_id=:pid AND capture_id=:cap AND event_code='LOCK'
+ ORDER BY seq'''
+
 @router.get('/projects/{project_id}/captures/{capture_id}/events',response_model=EventsResponse)
 def events(project_id: str,capture_id: str,types: str='task,ho,rlf,rrc',f: dict=Depends(filters),db: Session=Depends(get_db)):
     project(db,project_id);validate_operators(db,project_id,f);wanted=set(types.split(','))
-    if not wanted<={'task','ho','rlf','rrc'}:raise HTTPException(422,dict(allowed=['task','ho','rlf','rrc']))
+    if not wanted<=_EVENTS_TYPES_ALLOWED:
+        raise HTTPException(422,dict(reason='unknown_marker_type',allowed=sorted(_EVENTS_TYPES_ALLOWED)))
     times,_,_=clock(db,project_id,capture_id);params={'pid':project_id,'cap':capture_id};markers=[]
     condition,fp=predicate(f);params.update(fp);params['ctx_cap']=capture_id
     filter_sql='SELECT seq FROM ('+context_sql()+') c WHERE '+condition
     allowed=None if condition=='TRUE' else {r[0] for r in db.execute(text(filter_sql),params)}
-    def add(seq,kind,label):
+    def add(seq,kind,label,event_code=None):
         if seq is None or (allowed is not None and seq not in allowed):return
         if seq not in times:raise HTTPException(409,dict(reason='event_timestamp_missing',seq=seq))
-        markers.append(dict(seq=seq,t_rel_s=times[seq],type=kind,label=label))
+        markers.append(dict(seq=seq,t_rel_s=times[seq],type=kind,label=label,event_code=event_code))
     if 'task' in wanted:
         for r in db.execute(text(TASK_SQL),params).mappings():
             for key,label in [('seq_daa','DAA'),('seq_dcomp','DCOMP')]:add(r[key],'task',label+' · '+r['task_type'])
-    if wanted-{'task'}:
+    if wanted & {'ho','rlf','rrc'}:
         for r in db.execute(text(EVENT_SQL),params).mappings():
             name=r['message'];kind='ho' if name=='RRCConnectionReconfiguration' and r['mobility'] else 'rlf' if name=='RRCConnectionReestablishmentRequest' else 'rrc' if name in ('RRCConnectionSetup','RRCConnectionRelease','RRCSetup','RRCRelease') else None
             if kind in wanted:add(r['seq'],kind,name)
+    # 0.62.0 — markers depuis stg_event_raw pour les 23 event_codes
+    # 1.1.0 (RRA, RRC_LTE, PBA, LOCK, MARK, …). On restreint les codes
+    # SQL à ceux dont le type est dans `wanted` pour éviter un scan
+    # inutile.
+    wanted_raw_codes = [c for c, (t, _l) in _RAW_EVENT_TYPE.items() if t in wanted]
+    if wanted_raw_codes:
+        params['raw_codes'] = wanted_raw_codes
+        for r in db.execute(text(RAW_EVENT_SQL), params).mappings():
+            kind, label = _RAW_EVENT_TYPE[r['event_code']]
+            add(r['seq'], kind, label, event_code=r['event_code'])
     markers.sort(key=lambda r:(r['seq'],r['type'],r['label']))
-    rid=evidence(db,project_id,';\n'.join([TIME_SQL,TASK_SQL,EVENT_SQL,filter_sql]),{**params,'applied_filters':f,'types':sorted(wanted)},{'markers':len(markers)})
-    return dict(project_id=project_id,capture_id=capture_id,result_id=rid,markers=markers)
+    # 0.62.0 — capture.forcing (toujours calculé, pas filtré par `types`)
+    lock_rows = db.execute(text(LOCK_SQL), {'pid': project_id, 'cap': capture_id}).mappings().all()
+    forcing = None
+    if lock_rows:
+        first = lock_rows[0]
+        forcing = dict(
+            active=True,
+            lock_count=len(lock_rows),
+            first_seq=first['seq'],
+            first_t_rel_s=times.get(first['seq']),
+        )
+    else:
+        forcing = dict(active=False, lock_count=0)
+    rid=evidence(db,project_id,';\n'.join([TIME_SQL,TASK_SQL,EVENT_SQL,RAW_EVENT_SQL,LOCK_SQL,filter_sql]),{**params,'applied_filters':f,'types':sorted(wanted)},{'markers':len(markers),'lock':forcing.get('lock_count',0)})
+    return dict(project_id=project_id,capture_id=capture_id,result_id=rid,markers=markers,capture_forcing=forcing)

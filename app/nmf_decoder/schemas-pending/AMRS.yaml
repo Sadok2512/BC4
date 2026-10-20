@@ -19,7 +19,8 @@
       "proof": "NFF 2.19 AMRS Parameters #1",
       "agg": null,
       "metric": false,
-      "col": 4
+      "col": 4,
+      "category": "voice"
     },
     {
       "code": "amrs.amr_mode_ul",
@@ -29,7 +30,8 @@
       "proof": "NFF 2.19 AMRS Parameters for LTE #1",
       "agg": null,
       "metric": false,
-      "col": 5
+      "col": 5,
+      "category": "voice"
     },
     {
       "code": "amrs.amr_mode_dl",
@@ -39,7 +41,8 @@
       "proof": "NFF 2.19 AMRS Parameters for LTE #2",
       "agg": null,
       "metric": false,
-      "col": 6
+      "col": 6,
+      "category": "voice"
     }
   ]
 }

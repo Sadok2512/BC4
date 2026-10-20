@@ -19,7 +19,8 @@
       "proof": "NFF 2.19 SIPSM Parameters #1",
       "agg": null,
       "metric": false,
-      "col": 4
+      "col": 4,
+      "category": "session"
     },
     {
       "code": "sipsm.direction",
@@ -29,7 +30,8 @@
       "proof": "NFF 2.19 SIPSM Parameters #2",
       "agg": null,
       "metric": false,
-      "col": 5
+      "col": 5,
+      "category": "session"
     },
     {
       "code": "sipsm.sip_name",
@@ -39,7 +41,8 @@
       "proof": "NFF 2.19 SIPSM Parameters #3",
       "agg": null,
       "metric": false,
-      "col": 6
+      "col": 6,
+      "category": "session"
     },
     {
       "code": "sipsm.sip_data",
@@ -49,7 +52,8 @@
       "proof": "NFF 2.19 SIPSM Parameters #4",
       "agg": null,
       "metric": false,
-      "col": 7
+      "col": 7,
+      "category": "session"
     }
   ]
 }

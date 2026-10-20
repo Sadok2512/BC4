@@ -16,7 +16,8 @@
       "unit": "n",
       "proof": "NFF 2.19 CQI Parameters for LTE #1",
       "agg": "last",
-      "metric": false
+      "metric": false,
+      "category": "terminal_cell"
     },
     {
       "col": 6,
@@ -29,7 +30,8 @@
       "range": [
         0.0,
         null
-      ]
+      ],
+      "category": "terminal_cell"
     },
     {
       "col": 7,
@@ -42,7 +44,8 @@
       "range": [
         0.0,
         null
-      ]
+      ],
+      "category": "csi"
     },
     {
       "col": 8,
@@ -55,7 +58,8 @@
       "range": [
         0,
         15
-      ]
+      ],
+      "category": "csi"
     },
     {
       "col": 9,
@@ -68,7 +72,8 @@
       "range": [
         0,
         15
-      ]
+      ],
+      "category": "csi"
     },
     {
       "col": 10,
@@ -81,7 +86,8 @@
       "range": [
         0,
         15
-      ]
+      ],
+      "category": "csi"
     },
     {
       "col": 11,
@@ -94,7 +100,8 @@
       "range": [
         0,
         15
-      ]
+      ],
+      "category": "csi"
     },
     {
       "col": 12,
@@ -103,7 +110,8 @@
       "type": "int",
       "unit": "index",
       "proof": "NFF 2.19 CQI Parameters for LTE #8",
-      "agg": "mean"
+      "agg": "mean",
+      "category": "csi"
     },
     {
       "col": 13,
@@ -117,7 +125,8 @@
         0,
         1
       ],
-      "dimension": true
+      "dimension": true,
+      "category": "terminal_cell"
     }
   ],
   "groups": [
@@ -134,7 +143,8 @@
             0,
             100
           ],
-          "proof": "NFF 2.19 CQI LTE ranks #1"
+          "proof": "NFF 2.19 CQI LTE ranks #1",
+          "category": "csi"
         },
         {
           "code": "cqi.rank",
@@ -147,7 +157,8 @@
             1,
             4
           ],
-          "proof": "NFF 2.19 CQI LTE ranks #2"
+          "proof": "NFF 2.19 CQI LTE ranks #2",
+          "category": "csi"
         }
       ],
       "start": {
@@ -166,7 +177,8 @@
           "type": "int",
           "unit": "index",
           "agg": null,
-          "proof": "NFF 2.19 CQI LTE subbands #1"
+          "proof": "NFF 2.19 CQI LTE subbands #1",
+          "category": "csi"
         },
         {
           "code": "cqi.cw0_subband",
@@ -178,7 +190,8 @@
             0,
             15
           ],
-          "proof": "NFF 2.19 CQI LTE subbands #2"
+          "proof": "NFF 2.19 CQI LTE subbands #2",
+          "category": "csi"
         },
         {
           "code": "cqi.cw1_subband",
@@ -190,7 +203,8 @@
             0,
             15
           ],
-          "proof": "NFF 2.19 CQI LTE subbands #3"
+          "proof": "NFF 2.19 CQI LTE subbands #3",
+          "category": "csi"
         }
       ],
       "start": "previous_end",

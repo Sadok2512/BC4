@@ -19,7 +19,8 @@
       "proof": "NFF 2.19 RACHI Parameters #1",
       "agg": null,
       "metric": false,
-      "col": 4
+      "col": 4,
+      "category": "signalling_states"
     },
     {
       "code": "rachi.rach_type",
@@ -29,7 +30,8 @@
       "proof": "NFF 2.19 RACHI Parameters for LTE #1",
       "agg": null,
       "metric": false,
-      "col": 5
+      "col": 5,
+      "category": "signalling_states"
     },
     {
       "code": "rachi.rach_reason",
@@ -39,7 +41,8 @@
       "proof": "NFF 2.19 RACHI Parameters for LTE #2",
       "agg": null,
       "metric": false,
-      "col": 6
+      "col": 6,
+      "category": "signalling_states"
     },
     {
       "code": "rachi.rach_result",
@@ -49,7 +52,8 @@
       "proof": "NFF 2.19 RACHI Parameters for LTE #3",
       "agg": null,
       "metric": false,
-      "col": 7
+      "col": 7,
+      "category": "signalling_states"
     },
     {
       "code": "rachi.max_preambles",
@@ -63,7 +67,8 @@
         3,
         200
       ],
-      "col": 8
+      "col": 8,
+      "category": "signalling_states"
     },
     {
       "code": "rachi.preambles",
@@ -73,7 +78,8 @@
       "proof": "NFF 2.19 RACHI Parameters for LTE #5",
       "agg": null,
       "metric": false,
-      "col": 9
+      "col": 9,
+      "category": "signalling_states"
     },
     {
       "code": "rachi.preambles_failures",
@@ -83,7 +89,8 @@
       "proof": "NFF 2.19 RACHI Parameters for LTE #6",
       "agg": null,
       "metric": false,
-      "col": 10
+      "col": 10,
+      "category": "signalling_states"
     },
     {
       "code": "rachi.preambles_successes",
@@ -93,7 +100,8 @@
       "proof": "NFF 2.19 RACHI Parameters for LTE #7",
       "agg": null,
       "metric": false,
-      "col": 11
+      "col": 11,
+      "category": "signalling_states"
     },
     {
       "code": "rachi.rach_cont_failures",
@@ -103,7 +111,8 @@
       "proof": "NFF 2.19 RACHI Parameters for LTE #8",
       "agg": null,
       "metric": false,
-      "col": 12
+      "col": 12,
+      "category": "signalling_states"
     },
     {
       "code": "rachi.pathloss",
@@ -117,7 +126,8 @@
         0,
         170
       ],
-      "col": 13
+      "col": 13,
+      "category": "signalling_states"
     },
     {
       "code": "rachi.init_tx_power",
@@ -127,7 +137,8 @@
       "proof": "NFF 2.19 RACHI Parameters for LTE #10",
       "agg": null,
       "metric": false,
-      "col": 14
+      "col": 14,
+      "category": "signalling_states"
     },
     {
       "code": "rachi.preamble_step",
@@ -141,7 +152,8 @@
         0,
         6
       ],
-      "col": 15
+      "col": 15,
+      "category": "signalling_states"
     },
     {
       "code": "rachi.pusch_power",
@@ -151,7 +163,8 @@
       "proof": "NFF 2.19 RACHI Parameters for LTE #12",
       "agg": null,
       "metric": false,
-      "col": 16
+      "col": 16,
+      "category": "signalling_states"
     },
     {
       "code": "rachi.rach_preamble_index",
@@ -165,7 +178,8 @@
         0,
         63
       ],
-      "col": 17
+      "col": 17,
+      "category": "signalling_states"
     },
     {
       "code": "rachi.access_delay",
@@ -175,7 +189,8 @@
       "proof": "NFF 2.19 RACHI Parameters for LTE #14",
       "agg": null,
       "metric": false,
-      "col": 18
+      "col": 18,
+      "category": "signalling_states"
     }
   ],
   "marker": true

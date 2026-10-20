@@ -19,7 +19,8 @@
       "proof": "NFF 2.19 DREQ Parameters #1",
       "agg": null,
       "metric": false,
-      "col": 4
+      "col": 4,
+      "category": "services"
     },
     {
       "code": "dreq.transf_dir",
@@ -29,7 +30,8 @@
       "proof": "NFF 2.19 DREQ Parameters #2",
       "agg": null,
       "metric": false,
-      "col": 5
+      "col": 5,
+      "category": "services"
     }
   ]
 }

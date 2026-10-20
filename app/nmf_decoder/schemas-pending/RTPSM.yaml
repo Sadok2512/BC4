@@ -19,7 +19,8 @@
       "proof": "NFF 2.19 RTPSM Parameters #1",
       "agg": null,
       "metric": false,
-      "col": 4
+      "col": 4,
+      "category": "session"
     },
     {
       "code": "rtpsm.direction",
@@ -29,7 +30,8 @@
       "proof": "NFF 2.19 RTPSM Parameters #2",
       "agg": null,
       "metric": false,
-      "col": 5
+      "col": 5,
+      "category": "session"
     },
     {
       "code": "rtpsm.rtp_message",
@@ -39,7 +41,8 @@
       "proof": "NFF 2.19 RTPSM Parameters #3",
       "agg": null,
       "metric": false,
-      "col": 6
+      "col": 6,
+      "category": "session"
     },
     {
       "code": "rtpsm.rtp_msg_nr",
@@ -53,7 +56,8 @@
         0,
         65535
       ],
-      "col": 7
+      "col": 7,
+      "category": "session"
     },
     {
       "code": "rtpsm.rtp_data",
@@ -63,7 +67,8 @@
       "proof": "NFF 2.19 RTPSM Parameters #5",
       "agg": null,
       "metric": false,
-      "col": 8
+      "col": 8,
+      "category": "session"
     }
   ]
 }

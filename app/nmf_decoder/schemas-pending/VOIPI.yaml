@@ -19,7 +19,8 @@
       "proof": "NFF 2.19 VOIPI Parameters #1",
       "agg": null,
       "metric": false,
-      "col": 4
+      "col": 4,
+      "category": "voice"
     },
     {
       "code": "voipi.params",
@@ -29,7 +30,8 @@
       "proof": "NFF 2.19 VOIPI Parameters #2",
       "agg": null,
       "metric": false,
-      "col": 5
+      "col": 5,
+      "category": "voice"
     }
   ],
   "marker": true

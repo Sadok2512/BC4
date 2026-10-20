@@ -19,7 +19,8 @@
       "proof": "NFF 2.19 MEI Parameters #1",
       "agg": null,
       "metric": false,
-      "col": 4
+      "col": 4,
+      "category": "signalling_states"
     },
     {
       "code": "mei.measurement_event",
@@ -29,7 +30,8 @@
       "proof": "NFF 2.19 MEI Parameters for LTE #1",
       "agg": null,
       "metric": false,
-      "col": 5
+      "col": 5,
+      "category": "signalling_states"
     },
     {
       "code": "mei.measurement_id",
@@ -43,7 +45,8 @@
         1,
         32
       ],
-      "col": 6
+      "col": 6,
+      "category": "signalling_states"
     }
   ],
   "marker": true
