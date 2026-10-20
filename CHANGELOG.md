@@ -1,3 +1,8 @@
+## 0.59.2 (patch) — BC4 2026-10-20 — Comptage dédié des catégories (Agent BC1)
+
+- La liste des modèles utilise les mêmes chemins éligibles et règles de classement pour compter les catégories, sans reconstruire les feuilles et références de captures de l’arbre.
+- Égalité complète des réponses vérifiée sur TEST2 et Test_3. Aucun changement de catalogue, populations ou données sources.
+
 ## 0.59.1 (patch) — BC4 2026-10-20 — Chargement des catégories RRC (Agent BC1)
 
 - Préagrège la population du projet avant les correspondances des modèles : normalisation ASN.1 calculée une fois par occurrence, totaux et groupes conservés.
