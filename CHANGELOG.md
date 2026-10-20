@@ -1,3 +1,8 @@
+## 0.59.3 (patch) — BC4 2026-10-20 — Catégories RRC sans attente des compteurs (Agent BC1)
+
+- GET /dict/v2/templates?include_counts=false lit uniquement la configuration ; compteurs explicitement null tant qu’ils ne sont pas calculés. Le mode par défaut et ses compteurs restent inchangés.
+- Aucun scan des occurrences pour cette réponse légère ; tests du contrat et de la requête unique.
+
 ## 0.59.2 (patch) — BC4 2026-10-20 — Comptage dédié des catégories (Agent BC1)
 
 - La liste des modèles utilise les mêmes chemins éligibles et règles de classement pour compter les catégories, sans reconstruire les feuilles et références de captures de l’arbre.
