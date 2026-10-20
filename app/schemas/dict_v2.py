@@ -173,6 +173,7 @@ class DistributionBlock(BaseModel):
     n_total:        int
     distinct_values: int
     values:         list[DistributionValue]
+    group_totals:   list[DistributionValueGroup] = Field(default_factory=list, description="Counts of all admissible occurrences per grouping dimensions, for this parameter and server filters; independent of displayed values, including null values. Empty means unavailable.")
     comparability:  str
     verdict:        Literal["IDENTIQUE", "DIFFERENT", "NON_COMPARE"]
     result_id:      str

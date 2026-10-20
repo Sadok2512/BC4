@@ -315,6 +315,7 @@ def build_distribution(
         #     stg_event_id → mp.ecgi (strict).
         by_value: dict[str, list[dict[str, Any]]] = {}
         coverage: dict[str, Any] | None = None
+        group_totals: dict[tuple, dict[str, Any]] = {}
 
         if is_cell_ref_dim:
             dim_rows, cov = param_occurrence_dim_counts(
@@ -344,7 +345,8 @@ def build_distribution(
                     geo_cte + f"""
                     SELECT COALESCE(value_converted, value) AS v,
                            {sel},
-                           COUNT(*) AS n
+                           COUNT(*) AS n,
+                           SUM(COUNT(*)) OVER (PARTITION BY {sel}) AS denominator
                     FROM param_occurrence
                     WHERE project_id = :pid AND ({key_predicate}) {geo_predicate}
                     GROUP BY v, {sel}
@@ -355,9 +357,11 @@ def build_distribution(
             ).fetchall()
             for r in rows:
                 v = r[0]
+                dimensions = {c: r[1 + i] for i, c in enumerate(group_cols)}
+                group_totals[tuple(dimensions.values())] = {**dimensions, "n": int(r[-1])}
                 if v is None:
                     continue
-                g = {"n": int(r[-1])}
+                g = {"n": int(r[-2])}
                 for i, c in enumerate(group_cols):
                     g[c] = r[1 + i]
                     if c == "operator":
@@ -392,6 +396,7 @@ def build_distribution(
             "n_total":        int(n_total),
             "distinct_values": int(distinct_vals),
             "values":         values_out,
+            "group_totals":   list(group_totals.values()),
             "comparability":  comparability,
             "verdict":        verdict,
             "result_id":      _result_id(project_id, key, group_by),
