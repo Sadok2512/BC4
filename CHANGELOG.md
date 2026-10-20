@@ -1,3 +1,12 @@
+## 0.65.0 (minor) — BC4 2026-10-20 — Signaling View (Agent BC2)
+
+- Capture-local signaling API: messages, protocol timeline, preceding GPS, radio context, sanitized details and CSV. OpenAPI response models and deterministic result IDs.
+- Migration 0036: explicit RRC setup, handover, call, data, attach, bearer and reestablishment procedure state machines; sequence ordering, incomplete attempts and NULL durations preserved.
+- BC1 decoded parameters reused without changing ASN.1 decoder. NAS payload never exposed; hex withheld on sensitive content or uncertified decoding. No RNTI or subscriber identity fields.
+- Context uses the immediately preceding event per source in the same capture, including NULL measurements and seq_gap. GPS velocity: NFF 2.19 GPS Parameters #7, column 10, km/h; does not reuse the legacy speed_mps column mapping.
+- Open gaps: F4 RRC Setup Time not implemented upstream; no BC1 per-message tree route (adapter over sanitized param_occurrence); no declared indoor capture in TEST2; state-event technology not inferred from the legacy header-as-system mapping.
+- Manual guards and live evidence: scripts/_guard_G18_procedures.py and /home/devmat/BC4/signaling-audit/.
+
 ## 0.64.1 (patch) — BC4 2026-10-20 — /metrics/{code}/aggregate : unité correcte Mbit/s (Agent BC2)
 
 - Correction : `app.kpi.nmf.stats` interrogeait `source_sql(code)` brut (valeurs bit/s pour les débits) alors que le catalogue `metric_catalog` applique une conversion `/1e6` pour les débits avant exposition. Le /aggregate route renvoyait donc `p90 = 21 464 436` pour une métrique étiquetée Mbit/s — valeurs 1 000 000× trop grandes.
