@@ -127,7 +127,7 @@ def decode(line,system=None,format_version='unknown',*,capture_id='',seq=0,line_
                 r.partial('context_layout_unsupported');continue
             read(f,f['col']-1,r.values)
         previous_end=None
-        for g in schema['groups']:
+        for g in schema.get('groups', []):
             start=g['start']
             try:
                 if start=='previous_end':idx=previous_end
