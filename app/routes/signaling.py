@@ -19,6 +19,7 @@ class Line(BaseModel):
     seq:int
     t_rel_s:float|None
     protocol:Literal['RRC LTE','RRC NR','NAS','Événements Nemo','MAC-RACH']
+    layer:Literal['rrc_lte','rrc_nr','nas','event','mac']
     technology:str|None
     direction:Literal['UL','DL']|None
     message_name:str
@@ -62,6 +63,7 @@ class Lines(Envelope):
     size:int
     pages:int
     protocol_counts:dict[str,int]
+    layer_counts:dict[str,int]
     procedures:list[Procedure]
     selected_page:int|None=None
 
@@ -81,6 +83,7 @@ class Point(BaseModel):
     lat:float|None
     lng:float|None
     protocol:str
+    layer:Literal['rrc_lte','rrc_nr','nas','event','mac']
     gps_seq:int|None
     seq_gap:int|None
 
@@ -142,9 +145,11 @@ def lines(project_id:str,capture_id:str,page:int=Query(1,ge=1),size:int=Query(10
     selected.sort(key=lambda r:(r[sort] is None,r[sort],r['seq']),reverse=order=='desc')
     selected_page=next((i//size+1 for i,r in enumerate(selected) if r['seq']==seq),None)
     if selected_page:page=selected_page
+    protocol_counts={p:sum(r['protocol']==p for r in rows) for p in svc.PROTOCOLS}
     return dict(**envelope(project_id,capture_id,selected,{**f,'sort':sort,'order':order,'page':page,'size':size}),
       rows=selected[(page-1)*size:page*size],total=len(selected),page=page,size=size,pages=math.ceil(len(selected)/size),
-      protocol_counts={p:sum(r['protocol']==p for r in rows) for p in svc.PROTOCOLS},procedures=procedures,selected_page=selected_page)
+      protocol_counts=protocol_counts,layer_counts={svc.LAYER_FOR_PROTOCOL[p]:c for p,c in protocol_counts.items()},
+      procedures=procedures,selected_page=selected_page)
 
 @router.get('/timeline',response_model=Timeline)
 def timeline(project_id:str,capture_id:str,bucket_s:float=Query(1,gt=0,le=3600),f:dict=Depends(filters),db:Session=Depends(get_db)):

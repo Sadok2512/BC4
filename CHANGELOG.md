@@ -1,3 +1,10 @@
+## 0.67.0 (minor) — BC4-BACK 2026-10-20 — Signaling: dual champ `layer` + `layer_counts` (Agent BC3)
+
+- `app/signaling/service.py` : ajout d'un champ `layer` (slug `rrc_lte|rrc_nr|nas|event|mac`) à chaque ligne et chaque point retournés par `/signaling` et `/signaling/points`. Le champ `protocol` (étiquette française originale) est conservé en parallèle — zéro breaking change pour le front.
+- `app/routes/signaling.py` : `Lines` renvoie désormais `layer_counts` (comptes agrégés par slug) à côté de `protocol_counts`. `Line` et `Point` déclarent `layer: Literal['rrc_lte','rrc_nr','nas','event','mac']`.
+- Alignement avec la spec BC3 section 3 (« layer rrc_lte|rrc_nr|nas|event|mac ») sans migrer les clients existants.
+- `/signaling/message` n'est pas dupliqué : la route shippée par BC1 en 0.66.0 (`app/routes/project_dict_v2.py`) couvre le besoin. L'écart de nommage `message_name|protocol` vs spec `name|layer` est reporté à une réconciliation inter-sessions.
+
 ## 0.66.0 (minor) — BC4-BACK 2026-10-20 — Message décodé pour Signaling View (Agent BC1)
 
 - Ajoute `GET /projects/{project_id}/signaling/message?capture_id=&seq=` sur le routeur authentifié du dictionnaire : arbre des occurrences existantes, valeurs converties et unités préservées, catégorie par chemin, texte indenté, métadonnées et taille du payload. Aucun populate ni écriture de données.

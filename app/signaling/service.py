@@ -14,6 +14,9 @@ from app.dict.decode import DENY, resolve_pdu
 from .procedures import reconstruct
 
 PROTOCOLS = ('RRC LTE', 'RRC NR', 'NAS', 'Événements Nemo', 'MAC-RACH')
+# 0.67.0 — layer slugs added alongside the human protocol labels (dual field).
+LAYERS = ('rrc_lte', 'rrc_nr', 'nas', 'event', 'mac')
+LAYER_FOR_PROTOCOL = dict(zip(PROTOCOLS, LAYERS))
 MARKERS = ('RRA','RRC','RRD','HOA','HOS','CAA','CAC','CAD','DAA','DAC','DAD','RACHI','CREL','MEI','PBA','PBC','PBD','GAA','GAC','GAD')
 SENSITIVE = re.compile(r'rnti|guti|tmsi|imsi|imei|msisdn|phone|subscriber|ue.identity|randomValue|dedicated.*nas', re.I)
 PDU_LOCK = Lock()
@@ -58,6 +61,7 @@ def population(db,pid,cap, persist=True):
     rows=query(db,SOURCE_SQL,dict(pid=pid,cap=cap,markers=list(MARKERS)))
     for r in rows:
         r['protocol']=('RRC '+r['technology']) if r['event_code']=='RRCSM' else 'NAS' if r['event_code']=='L3SM' else 'MAC-RACH' if r['event_code']=='RACHI' else 'Événements Nemo'
+        r['layer']=LAYER_FOR_PROTOCOL[r['protocol']]
         r['direction']={'1':'UL','2':'DL'}.get(r['direction'])
         r['t_rel_s']=times.get(r['seq'])
         r['capture_id']=cap
@@ -114,7 +118,7 @@ def gps_points(db,pid,cap,rows,meta):
     points=[]
     for r in rows:
         g=previous(gps,r['seq'])
-        points.append(dict(seq=r['seq'],t_rel_s=r['t_rel_s'],protocol=r['protocol'],lat=g['lat'] if g else None,lng=g['lng'] if g else None,
+        points.append(dict(seq=r['seq'],t_rel_s=r['t_rel_s'],protocol=r['protocol'],layer=r['layer'],lat=g['lat'] if g else None,lng=g['lng'] if g else None,
                            gps_seq=g['seq'] if g else None,seq_gap=r['seq']-g['seq'] if g else None))
     return points,indoor
 
