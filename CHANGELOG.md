@@ -1,3 +1,14 @@
+## 0.59.0 (minor) — BC4 2026-10-20 — Moteur générique Metric vs Time (Agent BC2)
+
+- Nouvelle route `GET /projects/{pid}/captures/{cid}/kpi/{code}/time-series` : réponse `(seq, time_s, value)` par capture pour n'importe quelle métrique Nemo documentée du catalogue v2 (BLER, RSRP, RSRQ, SINR, CQI, débits DL/UL MAC/RLC/PDCP/APP, NR SS-RSRP si décodée).
+- Résolution générique : le KPI canonique est résolu via `catalog_v2.resolve` puis mappé vers sa règle `available_check`. Seuls les KPI `kind == nmf_metric` sont servis ; les KPI calculés renvoient `status: UNAVAILABLE` + `reason` explicite — jamais une série temporelle fabriquée.
+- Réutilise strictement `clock()`, `sample()`, `source_sql()`, `metric_catalog()`. Ordre canonique `(capture_id, seq)` préservé ; aucune interpolation, aucune concaténation inter-captures ; `time_s = ts - premier ts valide` conservé.
+- Down-sampling par défaut `max_points=5000` : seq-bucket min/max préservant les extrema par bucket (choix documenté contre LTTB, qui peut masquer un pic unique) ; algorithme déclaré dans `sampling` et compte brut dans `n_total`.
+- Signal `temporal_source` élargi dans `/kpi/catalog` : `nmf_metric.{arg}` si la règle est `nmf_metric` et le KPI `AVAILABLE`. `task_sample.bps` reste prioritaire pour les KPI débit — compat consommateurs existants préservée.
+- Évidence SQL rejouable (`result_id`, `source_view`, `decoder_version`, `schema_version`, `decode_level`, `origin_seq`, `origin_ts`) sur chaque réponse — règle n°2 BC4.
+- Zéro migration DB : les index `0033_kpi_context_index` et `0034_kpi_light_context_index` couvrent déjà `(project_id, capture_id, seq)`.
+- Rebase propre sur 0.58.2 (BC1) : optimisations catalogue KPI de BC1 conservées, aucun chevauchement de code autre que les métadonnées de version.
+
 ## 0.58.2 (patch) — BC4 2026-10-20 — Chargement du catalogue KPI (Agent BC1, autorisé sur KPI)
 
 - Mutualise les contrôles de disponibilité identiques dans une requête.

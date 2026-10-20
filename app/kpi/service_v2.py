@@ -320,6 +320,15 @@ def build_catalog_v2_response(
     from app.routes.tasks import CODES
     temporal_types = set(db.execute(text("SELECT DISTINCT t.task_type FROM task_run t JOIN task_sample s ON s.task_id=t.id WHERE t.project_id=:pid AND s.bps IS NOT NULL"), {"pid": project_id}).scalars())
 
+    # 0.59.0 — Signal "série temporelle disponible" élargi aux métriques NMF
+    # directes. Un KPI dont `available_check.kind == 'nmf_metric'` ET dont le
+    # statut est AVAILABLE peut être affiché via la nouvelle route
+    # ``/projects/{pid}/captures/{cid}/kpi/{code}/time-series`` (moteur
+    # générique Metric vs Time, sans fabriquer d'observations).
+    # Précédence : ``task_sample.bps`` reste prioritaire pour les KPI débit
+    # (compat consommateurs existants) ; les autres KPI reçoivent le
+    # signal ``nmf_metric.{arg}``.
+
     # Groupage Techno → Famille → entries
     tree: list[dict[str, Any]] = []
     for techno in TECHNO_ORDER:
@@ -337,13 +346,20 @@ def build_catalog_v2_response(
             fam_entries_out = []
             for e in fam_entries:
                 st = status_cache[e["code"]]
+                chk = e.get("available_check") or {}
+                if CODES.get(e["code"]) in temporal_types:
+                    temporal_source = "task_sample.bps"
+                elif chk.get("kind") == "nmf_metric" and st.status == "AVAILABLE":
+                    temporal_source = "nmf_metric." + (chk.get("arg") or "")
+                else:
+                    temporal_source = None
                 fam_entries_out.append({
                     "code":          e["code"],
                     "name":          e["name"],
                     "nature":        e["nature"],
                     "unit":          e["unit"],
                     "source":        e["source"],
-                    "temporal_source": "task_sample.bps" if CODES.get(e["code"]) in temporal_types else None,
+                    "temporal_source": temporal_source,
                     "formula":       e["formula"],
                     "service_scope": e.get("service_scope") or [],
                     "aliases":       e.get("aliases") or [],
