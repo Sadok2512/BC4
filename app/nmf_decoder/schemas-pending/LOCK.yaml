@@ -1,0 +1,134 @@
+{
+  "event": "LOCK",
+  "systems": [
+    7
+  ],
+  "system_col": 4,
+  "min_format": "2.19",
+  "schema_version": "1.1.0",
+  "unknown_tail": "keep",
+  "generated_from": "specs/nmf_all_events_lte_fields_2.19.csv",
+  "inactive": true,
+  "inactive_reason": "baseline généré en 1.1.0 ; agg/metric/group raffinements P2",
+  "header": [
+    {
+      "code": "lock.forcings",
+      "label": "#Forcings",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 LOCK Parameters #1",
+      "agg": null,
+      "metric": false,
+      "col": 4
+    },
+    {
+      "code": "lock.lock_type",
+      "label": "Lock type",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 LOCK Parameters #2",
+      "agg": null,
+      "metric": false,
+      "col": 5
+    },
+    {
+      "code": "lock.params",
+      "label": "#Params",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 LOCK Parameters #3",
+      "agg": null,
+      "metric": false,
+      "col": 6
+    },
+    {
+      "code": "lock.locked",
+      "label": "Locked",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 LOCK Parameters #4",
+      "agg": null,
+      "metric": false,
+      "col": 7
+    },
+    {
+      "code": "lock.locked_band",
+      "label": "Locked band",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 LOCK Parameters #5",
+      "agg": null,
+      "metric": false,
+      "col": 8
+    },
+    {
+      "code": "lock.locked_pci",
+      "label": "Locked PCI",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 LOCK Parameters for LTE sector lock #1",
+      "agg": null,
+      "metric": false,
+      "range": [
+        0,
+        503
+      ],
+      "col": 9
+    },
+    {
+      "code": "lock.locked",
+      "label": "Locked",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 LOCK Parameters for LTE sector lock #2",
+      "agg": null,
+      "metric": false,
+      "col": 10
+    },
+    {
+      "code": "lock.locked_band",
+      "label": "Locked band",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 LOCK Parameters for LTE sector lock #3",
+      "agg": null,
+      "metric": false,
+      "col": 11
+    },
+    {
+      "code": "lock.ho_forcing",
+      "label": "HO forcing",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 LOCK Parameters for LTE handover forcing #1",
+      "agg": null,
+      "metric": false,
+      "col": 12
+    },
+    {
+      "code": "lock.ho_forcing",
+      "label": "HO forcing",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 LOCK Parameters for LTE handover forcing #2",
+      "agg": null,
+      "metric": false,
+      "col": 13
+    },
+    {
+      "code": "lock.19_8_2015_ho_forcing",
+      "label": "19/8/2015 HO forcing",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 LOCK Parameters for LTE handover forcing #3",
+      "agg": null,
+      "metric": false,
+      "range": [
+        0,
+        503
+      ],
+      "col": 14
+    }
+  ],
+  "marker": true
+}

@@ -1,0 +1,56 @@
+{
+  "event": "AQI",
+  "systems": [
+    7
+  ],
+  "system_col": 4,
+  "min_format": "2.19",
+  "schema_version": "1.1.0",
+  "unknown_tail": "keep",
+  "generated_from": "specs/nmf_all_events_lte_fields_2.19.csv",
+  "inactive": true,
+  "inactive_reason": "baseline généré en 1.1.0 ; agg/metric/group raffinements P2",
+  "header": [
+    {
+      "code": "aqi.aq_type_dl",
+      "label": "AQ type DL",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 AQI Parameters #1",
+      "agg": null,
+      "metric": false,
+      "col": 4
+    },
+    {
+      "code": "aqi.aq_type",
+      "label": "AQ type",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 AQI Parameters #2",
+      "agg": null,
+      "metric": false,
+      "col": 5
+    },
+    {
+      "code": "aqi.19_8_2015_aq_signal",
+      "label": "19/8/2015 AQ signal",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 AQI Parameters #3",
+      "agg": null,
+      "metric": false,
+      "col": 6
+    },
+    {
+      "code": "aqi.aq_synch",
+      "label": "AQ synch.",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 AQI Parameters #4",
+      "agg": null,
+      "metric": false,
+      "col": 7
+    }
+  ],
+  "marker": true
+}

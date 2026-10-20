@@ -1,0 +1,89 @@
+{
+  "event": "RRCSM",
+  "systems": [
+    7
+  ],
+  "system_col": 4,
+  "min_format": "2.19",
+  "schema_version": "1.1.0",
+  "unknown_tail": "keep",
+  "generated_from": "specs/nmf_all_events_lte_fields_2.19.csv",
+  "inactive": true,
+  "inactive_reason": "baseline généré en 1.1.0 ; agg/metric/group raffinements P2",
+  "header": [
+    {
+      "code": "rrcsm.measured_sys",
+      "label": "Measured sys.",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 RRCSM Parameters #1",
+      "agg": null,
+      "metric": false,
+      "col": 4
+    },
+    {
+      "code": "rrcsm.direction",
+      "label": "Direction",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 RRCSM Parameters for LTE #1",
+      "agg": null,
+      "metric": false,
+      "col": 5
+    },
+    {
+      "code": "rrcsm.rrc_msg",
+      "label": "RRC msg",
+      "type": "str",
+      "unit": null,
+      "proof": "NFF 2.19 RRCSM Parameters for LTE #2",
+      "agg": null,
+      "metric": false,
+      "col": 6
+    },
+    {
+      "code": "rrcsm.subchannel",
+      "label": "Subchannel",
+      "type": "str",
+      "unit": null,
+      "proof": "NFF 2.19 RRCSM Parameters for LTE #3",
+      "agg": null,
+      "metric": false,
+      "col": 7
+    },
+    {
+      "code": "rrcsm.19_8_2015_earfcn",
+      "label": "19/8/2015 EARFCN",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 RRCSM Parameters for LTE #4",
+      "agg": null,
+      "metric": false,
+      "col": 8
+    },
+    {
+      "code": "rrcsm.pci",
+      "label": "PCI",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 RRCSM Parameters for LTE #5",
+      "agg": null,
+      "metric": false,
+      "range": [
+        0,
+        503
+      ],
+      "col": 9
+    },
+    {
+      "code": "rrcsm.rrc_data",
+      "label": "RRC data",
+      "type": "str",
+      "unit": null,
+      "proof": "NFF 2.19 RRCSM Parameters for LTE #6",
+      "agg": null,
+      "metric": false,
+      "col": 10
+    }
+  ]
+}

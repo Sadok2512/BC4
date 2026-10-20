@@ -1,0 +1,36 @@
+{
+  "event": "SEI",
+  "systems": [
+    7
+  ],
+  "system_col": 4,
+  "min_format": "2.19",
+  "schema_version": "1.1.0",
+  "unknown_tail": "keep",
+  "generated_from": "specs/nmf_all_events_lte_fields_2.19.csv",
+  "inactive": true,
+  "inactive_reason": "baseline généré en 1.1.0 ; agg/metric/group raffinements P2",
+  "header": [
+    {
+      "code": "sei.measured_sys",
+      "label": "Measured sys.",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 SEI Parameters #1",
+      "agg": null,
+      "metric": false,
+      "col": 4
+    },
+    {
+      "code": "sei.service_status",
+      "label": "Service status",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 SEI Parameters #2",
+      "agg": null,
+      "metric": false,
+      "col": 5
+    }
+  ],
+  "marker": true
+}

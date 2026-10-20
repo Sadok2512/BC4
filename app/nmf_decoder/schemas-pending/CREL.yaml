@@ -1,0 +1,142 @@
+{
+  "event": "CREL",
+  "systems": [
+    7
+  ],
+  "system_col": 4,
+  "min_format": "2.19",
+  "schema_version": "1.1.0",
+  "unknown_tail": "keep",
+  "generated_from": "specs/nmf_all_events_lte_fields_2.19.csv",
+  "inactive": true,
+  "inactive_reason": "baseline généré en 1.1.0 ; agg/metric/group raffinements P2",
+  "header": [
+    {
+      "code": "crel.header",
+      "label": "#Header",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 CREL Parameters #1",
+      "agg": null,
+      "metric": false,
+      "col": 4
+    },
+    {
+      "code": "crel.crs_time",
+      "label": "CRS time",
+      "type": "int",
+      "unit": "ms",
+      "proof": "NFF 2.19 CREL Parameters #2",
+      "agg": null,
+      "metric": false,
+      "col": 5
+    },
+    {
+      "code": "crel.crs_reason",
+      "label": "CRS reason",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 CREL Parameters #3",
+      "agg": null,
+      "metric": false,
+      "col": 6
+    },
+    {
+      "code": "crel.old_system",
+      "label": "Old system",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 CREL Parameters #4",
+      "agg": null,
+      "metric": false,
+      "col": 7
+    },
+    {
+      "code": "crel.params",
+      "label": "#Params",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 CREL Parameters #5",
+      "agg": null,
+      "metric": false,
+      "col": 8
+    },
+    {
+      "code": "crel.old_tac",
+      "label": "Old TAC",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 CREL Parameters for LTE #1",
+      "agg": null,
+      "metric": false,
+      "range": [
+        0,
+        65535
+      ],
+      "col": 9
+    },
+    {
+      "code": "crel.old_cell_id",
+      "label": "Old Cell ID",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 CREL Parameters for LTE #2",
+      "agg": null,
+      "metric": false,
+      "range": [
+        0,
+        268435455
+      ],
+      "col": 10
+    },
+    {
+      "code": "crel.old_band",
+      "label": "Old band",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 CREL Parameters for LTE #3",
+      "agg": null,
+      "metric": false,
+      "col": 11
+    },
+    {
+      "code": "crel.new_tac",
+      "label": "New TAC",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 CREL Parameters for LTE #1",
+      "agg": null,
+      "metric": false,
+      "range": [
+        0,
+        65535
+      ],
+      "col": 12
+    },
+    {
+      "code": "crel.cell_id",
+      "label": "Cell ID",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 CREL Parameters for LTE #2",
+      "agg": null,
+      "metric": false,
+      "range": [
+        0,
+        268435455
+      ],
+      "col": 13
+    },
+    {
+      "code": "crel.band",
+      "label": "Band",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 CREL Parameters for LTE #3",
+      "agg": null,
+      "metric": false,
+      "col": 14
+    }
+  ],
+  "marker": true
+}

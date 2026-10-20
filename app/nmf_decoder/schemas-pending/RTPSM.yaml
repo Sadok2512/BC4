@@ -1,0 +1,69 @@
+{
+  "event": "RTPSM",
+  "systems": [
+    7
+  ],
+  "system_col": 4,
+  "min_format": "2.19",
+  "schema_version": "1.1.0",
+  "unknown_tail": "keep",
+  "generated_from": "specs/nmf_all_events_lte_fields_2.19.csv",
+  "inactive": true,
+  "inactive_reason": "baseline généré en 1.1.0 ; agg/metric/group raffinements P2",
+  "header": [
+    {
+      "code": "rtpsm.measured_sys",
+      "label": "Measured sys.",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 RTPSM Parameters #1",
+      "agg": null,
+      "metric": false,
+      "col": 4
+    },
+    {
+      "code": "rtpsm.direction",
+      "label": "Direction",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 RTPSM Parameters #2",
+      "agg": null,
+      "metric": false,
+      "col": 5
+    },
+    {
+      "code": "rtpsm.rtp_message",
+      "label": "RTP message",
+      "type": "str",
+      "unit": null,
+      "proof": "NFF 2.19 RTPSM Parameters #3",
+      "agg": null,
+      "metric": false,
+      "col": 6
+    },
+    {
+      "code": "rtpsm.rtp_msg_nr",
+      "label": "RTP msg. nr.",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 RTPSM Parameters #4",
+      "agg": null,
+      "metric": false,
+      "range": [
+        0,
+        65535
+      ],
+      "col": 7
+    },
+    {
+      "code": "rtpsm.rtp_data",
+      "label": "RTP data",
+      "type": "str",
+      "unit": null,
+      "proof": "NFF 2.19 RTPSM Parameters #5",
+      "agg": null,
+      "metric": false,
+      "col": 8
+    }
+  ]
+}

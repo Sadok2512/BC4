@@ -1,0 +1,123 @@
+{
+  "event": "HOA",
+  "systems": [
+    7
+  ],
+  "system_col": 4,
+  "min_format": "2.19",
+  "schema_version": "1.1.0",
+  "unknown_tail": "keep",
+  "generated_from": "specs/nmf_all_events_lte_fields_2.19.csv",
+  "inactive": true,
+  "inactive_reason": "baseline généré en 1.1.0 ; agg/metric/group raffinements P2",
+  "header": [
+    {
+      "code": "hoa.header",
+      "label": "#Header",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 HOA Parameters #1",
+      "agg": null,
+      "metric": false,
+      "col": 4
+    },
+    {
+      "code": "hoa.hoa_type",
+      "label": "HOA type",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 HOA Parameters #2",
+      "agg": null,
+      "metric": false,
+      "col": 5
+    },
+    {
+      "code": "hoa.current_system",
+      "label": "Current system",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 HOA Parameters #3",
+      "agg": null,
+      "metric": false,
+      "col": 6
+    },
+    {
+      "code": "hoa.number_of",
+      "label": "Number of",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 HOA Parameters #4",
+      "agg": null,
+      "metric": false,
+      "col": 7
+    },
+    {
+      "code": "hoa.ch_number",
+      "label": "Ch number",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 HOA Parameters for LTE #1",
+      "agg": null,
+      "metric": false,
+      "col": 8
+    },
+    {
+      "code": "hoa.pci",
+      "label": "PCI",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 HOA Parameters for LTE #2",
+      "agg": null,
+      "metric": false,
+      "range": [
+        0,
+        503
+      ],
+      "col": 9
+    },
+    {
+      "code": "hoa.band",
+      "label": "Band",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 HOA Parameters for LTE #3",
+      "agg": null,
+      "metric": false,
+      "col": 10
+    },
+    {
+      "code": "hoa.att_ch",
+      "label": "Att. ch",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 HOA Parameters for LTE #1",
+      "agg": null,
+      "metric": false,
+      "col": 11
+    },
+    {
+      "code": "hoa.att_pci",
+      "label": "Att. PCI",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 HOA Parameters for LTE #2",
+      "agg": null,
+      "metric": false,
+      "range": [
+        0,
+        503
+      ],
+      "col": 12
+    },
+    {
+      "code": "hoa.att_band",
+      "label": "Att. Band",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 HOA Parameters for LTE #3",
+      "agg": null,
+      "metric": false,
+      "col": 13
+    }
+  ]
+}

@@ -1,0 +1,299 @@
+{
+  "event": "CHI",
+  "systems": [
+    7
+  ],
+  "system_col": 4,
+  "min_format": "2.19",
+  "schema_version": "1.1.0",
+  "unknown_tail": "keep",
+  "generated_from": "specs/nmf_all_events_lte_fields_2.19.csv",
+  "inactive": true,
+  "inactive_reason": "baseline généré en 1.1.0 ; agg/metric/group raffinements P2",
+  "header": [
+    {
+      "code": "chi.serving_sys",
+      "label": "Serving sys.",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 CHI Parameters #1",
+      "agg": null,
+      "metric": false,
+      "col": 4
+    },
+    {
+      "code": "chi.band",
+      "label": "Band",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 CHI Parameters for LTE #1",
+      "agg": null,
+      "metric": false,
+      "col": 5
+    },
+    {
+      "code": "chi.rrc_state",
+      "label": "RRC state",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 CHI Parameters for LTE #2",
+      "agg": null,
+      "metric": false,
+      "col": 6
+    },
+    {
+      "code": "chi.dl_bandwidth",
+      "label": "DL bandwidth",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 CHI Parameters for LTE #3",
+      "agg": null,
+      "metric": false,
+      "col": 7
+    },
+    {
+      "code": "chi.ch",
+      "label": "Ch",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 CHI Parameters for LTE #4",
+      "agg": null,
+      "metric": false,
+      "col": 8
+    },
+    {
+      "code": "chi.pci",
+      "label": "PCI",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 CHI Parameters for LTE #5",
+      "agg": null,
+      "metric": false,
+      "range": [
+        0,
+        503
+      ],
+      "col": 9
+    },
+    {
+      "code": "chi.cell_id",
+      "label": "Cell ID",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 CHI Parameters for LTE #6",
+      "agg": null,
+      "metric": false,
+      "range": [
+        0,
+        268435455
+      ],
+      "col": 10
+    },
+    {
+      "code": "chi.tac",
+      "label": "TAC",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 CHI Parameters for LTE #7",
+      "agg": null,
+      "metric": false,
+      "range": [
+        0,
+        65535
+      ],
+      "col": 11
+    },
+    {
+      "code": "chi.max_tx_power",
+      "label": "Max TX power",
+      "type": "float",
+      "unit": "dBm",
+      "proof": "NFF 2.19 CHI Parameters for LTE #8",
+      "agg": null,
+      "metric": false,
+      "col": 12
+    },
+    {
+      "code": "chi.tm",
+      "label": "TM",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 CHI Parameters for LTE #9",
+      "agg": null,
+      "metric": false,
+      "col": 13
+    },
+    {
+      "code": "chi.antenna_ports",
+      "label": "Antenna ports",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 CHI Parameters for LTE #10",
+      "agg": null,
+      "metric": false,
+      "col": 14
+    },
+    {
+      "code": "chi.ul_dl_config",
+      "label": "UL/DL config",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 CHI Parameters for LTE #11",
+      "agg": null,
+      "metric": false,
+      "col": 15
+    },
+    {
+      "code": "chi.19_8_2015_cp",
+      "label": "19/8/2015 CP",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 CHI Parameters for LTE #12",
+      "agg": null,
+      "metric": false,
+      "col": 16
+    },
+    {
+      "code": "chi.root_sequence",
+      "label": "Root sequence",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 CHI Parameters for LTE #13",
+      "agg": null,
+      "metric": false,
+      "range": [
+        0,
+        837
+      ],
+      "col": 17
+    },
+    {
+      "code": "chi.c_rnti",
+      "label": "C­RNTI",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 CHI Parameters for LTE #14",
+      "agg": null,
+      "metric": false,
+      "col": 18
+    },
+    {
+      "code": "chi.scells",
+      "label": "#SCells",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 CHI Parameters for LTE #15",
+      "agg": null,
+      "metric": false,
+      "range": [
+        0,
+        1
+      ],
+      "col": 19
+    },
+    {
+      "code": "chi.params_scell",
+      "label": "#Params/SCell",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 CHI Parameters for LTE #16",
+      "agg": null,
+      "metric": false,
+      "col": 20
+    },
+    {
+      "code": "chi.cell_type",
+      "label": "Cell type",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 CHI Parameters for LTE #17",
+      "agg": null,
+      "metric": false,
+      "col": 21
+    },
+    {
+      "code": "chi.band",
+      "label": "Band",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 CHI Parameters for LTE #18",
+      "agg": null,
+      "metric": false,
+      "col": 22
+    },
+    {
+      "code": "chi.bandwidth",
+      "label": "Bandwidth",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 CHI Parameters for LTE #19",
+      "agg": null,
+      "metric": false,
+      "col": 23
+    },
+    {
+      "code": "chi.channel",
+      "label": "Channel",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 CHI Parameters for LTE #20",
+      "agg": null,
+      "metric": false,
+      "col": 24
+    },
+    {
+      "code": "chi.pci",
+      "label": "PCI",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 CHI Parameters for LTE #21",
+      "agg": null,
+      "metric": false,
+      "range": [
+        0,
+        503
+      ],
+      "col": 25
+    },
+    {
+      "code": "chi.tm",
+      "label": "TM",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 CHI Parameters for LTE #22",
+      "agg": null,
+      "metric": false,
+      "col": 26
+    },
+    {
+      "code": "chi.antenna_ports",
+      "label": "Antenna ports",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 CHI Parameters for LTE #23",
+      "agg": null,
+      "metric": false,
+      "col": 27
+    },
+    {
+      "code": "chi.ul_dl_config",
+      "label": "UL/DL config",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 CHI Parameters for LTE #24",
+      "agg": null,
+      "metric": false,
+      "col": 28
+    },
+    {
+      "code": "chi.cp",
+      "label": "CP",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 CHI Parameters for LTE #25",
+      "agg": null,
+      "metric": false,
+      "col": 29
+    }
+  ]
+}

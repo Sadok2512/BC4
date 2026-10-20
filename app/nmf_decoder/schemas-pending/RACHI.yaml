@@ -1,0 +1,182 @@
+{
+  "event": "RACHI",
+  "systems": [
+    7
+  ],
+  "system_col": 4,
+  "min_format": "2.19",
+  "schema_version": "1.1.0",
+  "unknown_tail": "keep",
+  "generated_from": "specs/nmf_all_events_lte_fields_2.19.csv",
+  "inactive": true,
+  "inactive_reason": "baseline généré en 1.1.0 ; agg/metric/group raffinements P2",
+  "header": [
+    {
+      "code": "rachi.measured_sys",
+      "label": "Measured sys.",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 RACHI Parameters #1",
+      "agg": null,
+      "metric": false,
+      "col": 4
+    },
+    {
+      "code": "rachi.rach_type",
+      "label": "RACH type",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 RACHI Parameters for LTE #1",
+      "agg": null,
+      "metric": false,
+      "col": 5
+    },
+    {
+      "code": "rachi.rach_reason",
+      "label": "RACH reason",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 RACHI Parameters for LTE #2",
+      "agg": null,
+      "metric": false,
+      "col": 6
+    },
+    {
+      "code": "rachi.rach_result",
+      "label": "RACH result",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 RACHI Parameters for LTE #3",
+      "agg": null,
+      "metric": false,
+      "col": 7
+    },
+    {
+      "code": "rachi.max_preambles",
+      "label": "Max preambles",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 RACHI Parameters for LTE #4",
+      "agg": null,
+      "metric": false,
+      "range": [
+        3,
+        200
+      ],
+      "col": 8
+    },
+    {
+      "code": "rachi.preambles",
+      "label": "Preambles",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 RACHI Parameters for LTE #5",
+      "agg": null,
+      "metric": false,
+      "col": 9
+    },
+    {
+      "code": "rachi.preambles_failures",
+      "label": "Preambles failures",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 RACHI Parameters for LTE #6",
+      "agg": null,
+      "metric": false,
+      "col": 10
+    },
+    {
+      "code": "rachi.preambles_successes",
+      "label": "Preambles successes",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 RACHI Parameters for LTE #7",
+      "agg": null,
+      "metric": false,
+      "col": 11
+    },
+    {
+      "code": "rachi.rach_cont_failures",
+      "label": "RACH cont. failures",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 RACHI Parameters for LTE #8",
+      "agg": null,
+      "metric": false,
+      "col": 12
+    },
+    {
+      "code": "rachi.pathloss",
+      "label": "Pathloss",
+      "type": "float",
+      "unit": "dB",
+      "proof": "NFF 2.19 RACHI Parameters for LTE #9",
+      "agg": null,
+      "metric": false,
+      "range": [
+        0,
+        170
+      ],
+      "col": 13
+    },
+    {
+      "code": "rachi.init_tx_power",
+      "label": "Init TX power",
+      "type": "float",
+      "unit": "dBm",
+      "proof": "NFF 2.19 RACHI Parameters for LTE #10",
+      "agg": null,
+      "metric": false,
+      "col": 14
+    },
+    {
+      "code": "rachi.preamble_step",
+      "label": "Preamble step",
+      "type": "float",
+      "unit": "dB",
+      "proof": "NFF 2.19 RACHI Parameters for LTE #11",
+      "agg": null,
+      "metric": false,
+      "range": [
+        0,
+        6
+      ],
+      "col": 15
+    },
+    {
+      "code": "rachi.pusch_power",
+      "label": "PUSCH power",
+      "type": "float",
+      "unit": "dBm",
+      "proof": "NFF 2.19 RACHI Parameters for LTE #12",
+      "agg": null,
+      "metric": false,
+      "col": 16
+    },
+    {
+      "code": "rachi.rach_preamble_index",
+      "label": "RACH preamble index",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 RACHI Parameters for LTE #13",
+      "agg": null,
+      "metric": false,
+      "range": [
+        0,
+        63
+      ],
+      "col": 17
+    },
+    {
+      "code": "rachi.access_delay",
+      "label": "Access delay",
+      "type": "int",
+      "unit": "ms",
+      "proof": "NFF 2.19 RACHI Parameters for LTE #14",
+      "agg": null,
+      "metric": false,
+      "col": 18
+    }
+  ],
+  "marker": true
+}

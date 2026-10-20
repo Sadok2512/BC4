@@ -1,0 +1,40 @@
+{
+  "event": "MARK",
+  "systems": [
+    7
+  ],
+  "system_col": 4,
+  "min_format": "2.19",
+  "schema_version": "1.1.0",
+  "unknown_tail": "keep",
+  "generated_from": "specs/nmf_all_events_lte_fields_2.19.csv",
+  "inactive": true,
+  "inactive_reason": "baseline généré en 1.1.0 ; agg/metric/group raffinements P2",
+  "header": [
+    {
+      "code": "mark.marker_seq",
+      "label": "Marker seq.#",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 MARK Parameters #1",
+      "agg": null,
+      "metric": false,
+      "col": 4
+    },
+    {
+      "code": "mark.marker",
+      "label": "Marker#",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 MARK Parameters #2",
+      "agg": null,
+      "metric": false,
+      "range": [
+        0,
+        9
+      ],
+      "col": 5
+    }
+  ],
+  "marker": true
+}

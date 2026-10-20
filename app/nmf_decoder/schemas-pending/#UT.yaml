@@ -1,0 +1,35 @@
+{
+  "event": "#UT",
+  "systems": [
+    7
+  ],
+  "system_col": 4,
+  "min_format": "2.19",
+  "schema_version": "1.1.0",
+  "unknown_tail": "keep",
+  "generated_from": "specs/nmf_all_events_lte_fields_2.19.csv",
+  "inactive": true,
+  "inactive_reason": "baseline généré en 1.1.0 ; agg/metric/group raffinements P2",
+  "header": [
+    {
+      "code": "ut.utc_to_local",
+      "label": "UTC to local",
+      "type": "int",
+      "unit": "minute",
+      "proof": "NFF 2.19 #UT Parameters #1",
+      "agg": null,
+      "metric": false,
+      "col": 4
+    },
+    {
+      "code": "ut.utc_to_timestamp",
+      "label": "UTC to timestamp",
+      "type": "int",
+      "unit": "minute",
+      "proof": "NFF 2.19 #UT Parameters #2",
+      "agg": null,
+      "metric": false,
+      "col": 5
+    }
+  ]
+}

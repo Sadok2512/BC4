@@ -1,0 +1,55 @@
+{
+  "event": "PAD",
+  "systems": [
+    7
+  ],
+  "system_col": 4,
+  "min_format": "2.19",
+  "schema_version": "1.1.0",
+  "unknown_tail": "keep",
+  "generated_from": "specs/nmf_all_events_lte_fields_2.19.csv",
+  "inactive": true,
+  "inactive_reason": "baseline généré en 1.1.0 ; agg/metric/group raffinements P2",
+  "header": [
+    {
+      "code": "pad.measured_sys",
+      "label": "Measured sys.",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 PAD Parameters #1",
+      "agg": null,
+      "metric": false,
+      "col": 4
+    },
+    {
+      "code": "pad.deact_status",
+      "label": "Deact. status",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 PAD Parameters #2",
+      "agg": null,
+      "metric": false,
+      "col": 5
+    },
+    {
+      "code": "pad.deact_cause",
+      "label": "Deact. cause",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 PAD Parameters #3",
+      "agg": null,
+      "metric": false,
+      "col": 6
+    },
+    {
+      "code": "pad.19_8_2015_deact_time",
+      "label": "19/8/2015 Deact. time",
+      "type": "int",
+      "unit": "ms",
+      "proof": "NFF 2.19 PAD Parameters #4",
+      "agg": null,
+      "metric": false,
+      "col": 7
+    }
+  ]
+}

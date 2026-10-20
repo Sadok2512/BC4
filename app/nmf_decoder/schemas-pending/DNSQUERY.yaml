@@ -1,0 +1,85 @@
+{
+  "event": "DNSQUERY",
+  "systems": [
+    7
+  ],
+  "system_col": 4,
+  "min_format": "2.19",
+  "schema_version": "1.1.0",
+  "unknown_tail": "keep",
+  "generated_from": "specs/nmf_all_events_lte_fields_2.19.csv",
+  "inactive": true,
+  "inactive_reason": "baseline généré en 1.1.0 ; agg/metric/group raffinements P2",
+  "header": [
+    {
+      "code": "dnsquery.dns_query",
+      "label": "DNS query",
+      "type": "str",
+      "unit": null,
+      "proof": "NFF 2.19 DNSQUERY Parameters #1",
+      "agg": null,
+      "metric": false,
+      "col": 4
+    },
+    {
+      "code": "dnsquery.dns_query",
+      "label": "DNS query",
+      "type": "int",
+      "unit": "ms",
+      "proof": "NFF 2.19 DNSQUERY Parameters #2",
+      "agg": null,
+      "metric": false,
+      "col": 5
+    },
+    {
+      "code": "dnsquery.dns_query_result",
+      "label": "DNS query result",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 DNSQUERY Parameters #3",
+      "agg": null,
+      "metric": false,
+      "col": 6
+    },
+    {
+      "code": "dnsquery.results",
+      "label": "#Results",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 DNSQUERY Parameters #4",
+      "agg": null,
+      "metric": false,
+      "col": 7
+    },
+    {
+      "code": "dnsquery.params_result",
+      "label": "#Params/result",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 DNSQUERY Parameters #5",
+      "agg": null,
+      "metric": false,
+      "col": 8
+    },
+    {
+      "code": "dnsquery.dns_address",
+      "label": "DNS address",
+      "type": "str",
+      "unit": null,
+      "proof": "NFF 2.19 DNSQUERY Parameters #6",
+      "agg": null,
+      "metric": false,
+      "col": 9
+    },
+    {
+      "code": "dnsquery.dns_cache",
+      "label": "DNS cache",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 DNSQUERY Parameters #7",
+      "agg": null,
+      "metric": false,
+      "col": 10
+    }
+  ]
+}

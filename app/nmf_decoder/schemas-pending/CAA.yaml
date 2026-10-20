@@ -1,0 +1,85 @@
+{
+  "event": "CAA",
+  "systems": [
+    7
+  ],
+  "system_col": 4,
+  "min_format": "2.19",
+  "schema_version": "1.1.0",
+  "unknown_tail": "keep",
+  "generated_from": "specs/nmf_all_events_lte_fields_2.19.csv",
+  "inactive": true,
+  "inactive_reason": "baseline généré en 1.1.0 ; agg/metric/group raffinements P2",
+  "header": [
+    {
+      "code": "caa.measured_sys",
+      "label": "Measured sys.",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 CAA Parameters #1",
+      "agg": null,
+      "metric": false,
+      "col": 4
+    },
+    {
+      "code": "caa.call_type",
+      "label": "Call type",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 CAA Parameters #2",
+      "agg": null,
+      "metric": false,
+      "col": 5
+    },
+    {
+      "code": "caa.call_direction",
+      "label": "Call direction",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 CAA Parameters #3",
+      "agg": null,
+      "metric": false,
+      "col": 6
+    },
+    {
+      "code": "caa.phone_number",
+      "label": "Phone number",
+      "type": "str",
+      "unit": null,
+      "proof": "NFF 2.19 CAA Parameters #4",
+      "agg": null,
+      "metric": false,
+      "col": 7
+    },
+    {
+      "code": "caa.own_phone_number",
+      "label": "Own phone number",
+      "type": "str",
+      "unit": null,
+      "proof": "NFF 2.19 CAA Parameters #5",
+      "agg": null,
+      "metric": false,
+      "col": 8
+    },
+    {
+      "code": "caa.call_timeout",
+      "label": "Call timeout",
+      "type": "int",
+      "unit": "ms",
+      "proof": "NFF 2.19 CAA Parameters #6",
+      "agg": null,
+      "metric": false,
+      "col": 9
+    },
+    {
+      "code": "caa.unique_id",
+      "label": "Unique ID",
+      "type": "str",
+      "unit": null,
+      "proof": "NFF 2.19 CAA Parameters #7",
+      "agg": null,
+      "metric": false,
+      "col": 10
+    }
+  ]
+}
