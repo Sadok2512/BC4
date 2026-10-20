@@ -1,5 +1,5 @@
 {
-  "catalog_version": "2.0.0-bc2-nmf-2026-10-20",
+  "catalog_version": "2.0.0-bc2-nmf-2026-10-20-bc2-f4-events-2026-10-20",
   "source_xlsx": "BC4_Catalogue_KPI_LTE_NR_ENDC_Agreges.xlsx",
   "source_xlsx_sha256": "6869c001c1b61009fe4570241775d3ede9df78320a142c096eb8a0a6b347833d",
   "generated_from": "scripts/import_kpi_catalog_v2.py",
@@ -705,8 +705,11 @@
       "source": "(compteurs frères — contrat non certifié)",
       "unit": "%",
       "available_check": {
-        "kind": "always_unvalidated",
-        "reason": "le contrat tentative/réussite/échec n'est pas certifié par le décodeur 2.0.0 ; un taux n'est pas calculé tant que ses frères ne sont pas prouvés."
+        "kind": "events_present",
+        "arg": [
+          "CAC",
+          "CAD"
+        ]
       },
       "service_scope": [
         "VOICE"
@@ -1259,8 +1262,11 @@
       "source": "(compteurs frères — contrat non certifié)",
       "unit": "%",
       "available_check": {
-        "kind": "always_unvalidated",
-        "reason": "le contrat tentative/réussite/échec n'est pas certifié par le décodeur 2.0.0 ; un taux n'est pas calculé tant que ses frères ne sont pas prouvés."
+        "kind": "events_present",
+        "arg": [
+          "HOA",
+          "HOS"
+        ]
       },
       "service_scope": []
     },
@@ -1275,8 +1281,10 @@
       "source": "(indisponible : event / position non prouvée)",
       "unit": "occurrences",
       "available_check": {
-        "kind": "always_unavailable",
-        "reason": "compteur HO_INTER_SUCCESS non adossé à un event prouvé par le décodeur 2.0.0 (écarts 0.24.0 / 0.33.0 : RACH/E-RAB/DATA_* et HO par type intra/inter/irat sans distinction certifiée)."
+        "kind": "events_present",
+        "arg": [
+          "HOS"
+        ]
       },
       "service_scope": []
     },
@@ -1341,8 +1349,11 @@
       "source": "(compteurs frères — contrat non certifié)",
       "unit": "%",
       "available_check": {
-        "kind": "always_unvalidated",
-        "reason": "le contrat tentative/réussite/échec n'est pas certifié par le décodeur 2.0.0 ; un taux n'est pas calculé tant que ses frères ne sont pas prouvés."
+        "kind": "events_present",
+        "arg": [
+          "HOA",
+          "HOS"
+        ]
       },
       "service_scope": []
     },
@@ -1357,8 +1368,10 @@
       "source": "(indisponible : event / position non prouvée)",
       "unit": "occurrences",
       "available_check": {
-        "kind": "always_unavailable",
-        "reason": "compteur HO_INTRA_SUCCESS non adossé à un event prouvé par le décodeur 2.0.0 (écarts 0.24.0 / 0.33.0 : RACH/E-RAB/DATA_* et HO par type intra/inter/irat sans distinction certifiée)."
+        "kind": "events_present",
+        "arg": [
+          "HOS"
+        ]
       },
       "service_scope": []
     },
@@ -1423,8 +1436,11 @@
       "source": "(compteurs frères — contrat non certifié)",
       "unit": "%",
       "available_check": {
-        "kind": "always_unvalidated",
-        "reason": "le contrat tentative/réussite/échec n'est pas certifié par le décodeur 2.0.0 ; un taux n'est pas calculé tant que ses frères ne sont pas prouvés."
+        "kind": "events_present",
+        "arg": [
+          "HOA",
+          "HOS"
+        ]
       },
       "service_scope": []
     },
@@ -1439,8 +1455,10 @@
       "source": "(indisponible : event / position non prouvée)",
       "unit": "occurrences",
       "available_check": {
-        "kind": "always_unavailable",
-        "reason": "compteur HO_IRAT_SUCCESS non adossé à un event prouvé par le décodeur 2.0.0 (écarts 0.24.0 / 0.33.0 : RACH/E-RAB/DATA_* et HO par type intra/inter/irat sans distinction certifiée)."
+        "kind": "events_present",
+        "arg": [
+          "HOS"
+        ]
       },
       "service_scope": []
     },
@@ -1887,8 +1905,11 @@
       "source": "(indisponible : règle non définie)",
       "unit": null,
       "available_check": {
-        "kind": "always_unavailable",
-        "reason": "métrique mesurée LTE_RRC_SETUP_LATENCY sans mapping prouvé côté décodeur."
+        "kind": "events_present",
+        "arg": [
+          "RRA",
+          "RRC"
+        ]
       },
       "service_scope": []
     },
@@ -1905,8 +1926,12 @@
       "source": "(compteurs frères — contrat non certifié)",
       "unit": "%",
       "available_check": {
-        "kind": "always_unvalidated",
-        "reason": "le contrat tentative/réussite/échec n'est pas certifié par le décodeur 2.0.0 ; un taux n'est pas calculé tant que ses frères ne sont pas prouvés."
+        "kind": "events_present",
+        "arg": [
+          "RRA",
+          "RRC",
+          "RRD"
+        ]
       },
       "service_scope": []
     },
@@ -2167,8 +2192,11 @@
       "source": "(compteurs frères — contrat non certifié)",
       "unit": "%",
       "available_check": {
-        "kind": "always_unvalidated",
-        "reason": "le contrat tentative/réussite/échec n'est pas certifié par le décodeur 2.0.0 ; un taux n'est pas calculé tant que ses frères ne sont pas prouvés."
+        "kind": "events_present",
+        "arg": [
+          "CAA",
+          "CAC"
+        ]
       },
       "service_scope": [
         "VOICE"
@@ -2201,8 +2229,11 @@
       "source": "(compteurs frères — contrat non certifié)",
       "unit": "%",
       "available_check": {
-        "kind": "always_unvalidated",
-        "reason": "le contrat tentative/réussite/échec n'est pas certifié par le décodeur 2.0.0 ; un taux n'est pas calculé tant que ses frères ne sont pas prouvés."
+        "kind": "events_present",
+        "arg": [
+          "CAC",
+          "CAD"
+        ]
       },
       "service_scope": [
         "VOICE"
@@ -2609,8 +2640,11 @@
       "source": "(compteurs frères — contrat non certifié)",
       "unit": "%",
       "available_check": {
-        "kind": "always_unvalidated",
-        "reason": "le contrat tentative/réussite/échec n'est pas certifié par le décodeur 2.0.0 ; un taux n'est pas calculé tant que ses frères ne sont pas prouvés."
+        "kind": "events_present",
+        "arg": [
+          "HOA",
+          "HOS"
+        ]
       },
       "service_scope": []
     },
@@ -2691,8 +2725,11 @@
       "source": "(compteurs frères — contrat non certifié)",
       "unit": "%",
       "available_check": {
-        "kind": "always_unvalidated",
-        "reason": "le contrat tentative/réussite/échec n'est pas certifié par le décodeur 2.0.0 ; un taux n'est pas calculé tant que ses frères ne sont pas prouvés."
+        "kind": "events_present",
+        "arg": [
+          "HOA",
+          "HOS"
+        ]
       },
       "service_scope": []
     },
@@ -2773,8 +2810,11 @@
       "source": "(compteurs frères — contrat non certifié)",
       "unit": "%",
       "available_check": {
-        "kind": "always_unvalidated",
-        "reason": "le contrat tentative/réussite/échec n'est pas certifié par le décodeur 2.0.0 ; un taux n'est pas calculé tant que ses frères ne sont pas prouvés."
+        "kind": "events_present",
+        "arg": [
+          "HOA",
+          "HOS"
+        ]
       },
       "service_scope": []
     },
@@ -3305,8 +3345,11 @@
       "source": "(compteurs frères — contrat non certifié)",
       "unit": "%",
       "available_check": {
-        "kind": "always_unvalidated",
-        "reason": "le contrat tentative/réussite/échec n'est pas certifié par le décodeur 2.0.0 ; un taux n'est pas calculé tant que ses frères ne sont pas prouvés."
+        "kind": "events_present",
+        "arg": [
+          "RRA",
+          "RRC"
+        ]
       },
       "service_scope": []
     },
@@ -3565,13 +3608,17 @@
       "source": "(compteurs frères — contrat non certifié)",
       "unit": "%",
       "available_check": {
-        "kind": "always_unvalidated",
-        "reason": "le contrat tentative/réussite/échec n'est pas certifié par le décodeur 2.0.0 ; un taux n'est pas calculé tant que ses frères ne sont pas prouvés."
+        "kind": "events_present",
+        "arg": [
+          "CAA",
+          "CAC"
+        ]
       },
       "service_scope": [
         "VOICE"
       ]
     }
   ],
-  "patch_notes": "0.61.0 BC2 : bascule des KPI LTE always_unavailable vers nmf_metric quand le décodeur Nemo expose un champ homonyme (voir scripts/patch_kpi_catalog_nmf_metrics.py MAPPINGS). Divergence vis-à-vis du xlsx source — à ré-aligner au prochain ré-import."
+  "patch_notes": "0.61.0 BC2 : bascule des KPI LTE always_unavailable vers nmf_metric quand le décodeur Nemo expose un champ homonyme (voir scripts/patch_kpi_catalog_nmf_metrics.py MAPPINGS). Divergence vis-à-vis du xlsx source — à ré-aligner au prochain ré-import.",
+  "patch_notes_f4": "F1 (0.64.0) : 10 KPI prioritaires F4 convertis vers events_present pour calcul dynamique de disponibilité. Formule et code service_v2 à livrer en F4."
 }

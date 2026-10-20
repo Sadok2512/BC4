@@ -1,3 +1,18 @@
+## 0.64.0 (minor) — BC4 2026-10-20 — Enrichissement contrat KPI/Métriques pour onglets duaux (F1) (Agent BC2)
+
+- `/projects/{p}/kpi/catalog` : chaque KPI porte désormais trois nouveaux champs :
+  - `category` : les 7 catégories BC4 (Accessibilité, Rétention, Mobilité, Débit, Latence, Voix, Couverture & qualité) dérivées de la famille `catalog_v2`. Mapping statique dans `app/kpi/service_v2.py:_FAMILY_TO_BC4_CATEGORY`.
+  - `metric_sources` : liste des codes NMF (ou événements) dont le KPI dérive, remonté depuis `available_check.arg`. Vide pour les règles sans source explicite.
+  - `available` : booléen = `(status == 'AVAILABLE')` — raccourci pour le front, évite la dépendance à la casse.
+- Nouveau `available_check.kind = "events_present"` dans `compute_status_v2` : vérifie la présence d'un ou plusieurs event_codes dans `stg_event_raw` pour le projet.
+  - Présent → `status: PENDING, reason: "calcul non implémenté (F4)"` — grisé « N/D » avec tooltip actif côté front.
+  - Absent → `status: UNAVAILABLE, reason: "événement source absent (<EVENTS>)"`.
+- `scripts/patch_catalog_f4_candidates.py` : convertit 16 KPI prioritaires F4 vers `events_present` (LTE_RRC_SETUP_SR, LTE_HO_INTRA/INTER/IRAT_SR, LTE_VOLTE_CALL_SETUP_SR, LTE_CALL_DROP_SR + homologues NR). Idempotent.
+- `/projects/{p}/metrics` : chaque métrique porte `category` depuis le champ YAML du décodeur (déjà en place P2 — 14 catégories décodeur).
+- **Nouveau endpoint** `GET /projects/{p}/metrics/{code}/aggregate?group_by=none|operator|band|operator_band` : agrégats n / p10 / p50 / p90 d'une métrique Nemo par groupe. Reuse strict `app.kpi.nmf.stats` — même attribution opérateur/bande que les KPI `nmf_metric`, mêmes règles de percentile (observations, jamais moyennes de groupes). Permet l'onglet Métriques d'afficher un histogramme par opérateur sans dupliquer de code côté client.
+- catalog_v2.json : `catalog_version = 2.0.0-bc2-nmf-2026-10-20-bc2-f4-events-2026-10-20` ; divergence xlsx tracée dans `patch_notes_f4`.
+- Contrat additif : les consommateurs existants qui lisent `/kpi/catalog` ignorent les nouveaux champs ; aucun breaking.
+
 ## 0.63.0 (minor) — BC4 2026-10-20 — Promotion décodeur 1.1.0 : 65 YAMLs + 348 colonnes DB (P3) (Agent BC2)
 
 - **DECODER_VERSION 1.0.0 → 1.1.0** dans `app/nmf_decoder/__init__.py`.

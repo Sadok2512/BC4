@@ -69,6 +69,33 @@ class KpiStatusV2:
     reason: str | None
 
 
+# 0.64.0 (F1) — mapping famille catalog_v2 → 7 catégories BC4 de la
+# spec kpi_metrics_tabs.html (Accessibilité, Rétention, Mobilité, Débit,
+# Latence, Voix, Couverture & qualité). Toutes les familles existantes
+# sont couvertes ; une nouvelle famille non mappée tombe par défaut sur
+# son nom brut.
+_FAMILY_TO_BC4_CATEGORY: dict[str, str] = {
+    "Accessibilité":        "Accessibilité",
+    "Bearers":              "Accessibilité",
+    "Rétention":            "Rétention",
+    "Mobilité":             "Mobilité",
+    "DL":                   "Débit",
+    "UL":                   "Débit",
+    "Débit applicatif":     "Débit",
+    "DMS DL":               "Débit",
+    "DMS UL":               "Débit",
+    "Data":                 "Débit",
+    "Latence":              "Latence",
+    "Voix":                 "Voix",
+    "Sessions":             "Voix",
+    "Qualité radio":        "Couverture & qualité",
+    "MIMO":                 "Couverture & qualité",
+    "Carrier Aggregation":  "Couverture & qualité",
+    "Usage":                "Couverture & qualité",
+    "SCG":                  "Couverture & qualité",
+}
+
+
 _MP_COLS = {"rsrp", "rsrq", "sinr", "cqi", "dl", "thrpt_ul", "tx_power",
             "latency", "rssi"}
 
@@ -178,6 +205,32 @@ def compute_status_v2(
         return KpiStatusV2("UNVALIDATED", check.get("reason"))
     if kind == "always_unavailable":
         return KpiStatusV2("UNAVAILABLE", check.get("reason"))
+
+    # 0.64.0 (F1) — KPI dont la formule est connue mais le calcul pas
+    # encore implémenté côté service_v2. On vérifie la présence des
+    # événements sources dans stg_event_raw :
+    #   - si au moins un événement est présent → PENDING "calcul non
+    #     implémenté (F4)" (grisé « N/D » avec tooltip actif)
+    #   - sinon → UNAVAILABLE "événement source absent (<EVENTS>)".
+    if kind == "events_present":
+        codes = check.get("arg") or []
+        if not isinstance(codes, list):
+            codes = [codes]
+        if not codes:
+            return KpiStatusV2("UNAVAILABLE", "available_check.arg vide")
+        row = db.execute(
+            text(
+                "SELECT 1 FROM stg_event_raw WHERE project_id=:pid "
+                "AND event_code = ANY(:codes) LIMIT 1"
+            ),
+            {"pid": project_id, "codes": codes},
+        ).first()
+        if row is not None:
+            return KpiStatusV2("PENDING", "calcul non implémenté (F4)")
+        return KpiStatusV2(
+            "UNAVAILABLE",
+            f"événement source absent ({', '.join(codes)})",
+        )
 
     if kind == "nmf_metric":
         from app.kpi.nmf import available
@@ -353,6 +406,18 @@ def build_catalog_v2_response(
                     temporal_source = "nmf_metric." + (chk.get("arg") or "")
                 else:
                     temporal_source = None
+                # 0.64.0 (F1) — enrichissement contrat pour les 2 onglets :
+                # - category : les 7 catégories BC4 (Accessibilité, Rétention,
+                #   Mobilité, Débit, Latence, Voix, Couverture & qualité)
+                #   dérivées de la famille catalog_v2.
+                # - metric_sources : liste des codes NMF ou événements sources
+                #   dont le KPI dérive. Vide quand le calcul ne cite pas de
+                #   source explicite (always_unvalidated restants).
+                # - available : booléen dérivé du status (évite au front de
+                #   dépendre de la casse exacte "AVAILABLE").
+                src = chk.get("arg") or []
+                if isinstance(src, str):
+                    src = [src]
                 fam_entries_out.append({
                     "code":          e["code"],
                     "name":          e["name"],
@@ -365,6 +430,9 @@ def build_catalog_v2_response(
                     "aliases":       e.get("aliases") or [],
                     "status":        st.status,
                     "reason":        st.reason,
+                    "category":      _FAMILY_TO_BC4_CATEGORY.get(e["family"], e["family"]),
+                    "metric_sources": src,
+                    "available":     st.status == "AVAILABLE",
                 })
             family_blocks.append({"family": fam, "kpis": fam_entries_out})
         tree.append({"techno": techno, "families": family_blocks})

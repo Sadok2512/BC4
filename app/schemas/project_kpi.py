@@ -39,6 +39,10 @@ class KpiCatalogItem(BaseModel):
     aliases: list[str] = Field(default_factory=list)
     status: KpiStatus
     reason: Optional[str] = Field(..., description="raison si status ≠ AVAILABLE, sinon null")
+    # 0.64.0 (F1) — enrichissement contrat pour les 2 onglets KPI/Métriques
+    category: Optional[str] = Field(None, description="7 catégories BC4 (Accessibilité, Rétention, Mobilité, Débit, Latence, Voix, Couverture & qualité)")
+    metric_sources: list[str] = Field(default_factory=list, description="codes NMF ou événements sources dont le KPI dérive")
+    available: bool = Field(False, description="raccourci booléen = (status == 'AVAILABLE')")
 
 
 class KpiCatalogFamily(BaseModel):

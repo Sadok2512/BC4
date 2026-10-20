@@ -28,6 +28,7 @@ class MetricInfo(BaseModel):
     decoder_version: str = "1.0.0"
     event_code: str = ""
     proof_ref: str = ""
+    category: str | None = None  # 0.64.0 (F1) — champ `category` du YAML décodeur
 class CaptureInfo(BaseModel):
     capture_id: str
     label: str
@@ -100,6 +101,118 @@ class EventsResponse(BaseModel):
     markers: list[Marker]
     capture_forcing: CaptureForcing | None = None
 
+class MetricAggregateRow(BaseModel):
+    """Un bucket d'agrégation metric par groupe (operator / band / …).
+    0.64.0 (F1) — ``n`` entier, ``p10/p50/p90`` floats ou null si pas
+    assez de points. Mêmes règles qu'un KPI agrégé."""
+    operator: str | None = None
+    band: str | None = None
+    n: int
+    p10: float | None = None
+    p50: float | None = None
+    p90: float | None = None
+
+
+class MetricAggregateResponse(BaseModel):
+    """0.64.0 (F1) — agrégats d'une métrique Nemo (observations brutes
+    décodées) par groupe. Reprend les règles d'attribution opérateur/
+    bande utilisées par les KPI ``nmf_metric`` : ``app.kpi.nmf.stats``."""
+    model_config = {"extra": "allow"}
+    project_id: str
+    metric_code: str
+    group_by: str
+    unit: str | None
+    tech: Literal['LTE', 'NR', 'BOTH']
+    kind: Literal['numeric', 'categorical']
+    n: int
+    p10: float | None = None
+    p50: float | None = None
+    p90: float | None = None
+    groups: list[MetricAggregateRow] = []
+
+
+_METRIC_GROUP_BYS: tuple[tuple[str, ...], ...] = (
+    (),
+    ("operator",),
+    ("band",),
+    ("operator", "band"),
+)
+
+
+def _group_cols(group_by: str) -> tuple[str, ...]:
+    key = group_by or "none"
+    mapping = {
+        "none":          (),
+        "operator":      ("operator",),
+        "band":          ("band",),
+        "operator_band": ("operator", "band"),
+    }
+    if key not in mapping:
+        raise HTTPException(422, dict(reason='unknown_group_by', allowed=list(mapping)))
+    return mapping[key]
+
+
+@router.get(
+    '/projects/{project_id}/metrics/{code}/aggregate',
+    response_model=MetricAggregateResponse,
+)
+def metric_aggregate(
+    project_id: str,
+    code: str,
+    group_by: Literal['none', 'operator', 'band', 'operator_band'] = 'none',
+    f: dict = Depends(filters),
+    db: Session = Depends(get_db),
+):
+    """Agrégats n / p10 / p50 / p90 d'une métrique Nemo par groupe.
+
+    0.64.0 (F1) — permet au front, dans l'onglet Métriques, d'afficher
+    un histogramme par opérateur / bande sans exposer de nouveau code
+    côté client. Reuse strict de ``app.kpi.nmf.stats`` : même attribution
+    opérateur/bande que les KPI ``nmf_metric``, mêmes filtres contexte,
+    mêmes règles de percentile (sur les observations, jamais sur des
+    moyennes de groupes).
+
+    ``code`` doit être présent dans ``metric_catalog(db)`` ; sinon 422.
+    """
+    project(db, project_id)
+    validate_operators(db, project_id, f)
+    definitions = metric_catalog(db)
+    if code not in definitions:
+        raise HTTPException(422, dict(reason='unknown_metric', code=code))
+    metric = definitions[code]
+    if metric.kind == 'categorical':
+        raise HTTPException(422, dict(reason='categorical_metric_not_aggregated', code=code))
+    group_cols = _group_cols(group_by)
+
+    from app.kpi.nmf import stats
+    operators_filter = f.get('operator') or []
+    total, groups = stats(db, project_id, code, list(group_cols), operators_filter, filters=f)
+
+    def _row(row: dict) -> dict:
+        return {
+            'operator': row.get('operator'),
+            'band':     row.get('band'),
+            'n':        int(row.get('n') or 0),
+            'p10':      row.get('p10'),
+            'p50':      row.get('p50'),
+            'p90':      row.get('p90'),
+        }
+
+    return dict(
+        project_id   = project_id,
+        metric_code  = code,
+        group_by     = group_by,
+        unit         = metric.unit,
+        tech         = metric.tech,
+        kind         = metric.kind,
+        n            = int(total.get('n') or 0),
+        p10          = total.get('p10'),
+        p50          = total.get('p50'),
+        p90          = total.get('p90'),
+        groups       = [_row(r) for r in groups],
+    )
+
+
 @router.get('/projects/{project_id}/metrics', response_model=list[MetricInfo])
 def catalog(project_id: str, db: Session=Depends(get_db)):
     project(db,project_id)
@@ -110,9 +223,16 @@ def catalog(project_id: str, db: Session=Depends(get_db)):
     for code,m in metric_catalog(db).items():
         n=counts.get(m.source_column,0)
         if n:
+            field_def = fields()[m.source_column]
             result.append(dict(code=code,label=m.label,unit=m.unit,source_table=sources[m.source_column][0],source_tables=sources[m.source_column],
                 source_column=m.source_column,tech=m.tech,kind=m.kind,n_in_project=n,
-                event_code=fields()[m.source_column]["event"],proof_ref=fields()[m.source_column]["proof"]))
+                event_code=field_def["event"],proof_ref=field_def["proof"],
+                # 0.64.0 (F1) — remonte la catégorie posée par scripts/apply_categories.py
+                # dans les YAMLs. 14 catégories décodeur (radio_serving, neighbours,
+                # throughput_layers, link_quality, allocation_mcs, csi, mimo_port,
+                # ul_power, voice, services, position, signalling_states, session,
+                # terminal_cell). Jamais inventée.
+                category=field_def.get("category")))
     return result
 
 @router.get('/projects/{project_id}/metrics/captures', response_model=list[CaptureInfo])
