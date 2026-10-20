@@ -3,6 +3,7 @@
 - Mutualise les contrôles de disponibilité identiques dans une requête.
 - Charge ensemble les quatre champs scalaires des tâches depuis les mêmes sources Light/Deep ; reconstruction, formules et ordre inchangés.
 - Cache catalogue borné à 64 entrées par processus et 30 secondes, isolé par projet/services, sans erreurs mises en cache ; calcul partagé entre appels simultanés. Les changements de disponibilité peuvent apparaître avec ce délai maximal côté serveur.
+- Inclut la correction RRC préparée précédemment : la carte résout les clés agrégées dict22 sans dupliquer les occurrences parent/feuille.
 - Vérification comparative complète des catalogues et tâches TEST2/Test_3, et 23 tests ciblés réussis.
 
 ## 0.58.1 (patch) — BC4 2026-10-20 — BLER : requêtes projet sans timeout (Agent BC2)
