@@ -1,3 +1,11 @@
+## 0.66.0 (minor) — BC4-BACK 2026-10-20 — Message décodé pour Signaling View (Agent BC1)
+
+- Ajoute `GET /projects/{project_id}/signaling/message?capture_id=&seq=` sur le routeur authentifié du dictionnaire : arbre des occurrences existantes, valeurs converties et unités préservées, catégorie par chemin, texte indenté, métadonnées et taille du payload. Aucun populate ni écriture de données.
+- Exclut les identifiants de l’arbre et du texte. Le hex nécessite un contrôle du contenu ASN.1 complet sur une copie isolée du PDU et un réencodage identique. Identités, conteneurs opaques, NAS non vérifiable, données malformées et messages Request/SetupComplete/UL-DLInformationTransfer : hex nul avec raison explicite.
+- G18a/G18b et tests de contrat, authentification, portée projet/capture/séquence, confidentialité et absence/ambiguïté. Pas de migration ; aucun moteur KPI ni frontend modifié.
+
+
+
 ## 0.65.3 (patch) — BC4 2026-10-20 — Signaling: allow rrc_connection in signaling_procedure CHECK (Agent BC3)
 
 - Alembic migration `0037_signaling_procedure_rrc_connection` : étend le CHECK `type` de `signaling_procedure` pour inclure `rrc_connection`. Sans cela la nouvelle procédure 0.65.2 déclenchait `CheckViolation signaling_procedure_type_check` au premier INSERT (`svc.population()` persiste systématiquement).

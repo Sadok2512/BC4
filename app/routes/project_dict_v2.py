@@ -22,6 +22,8 @@ from app.dict.service_v2 import (
     build_distribution,
     build_param_sheet,
 )
+from app.dict.signaling_message import decoded_message
+from app.schemas.signaling_message import SignalingMessage
 from app.dict.geo_filters import geographic_options
 from app.models import Project
 from app.schemas.dict_v2 import (
@@ -176,3 +178,15 @@ def dict_templates(project_id: str, include_counts: bool = True, db: Session = D
 def dict_template_summary(project_id: str, category: str, group_by: Literal["operator", "band", "operator_band"] = "operator", keys: str | None = None, db: Session = Depends(get_db)):
     _require_project(db, project_id)
     return summarize(db, project_id, category, group_by, [k for k in keys.split(",") if k] if keys else None)
+
+
+# Kept on the authenticated dictionary router: no shared router registration change.
+@router.get('/{project_id}/signaling/message', response_model=SignalingMessage)
+def signaling_message(
+    project_id: str,
+    capture_id: str = Query(..., min_length=1, max_length=128),
+    seq: int = Query(..., ge=0),
+    db: Session = Depends(get_db),
+) -> SignalingMessage:
+    _require_project(db, project_id)
+    return decoded_message(db, project_id, capture_id, seq)
