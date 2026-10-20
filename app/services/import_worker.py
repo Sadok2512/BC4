@@ -68,6 +68,17 @@ def run_job(db, job):
         populate_param_occurrence(db, project.id, purge=True)
         db.commit()
         run_populate_chain(db, project)
+    finalize_import_report(db, job, project)
+
+
+def finalize_import_report(db, job, project):
+    """Persist the report after enrichment has succeeded; never decode again.
+
+    Recovery callers must first verify the persisted enrichment and acquire
+    the worker lock. An unfinished file must never be marked successful here.
+    """
+    if any(entry['status'] not in ('done', 'error') for entry in job.files):
+        raise ValueError('Cannot finalize an import with unfinished files')
     view = job_view(job)
     report = build_import_report(db, project, view.by_file,
         view.files_total, view.files_done, view.files_error)

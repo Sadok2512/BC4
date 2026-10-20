@@ -149,3 +149,26 @@ def test_missing_measurements_do_not_crash_finalization(monkeypatch):
     assert mapping.rsrp is None and mapping.rsrq is None
     assert mapping.rssi is None and mapping.sinr is None
     assert not any('ambigu: cell0_c8' in line for line in mapping.debug)
+
+
+def test_report_recovery_does_not_decode_or_repopulate(db, monkeypatch):
+    job = queue.enqueue(db, 'p', uploads())
+    job.files = [dict(f, status='done', n_captures=1, n_events=4) for f in job.files]
+    job.status = 'error'
+    job.error_msg = 'TEST idle timeout after population commit'
+    db.commit()
+    calls, summary, dictionary, chain = setup_worker(monkeypatch)
+    worker.finalize_import_report(db, job, db.get(Project, 'p'))
+    assert not calls
+    summary.assert_not_called(); dictionary.assert_not_called(); chain.assert_not_called()
+    assert job.status == 'done' and job.error_msg is None
+    assert job.report['files_done'] == 2
+    assert db.get(Project, 'p').status_ingest == 'ready'
+
+
+def test_report_recovery_rejects_unfinished_files(db, monkeypatch):
+    job = queue.enqueue(db, 'p', uploads())
+    setup_worker(monkeypatch)
+    with pytest.raises(ValueError, match='unfinished'):
+        worker.finalize_import_report(db, job, db.get(Project, 'p'))
+    assert job.status == 'queued' and job.report is None

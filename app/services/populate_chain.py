@@ -159,10 +159,16 @@ def run_populate_chain(db, project):
     from sqlalchemy.orm import Session
     from app.models import Project
     from app.db import engine
+    # Reading an expired ORM attribute starts a transaction in the caller.
+    # Capture the identity and finish that short metadata transaction BEFORE
+    # the independent, potentially long population transaction. Never touch
+    # the expired caller object again until the population commit completes.
+    project_id = project.id
+    db.commit()
     with engine.begin() as connection:
         with Session(bind=connection, join_transaction_mode='create_savepoint') as work:
-            connection.execute(text('SELECT pg_advisory_xact_lock(hashtext(:k))'),{'k':'populate:'+project.id})
-            stored=work.get(Project,project.id)
+            connection.execute(text('SELECT pg_advisory_xact_lock(hashtext(:k))'),{'k':'populate:'+project_id})
+            stored=work.get(Project,project_id)
             report=_run_populate_chain(work,stored)
     db.refresh(project)
     return report

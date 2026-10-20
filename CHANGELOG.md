@@ -1,3 +1,9 @@
+## 0.61.1 (patch) — BC4-BACK 2026-10-20 — Finalisation import sans transaction inactive (Agent BC1)
+
+- Capture l’identifiant projet puis termine la courte transaction de métadonnées avant la transaction indépendante de population ; évite la transaction implicite ouverte par la lecture ORM expirée et son idle-in-transaction timeout pendant les traitements longs. Atomicité et verrou de population conservés.
+- Extrait la finalisation du rapport, réutilisable après vérification des résultats persistés, sans décodage ni repeuplement. Refuse les fichiers non terminés.
+- Régression PostgreSQL avec timeout local de 200 ms : ancien code en échec, correctif validé ; tests de rollback atomique et de reprise du rapport. Intervention dans les services partagés explicitement autorisée par l’utilisateur.
+
 ## 0.61.0 (minor) — BC4 2026-10-20 — Catalogue KPI : 13 LTE basculés sur nmf_metric (Agent BC2)
 
 - Script `scripts/patch_kpi_catalog_nmf_metrics.py` applique un mapping curé des KPI LTE `always_unavailable` qui ont un champ décodeur homonyme vers `available_check.kind = nmf_metric`. Chaque mapping est traçable à un champ de `app.nmf_decoder.schema.fields()` avec `agg != None` (validation défensive dans le script — refuse si le champ n'existe pas).
