@@ -74,13 +74,22 @@ class TimeSeriesPoint(BaseModel):
     time_s: float
     value: float | str
     # 0.60.0 — Enrichissement contextuel joint à partir de ``stg_event_raw``
-    # et ``nmf_file`` sur ``(project_id, capture_id, seq)``. Les trois
-    # champs sont **optionnels** : si la source ne porte pas la colonne
-    # (p.ex. GPS off / indoor capture), la valeur est `null` et le front
+    # et ``nmf_file`` sur ``(project_id, capture_id, seq)``. Les champs
+    # sont **optionnels** : si la source ne porte pas la colonne (p.ex.
+    # GPS off / indoor capture), la valeur est `null` et le front
     # affiche ``—`` sans fabriquer de coordonnée.
     longitude: Optional[float] = None
     latitude: Optional[float] = None
     nmf_file: Optional[str] = None
+    # 0.60.1 — Horodatage absolu de l'observation : ``event_ts`` est la
+    # time-of-day stockée dans ``stg_event_raw.ts`` (format
+    # ``HH:MM:SS.ms``) et ``nmf_file_start`` l'horodatage de début
+    # fichier (``DD.MM.YYYY HH:MM:SS.ms``). Le front combine la partie
+    # DATE de ``nmf_file_start`` avec ``event_ts`` pour afficher
+    # l'horodatage complet. Aucun calcul côté back : on sert les
+    # chaînes brutes de la DB, le front formate (règle n°2 BC4).
+    event_ts: Optional[str] = None
+    nmf_file_start: Optional[str] = None
 
 
 class TimeSeriesSampling(BaseModel):
@@ -267,7 +276,8 @@ def kpi_time_series(
     # affiche ``—`` (règle n°1 — jamais fabriqué).
     metric_sql = (
         "SELECT src.seq AS seq, src.value AS value, "
-        "r.lat AS latitude, r.lon AS longitude, f.filename AS nmf_file "
+        "r.lat AS latitude, r.lon AS longitude, "
+        "f.filename AS nmf_file, r.ts AS event_ts, f.start_at AS nmf_file_start "
         "FROM (" + metric.sql + ") src "
         "LEFT JOIN stg_event_raw r ON r.project_id=:pid AND r.capture_id=src.capture_id AND r.seq=src.seq "
         "LEFT JOIN nmf_file f ON f.id=r.nmf_file_id "
@@ -309,6 +319,8 @@ def kpi_time_series(
             longitude=float(r["longitude"]) if r["longitude"] is not None else None,
             latitude=float(r["latitude"]) if r["latitude"] is not None else None,
             nmf_file=r["nmf_file"],
+            event_ts=r["event_ts"],
+            nmf_file_start=r["nmf_file_start"],
         )
         for r in rows
     ]
@@ -339,7 +351,7 @@ def kpi_time_series(
         f"{source_table} ∪ nmf_event_light"
         if source_table != "nmf_event_light"
         else source_table
-    ) + " LEFT JOIN stg_event_raw(lat,lon) LEFT JOIN nmf_file(filename)"
+    ) + " LEFT JOIN stg_event_raw(lat,lon,ts) LEFT JOIN nmf_file(filename,start_at)"
 
     x_axis, y_axis = _axes(entry, metric.unit)
     return {
@@ -360,6 +372,8 @@ def kpi_time_series(
                 "longitude": p.get("longitude"),
                 "latitude": p.get("latitude"),
                 "nmf_file": p.get("nmf_file"),
+                "event_ts": p.get("event_ts"),
+                "nmf_file_start": p.get("nmf_file_start"),
             }
             for p in out
         ],

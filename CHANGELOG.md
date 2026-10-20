@@ -1,3 +1,9 @@
+## 0.60.1 (patch) — BC4 2026-10-20 — /time-series expose aussi event_ts + nmf_file_start (Agent BC2)
+
+- Chaque point ajoute deux champs optionnels : `event_ts` (= `stg_event_raw.ts`, format `HH:MM:SS.ms`) et `nmf_file_start` (= `nmf_file.start_at`, format `DD.MM.YYYY HH:MM:SS.ms`). Le front compose l'horodatage absolu de l'observation en concaténant la DATE de `nmf_file_start` et l'heure de `event_ts` ; aucun calcul côté back (règle n°2 BC4 : on sert la source brute, pas une interprétation).
+- `evidence.source_view` complété : `LEFT JOIN stg_event_raw(lat,lon,ts) LEFT JOIN nmf_file(filename,start_at)`.
+- Contrat additif, rétrocompat : les consommateurs qui ne lisent pas ces champs ne cassent pas.
+
 ## 0.60.0 (minor) — BC4 2026-10-20 — /time-series enrichi GPS + Fichier NMF (Agent BC2)
 
 - `/projects/{pid}/captures/{cid}/kpi/{code}/time-series` : chaque point expose désormais `longitude: Optional[float]`, `latitude: Optional[float]`, `nmf_file: Optional[str]` en plus de `(seq, time_s, value)`.
