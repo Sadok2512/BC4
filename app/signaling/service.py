@@ -4,6 +4,7 @@ from collections import Counter, defaultdict
 from hashlib import sha256
 import json
 import math
+from decimal import Decimal
 import re
 from threading import Lock
 from sqlalchemy import text
@@ -121,6 +122,7 @@ def gps_points(db,pid,cap,rows,meta):
 
 def context(db,pid,cap,seq):
     from app.nmf_decoder.projection import source_sql
+    times,_,_=clock(db,pid,cap)
     values={}
     for name,code,unit in [('rsrp','cell_rsrp','dBm'),('rsrq','cell_rsrq','dB'),('sinr','ci_rs_snr','dB'),('cqi','cqi_wb_cqi_0','index'),('bler_mac','mac_dl_bler','%'),('band','cell_band','index'),('pci','cell_pci','index')]:
         event={'sinr':'CI','cqi':'CQI','bler_mac':'MACRATE'}.get(name,'CELLMEAS')
@@ -138,6 +140,13 @@ def context(db,pid,cap,seq):
             if math.isfinite(number) and number>=0:speed=number
         except (TypeError,ValueError):pass
     values['speed']=dict(value=speed,unit='km/h',source='GPS NFF 2.19 Parameters #7, col10 / raw c9',seq=gps[0]['seq'] if gps else None,seq_gap=seq-gps[0]['seq'] if gps else None)
+    for metric in values.values():
+        source_time=times.get(metric['seq'])
+        event_time=times.get(seq)
+        metric['time_gap_s']=(float(Decimal(str(event_time))-Decimal(str(source_time)))
+                              if event_time is not None and source_time is not None else None)
+        metric['temporal_relation']=('unavailable' if metric['time_gap_s'] is None else
+                                     'same_timestamp' if metric['time_gap_s']==0 else 'previous_timestamp')
     cell=query(db,"""SELECT seq,ecgi,band FROM measurement_points WHERE project_id=:pid AND capture_id=:cap AND seq=:cellseq
         AND event_code='CELLMEAS' AND ecgi_source='sib1_strict_capture_earfcn' LIMIT 1""",dict(pid=pid,cap=cap,cellseq=values['pci']['seq']))
     return values,cell[0] if cell else None

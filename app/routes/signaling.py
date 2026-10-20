@@ -93,6 +93,8 @@ class Points(Envelope):
     reason:str|None=None
 
 class RadioValue(BaseModel):
+    time_gap_s:float|None
+    temporal_relation:Literal['unavailable','same_timestamp','previous_timestamp']
     value:float|None
     unit:str
     source:str
