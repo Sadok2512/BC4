@@ -12,7 +12,7 @@ def run():
     reject=reconstruct('TEST-project','TEST-capture',rows(['RRCConnectionRequest','RRCConnectionReject']))
     assert reject[0]['outcome']=='fail'
     repeated=reconstruct('TEST-project','TEST-capture',rows(['HOA','HOA','HOS']))
-    assert [r['outcome'] for r in repeated]==['incomplete','ok']
+    assert [r['outcome'] for r in repeated]==['incomplete','incomplete']
     assert reconstruct('TEST-project','TEST-other',rows(['HOS']))==[]
     unknown=rows(['HOA','HOS']);unknown[1]['t_rel_s']=None
     assert reconstruct('TEST-project','TEST-capture',unknown)[0]['duration_ms'] is None

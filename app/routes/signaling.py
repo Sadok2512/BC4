@@ -5,7 +5,6 @@ import math
 from collections import Counter, defaultdict
 from typing import Literal, Any
 from fastapi import APIRouter, Depends, Query, HTTPException
-from fastapi.responses import Response
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from app.db import get_db
@@ -88,6 +87,7 @@ class Point(BaseModel):
 class Points(Envelope):
     points:list[Point]
     markers:list[dict[str,Any]]
+    positioned_count:int
     indoor:bool
     floorplan_id:str|None=None
     reason:str|None=None
@@ -168,7 +168,7 @@ def points(project_id:str,capture_id:str,f:dict=Depends(filters),db:Session=Depe
         if key not in grouped:grouped[key]={**p,'counts':{x:0 for x in svc.PROTOCOLS},'seqs':[]}
         grouped[key]['counts'][p['protocol']]+=1
         grouped[key]['seqs'].append(p['seq'])
-    return dict(**envelope(project_id,capture_id,pts,f),points=pts,markers=list(grouped.values()),indoor=indoor,
+    return dict(**envelope(project_id,capture_id,pts,f),points=pts,markers=list(grouped.values()),positioned_count=sum(p["lat"] is not None and p["lng"] is not None for p in pts),indoor=indoor,
       reason='Plan non renseigné, pas de position' if indoor else None)
 
 @router.get('/context',response_model=Context)
@@ -187,7 +187,12 @@ def details(project_id:str,capture_id:str,seq:int=Query(...,ge=0),db:Session=Dep
     data=svc.details(db,project_id,capture_id,seq)
     return dict(**envelope(project_id,capture_id,data,dict(seq=seq)),seq=seq,**data)
 
-@router.get('/export')
+class Export(BaseModel):
+    csv:str
+    filename:str
+    result_id:str
+
+@router.get('/export',response_model=Export)
 def export(project_id:str,capture_id:str,f:dict=Depends(filters),db:Session=Depends(get_db)):
     rows,_,_,_=svc.population(db,project_id,capture_id)
     rows=svc.filtered(rows,**f)

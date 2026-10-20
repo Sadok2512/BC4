@@ -32,6 +32,8 @@ def reconstruct(project_id, capture_id, rows):
                 duration = round(delta, 3)
             else:
                 outcome, cause = 'incomplete', 'capture_clock_regression'
+        if attempt.get('ambiguous') and outcome=='ok':
+            outcome,cause,duration='incomplete','ambiguous_overlapping_attempts',None
         result.append(dict(id=sha256(f"{project_id}:{capture_id}:{key}:{start['seq']}".encode()).hexdigest()[:24],
                            project_id=project_id, capture_id=capture_id, type=key[0],
                            technology=key[1], seq_start=start['seq'], seq_end=end['seq'] if end else None,
@@ -50,9 +52,10 @@ def reconstruct(project_id, capture_id, rows):
         for kind, stages in RULES.items():
             key = (kind, technology)
             if name in stages[0]:
+                ambiguous=key in active
                 if key in active:
                     finish(key, None, 'incomplete', 'repeated_start_before_completion')
-                active[key] = {'start': row, 'stage': 1, 'seqs': [row['seq']]}
+                active[key] = {'start': row, 'stage': 1, 'seqs': [row['seq']], 'ambiguous': ambiguous}
             elif key in active and name in stages[active[key]['stage']]:
                 active[key]['seqs'].append(row['seq'])
                 active[key]['stage'] += 1

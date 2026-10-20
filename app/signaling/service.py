@@ -20,18 +20,19 @@ PDU_LOCK = Lock()
 SOURCE_SQL = '''SELECT s.seq,s.id AS event_id,s.event_code,s.system AS technology,s.direction,s.message AS message_name,
  s.pci,CASE WHEN s.payload_hex ~ '^[0-9A-Fa-f]+$' THEN length(s.payload_hex)/2 END AS size_bytes,
  EXISTS(SELECT 1 FROM param_occurrence p WHERE p.project_id=s.project_id AND p.stg_event_id=s.id AND NOT COALESCE(p.is_identifier,false)) AS has_tree,
- 'stg_event' AS source
+ 'stg_event' AS source, EXISTS(SELECT 1 FROM param_occurrence p WHERE p.project_id=s.project_id AND p.stg_event_id=s.id AND p.path LIKE '%mobilityControlInfo%') AS ho_reconfiguration
  FROM stg_event s WHERE s.project_id=:pid AND s.capture_id=:cap
  AND s.event_code IN ('RRCSM','L3SM') AND s.system IN ('LTE','NR')
  UNION ALL
- SELECT r.seq,NULL,r.event_code,NULL,NULL,r.event_code,NULL,NULL,false,'nmf_event_deep'
+ SELECT r.seq,NULL,r.event_code,NULL,NULL,r.event_code,NULL,NULL,false,'nmf_event_deep',false
  FROM stg_event_raw r JOIN nmf_capture c USING(project_id,capture_id)
  WHERE r.project_id=:pid AND r.capture_id=:cap AND r.event_code=ANY(:markers) AND c.decode_level='deep'
  AND EXISTS(SELECT 1 FROM nmf_event_deep d WHERE d.project_id=r.project_id AND d.capture_id=r.capture_id AND d.seq=r.seq)
  UNION ALL
- SELECT d.seq,NULL,d.event_code,NULL,NULL,d.event_code,NULL,NULL,false,'nmf_event_light'
- FROM nmf_event_light d JOIN nmf_capture c USING(project_id,capture_id)
- WHERE d.project_id=:pid AND d.capture_id=:cap AND c.decode_level='light' AND d.event_code=ANY(:markers)
+ SELECT r.seq,NULL,r.event_code,NULL,NULL,r.event_code,NULL,NULL,false,'stg_event_raw / nmf_event_light',false
+ FROM stg_event_raw r JOIN nmf_capture c USING(project_id,capture_id)
+ WHERE r.project_id=:pid AND r.capture_id=:cap AND c.decode_level='light' AND r.event_code=ANY(:markers)
+ AND EXISTS(SELECT 1 FROM nmf_event_light d WHERE d.project_id=r.project_id AND d.capture_id=r.capture_id AND d.event_code=r.event_code)
  ORDER BY seq'''
 
 
@@ -81,8 +82,7 @@ def population(db,pid,cap, persist=True):
         db.commit()
     for r in rows:
         matches=[p for p in procedures if r['seq'] in p['boundary_seqs'] or
-                 (p['seq_end'] is not None and p['seq_start']<=r['seq']<=p['seq_end'] and
-                  (p['technology'] is None or p['technology']==r['technology']))]
+                 (p['type']=='ho' and r['ho_reconfiguration'] and p['seq_end'] is not None and p['seq_start']<=r['seq']<=p['seq_end'])]
         # Overlapping sessions are explicitly plural, never silently overwritten.
         r['procedure_ids']=[p['id'] for p in matches]
         r['procedure_id']=matches[-1]['id'] if matches else None
