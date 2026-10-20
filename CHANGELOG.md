@@ -1,5 +1,6 @@
 ## 0.58.1 (patch) — BC4 2026-10-20 — BLER : requêtes projet sans timeout (Agent BC2)
 
+- Migration 0034 : index couvrant les intervalles de séquence par événement pour le contrôle des buckets Light filtrés.
 - Migration 0033 : index couvrant les références de fichier/système au même (projet, capture, seq), sans lecture du payload brut.
 - Limite le contexte opérateur/bande aux séquences des mesures utiles, sans changer les règles d’attribution.
 - Calcule total et groupes en une requête ; percentiles calculés sur les observations, jamais sur les moyennes de groupes.
