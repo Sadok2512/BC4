@@ -105,7 +105,7 @@ def captures(project_id: str,f: dict=Depends(filters),db: Session=Depends(get_db
     if f.get('operator_mode')=='none':clauses.append('FALSE')
     for key in ('operator','band','rat','tech','service_type','phase','env','dep'):
         if f.get(key):
-            clauses.append(f'm.{key}=ANY(:{key})');p[key]=f[key]
+            clauses.append(f'(m.{key}=ANY(:{key})'+(' OR m.operator IS NULL' if key=='operator' and 'N/D' in f[key] else '')+')');p[key]=f[key]
     geo=[]
     for key,col in {'dor':'dor','dr':'dr','plaque':'plaque','arcep':'arcep_zone','commune':'commune','insee':'insee'}.items():
         if f.get(key):geo.append(f'c.{col}=ANY(:{key})');p[key]=f[key]

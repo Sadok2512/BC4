@@ -30,3 +30,10 @@ def test_transfer_catalogue_availability_does_not_require_applied_filters():
         transfers_cache=[SimpleNamespace(verdict='proven', direction='dl', thrpt_mbps=1)],
     )
     assert status.status == 'AVAILABLE'
+
+
+def test_unassigned_selection_is_null_population_not_all():
+    assert 'c.operator IS NULL' in predicate({'operator':['N/D']})[0]
+    assert 'param_occurrence.operator IS NULL' in source_predicate('param_occurrence',{'operator':['N/D']})[0]
+    assert 't.operator IS NULL' in where('TEST-project',{'operator':['N/D']})[0]
+    assert 'IS NULL' not in predicate({'operator':['TEST-op']})[0]

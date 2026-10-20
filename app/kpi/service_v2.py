@@ -510,7 +510,7 @@ def _count_param_message(
     where = "project_id = :pid AND message = :msg"
     if operators:
         placeholders = ", ".join(f":op{i}" for i in range(len(operators)))
-        where += f" AND operator IN ({placeholders})"
+        where += f" AND (operator IN ({placeholders})"+(" OR operator IS NULL" if "N/D" in operators else "")+")"
         for i, op in enumerate(operators):
             params[f"op{i}"] = op
     scope,scope_params=source_predicate('param_occurrence',filters or {})
@@ -543,7 +543,7 @@ def _count_param_path_ilike(
     where = "project_id = :pid AND path ILIKE :pat"
     if operators:
         placeholders = ", ".join(f":op{i}" for i in range(len(operators)))
-        where += f" AND operator IN ({placeholders})"
+        where += f" AND (operator IN ({placeholders})"+(" OR operator IS NULL" if "N/D" in operators else "")+")"
         for i, op in enumerate(operators):
             params[f"op{i}"] = op
     scope,scope_params=source_predicate('param_occurrence',filters or {})
@@ -583,7 +583,7 @@ def _dist_param_path(
     )
     if operators:
         placeholders = ", ".join(f":op{i}" for i in range(len(operators)))
-        where += f" AND operator IN ({placeholders})"
+        where += f" AND (operator IN ({placeholders})"+(" OR operator IS NULL" if "N/D" in operators else "")+")"
         for i, op in enumerate(operators):
             params[f"op{i}"] = op
     scope,scope_params=source_predicate('param_occurrence',filters or {})
@@ -700,7 +700,7 @@ def _grouped_mp(
     where = f"project_id = :pid AND {mp_col} IS NOT NULL"
     if operators:
         placeholders = ", ".join(f":op{i}" for i in range(len(operators)))
-        where += f" AND operator IN ({placeholders})"
+        where += f" AND (operator IN ({placeholders})"+(" OR operator IS NULL" if "N/D" in operators else "")+")"
         for i, op in enumerate(operators):
             params[f"op{i}"] = op
     scope,scope_params=source_predicate('measurement_points',filters or {})
@@ -745,7 +745,7 @@ def _grouped_param_path(
     )
     if operators:
         placeholders = ", ".join(f":op{i}" for i in range(len(operators)))
-        where += f" AND operator IN ({placeholders})"
+        where += f" AND (operator IN ({placeholders})"+(" OR operator IS NULL" if "N/D" in operators else "")+")"
         for i, op in enumerate(operators):
             params[f"op{i}"] = op
     scope,scope_params=source_predicate('param_occurrence',filters or {})
@@ -793,7 +793,7 @@ def _grouped_param_count(
         params["pat"] = path_ilike
     if operators:
         placeholders = ", ".join(f":op{i}" for i in range(len(operators)))
-        where_parts.append(f"operator IN ({placeholders})")
+        where_parts.append(f"(operator IN ({placeholders})"+(" OR operator IS NULL" if "N/D" in operators else "")+")")
         for i, op in enumerate(operators):
             params[f"op{i}"] = op
     where = " AND ".join(where_parts)

@@ -1,5 +1,7 @@
 ## 0.58.0 (minor) — BC4 2026-10-20 — Population opérateur cohérente (Agent BC2)
 
+- La sélection existante N/D filtre les attributions NULL ; elle reste distincte de Tous et de la sélection vide.
+
 - Contrat explicite Tous/sélection/vide et capture pour les requêtes KPI, séries et événements ; validation contre les opérateurs du projet.
 - Filtrage des observations Nemo par attribution existante au même (capture_id, seq), #DL prioritaire ; aucun opérateur déduit de la seule présence dans une capture.
 - Agrégats globaux et groupes sur la même population ; taux recalculés depuis leurs numérateurs/dénominateurs, preuves SQL via result_id. Groupement absent explicite : none.

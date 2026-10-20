@@ -52,7 +52,7 @@ def where(pid,f):
     clauses=['t.project_id=:pid'];p={'pid':pid}
     if f.get('operator_mode')=='none':clauses.append('FALSE')
     for k,col in {'operator':'operator','band':'band','tech':'tech','rat':'tech'}.items():
-        if f.get(k):clauses.append(f't.{col}=ANY(:{k})');p[k]=f[k]
+        if f.get(k):clauses.append(f'(t.{col}=ANY(:{k})'+(' OR t.operator IS NULL' if k=='operator' and 'N/D' in f[k] else '')+')');p[k]=f[k]
     if f.get('capture_id'):clauses.append('t.capture_id=:capture_id');p['capture_id']=f['capture_id']
     if f.get('task_id'):clauses.append('t.id=:task_id');p['task_id']=f['task_id']
     if f.get('type'):clauses.append('t.task_type=:type');p['type']=f['type']

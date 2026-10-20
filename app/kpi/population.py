@@ -36,7 +36,7 @@ def predicate(f, alias='c'):
     if f.get('operator_mode') == 'none': parts.append('FALSE')
     for key,col in {'operator':'operator','band':'band','rat':'rat','tech':'tech','service_type':'service_type','phase':'phase','env':'env','dep':'dep'}.items():
         if f.get(key):
-            parts.append(f'{alias}.{col}=ANY(:filter_{key})');params['filter_'+key]=list(f[key])
+            parts.append(f"({alias}.{col}=ANY(:filter_{key})"+(f' OR {alias}.{col} IS NULL' if key=='operator' and 'N/D' in f[key] else '')+')');params['filter_'+key]=list(f[key])
     geo=[]
     for key,col in {'dor':'dor','dr':'dr','plaque':'plaque','arcep':'arcep_zone','commune':'commune','insee':'insee'}.items():
         if f.get(key):geo.append(f'g.{col}=ANY(:filter_{key})');params['filter_'+key]=list(f[key])
@@ -57,7 +57,7 @@ def source_predicate(table, f):
     else:
         condition='FALSE' if f.get('operator_mode')=='none' else 'TRUE';params={}
         if f.get('operator'):
-            condition+=' AND param_occurrence.operator=ANY(:filter_operator)';params['filter_operator']=list(f['operator'])
+            condition+=' AND (param_occurrence.operator=ANY(:filter_operator)'+(' OR param_occurrence.operator IS NULL' if 'N/D' in f['operator'] else '')+')';params['filter_operator']=list(f['operator'])
         rest={k:v for k,v in f.items() if k not in ('operator','operator_mode','capture_id')}
         sub,sp=predicate(rest,'m');params.update(sp)
         if sub!='TRUE':condition+=' AND EXISTS(SELECT 1 FROM stg_event e JOIN measurement_points m ON m.project_id=e.project_id AND m.capture_id=e.capture_id AND m.seq=e.seq WHERE e.id=param_occurrence.stg_event_id AND e.project_id=:pid AND '+sub+')'
@@ -84,6 +84,7 @@ def validate_operators(db,pid,f):
         raise HTTPException(422,{'reason':'contradictory_operator_selection'})
     if not selected:return
     allowed=set(db.execute(text('SELECT DISTINCT operator FROM measurement_points WHERE project_id=:pid AND operator IS NOT NULL UNION SELECT DISTINCT operator FROM param_occurrence WHERE project_id=:pid AND operator IS NOT NULL'),{'pid':pid}).scalars())
+    if db.execute(text('SELECT EXISTS(SELECT 1 FROM measurement_points WHERE project_id=:pid AND operator IS NULL)'),{'pid':pid}).scalar():allowed.add('N/D')
     if any(op not in allowed for op in selected):
         raise HTTPException(422,{'reason':'unknown_project_operator','allowed':sorted(allowed)})
 
