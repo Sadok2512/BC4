@@ -1,3 +1,9 @@
+## 0.59.1 (patch) — BC4 2026-10-20 — Chargement des catégories RRC (Agent BC1)
+
+- Préagrège la population du projet avant les correspondances des modèles : normalisation ASN.1 calculée une fois par occurrence, totaux et groupes conservés.
+- Cache borné de la fonction pure de normalisation des chemins IE ; aucune réponse analytique ni donnée de projet mise en cache.
+- Tests des recouvrements de préfixes, valeurs nulles, unités et isolation projet ; comparaisons complètes TEST2/Test_3. Aucun changement de classification ni migration.
+
 ## 0.59.0 (minor) — BC4 2026-10-20 — Moteur générique Metric vs Time (Agent BC2)
 
 - Nouvelle route `GET /projects/{pid}/captures/{cid}/kpi/{code}/time-series` : réponse `(seq, time_s, value)` par capture pour n'importe quelle métrique Nemo documentée du catalogue v2 (BLER, RSRP, RSRQ, SINR, CQI, débits DL/UL MAC/RLC/PDCP/APP, NR SS-RSRP si décodée).

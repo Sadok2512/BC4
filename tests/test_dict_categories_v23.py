@@ -40,3 +40,14 @@ def test_most_specific_rule_wins():
     p='systemInformationBlockType1/servingCellConfigCommon/uplinkConfigCommon/frequencyInfoUL/'
     assert resolve_mapping('NR',p+'p-Max',{},SEED['maps'])['subcategory_id']=='power-control.common'
     assert resolve_mapping('NR',p+'scs-SpecificCarrierList/[0]/carrierBandwidth',{},SEED['maps'])['subcategory_id']=='phy.carrier'
+
+
+def test_mapping_path_cache_does_not_change_normalization():
+    from app.dict.category_mapping import mapping_path
+    mapping_path.cache_clear()
+    paths=['TEST/root/measConfig/list/[0]/value','TEST/root/measConfig/list/[1]/value','TEST/root/measConfig2/value']
+    for path in paths:
+        assert mapping_path(path)==mapping_path.__wrapped__(path)
+        assert mapping_path(path)==mapping_path.__wrapped__(path)
+    assert mapping_path.cache_info().hits >= len(paths)
+    assert mapping_path.cache_info().maxsize==8192
