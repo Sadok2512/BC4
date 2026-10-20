@@ -1,3 +1,8 @@
+## 0.66.1 (patch) — BC4 2026-10-20 — Fraîcheur temporelle Signaling (Agent BC2)
+
+- Contexte radio : `time_gap_s` depuis les temps capture validés, nullable, et relation `same_timestamp` / `previous_timestamp` / `unavailable`. Ordre strictement précédent par seq conservé.
+- Audit TEST2 : les temps source identiques sont conservés ; aucun changement parser, données ou origine temporelle.
+
 ## 0.66.0 (minor) — BC4-BACK 2026-10-20 — Message décodé pour Signaling View (Agent BC1)
 
 - Ajoute `GET /projects/{project_id}/signaling/message?capture_id=&seq=` sur le routeur authentifié du dictionnaire : arbre des occurrences existantes, valeurs converties et unités préservées, catégorie par chemin, texte indenté, métadonnées et taille du payload. Aucun populate ni écriture de données.
