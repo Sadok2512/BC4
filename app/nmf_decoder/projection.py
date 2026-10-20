@@ -55,16 +55,40 @@ def refresh_projections(db,pid):
         rows.append(dict(pid=pid,cap=cap,seq=seq,**{k:v.get(k) for k in ('rsrp','rsrq','rssi','sinr','cqi','tx_power')}))
     if rows:db.execute(text('''UPDATE measurement_points SET rsrp=:rsrp,rsrq=:rsrq,rssi=:rssi,sinr=:sinr,cqi=:cqi,tx_power=:tx_power
         WHERE project_id=:pid AND capture_id=:cap AND seq=:seq'''),rows)
+    # Restore capture context for CELLMEAS skeleton rows that predate enrichment.
+    # The closed cell schema is LTE-only; a validated PCI/channel is independent
+    # of whether RSRP happened to be present on that observation.
+    from app.measure.mapping import band_from_earfcn
+    context=[]
+    for (cap,seq),v in values.items():
+        if not any(k in v for k in ('pci','earfcn','rsrp','rsrq','rssi')):continue
+        earfcn=int(v['earfcn']) if v.get('earfcn') is not None else None
+        context.append(dict(pid=pid,cap=cap,seq=seq,earfcn=earfcn,band=band_from_earfcn(earfcn) if earfcn is not None else None))
+    if context:db.execute(text("""UPDATE measurement_points SET rat='LTE',tech='LTE',earfcn=:earfcn,band=:band
+        WHERE project_id=:pid AND capture_id=:cap AND seq=:seq AND event_code='CELLMEAS'"""),context)
     return {'observations':len(values),'updated_sequences':len(rows)}
 
 def metric_counts(db,pid):
-    """Count typed columns in three scans, rather than one project scan per metric."""
-    result={};definitions=fields()
+    """Count observations and actual storage sources in three scans.
+
+    A weighted Deep observation exists if any set at that seq has a value
+    and positive weight. Counting those seqs avoids evaluating every weighted
+    projection separately (and repeatedly reading the complete group table).
+    """
+    from .schema import column
+    result={};sources={};definitions=fields()
     for table,group,level in [('nmf_event_deep',False,'deep'),('nmf_event_group',True,'deep'),('nmf_event_light',None,'light')]:
         codes=[k for k,f in definitions.items() if group is None or bool(f['group'])==group]
-        expressions=','.join(f'count(d.{k}) AS {k}' for k in codes)
-        row=db.execute(text(f"SELECT {expressions} FROM {table} d JOIN nmf_capture c USING(project_id,capture_id) WHERE d.project_id=:pid AND c.decode_level='{level}'"+(' AND d.set_index=0' if group is True else '')),{'pid':pid}).mappings().one()
-        for k,n in row.items():result[k]=result.get(k,0)+n
-    for k,f in definitions.items():
-        if f.get('weight'):result[k]=db.execute(text('SELECT count(*) FROM ('+source_sql(k)+') source'),{'pid':pid}).scalar_one()
-    return result
+        expressions=[]
+        for k in codes:
+            f=definitions[k]
+            if group is True and f.get('weight'):
+                weight=column(f['code'].split('.')[0]+'.'+f['weight'])
+                expressions.append(f'count(DISTINCT (d.capture_id,d.seq)) FILTER(WHERE d.{k} IS NOT NULL AND d.{weight}>0) AS {k}')
+            else:
+                expressions.append(f'count(d.{k})'+(' FILTER(WHERE d.set_index=0)' if group is True else '')+f' AS {k}')
+        row=db.execute(text('SELECT '+','.join(expressions)+f" FROM {table} d JOIN nmf_capture c USING(project_id,capture_id) WHERE d.project_id=:pid AND c.decode_level='{level}'"),{'pid':pid}).mappings().one()
+        for k,n in row.items():
+            result[k]=result.get(k,0)+n
+            if n:sources.setdefault(k,[]).append(table)
+    return result,sources

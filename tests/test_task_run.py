@@ -111,11 +111,13 @@ def test_radio_predecessor_conflict_is_not_arbitrarily_resolved():
 def test_points_cqi_uses_its_own_provenance(monkeypatch):
  import app.routes.tasks as routes
  def samples(*args):
-  return [dict(task_id='TEST-task',capture_id='TEST-A',seq=20,mp_seq=5,seq_gap=15,cqi_seq=18,cqi_seq_gap=2,cqi=10,rsrp=-90,bps=8000000,t_rel_s=1,status='ok')],'TEST SQL',{}
+  return [dict(task_id='TEST-task',capture_id='TEST-A',seq=20,mp_seq=5,seq_gap=15,cqi_seq=18,cqi_seq_gap=2,cqi=10,sinr=12.5,sinr_seq=19,sinr_seq_gap=1,rsrp=-90,bps=8000000,t_rel_s=1,status='ok')],'TEST SQL',{}
  monkeypatch.setattr(routes,'samples',samples)
  monkeypatch.setattr(routes,'evidence',lambda *args:'TEST-result')
  cqi=routes.points('TEST-project','THR_DL_APP',x='cqi',limit=10,f={},db=None)['points'][0]
  rsrp=routes.points('TEST-project','THR_DL_APP',x='rsrp',limit=10,f={},db=None)['points'][0]
+ sinr=routes.points('TEST-project','THR_DL_APP',x='sinr',limit=10,f={},db=None)['points'][0]
+ assert (sinr['mp_seq'],sinr['seq_gap'],sinr['x'])==(19,1,12.5)
  assert (cqi['mp_seq'],cqi['seq_gap'],cqi['x'])==(18,2,10)
  assert (rsrp['mp_seq'],rsrp['seq_gap'],rsrp['x'])==(5,15,-90)
 

@@ -52,7 +52,7 @@ class Record:
     system:int|None
     format_version:str
     decoder_version:str=DECODER_VERSION
-    schema_version:str='1.0.0'
+    schema_version:str=DECODER_VERSION
     decode_status:str='ok'
     reasons:list=field(default_factory=list)
     values:dict=field(default_factory=dict)

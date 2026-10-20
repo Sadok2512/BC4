@@ -111,7 +111,7 @@ def load_tasks(db,pid,captures=None):
     for r in db.execute(text(event_sql),{'pid':pid,'captures':captures}).mappings():
         row=dict(r);f=dict(row['raw_fields']);v=decoded.get((row['capture_id'],row['seq']),{})
         if row['event_code']=='DRATE':
-            f['c6']=v.get('app_dl_bitrate');f['c8']=v.get('app_dl_bytes');f['_ul_bps']=v.get('app_ul_bitrate')
+            f['c6']=v.get('app_dl_bitrate');f['c8']=int(v['app_dl_bytes']) if v.get('app_dl_bytes') is not None else None;f['_ul_bps']=v.get('app_ul_bitrate')
         if row['event_code']=='AQDL':f['c4']=v.get('aqdl_mos')
         row['raw_fields']=f;rows.append(row)
     return reconstruct(rows,pid)
@@ -135,10 +135,11 @@ def populate_tasks(db,pid,captures=None):
     # Deterministic upserts preserve source staging and all observed DRATE rows.
     radio=[dict(row) for row in db.execute(text("""SELECT capture_id,seq,event_code,rsrp,rsrq,sinr,cqi,earfcn,rat,operator,band,tech
         FROM measurement_points WHERE project_id=:pid AND seq IS NOT NULL
-        AND (event_code='CELLMEAS' OR (event_code='CQI' AND cqi IS NOT NULL))
+        AND (event_code='CELLMEAS' OR (event_code='CQI' AND cqi IS NOT NULL) OR (event_code='CI' AND sinr IS NOT NULL))
         ORDER BY capture_id,seq,id"""),{'pid':pid}).mappings()]
     cellmeas=radio_index(row for row in radio if row['event_code']=='CELLMEAS')
     cqi=radio_index(row for row in radio if row['event_code']=='CQI')
+    ci=radio_index(row for row in radio if row['event_code']=='CI')
     count=0
     for t in tasks:
         contexts={k:set() for k in ('operator','band','tech')}
@@ -147,7 +148,9 @@ def populate_tasks(db,pid,captures=None):
             # CQI has its own event stream and provenance; it cannot hide CELLMEAS.
             m=preceding_radio(cellmeas,t['capture_id'],sample['seq'])
             q=preceding_radio(cqi,t['capture_id'],sample['seq'])
+            signal=preceding_radio(ci,t['capture_id'],sample['seq'])
             sample.update({k:m.get(k) for k in ('rsrp','rsrq','sinr','earfcn','rat')})
+            sample.update(sinr=signal.get('sinr'),sinr_seq=signal.get('seq'),sinr_seq_gap=sample['seq']-signal['seq'] if signal else None)
             sample.update(mp_seq=m.get('seq'),seq_gap=sample['seq']-m['seq'] if m else None,pci=None,
                           cqi=q.get('cqi'),cqi_seq=q.get('seq'),cqi_seq_gap=sample['seq']-q['seq'] if q else None)
             for k in ('operator','band','tech'):

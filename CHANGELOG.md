@@ -1,12 +1,32 @@
-## 0.57.1 (patch) — BC4 2026-10-19 — Carte RRC et clés agrégées (Agent BC1)
+## 0.58.1 (patch) — BC4 2026-10-20 — BLER : requêtes projet sans timeout (Agent BC2)
 
-- Résout les sélections dict22 avec le même sélecteur projet que les distributions avant de rechercher les coordonnées sources.
-- Union sans doublons des sélections parent/feuille ; filtres, coordonnées et références source inchangés. Aucun changement KPI ni migration.
-- Validation : tests cartographiques transactionnels, dont clés agrégées, filtres, isolation projet et clé invalide.
+- Migration 0034 : index couvrant les intervalles de séquence par événement pour le contrôle des buckets Light filtrés.
+- Migration 0033 : index couvrant les références de fichier/système au même (projet, capture, seq), sans lecture du payload brut.
+- Limite le contexte opérateur/bande aux séquences des mesures utiles, sans changer les règles d’attribution.
+- Calcule total et groupes en une requête ; percentiles calculés sur les observations, jamais sur les moyennes de groupes.
+- Sans regroupement ni filtre, ne construit pas de contexte inutile. Les buckets Light filtrés conservent le contrôle de tous leurs événements sources.
+
+## 0.58.0 (minor) — BC4 2026-10-20 — Population opérateur cohérente (Agent BC2)
+
+- La sélection existante N/D filtre les attributions NULL ; elle reste distincte de Tous et de la sélection vide.
+
+- Contrat explicite Tous/sélection/vide et capture pour les requêtes KPI, séries et événements ; validation contre les opérateurs du projet.
+- Filtrage des observations Nemo par attribution existante au même (capture_id, seq), #DL prioritaire ; aucun opérateur déduit de la seule présence dans une capture.
+- Agrégats globaux et groupes sur la même population ; taux recalculés depuis leurs numérateurs/dénominateurs, preuves SQL via result_id. Groupement absent explicite : none.
+- Les buckets Light mixtes/non attribués sont exclus d’une sélection explicite lorsqu’ils ne sont pas intégralement admissibles. Aucune mesure brute modifiée.
+- Séries Task Time limitées à une capture ; une demande multi-captures renvoie 422.
+
+## 0.57.1 (patch) — BC4 2026-10-19 — Contrat de progression Deep (Agent BC2)
+
+- Decode expose les niveaux/version du projet, la progression et les durées estimées calculées côté API selon l’hypothèse demandée de 2,3 min par capture restante.
+- Les séries valident uniquement les sources demandées au lieu de recompter toutes les métriques du projet à chaque interaction ; les codes sans source restent rejetés.
+- Les captures exposent leur estimation ; les champs inconnus indiquent NFF 2.19. Aucun changement de décodage ni de version du décodeur.
 
 ## 0.57.0 (minor) — BC4 2026-10-19 — Décodeur Nemo versionné Light/Deep (Agent BC2)
 
-Ajoute nmf_decoder 1.0.0, les schémas NFF 2.19 fournis, le stockage typé partitionné Deep et les agrégats Light reproductibles. Les métriques et les projections radio/app utilisent le décodeur ; les positions candidates historiques sont retirées. Les jobs admin `/decode` s'exécutent dans l'import worker, avec état par capture, version et reprise. `/health` expose `decoder_version`. Migration 0031 ; aucune modification ASN.1 ni front.
+Ajoute nmf_decoder 1.0.0, les schémas NFF 2.19 fournis, le stockage typé partitionné Deep et les agrégats Light reproductibles. Les métriques et les projections radio/app utilisent le décodeur ; les positions candidates historiques sont retirées. Les jobs admin `/decode` s'exécutent dans l'import worker, avec état par capture, version et reprise. `/health` expose `decoder_version`. Le catalogue et les séries déclarent leur provenance Light/Deep ; les comptages des métriques sont regroupés en trois lectures. Migrations 0031/0032 ; aucune modification ASN.1 ni front.
+
+La projection restaure le contexte LTE des squelettes CELLMEAS non enrichis depuis les champs décodés. Le KPI BLER DL utilise PHRATE.pdsch.bler ; les points SINR sont appariés au CI précédent avec séquence et distance propres.
 
 Les extensions de format et systèmes sans schéma restent partial et sont conservés. Les chaînes inconnues sont hachées ; les nombres ne sont jamais filtrés sur leur longueur. Les gardes manuels sont dans `scripts/_guard_G16_decoder.py` ; résultats de livraison dans le rapport BC2.
 
