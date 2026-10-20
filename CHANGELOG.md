@@ -1,3 +1,9 @@
+## 0.65.0 (minor) — BC4-BACK 2026-10-20 — Message décodé pour Signaling View (Agent BC1)
+
+- Ajoute `GET /projects/{project_id}/signaling/message?capture_id=&seq=` sur le routeur authentifié du dictionnaire : arbre des occurrences existantes, valeurs converties et unités préservées, catégorie par chemin, texte indenté, métadonnées et taille du payload. Aucun populate ni écriture de données.
+- Exclut les identifiants de l’arbre et du texte. Le hex nécessite un contrôle du contenu ASN.1 complet sur une copie isolée du PDU et un réencodage identique. Identités, conteneurs opaques, NAS non vérifiable, données malformées et messages Request/SetupComplete/UL-DLInformationTransfer : hex nul avec raison explicite.
+- G18a/G18b et tests de contrat, authentification, portée projet/capture/séquence, confidentialité et absence/ambiguïté. Pas de migration ; aucun moteur KPI ni frontend modifié.
+
 ## 0.64.1 (patch) — BC4 2026-10-20 — /metrics/{code}/aggregate : unité correcte Mbit/s (Agent BC2)
 
 - Correction : `app.kpi.nmf.stats` interrogeait `source_sql(code)` brut (valeurs bit/s pour les débits) alors que le catalogue `metric_catalog` applique une conversion `/1e6` pour les débits avant exposition. Le /aggregate route renvoyait donc `p90 = 21 464 436` pour une métrique étiquetée Mbit/s — valeurs 1 000 000× trop grandes.
