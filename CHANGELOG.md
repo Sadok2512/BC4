@@ -1,8 +1,36 @@
-## 0.65.0 (minor) — BC4-BACK 2026-10-20 — Message décodé pour Signaling View (Agent BC1)
+## 0.66.0 (minor) — BC4-BACK 2026-10-20 — Message décodé pour Signaling View (Agent BC1)
 
 - Ajoute `GET /projects/{project_id}/signaling/message?capture_id=&seq=` sur le routeur authentifié du dictionnaire : arbre des occurrences existantes, valeurs converties et unités préservées, catégorie par chemin, texte indenté, métadonnées et taille du payload. Aucun populate ni écriture de données.
 - Exclut les identifiants de l’arbre et du texte. Le hex nécessite un contrôle du contenu ASN.1 complet sur une copie isolée du PDU et un réencodage identique. Identités, conteneurs opaques, NAS non vérifiable, données malformées et messages Request/SetupComplete/UL-DLInformationTransfer : hex nul avec raison explicite.
 - G18a/G18b et tests de contrat, authentification, portée projet/capture/séquence, confidentialité et absence/ambiguïté. Pas de migration ; aucun moteur KPI ni frontend modifié.
+
+
+## 0.65.2 (patch) — BC4 2026-10-20 — Signaling: rrc_connection procedure + live guards G18a/b/d/e (Agent BC3)
+
+- `app/signaling/procedures.py` : nouvelle procédure `rrc_connection` (RRA → RRC → RRD) alignée sur l'énumération décodeur BC2 1.x. Même mécanique d'inférence que `call`/`data_session`/`attach`/`bearer` : rejoue sur `message_name = event_code` pour les markers d'état.
+- `scripts/_guard_G18_procedures.py` : cas déterministes supplémentaires pour `rrc_connection` (ok 3 stages + incomplete milieu manquant).
+- `scripts/_guard_G18_signaling_live.py` (nouveau) : 4 gardes live contre TEST2 (`134af70a06eb` / `723547b196b3`) :
+  - **G18a** — `population()` seqs = union SQL directe `stg_event (RRCSM+L3SM) + stg_event_raw (markers)`.
+  - **G18b** — 1 000 messages RRCSM : hex masqué sur `RRCConnectionRequest/SetupComplete/UL-DLInformationTransfer`, aucune occurrence de `rnti|guti|tmsi|imsi|imei|msisdn` dans aucune réponse.
+  - **G18d** — 20 `RRCConnectionReconfiguration` : `len(details.parameters)` = `count(*) FROM param_occurrence …sanitized` par seq.
+  - **G18e** — capture outdoor : chaque point avec `lat/lng != NULL` provient d'un `GPS` fix stg_event_raw rejouable (pas de fabrication) ; capture indoor → 0 point.
+- Résultat du run live : `G18a PASS n=10175`, `G18b PASS 1000 scanned, 2/2 identity masked`, `G18d PASS 20 reco`, `G18e PASS 9847 positioned / 47 GPS fixes`.
+- Additif, pas de migration, pas de rebuild obligatoire pour exécuter les guards (fichiers scripts seulement, chargeables via `docker cp`). Rebuild requis pour que la route `/procedures` 0.65.1 et la procédure `rrc_connection` soient live.
+
+## 0.65.1 (patch) — BC4 2026-10-20 — Signaling: dedicated /procedures endpoint (Agent BC3)
+
+- New route `GET /projects/{id}/signaling/procedures?capture_id=&type=` returning the same procedures already reconstructed by `app.signaling.procedures.reconstruct`, exposed as a standalone endpoint for clients that only need the procedure list and type counts without pulling the full line population.
+- Additive — no change to existing `/signaling`, `/timeline`, `/points`, `/context`, `/details`, `/export`, `/captures` responses. Same `svc.population()` call, same `Procedure` schema already in OpenAPI.
+- Response envelope: `{project_id, capture_id, result_id, procedures:[Procedure], total, types:{type:count}}`. Filter `type` matches `Procedure.type` values (`rrc_setup`, `ho`, `call`, `data_session`).
+
+## 0.65.0 (minor) — BC4 2026-10-20 — Signaling View (Agent BC2)
+
+- Capture-local signaling API: messages, protocol timeline, preceding GPS, radio context, sanitized details and CSV. OpenAPI response models and deterministic result IDs.
+- Migration 0036: explicit RRC setup, handover, call, data, attach, bearer and reestablishment procedure state machines; sequence ordering, incomplete attempts and NULL durations preserved.
+- BC1 decoded parameters reused without changing ASN.1 decoder. NAS payload never exposed; hex withheld on sensitive content or uncertified decoding. No RNTI or subscriber identity fields.
+- Context uses the immediately preceding event per source in the same capture, including NULL measurements and seq_gap. GPS velocity: NFF 2.19 GPS Parameters #7, column 10, km/h; does not reuse the legacy speed_mps column mapping.
+- Open gaps: F4 RRC Setup Time not implemented upstream; no BC1 per-message tree route (adapter over sanitized param_occurrence); no declared indoor capture in TEST2; state-event technology not inferred from the legacy header-as-system mapping.
+- Manual guards and live evidence: scripts/_guard_G18_procedures.py and /home/devmat/BC4/signaling-audit/.
 
 ## 0.64.1 (patch) — BC4 2026-10-20 — /metrics/{code}/aggregate : unité correcte Mbit/s (Agent BC2)
 
