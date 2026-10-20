@@ -73,6 +73,14 @@ class TimeSeriesPoint(BaseModel):
     seq: int
     time_s: float
     value: float | str
+    # 0.60.0 — Enrichissement contextuel joint à partir de ``stg_event_raw``
+    # et ``nmf_file`` sur ``(project_id, capture_id, seq)``. Les trois
+    # champs sont **optionnels** : si la source ne porte pas la colonne
+    # (p.ex. GPS off / indoor capture), la valeur est `null` et le front
+    # affiche ``—`` sans fabriquer de coordonnée.
+    longitude: Optional[float] = None
+    latitude: Optional[float] = None
+    nmf_file: Optional[str] = None
 
 
 class TimeSeriesSampling(BaseModel):
@@ -250,10 +258,20 @@ def kpi_time_series(
     # Horloge capture-locale : (seq, ts) → time_s depuis l'origine, ordre canonique.
     times, origin_seq, origin_ts = clock(db, project_id, capture_id)
 
-    # Observations décodées de la métrique sur cette capture.
+    # Observations décodées de la métrique sur cette capture. 0.60.0 —
+    # LEFT JOIN ``stg_event_raw`` (lat/lon par séquence NMF) + ``nmf_file``
+    # (nom du fichier source) sur ``(project_id, capture_id, seq)``. La
+    # LEFT JOIN ne filtre jamais le point métrique : si une séquence
+    # ``nmf_event_light`` n'a pas de ligne ``stg_event_raw`` correspondante,
+    # longitude / latitude / nmf_file ressortent ``null`` et le front
+    # affiche ``—`` (règle n°1 — jamais fabriqué).
     metric_sql = (
-        "SELECT seq, value FROM (" + metric.sql + ") source "
-        "WHERE capture_id=:cap ORDER BY seq"
+        "SELECT src.seq AS seq, src.value AS value, "
+        "r.lat AS latitude, r.lon AS longitude, f.filename AS nmf_file "
+        "FROM (" + metric.sql + ") src "
+        "LEFT JOIN stg_event_raw r ON r.project_id=:pid AND r.capture_id=src.capture_id AND r.seq=src.seq "
+        "LEFT JOIN nmf_file f ON f.id=r.nmf_file_id "
+        "WHERE src.capture_id=:cap ORDER BY src.seq"
     )
     rows = db.execute(text(metric_sql), {"pid": project_id, "cap": capture_id}).mappings().all()
 
@@ -284,7 +302,14 @@ def kpi_time_series(
         return payload
 
     points = [
-        dict(seq=r["seq"], t_rel_s=times[r["seq"]], value=float(r["value"]))
+        dict(
+            seq=r["seq"],
+            t_rel_s=times[r["seq"]],
+            value=float(r["value"]),
+            longitude=float(r["longitude"]) if r["longitude"] is not None else None,
+            latitude=float(r["latitude"]) if r["latitude"] is not None else None,
+            nmf_file=r["nmf_file"],
+        )
         for r in rows
     ]
     out, sampling = sample(points, max_points, metric.kind)
@@ -310,7 +335,11 @@ def kpi_time_series(
     )
 
     source_table = "nmf_event_light" if state["decode_level"] == "light" else metric.source_table
-    source_view = f"{source_table} ∪ nmf_event_light" if source_table != "nmf_event_light" else source_table
+    source_view = (
+        f"{source_table} ∪ nmf_event_light"
+        if source_table != "nmf_event_light"
+        else source_table
+    ) + " LEFT JOIN stg_event_raw(lat,lon) LEFT JOIN nmf_file(filename)"
 
     x_axis, y_axis = _axes(entry, metric.unit)
     return {
@@ -324,7 +353,14 @@ def kpi_time_series(
         "n_total": len(points),
         "n_returned": len(out),
         "points": [
-            {"seq": p["seq"], "time_s": float(p["t_rel_s"]), "value": p["value"]}
+            {
+                "seq": p["seq"],
+                "time_s": float(p["t_rel_s"]),
+                "value": p["value"],
+                "longitude": p.get("longitude"),
+                "latitude": p.get("latitude"),
+                "nmf_file": p.get("nmf_file"),
+            }
             for p in out
         ],
         "sampling": sampling,

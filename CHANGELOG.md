@@ -1,3 +1,11 @@
+## 0.60.0 (minor) — BC4 2026-10-20 — /time-series enrichi GPS + Fichier NMF (Agent BC2)
+
+- `/projects/{pid}/captures/{cid}/kpi/{code}/time-series` : chaque point expose désormais `longitude: Optional[float]`, `latitude: Optional[float]`, `nmf_file: Optional[str]` en plus de `(seq, time_s, value)`.
+- Jointure `LEFT JOIN stg_event_raw USING(project_id, capture_id, seq)` puis `LEFT JOIN nmf_file ON nmf_file.id = stg_event_raw.nmf_file_id`. Même ordre canonique `(capture_id, seq)` (règle n°6). Si la séquence n'a pas de ligne `stg_event_raw` (ex. bucket Light pur), les trois champs ressortent `null` — jamais fabriqués (règle n°1).
+- `evidence.source_view` complété : la trace inclut maintenant `LEFT JOIN stg_event_raw(lat,lon) LEFT JOIN nmf_file(filename)`.
+- Zéro migration DB : les clés `(project_id, capture_id, seq)` et `nmf_file.id` sont déjà indexées (`ix_stg_event_raw_context` 0033 + PK `nmf_file`).
+- Compat ascendante : la réponse est additive (nouveaux champs optionnels), le front 1.42.1 continue à l'ignorer sans erreur ; le front 1.44.0 les affiche.
+
 ## 0.59.4 (patch) — BC4-BACK 2026-10-20 — RRC population denominators (Agent BC1)
 
 - Add explicit `group_totals` to dictionary distributions using SQL window counts over the same parameter, server filters and operator/band grouping. Includes missing-value occurrences; no denominator inferred from visible buckets. Existing counts, conversions and source data unchanged.
