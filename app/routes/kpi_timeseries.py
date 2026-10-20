@@ -180,8 +180,85 @@ def _unavailable(
 
 
 # ---------------------------------------------------------------------------
-# Route
+# Routes
 # ---------------------------------------------------------------------------
+
+
+class KpiCaptureInfo(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    capture_id: str
+    decode_level: Optional[str] = None
+    n_observations: int = 0
+
+
+@router.get(
+    "/projects/{project_id}/kpi/{code}/captures",
+    response_model=list[KpiCaptureInfo],
+)
+def kpi_captures(
+    project_id: str,
+    code: str,
+    db: Session = Depends(get_db),
+) -> list[dict[str, Any]]:
+    """Captures du projet ayant au moins une observation du KPI.
+
+    0.60.2 — remplace l'usage de ``/metrics/captures`` (qui filtre depuis
+    ``measurement_points``, souvent vide sur un projet fraîchement
+    décodé) pour l'auto-sélection côté UI. On interroge directement la
+    source NMF via ``metric_catalog(db)[arg].sql`` filtrée par
+    ``project_id``, en comptant les observations par ``capture_id``.
+    Les captures sans observation du KPI (métrique absente, pas
+    décodées, etc.) ne sont pas renvoyées — jamais listées à vide
+    (règle n°2 BC4).
+
+    Un KPI dont ``available_check.kind != 'nmf_metric'`` renvoie 422 :
+    la route Metric vs Time ne le sert pas, donc proposer des
+    captures n'a aucun sens.
+    """
+    _require_project(db, project_id)
+
+    canonical = catalog_v2_resolve(code)
+    if canonical is None:
+        raise HTTPException(422, {"reason": "unknown_kpi_code", "code": code})
+    entry = catalog_v2_get(canonical) or {}
+    check = entry.get("available_check") or {}
+    if check.get("kind") != "nmf_metric":
+        raise HTTPException(
+            422,
+            {
+                "reason": "no_direct_metric_mapping",
+                "available_check_kind": check.get("kind"),
+            },
+        )
+    metric_code_nmf = check.get("arg") or ""
+    definitions = metric_catalog(db)
+    if metric_code_nmf not in definitions:
+        raise HTTPException(
+            422,
+            {"reason": "metric_not_in_nmf_catalog", "nmf_code": metric_code_nmf},
+        )
+    metric = definitions[metric_code_nmf]
+
+    # Capture + decode_level depuis nmf_capture (source canonique du
+    # décodage) ; INNER JOIN avec la projection métrique pour ne garder
+    # que les captures qui ont au moins une observation.
+    sql = (
+        "SELECT nc.capture_id, nc.decode_level, COUNT(src.seq) AS n "
+        "FROM nmf_capture nc "
+        "JOIN (" + metric.sql + ") src ON src.capture_id = nc.capture_id "
+        "WHERE nc.project_id = :pid "
+        "GROUP BY nc.capture_id, nc.decode_level "
+        "ORDER BY nc.capture_id"
+    )
+    rows = db.execute(text(sql), {"pid": project_id}).mappings().all()
+    return [
+        {
+            "capture_id": r["capture_id"],
+            "decode_level": r["decode_level"],
+            "n_observations": int(r["n"]),
+        }
+        for r in rows
+    ]
 
 
 @router.get(

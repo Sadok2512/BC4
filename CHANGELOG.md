@@ -1,3 +1,10 @@
+## 0.60.2 (patch) — BC4 2026-10-20 — Route /kpi/{code}/captures (Agent BC2)
+
+- Nouvelle route `GET /projects/{pid}/kpi/{code}/captures` : liste les captures du projet qui ont au moins une observation décodée du KPI (`metric_catalog(db)[arg].sql` filtrée par `project_id`, agrégée par `capture_id`). Retourne `[{capture_id, decode_level, n_observations}]`.
+- Remplace l'usage de `/metrics/captures` (qui lit `measurement_points`, souvent vide sur un projet fraîchement décodé en Light-only) pour l'auto-sélection UI du mode Graphique. Le front 1.45.1 l'adopte.
+- KPI non `nmf_metric` → 422 avec raison explicite ; aucune liste à vide fabriquée (règle n°2 BC4).
+- Zéro migration DB (la source `nmf_capture ∪ nmf_event_light|deep` est déjà indexée).
+
 ## 0.60.1 (patch) — BC4 2026-10-20 — /time-series expose aussi event_ts + nmf_file_start (Agent BC2)
 
 - Chaque point ajoute deux champs optionnels : `event_ts` (= `stg_event_raw.ts`, format `HH:MM:SS.ms`) et `nmf_file_start` (= `nmf_file.start_at`, format `DD.MM.YYYY HH:MM:SS.ms`). Le front compose l'horodatage absolu de l'observation en concaténant la DATE de `nmf_file_start` et l'heure de `event_ts` ; aucun calcul côté back (règle n°2 BC4 : on sert la source brute, pas une interprétation).
