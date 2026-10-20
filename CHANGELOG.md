@@ -1,3 +1,14 @@
+## 0.63.0 (minor) — BC4 2026-10-20 — Promotion décodeur 1.1.0 : 65 YAMLs + 348 colonnes DB (P3) (Agent BC2)
+
+- **DECODER_VERSION 1.0.0 → 1.1.0** dans `app/nmf_decoder/__init__.py`.
+- **65 YAMLs promus** de `app/nmf_decoder/schemas-pending/` vers `app/nmf_decoder/schemas/` : les 68 baselines moins les 3 flaggés `needs_refinement` (CHI, DNSQUERY, LOCK — gardés en pending jusqu'à lecture txt NFF).
+- **Migration 0035** `nmf_decoder_1_1_0.py` : 174 colonnes ajoutées dans `nmf_event_deep` + 174 dans `nmf_event_light` (0 nouvelles colonnes group, les 3 WARN exclus). `ADD COLUMN IF NOT EXISTS` sans DEFAULT → métadata-only sur PostgreSQL ≥ 11 (instantané même sur tables partitionnées). Idempotent.
+- **VIEW `nmf_metric_value` recréée** avec les 376 champs totaux (anciens 1.0.0 + nouveaux 1.1.0) — enum complet code → value pour deep + group + light.
+- `app/nmf_decoder/schema.py:fields()` : `s.get('groups', [])` au lieu de `s['groups']` — les 65 YAMLs promus (events plats sans group) ne crashent plus le loader.
+- **Re-décodage Deep requis** : les 16 captures TEST2 sont marquées stale (`decoder_version=1.0.0 ≠ current 1.1.0`) ; le décodeur refusera de les servir en Deep tant qu'un `/decode` manuel n'a pas été déclenché. Les autres projets (Test_outdoor Light-only, Test_3 Deep à 766 697 lignes, etc.) restent stale aussi — à re-décoder par lots séparés (hors mission).
+- Les 23 markers signalisation exposés en 0.62.0 via `/events` **continuent de fonctionner** (lecture directe de `stg_event_raw.event_code`, indépendante du décodeur Deep).
+- Les 3 YAMLs `needs_refinement` restent dans `schemas-pending/` — exclus du décodeur Deep + de la migration tant que leurs sections multi-groupes ne sont pas scindées depuis le txt NFF.
+
 ## 0.62.0 (minor) — BC4 2026-10-20 — Catégories + markers signalisation + capture.forcing (nmf_decoder 1.1.0 P2) (Agent BC2)
 
 - **Taxonomie 14 catégories** sur les 87 YAMLs du décodeur (19 live + 68 pending-1.1.0) : radio_serving · neighbours · throughput_layers · link_quality · allocation_mcs · csi · mimo_port · ul_power · voice · services · position · signalling_states · session · terminal_cell. 366/366 champs catégorisés par heuristique (`scripts/apply_categories.py`), 0 unknown.

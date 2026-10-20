@@ -14,9 +14,12 @@ def column(code):
 def fields():
     result={}
     for s in schemas().values():
-        for f in s['header']:
+        for f in s.get('header', []):
             result.setdefault(column(f['code']),dict(f,event=s['event'],group=None))
-        for g in s['groups']:
+        # 1.1.0 — YAMLs sans groupes (événements plats comme les headers #,
+        # markers signalisation …) sautent la boucle groups ; les anciens
+        # YAMLs 1.0.0 portent groups explicitement.
+        for g in s.get('groups', []):
             for f in g['fields']:
                 result.setdefault(column(f['code']),dict(f,event=s['event'],group=g['name']))
             for k in ('count_code','params_code'):
