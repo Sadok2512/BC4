@@ -240,11 +240,6 @@ def compute_status_v2(
         else:
             from app.measure.throughput import compute_transfers
             ts = compute_transfers(db, project_id)
-        from app.routes.tasks import where as task_where
-        task_condition,task_params=task_where(project_id,{**filters,'operator':list(operators)})
-        task_context={(r['capture_id'],r['seq_start']):dict(r) for r in db.execute(text('SELECT t.capture_id,t.seq_start,t.operator,t.band FROM task_run t WHERE '+task_condition),task_params).mappings()}
-        allowed_tasks=set(task_context)
-        ts=[t for t in ts if (t.capture_id,t.seq_start) in allowed_tasks]
         n_proven = sum(
             1 for t in ts if t.verdict == "proven" and t.direction == direction and t.thrpt_mbps is not None
         )
