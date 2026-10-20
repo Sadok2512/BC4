@@ -74,15 +74,21 @@ def list_templates(db,project_id):
     cats=configuration(db);refs=references([e for c in cats for e in c['entries']]);counts=Counter()
     for row in aggregate(db,project_id,refs):counts[row['row_id']]+=row['n']
     # Category population is based on unique catalog occurrences, independent of overlapping templates.
-    from app.dict.catalog_v22 import network_catalog
+    from app.dict.catalog_v22 import ELIGIBLE, NORMALIZED
+    from app.dict.category_mapping import resolve_mapping
+    maps=list(db.execute(text('SELECT * FROM dict_category_map')).mappings())
+    # Category totals need paths and counts, not a joined tree of capture arrays.
+    rows=db.execute(text(f"""SELECT p.system,{NORMALIZED} path,p.param_key,
+        COALESCE(p.discriminators,'{{}}'::jsonb) discriminators,count(*) n
+        FROM param_occurrence p WHERE p.project_id=:pid
+        AND p.origin='network_config' AND {ELIGIBLE}
+        GROUP BY p.system,p.path,p.param_key,p.discriminators"""),{'pid':project_id}).mappings()
     cat_counts=Counter();cat_keys={}
-    for tech,categories in network_catalog(db,project_id).items():
-        for category in categories:
-            for sub in category['subcategories']:
-                for node in sub['parameters']:
-                    cid=category['id'];cat_counts[cid]+=node['n']
-                    for leaf in node['leaves']:
-                        cat_keys.setdefault(cid,set()).update((tech,key) for key in leaf['source_param_keys'])
+    for row in rows:
+        match=resolve_mapping(row['system'],row['path'],row['discriminators'],maps)
+        cid=match['category_id'] if match else 'autres'
+        cat_counts[cid]+=row['n']
+        cat_keys.setdefault(cid,set()).add((row['system'],row['param_key']))
     for c in cats:
         c['n_parameters']=len(cat_keys.get(c['id'],set()));c['n_in_project']=cat_counts[c['id']]
         c['entries']=[dict(e,n_in_project=sum(counts[f"{e['id']}:{i}"] for i in range(len(e['parameters']))),resolved=bool(e['parameters'])) for e in sorted(c['entries'],key=lambda e:(e['position'],e['id']))]
