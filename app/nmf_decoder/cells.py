@@ -12,6 +12,32 @@ from .schema import schemas,fields,column
 def cell_rows(light):
     grouped=defaultdict(list)
     for b in light.buckets.values():
+        # CELLMEAS carries its discriminator inside every repeated cell set.
+        # The documented serving code is 0.  Codes 10..13 are bound to
+        # SCell1..4 by the MIMOMEAS/content proof; neighbour/type-1 and the
+        # observed 14/15 codes deliberately remain outside this projection.
+        if b['event_code']=='CELLMEAS' and b['second']>=0:
+            cell_map={0:0,10:1,11:2,12:3,13:4}
+            observed=defaultdict(list)
+            for group in b.get('groupstats',{}).values():
+                if group['group_name']!='cells':continue
+                stats=group['stats']
+                discriminator=stats.get('cell_type')
+                cell_type=discriminator.value() if discriminator else None
+                cell=cell_map.get(cell_type)
+                if cell is None:continue
+                for code,stat in stats.items():
+                    if code=='cell_type' or stat.value() is None:continue
+                    observed[(cell,code)].append((group,stat))
+            for (cell,code),items in observed.items():
+                if len(items)!=1:
+                    # More than one physical cell cannot be collapsed into a
+                    # single named serving-cell series without another key.
+                    continue
+                group,stat=items[0]
+                yield dict(second=b['second'],event_code='CELLMEAS',metric_code=code,
+                    cell_index=cell,seq_first=b['seq'],seq_last=b['seq_last'],
+                    value=stat.value(),weight=stat.weight,reason=None)
         if b['event_code']=='CELLMEAS' and b['second']>=0:
             for code,value in b.get('neighbors',{}).items():
                 yield dict(second=b['second'],event_code='CELLMEAS',metric_code=code,cell_index=-1,
@@ -19,8 +45,9 @@ def cell_rows(light):
                            reason='missing_neighbor_or_serving_value' if value is None else None)
         schema=schemas().get(b['event_code'],{})
         if not schema.get('cell_scoped') or b['second']<0:continue
-        indices=[b['stats'][column(f['code'])].value() for f in schema['header']
-                 if f['code'].endswith('.cell_type') and column(f['code']) in b['stats']]
+        indices=([b['cell_type']] if b['event_code']=='TXPC' and b.get('cell_type') is not None else
+                 [b['stats'][column(f['code'])].value() for f in schema['header']
+                  if f['code'].endswith('.cell_type') and column(f['code']) in b['stats']])
         if len(indices)!=1 or indices[0] not in range(5):continue
         cell=int(indices[0])
         for code,stat in b['stats'].items():

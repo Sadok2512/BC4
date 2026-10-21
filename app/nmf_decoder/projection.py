@@ -69,26 +69,17 @@ def refresh_projections(db,pid):
     return {'observations':len(values),'updated_sequences':len(rows)}
 
 def metric_counts(db,pid):
-    """Count observations and actual storage sources in three scans.
+    """Count capture-second observations from the canonical Light projection.
 
-    A weighted Deep observation exists if any set at that seq has a value
-    and positive weight. Counting those seqs avoids evaluating every weighted
-    projection separately (and repeatedly reading the complete group table).
+    Light is populated for every decoded capture, including captures whose
+    detailed rows are also retained.  Reading it once avoids the former wide
+    ``COUNT(DISTINCT ...)`` scan over the repeated Deep group table, which
+    could spill to disk and made the catalogue endpoint unbounded.
     """
-    from .schema import column
-    result={};sources={};definitions=fields()
-    for table,group,level in [('nmf_event_deep',False,'deep'),('nmf_event_group',True,'deep'),('nmf_event_light',None,'light')]:
-        codes=[k for k,f in definitions.items() if group is None or bool(f['group'])==group]
-        expressions=[]
-        for k in codes:
-            f=definitions[k]
-            if group is True and f.get('weight'):
-                weight=column(f['code'].split('.')[0]+'.'+f['weight'])
-                expressions.append(f'count(DISTINCT (d.capture_id,d.seq)) FILTER(WHERE d.{k} IS NOT NULL AND d.{weight}>0) AS {k}')
-            else:
-                expressions.append(f'count(d.{k})'+(' FILTER(WHERE d.set_index=0)' if group is True else '')+f' AS {k}')
-        row=db.execute(text('SELECT '+','.join(expressions)+f" FROM {table} d JOIN nmf_capture c USING(project_id,capture_id) WHERE d.project_id=:pid AND c.decode_level='{level}'"),{'pid':pid}).mappings().one()
-        for k,n in row.items():
-            result[k]=result.get(k,0)+n
-            if n:sources.setdefault(k,[]).append(table)
+    codes=list(fields())
+    expressions=[f'count(d.{code}) AS {code}' for code in codes]
+    row=db.execute(text('SELECT '+','.join(expressions)+
+        ' FROM nmf_event_light d WHERE d.project_id=:pid'),{'pid':pid}).mappings().one()
+    result={code:int(n or 0) for code,n in row.items()}
+    sources={code:['nmf_event_light'] for code,n in result.items() if n}
     return result,sources

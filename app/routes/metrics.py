@@ -1,6 +1,7 @@
 """Capture-local measured chronograms, with replayable provenance."""
 import csv
 import io
+import json
 import math
 from decimal import Decimal, InvalidOperation
 from typing import Literal
@@ -42,6 +43,31 @@ class MetricInfo(BaseModel):
     event_code: str = ""
     proof_ref: str = ""
     category: str | None = None  # 0.64.0 (F1) — champ `category` du YAML décodeur
+class MetricCatalogNode(BaseModel):
+    node_id: str
+    parent_id: str | None = None
+    order: int
+    label: str
+    note: str | None = None
+    source: str | None = None
+    node_type: Literal['category','group','metric','leaf']
+    metric_id: str | None = None
+    selection: str | None = None
+    event: str | None = None
+    field_idx: int | None = None
+    source_column: str | None = None
+    unit: str = ''
+    cell: str | None = None
+    n: int = 0
+    proof: Literal['documented','content','open']
+    selectable: bool = False
+    reason: str | None = None
+class MetricCatalogResponse(BaseModel):
+    catalogue_version: str
+    title: str
+    header: str
+    metrics: list[MetricInfo]
+    nodes: list[MetricCatalogNode]
 class CaptureInfo(BaseModel):
     capture_id: str
     label: str
@@ -234,11 +260,27 @@ def metric_aggregate(
     )
 
 
-@router.get('/projects/{project_id}/metrics', response_model=list[MetricInfo])
+@router.get('/projects/{project_id}/metrics', response_model=MetricCatalogResponse)
 def catalog(project_id: str, db: Session=Depends(get_db)):
     project(db,project_id)
+    stamp=db.execute(text("""SELECT md5(coalesce(string_agg(
+      capture_id || ':' || decoder_version || ':' || coalesce(decoded_at::text,''),
+      ',' ORDER BY capture_id),'')) FROM nmf_capture WHERE project_id=:pid"""),
+      {'pid':project_id}).scalar_one()
+    cached=db.execute(text("""SELECT payload FROM metrics_catalog_cache
+      WHERE project_id=:pid AND decode_stamp=:stamp"""),
+      {'pid':project_id,'stamp':stamp}).scalar_one_or_none()
+    if cached is not None:return cached
     from app.kpi.metrics_v3 import catalog as catalog_v3
-    return catalog_v3(db,project_id)
+    from app.kpi.metrics_catalogue_v6 import catalogue as catalogue_v6
+    metric_rows=catalog_v3(db,project_id)
+    payload=dict(catalogue_v6(db,project_id,metric_rows),metrics=metric_rows)
+    db.execute(text("""INSERT INTO metrics_catalog_cache(project_id,decode_stamp,payload)
+      VALUES(:pid,:stamp,CAST(:payload AS jsonb)) ON CONFLICT(project_id) DO UPDATE SET
+      decode_stamp=excluded.decode_stamp,payload=excluded.payload,updated_at=now()"""),
+      {'pid':project_id,'stamp':stamp,'payload':json.dumps(payload)})
+    db.commit()
+    return payload
 
 @router.get('/projects/{project_id}/metrics/captures', response_model=list[CaptureInfo])
 def captures(project_id: str,f: dict=Depends(filters),db: Session=Depends(get_db)):

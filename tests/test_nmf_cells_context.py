@@ -81,10 +81,29 @@ def test_undecoded_nr_does_not_create_zero_neighbors_or_collide_with_lte():
     light.add(record('CELLMEAS,00:00:00.000,,7,0,1,9,0,70007,2825,1,-44,-71,-8,100,50',1))
     light.add(record('CELLMEAS,00:00:00.000,,9,0,0,9',2))
     rows=list(cell_rows(light))
+    serving={(r['metric_code'],r['cell_index']):r['value'] for r in rows}
+    assert serving['cell_rsrp',0]==-71
+    assert serving['cell_rsrq',0]==-8
     assert len({(r['second'],r['event_code'],r['metric_code'],r['cell_index']) for r in rows})==len(rows)
     assert all(r['seq_first']==1 for r in rows)
     only_nr=Light();only_nr.add(record('CELLMEAS,00:00:00.000,,9,0,0,9'))
     assert list(cell_rows(only_nr))==[]
+
+
+def test_txpc_content_proven_cell_discriminator_depends_on_format():
+    light=Light()
+    rows=[
+        ('TXPC,00:00:00.000,,7,3.6,-16.0,20.4,,,0,2,0,2,,,0', '2.59', 1),
+        ('TXPC,00:00:00.000,,7,4.0,,,,,0,2,0,2,,,1,', '2.62', 2),
+    ]
+    for line,version,seq in rows:
+        decoded=decode(line,capture_id='TEST-capture',seq=seq,format_version=version)
+        decoded.t_rel_s=0
+        light.add(decoded)
+    projected={(row['metric_code'],row['cell_index']):row for row in cell_rows(light)}
+    assert projected['txpc_pucch_tx_power',0]['value']==-16
+    assert projected['txpc_pusch_tx_power',1]['value']==4
+    assert all(cell in {-1,0,1} for _,cell in projected)
 
 
 def test_crel_variable_header_has_declared_system_and_preserves_long_cell_ids():

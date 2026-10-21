@@ -2,6 +2,11 @@
 
 Version independent of the API. Patch: corrected position/unit or additional documented field. Minor: new event/system. Major: changed meaning of an existing field, requiring re-decode.
 
+## 1.3.0 (minor) — 2026-10-21 (Agent BC1)
+
+- Preserve the CELLMEAS repeated-cell discriminator in the per-second cell projection: type 0 is PCell and content-proven types 10–13 are SCell1–4.
+- Leave neighbour/type-1 and observed codes 14/15 outside serving-cell series. NR PSCell/SCell leaves remain visible with `proof=open` until P4 is closed.
+
 ## 1.2.2 (patch) — 2026-10-21 (Agent BC2)
 
 - Correct documented CREL positions for header sizes 1 and 2; reject unproved mixed-system layouts instead of guessing a system.
