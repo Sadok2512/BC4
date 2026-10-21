@@ -23,9 +23,22 @@ class MetricInfo(BaseModel):
     source_tables: list[str]
     source_column: str
     tech: Literal['LTE','NR','BOTH']
-    kind: Literal['numeric','categorical']
+    kind: Literal['numeric','categorical','event']
     n_in_project: int
-    decoder_version: str = "1.0.0"
+    decoder_version: str
+    event: str
+    category_label: str
+    cell_scoped: bool
+    cells: list[int]
+    cell_options: list[dict]
+    attributes: list[dict]
+    proof: Literal['documented','content','none']
+    available: bool
+    reason: str | None = None
+    alias_of: str | None = None
+    event_group: str | None = None
+    unproven_cells: list[dict] = []
+    root_notices: list[dict] = []
     event_code: str = ""
     proof_ref: str = ""
     category: str | None = None  # 0.64.0 (F1) — champ `category` du YAML décodeur
@@ -37,6 +50,7 @@ class Sample(BaseModel):
     t_rel_s: float
     value: float | str
     tooltip: str = ''
+    attributes: dict = {}
 class Sampling(BaseModel):
     method: str
     factor: float
@@ -46,12 +60,13 @@ class Segment(BaseModel):
     end_s: float
     value: str
 class MetricSeries(BaseModel):
+    cell: str = "all"
     source_table: str
     source_column: str
     code: str
     label: str
     unit: str
-    kind: Literal['numeric','categorical']
+    kind: Literal['numeric','categorical','event']
     n_total: int
     n_returned: int
     sampling: Sampling
@@ -222,24 +237,8 @@ def metric_aggregate(
 @router.get('/projects/{project_id}/metrics', response_model=list[MetricInfo])
 def catalog(project_id: str, db: Session=Depends(get_db)):
     project(db,project_id)
-    result=[]
-    from app.nmf_decoder.schema import fields
-    from app.nmf_decoder.projection import metric_counts
-    counts,sources=metric_counts(db,project_id)
-    for code,m in metric_catalog(db).items():
-        n=counts.get(m.source_column,0)
-        if n:
-            field_def = fields()[m.source_column]
-            result.append(dict(code=code,label=m.label,unit=m.unit,source_table=sources[m.source_column][0],source_tables=sources[m.source_column],
-                source_column=m.source_column,tech=m.tech,kind=m.kind,n_in_project=n,
-                event_code=field_def["event"],proof_ref=field_def["proof"],
-                # 0.64.0 (F1) — remonte la catégorie posée par scripts/apply_categories.py
-                # dans les YAMLs. 14 catégories décodeur (radio_serving, neighbours,
-                # throughput_layers, link_quality, allocation_mcs, csi, mimo_port,
-                # ul_power, voice, services, position, signalling_states, session,
-                # terminal_cell). Jamais inventée.
-                category=field_def.get("category")))
-    return result
+    from app.kpi.metrics_v3 import catalog as catalog_v3
+    return catalog_v3(db,project_id)
 
 @router.get('/projects/{project_id}/metrics/captures', response_model=list[CaptureInfo])
 def captures(project_id: str,f: dict=Depends(filters),db: Session=Depends(get_db)):
@@ -298,7 +297,15 @@ def sample(points,limit,kind):
     return out,dict(method='seq_bucket_min_max',factor=n/len(out),seq_bucket_width=width)
 
 @router.get('/projects/{project_id}/metrics/series', response_model=SeriesResponse)
-def series(project_id: str,capture_id: str,codes: str,from_seq: int|None=Query(None,ge=0),to_seq: int|None=Query(None,ge=0),max_points: int=Query(5000,ge=2,le=100000),f: dict=Depends(filters),db: Session=Depends(get_db)):
+def series(project_id: str,capture_id: str,codes: str,cell: str|None=None,attr: str|None=None,from_seq: int|None=Query(None,ge=0),to_seq: int|None=Query(None,ge=0),max_points: int=Query(5000,ge=2,le=100000),f: dict=Depends(filters),db: Session=Depends(get_db)):
+    from app.kpi.metrics_v3 import definitions,parse_selection,Dataset,DERIVED
+    if cell is not None or attr is not None or any(c in DERIVED or c.startswith('evt_') or '@' in c or '~' in c for c in codes.split(',')):
+        project(db,project_id)
+        if from_seq is not None and to_seq is not None and from_seq>to_seq:raise HTTPException(422,'from_seq_after_to_seq')
+        ds=Dataset(db,project_id,capture_id,f,from_seq,to_seq)
+        selected=[parse_selection(c,definitions(),cell or 'all',attr) for c in dict.fromkeys(codes.split(','))]
+        if len(selected)>64:raise HTTPException(422,'too_many_metrics')
+        return ds.response(selected,max_points)
     project(db,project_id)
     validate_operators(db,project_id,f)
     definitions=metric_catalog(db)

@@ -1,3 +1,9 @@
+## 0.69.0 (minor) — BC4 2026-10-21 — Contrat Métriques v3 (Agent BC2)
+
+- Catalogue fermé : catégories, cellules disponibles, preuves et attributs événementiels ; hypothèses CELLMEAS 10–13 et positions inconnues explicitement indisponibles.
+- Séries par cellule/attribut et tableau par seconde avec CSV, histogrammes par opérateur/bande, appariement dans la même cellule et points GPS enregistrés. Calculs et dénominateurs côté API, sources conservées dans result_id.
+- Réutilise les projections du décodeur 1.2.2 sans re-décodage ni changement des formules KPI. NR/EN-DC non documentés restent déclarés comme écarts.
+
 ## 0.68.2 (patch) — BC4 2026-10-21 — Variantes CREL et forçages LOCK (Agent BC2)
 
 - Decode documented LTE CREL header variants with explicit conditional system columns, preserving old/new cell IDs and optional reason.
