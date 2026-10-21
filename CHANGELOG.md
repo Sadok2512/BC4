@@ -1,3 +1,7 @@
+## 0.74.2 (patch) — BC4 2026-10-21 — Canonical legacy context list (Agent BC1)
+
+- Persist an empty context list in rebuilt Light rows when legacy Deep data has a null `context_ids`, matching a fresh source replay while preserving all source observations.
+
 ## 0.74.1 (patch) — BC4 2026-10-21 — Legacy Deep projection compatibility (Agent BC1)
 
 - Rebuild Light projections from legacy Deep captures whose `context_ids` is null, treating the absent context list as an empty grouping key without changing stored source data.
