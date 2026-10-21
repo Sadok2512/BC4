@@ -75,7 +75,10 @@ def g18h(db):
         'ho_reconfig_mobility': WINDOW_HO,
         'rrc_setup_message': 20,
         'rlf_reestab_request': 50,
-        'procedure_boundary': 10_000,  # procedures span arbitrary distance
+        # procedures span the entire capture (attach, data_session may run
+        # for the full trace) ; no gap limit by design — appartenance is
+        # proven by reconstruct(), not by proximity.
+        'procedure_boundary': None,
         'pivot_on_state_event': 0,
         'no_dict_support': None,
         'no_rule': None,
