@@ -1,3 +1,8 @@
+## 0.69.1 (patch) — BC4 2026-10-21 — English KPI and Metrics labels (Agent BC2)
+
+- Serve English catalogue categories, metric groups, attributes and availability explanations directly from the API. Preserve source catalogue definitions, decoder schemas, values, formulas and evidence identifiers.
+- Translate KPI presentation fields after cache retrieval; cached data and numeric results remain unchanged.
+
 ## 0.69.0 (minor) — BC4 2026-10-21 — Contrat Métriques v3 (Agent BC2)
 
 - Catalogue fermé : catégories, cellules disponibles, preuves et attributs événementiels ; hypothèses CELLMEAS 10–13 et positions inconnues explicitement indisponibles.

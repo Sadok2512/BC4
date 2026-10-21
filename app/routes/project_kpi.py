@@ -28,6 +28,7 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.deps import get_actor, get_current_user, require_role, with_statement_timeout_60s
+from app.kpi.english import english_response
 from app.kpi.service_v2 import (
     build_catalog_v2_response,
     build_filters_v2,
@@ -83,16 +84,16 @@ def kpi_catalog(
     # Authorization and project existence are checked before cache access.
     # Only catalogue statuses are cached, for at most 30 seconds.
     services = tuple(sorted(set(service_type)))
-    return catalog_cache.get(
+    return english_response(catalog_cache.get(
         (project_id, services),
         lambda: build_catalog_v2_response(db, project_id, services=services),
-    )
+    ))
 
 
 @router.get("/{project_id}/kpi/filters", response_model=ProjectKpiFilters)
 def kpi_filters(project_id: str, db: Session = Depends(get_db)) -> dict:
     _require_project(db, project_id)
-    return build_filters_v2(db, project_id)
+    return english_response(build_filters_v2(db, project_id))
 
 
 @router.post("/{project_id}/kpi/_rebuild_param_occurrence")
@@ -182,7 +183,7 @@ def kpi_detail(
     result['result_id']=evidence(db,project_id,';\n'.join(q['sql'] for q in trace.queries),
         {'applied_filters':applied,'code':code,'group_by':group_by,'queries':trace.queries},
         {'n':result.get('n'),'denominator':result.get('denominator')})
-    return result
+    return english_response(result)
 
 
 # ---------------------------------------------------------------------------

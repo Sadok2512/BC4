@@ -4,5 +4,5 @@ AXES = {
     'rsrp': {'label': 'RSRP', 'unit': 'dBm', 'source': 'measurement_points.rsrp'},
     'sinr': {'label': 'SINR', 'unit': 'dB', 'source': 'measurement_points.sinr'},
     'cqi': {'label': 'CQI', 'unit': 'index', 'source': 'measurement_points.cqi'},
-    'capture_time': {'label': 'Heure capture (secondes depuis minuit)', 'unit': 's', 'source': 'DRATE.ts capture-local'},
+    'capture_time': {'label': 'Capture time (seconds since midnight)', 'unit': 's', 'source': 'DRATE.ts capture-local'},
 }

@@ -12,35 +12,36 @@ from sqlalchemy import text
 from app.nmf_decoder import DECODER_VERSION
 from app.nmf_decoder.schema import schemas, fields, column
 from app.nmf_decoder.projection import ALIASES, metric_counts
+from app.kpi.english import english_text
 from app.kpi.metrics import metric_catalog
 from app.kpi.population import context_sql, predicate, validate_operators
 
 CATEGORIES = {
- 'radio_serving':'Radio serving', 'neighbours':'Voisines', 'carrier_aggregation':'Carrier Aggregation',
- 'throughput_layers':'Débits par couche', 'link_quality':'Qualité de lien', 'allocation_mcs':'Allocation & MCS',
- 'csi':'CSI', 'mimo_port':'MIMO par port', 'ul_power':'Puissance UL', 'voice':'Voix',
- 'services':'Services', 'position':'Position', 'signalling_states':'Événements',
- 'session':'Contexte capture', 'terminal_cell':'Contexte capture', 'undocumented':'Non documentés'}
+ 'radio_serving':'Radio serving', 'neighbours':'Neighbours', 'carrier_aggregation':'Carrier Aggregation',
+ 'throughput_layers':'Throughput by layer', 'link_quality':'Link quality', 'allocation_mcs':'Allocation & MCS',
+ 'csi':'CSI', 'mimo_port':'MIMO by port', 'ul_power':'UL power', 'voice':'Voice',
+ 'services':'Services', 'position':'Position', 'signalling_states':'Events',
+ 'session':'Capture context', 'terminal_cell':'Capture context', 'undocumented':'Undocumented'}
 FIELD_LABELS={'plaid_mcs0':'MCS CW0 (DL)','plaid_mcs1':'MCS CW1 (DL)','plaiu_mcs0':'MCS CW0 (UL)'}
 EVENT_GROUPS={
- 'RRC':{'RRA','RRC','RRD'}, 'Mobilité':{'HOA','HOS','HOI','CREL'},
- 'Attachement':{'GAA','GAC','GAD'}, 'Bearers':{'PBA','PBC','PBD','RABA','RABC','RABD'},
- 'Appels':{'CAA','CAC','CAD'}, 'VoLTE / SIP':{'SIPREGA','SIPREGC','SIPREGD'},
- 'Sessions data':{'DAA','DAC','DAD','DREQ','DCOMP','DSUMMARY'},
- 'Accès radio':{'RACHI'}, 'Cellule / CA':{'MEI','SEI','SCELLMOD'},
- 'Forçages / repères':{'LOCK','ROAM','MARK'}}
+ 'RRC':{'RRA','RRC','RRD'}, 'Mobility':{'HOA','HOS','HOI','CREL'},
+ 'Attach':{'GAA','GAC','GAD'}, 'Bearers':{'PBA','PBC','PBD','RABA','RABC','RABD'},
+ 'Calls':{'CAA','CAC','CAD'}, 'VoLTE / SIP':{'SIPREGA','SIPREGC','SIPREGD'},
+ 'Data sessions':{'DAA','DAC','DAD','DREQ','DCOMP','DSUMMARY'},
+ 'Radio access':{'RACHI'}, 'Cell / CA':{'MEI','SEI','SCELLMOD'},
+ 'Forcing / markers':{'LOCK','ROAM','MARK'}}
 EVENTS=set().union(*EVENT_GROUPS.values())
 DERIVED={
- 'n_scell_active':('SCell avec trafic PDSCH observé','count','carrier_aggregation','PHRATE'),
- 'n_cc_active':('CC avec trafic PDSCH observé','count','carrier_aggregation','PHRATE'),
- 'scell_throughput_share':('Part SCell du débit PHY observé','%','carrier_aggregation','PHRATE'),
- 'neighbor_count':('Nombre de voisines type 2','count','neighbours','CELLMEAS'),
- 'neighbor_best_rsrp':('Meilleure RSRP voisine','dBm','neighbours','CELLMEAS'),
- 'neighbor_best_rsrq':('Meilleure RSRQ voisine','dB','neighbours','CELLMEAS'),
- 'neighbor_delta_rsrp':('RSRP voisine − serving','dB','neighbours','CELLMEAS'),
- 'neighbor_delta_rsrq':('RSRQ voisine − serving','dB','neighbours','CELLMEAS')}
-PAIR_ATTRS={'ho_duration_nemo_ms':('Durée HO Nemo','ms'), 'ho_duration_hoi_ms':('Durée HOI','ms'),
- 'duration_nemo_ms':('Durée du couple Nemo','ms'), 'outcome':('Issue du couple','')}
+ 'n_scell_active':('SCells with observed PDSCH traffic','count','carrier_aggregation','PHRATE'),
+ 'n_cc_active':('CCs with observed PDSCH traffic','count','carrier_aggregation','PHRATE'),
+ 'scell_throughput_share':('SCell share of observed PHY throughput','%','carrier_aggregation','PHRATE'),
+ 'neighbor_count':('Type 2 neighbour count','count','neighbours','CELLMEAS'),
+ 'neighbor_best_rsrp':('Best neighbour RSRP','dBm','neighbours','CELLMEAS'),
+ 'neighbor_best_rsrq':('Best neighbour RSRQ','dB','neighbours','CELLMEAS'),
+ 'neighbor_delta_rsrp':('Neighbour RSRP − serving','dB','neighbours','CELLMEAS'),
+ 'neighbor_delta_rsrq':('Neighbour RSRQ − serving','dB','neighbours','CELLMEAS')}
+PAIR_ATTRS={'ho_duration_nemo_ms':('Nemo HO duration','ms'), 'ho_duration_hoi_ms':('HOI duration','ms'),
+ 'duration_nemo_ms':('Nemo pair duration','ms'), 'outcome':('Pair outcome','')}
 _PRIVATE={'caa_phone_number','caa_own_phone_number','sei_lac','sei_tmsi','sei_p_tmsi','sei_m_tmsi'}
 _cache={}
 _catalog_lock=Lock()
@@ -52,11 +53,11 @@ def definitions():
         f=fs[m.source_column];s=ss[f['event']]
         scoped=bool(s.get('cell_scoped')) and not f.get('dimension') and not code.endswith('_cell_type') and code!='phrate_ph_ch_type'
         category=f.get('category') or 'session'
-        result[code]=dict(code=code,label=FIELD_LABELS.get(m.source_column,m.label),unit=m.unit or '',source_table=m.source_table,
+        result[code]=dict(code=code,label=english_text(FIELD_LABELS.get(m.source_column,m.label)),unit=m.unit or '',source_table=m.source_table,
             source_tables=[m.source_table],source_column=m.source_column,tech=m.tech,kind=m.kind,
             event=f['event'],event_code=f['event'],category=category,category_label=CATEGORIES.get(category,category),
             cell_scoped=scoped,cells=[],cell_options=[],attributes=[],proof='documented',proof_ref=f['proof'],
-            decoder_version=DECODER_VERSION,n_in_project=0,available=True,reason=s.get('cell_scope_reason'),
+            decoder_version=DECODER_VERSION,n_in_project=0,available=True,reason=english_text(s.get('cell_scope_reason')),
             alias_of=ALIASES.get(code),agg=f.get('agg'),weighted=bool(f.get('weight')),sql=m.sql)
     for event in sorted(EVENTS):
         s=ss.get(event,{});attrs=[]
@@ -70,14 +71,14 @@ def definitions():
             for f in group.get('fields',[]):
                 key=column(f['code'])
                 if key in _PRIVATE or not f.get('proof') or key in {a['code'] for a in attrs}:continue
-                attrs.append(dict(code=key,label=f.get('label',key)+' · ensembles',unit=f.get('unit') or '',kind='categorical',proof='documented',proof_ref=f['proof'],group=group['name'],repeated=True))
-        attrs.append(dict(code='context_id',label='Contexte Nemo',unit='',kind='categorical',proof='documented',proof_ref='NFF 2.19 p5: context count followed by context IDs'))
+                attrs.append(dict(code=key,label=f.get('label',key)+' · sets',unit=f.get('unit') or '',kind='categorical',proof='documented',proof_ref=f['proof'],group=group['name'],repeated=True))
+        attrs.append(dict(code='context_id',label='Nemo context',unit='',kind='categorical',proof='documented',proof_ref='NFF 2.19 p5: context count followed by context IDs'))
         if event in {'HOA','HOS','HOI','CAA','CAC','CAD','DAA','DAC','DAD','RRA','RRC','RRD','GAA','GAC','PBA','PBC','PBD'}:
             for key,(label,unit) in PAIR_ATTRS.items():
                 if key.startswith('ho_') and event not in {'HOA','HOS','HOI'}:continue
                 attrs.append(dict(code=key,label=label,unit=unit,kind='categorical' if key=='outcome' else 'numeric',proof='content',proof_ref='nmf_event_pair; capture-local context state machine; no cross-capture pairing'))
         code='evt_'+event
-        result[code]=dict(code=code,label=event,unit='occurrence',source_table='nmf_event_deep',source_tables=['nmf_event_deep','nmf_event_light'],source_column='event_code',tech='BOTH',kind='event',event=event,event_code=event,category='signalling_states',category_label='Événements',event_group=next(k for k,v in EVENT_GROUPS.items() if event in v),cell_scoped=False,cells=[],cell_options=[],attributes=attrs,proof='documented' if s and s.get('proof')!='none' else 'none',proof_ref='NFF 2.19; YAML '+event+'; occurrence only when undocumented',decoder_version=DECODER_VERSION,n_in_project=0,available=True,reason=None,alias_of=None,agg='count')
+        result[code]=dict(code=code,label=event,unit='occurrence',source_table='nmf_event_deep',source_tables=['nmf_event_deep','nmf_event_light'],source_column='event_code',tech='BOTH',kind='event',event=event,event_code=event,category='signalling_states',category_label='Events',event_group=next(k for k,v in EVENT_GROUPS.items() if event in v),cell_scoped=False,cells=[],cell_options=[],attributes=attrs,proof='documented' if s and s.get('proof')!='none' else 'none',proof_ref='NFF 2.19; YAML '+event+'; occurrence only when undocumented',decoder_version=DECODER_VERSION,n_in_project=0,available=True,reason=None,alias_of=None,agg='count')
     for code,(label,unit,category,event) in DERIVED.items():
         result[code]=dict(code=code,label=label,unit=unit,source_table='nmf_cell_second',source_tables=['nmf_cell_second'],source_column=code,tech='LTE',kind='numeric',event=event,event_code=event,category=category,category_label=CATEGORIES[category],cell_scoped=False,cells=[],cell_options=[],attributes=[],proof='content',proof_ref='nmf_cell_second; observed cells only, no configured state inferred',decoder_version=DECODER_VERSION,n_in_project=0,available=True,reason=None,alias_of=None,agg='last')
     return result
@@ -106,17 +107,17 @@ def _catalog(db,pid):
         if m['cell_scoped']:
             by={x['cell_index']:x['n'] for x in cells[m['source_column']]}
             m['cells']=sorted(i for i,n in by.items() if i>=0 and n)
-            m['cell_options']=[dict(cell='all' if i==-1 else str(i),label='Total CA' if i==-1 else 'PCell' if i==0 else f'SCell{i}',n_in_project=by.get(i,0),available=bool(by.get(i,0)),reason=None if by.get(i,0) else 'Aucune observation ou pondération totale non prouvée') for i in [-1,0,1,2,3,4]]
+            m['cell_options']=[dict(cell='all' if i==-1 else str(i),label='Total CA' if i==-1 else 'PCell' if i==0 else f'SCell{i}',n_in_project=by.get(i,0),available=bool(by.get(i,0)),reason=None if by.get(i,0) else 'No observations or total weighting unproven') for i in [-1,0,1,2,3,4]]
         if m['n_in_project']:out.append(m)
     for r in unknown:
-        out.append(dict(code='unk_'+r['event_code'],label=r['event_code']+' · champs non documentés',unit='',source_table='nmf_event_light',source_tables=['nmf_event_light'],source_column='unknown',tech='BOTH',kind='categorical',event=r['event_code'],event_code=r['event_code'],category='undocumented',category_label='Non documentés',cell_scoped=False,cells=[],cell_options=[],attributes=[],proof='none',proof_ref='',decoder_version=DECODER_VERSION,n_in_project=r['n'],available=False,reason='position non prouvée (NFF 2.19)',alias_of=None))
+        out.append(dict(code='unk_'+r['event_code'],label=r['event_code']+' · undocumented fields',unit='',source_table='nmf_event_light',source_tables=['nmf_event_light'],source_column='unknown',tech='BOTH',kind='categorical',event=r['event_code'],event_code=r['event_code'],category='undocumented',category_label='Undocumented',cell_scoped=False,cells=[],cell_options=[],attributes=[],proof='none',proof_ref='',decoder_version=DECODER_VERSION,n_in_project=r['n'],available=False,reason='Unproven field position (NFF 2.19)',alias_of=None))
     # Explicitly visible blocked hypothesis, not an invented SCell measurement.
     for code in ('cell_rsrp','cell_rsrq'):
         if any(m['code']==code for m in out):
             base=next(m for m in out if m['code']==code)
-            base['unproven_cells']=[dict(cell=str(i),label=f'Cellule type {i}',reason='cellule servante secondaire — hypothèse non prouvée ; dépend de BC1 /dict/v2/scells') for i in range(10,14)]
+            base['unproven_cells']=[dict(cell=str(i),label=f'Cell type {i}',reason='Secondary serving cell — unproven hypothesis; requires BC1 /dict/v2/scells') for i in range(10,14)]
     nr=any(isinstance(s.get('systems'),list) and 9 in s['systems'] for s in schemas().values())
-    notices=[] if nr else [dict(label='NR',reason='Aucune position NR documentée dans les schémas activés'),dict(label='EN-DC',reason='Association LTE/NR non prouvée ; aucun mélange de captures')]
+    notices=[] if nr else [dict(label='NR',reason='No documented NR field positions in active schemas'),dict(label='EN-DC',reason='Unproven LTE/NR association; captures are never combined')]
     for item in out:item['root_notices']=notices
     _cache[pid]=(stamp,time.monotonic(),out)
     return out
@@ -259,7 +260,7 @@ class Dataset:
         table={};series=[];hist=[];map_points=[];gaps=[]
         for m,rows in loaded:
             points=[];buckets=defaultdict(list)
-            if any(r['t_rel_s'] is None for r in rows):gaps.append(m['selection']+': timestamp absent, observations exclues des vues temporelles')
+            if any(r['t_rel_s'] is None for r in rows):gaps.append(m['selection']+': Missing timestamp; observations excluded from temporal views')
             for r in rows:
                 if r['second'] is not None:buckets[r['second']].append(r)
                 if r['value'] is not None and r['t_rel_s'] is not None:
@@ -276,7 +277,7 @@ class Dataset:
                 if m.get('weighted') and not m['cell_scoped'] and len([r for r in rs if r['value'] is not None])>1:
                     # Projection preserves weighted per-seq values but does not expose their denominators.
                     # Never average those means again to manufacture a second-level statistic.
-                    value=None;gaps.append(m['selection']+': pondérations inter-échantillons absentes ; agrégat seconde N/D, série par seq conservée')
+                    value=None;gaps.append(m['selection']+': missing inter-sample weights; per-second aggregate unavailable, per-seq series preserved')
                 row['values'][m['selection']]=value;row['counts'][m['selection']]=sum(r.get('count',1) for r in rs)
             groups=defaultdict(list)
             for r in rows:
@@ -325,4 +326,4 @@ class Dataset:
             hh=int(actual//3600);mm=int((actual%3600)//60);ss=actual%60
             row['time_label']=f'{hh:02d}:{mm:02d}:{ss:06.3f}'
         for row in ordered:writer.writerow([rid,self.cap,row['second'],row['seq_first'],row['seq_last'],*[row['values'].get(k) for k in keys]])
-        return dict(**dict(self.state),project_id=self.pid,capture_id=self.cap,result_id=rid,origin_seq=self.origin_seq,origin_ts=self.origin_ts,duration_s=max(self.times.values()),aggregation='cell: schema-weighted capture-second; other numeric: schema aggregate; event: presence + count / last attribute',time_policy='capture-local source clock in seq order; no interpolation',columns=[dict(code=m['selection'],label=m['label'],unit=m['unit'],kind=m['kind'],cell=m['cell']) for m in selections],series=series,rows=ordered,histogram=hist,scatter=scatter,map_points=map_points,connected_seconds=connected,connected_reason=None if connected else 'Aucun intervalle RRC → RRD complet et admissible prouvé',pair_rates=pair_rates,gaps=sorted(set(gaps)),csv=output.getvalue(),pairing='previous-or-same seq, same capture and same cell; no interpolation')
+        return dict(**dict(self.state),project_id=self.pid,capture_id=self.cap,result_id=rid,origin_seq=self.origin_seq,origin_ts=self.origin_ts,duration_s=max(self.times.values()),aggregation='cell: schema-weighted capture-second; other numeric: schema aggregate; event: presence + count / last attribute',time_policy='capture-local source clock in seq order; no interpolation',columns=[dict(code=m['selection'],label=m['label'],unit=m['unit'],kind=m['kind'],cell=m['cell']) for m in selections],series=series,rows=ordered,histogram=hist,scatter=scatter,map_points=map_points,connected_seconds=connected,connected_reason=None if connected else 'No proven complete eligible RRC → RRD interval',pair_rates=pair_rates,gaps=sorted(set(gaps)),csv=output.getvalue(),pairing='previous-or-same seq, same capture and same cell; no interpolation')
