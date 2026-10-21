@@ -183,6 +183,7 @@ def compute_status_v2(
     *,
     services: tuple[str, ...] = (),
     transfers_cache: list[Any] | None = None,
+    nmf_available_cache: dict[str, bool] | None = None,
 ) -> KpiStatusV2:
     """Évalue la règle ``available_check`` de l'entrée sur un projet.
 
@@ -233,8 +234,15 @@ def compute_status_v2(
         )
 
     if kind == "nmf_metric":
+        # 0.74.2 (B) — nmf_available_cache est optionnellement passé par
+        # build_catalog_v2_response (dict {code: bool}, UN seul scan au lieu
+        # de N EXISTS). Pour les appels directs sans cache, fallback sur
+        # available() qui refait un EXISTS unitaire.
+        code = check['arg']
+        if nmf_available_cache is not None:
+            return KpiStatusV2("AVAILABLE", None) if nmf_available_cache.get(code) else KpiStatusV2("PENDING", "aucune mesure Nemo documentée décodée")
         from app.kpi.nmf import available
-        return KpiStatusV2("AVAILABLE", None) if available(db, project_id, check['arg']) else KpiStatusV2("PENDING", "aucune mesure Nemo documentée décodée")
+        return KpiStatusV2("AVAILABLE", None) if available(db, project_id, code) else KpiStatusV2("PENDING", "aucune mesure Nemo documentée décodée")
 
     if kind == "mp_metric":
         col = check.get("arg") or ""
@@ -343,16 +351,29 @@ def build_catalog_v2_response(
     if needs_transfers:
         from app.measure.throughput import compute_transfers
         transfers_cache = compute_transfers(db, project_id)
+    # 0.74.2 (B) — batch nmf_metric availability : UN seul scan de
+    # nmf_event_light au lieu de ~100 EXISTS. metric_counts retourne un
+    # dict {code: count} ; count>0 → disponible.
+    needs_nmf = any((e.get("available_check") or {}).get("kind") == "nmf_metric" for e in entries)
+    nmf_cache: dict[str, bool] | None = None
+    if needs_nmf:
+        from app.nmf_decoder.projection import metric_counts
+        counts, _ = metric_counts(db, project_id)
+        nmf_cache = {code: bool(n) for code, n in counts.items()}
     status_cache: dict[str, KpiStatusV2] = {}
     check_cache: dict[str, KpiStatusV2] = {}
     for e in entries:
         check_key = json.dumps(e.get("available_check") or {}, sort_keys=True)
         if services and not is_in_service_scope(e, services):
-            status_cache[e["code"]] = compute_status_v2(db, project_id, e, services=services, transfers_cache=transfers_cache)
+            status_cache[e["code"]] = compute_status_v2(
+                db, project_id, e, services=services,
+                transfers_cache=transfers_cache, nmf_available_cache=nmf_cache,
+            )
         else:
             if check_key not in check_cache:
                 check_cache[check_key] = compute_status_v2(
-                    db, project_id, e, services=services, transfers_cache=transfers_cache,
+                    db, project_id, e, services=services,
+                    transfers_cache=transfers_cache, nmf_available_cache=nmf_cache,
                 )
             status_cache[e["code"]] = check_cache[check_key]
 

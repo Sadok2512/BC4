@@ -29,7 +29,7 @@ from app.routes import (
 logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(name)s:%(message)s")
 logging.getLogger("app").setLevel(logging.INFO)
 
-app = FastAPI(title="bc4-back", version="0.74.2")
+app = FastAPI(title="bc4-back", version="0.74.3")
 
 # CORS (B2 / P1-1) : origines PILOTÉES par `BC4_CORS_ORIGINS` (jamais en
 # dur), méthodes/en-têtes explicites pour les uploads multipart
@@ -53,7 +53,38 @@ def health() -> dict[str, str]:
     with engine.connect() as conn:
         conn.execute(text("SELECT 1"))
     from app.nmf_decoder import DECODER_VERSION
-    return {"status": "ok", "env": settings.env, "version": "0.74.2", "decoder_version": DECODER_VERSION}
+    return {"status": "ok", "env": settings.env, "version": "0.74.3", "decoder_version": DECODER_VERSION}
+
+
+# 0.74.3 (C) — Warm /kpi/catalog cache au démarrage. Au lieu de laisser le
+# premier user payer 60s cold, on pré-chauffe en background pour chaque
+# projet connu. Non bloquant : si la query échoue, log + skip.
+def _warm_kpi_catalog():
+    import threading
+    from app.db import SessionLocal
+    from app.kpi.catalog_cache import catalog_cache
+    from app.kpi.service_v2 import build_catalog_v2_response
+
+    def worker():
+        try:
+            with SessionLocal() as db:
+                projects = db.execute(text("SELECT id FROM projects")).scalars().all()
+            for pid in projects:
+                try:
+                    with SessionLocal() as db:
+                        catalog_cache.get((pid, ()), lambda: build_catalog_v2_response(db, pid, services=()))
+                        logging.getLogger("app.warmup").info("warm /kpi/catalog pid=%s OK", pid)
+                except Exception as e:
+                    logging.getLogger("app.warmup").warning("warm pid=%s failed: %s", pid, e)
+        except Exception as e:
+            logging.getLogger("app.warmup").warning("warm skipped: %s", e)
+
+    threading.Thread(target=worker, name="kpi-catalog-warm", daemon=True).start()
+
+
+@app.on_event("startup")
+def _startup_warm():
+    _warm_kpi_catalog()
 
 
 app.include_router(auth.router)

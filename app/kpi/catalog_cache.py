@@ -6,8 +6,12 @@ from time import monotonic
 from copy import deepcopy
 
 
+# 0.74.2 (A) — TTL 30s → 600s. User navigation en session restait coûteuse à
+# chaque nouvelle page si > 30s écoulés : premier appel cold = ~60s sur TEST2.
+# Avec 10 min, l'utilisateur paie le cold ≤ 1× par 10 min de session, pas à
+# chaque navigation.
 class CatalogCache:
-    def __init__(self, ttl=30, capacity=64, clock=monotonic):
+    def __init__(self, ttl=600, capacity=64, clock=monotonic):
         self.ttl, self.capacity, self.clock = ttl, capacity, clock
         self.lock = Lock()
         self.ready = OrderedDict()

@@ -1,3 +1,15 @@
+## 0.74.3 (patch) — BC4 2026-10-21 — /kpi/catalog cold ≈ 60s → ~3s + warm boot (Agent BC3)
+
+**Problème** : page BC4 bloquée sur « Loading KPI catalogue… » pendant 55-67 s au premier chargement sur TEST2 / Test_3 (767k rows stg_event_raw, 197 KPIs). Cache TTL 30s expirait entre deux navigations → cold à chaque fois.
+
+**Fix A** — `app/kpi/catalog_cache.py` : `ttl=30` → `ttl=600` (10 min). Première navigation chaude dans la session couvre toute l'exploration habituelle.
+
+**Fix B** — `app/kpi/service_v2.py:build_catalog_v2_response` : batch des checks `nmf_metric`. Au lieu de ~100 `SELECT EXISTS(SELECT 1 FROM (…source_sql(code)…))` séquentiels, **UN seul appel à `metric_counts(db, pid)`** → dict `{code: bool}` passé en argument à `compute_status_v2` via nouveau paramètre optionnel `nmf_available_cache`. Appels unitaires sans cache conservent le comportement initial (back-compat).
+
+**Fix C** — `app/main.py:_warm_kpi_catalog` : hook `@app.on_event("startup")` qui lance un thread daemon pré-chauffant le catalogue pour chaque projet. Non bloquant ; échec par projet loggé et skippé. Utilisateur hit cache warm (0.05s) au lieu de 60s cold à sa première navigation.
+
+**Benchmark cible** (TEST2 134af70a06eb) : cold `62.8s → ≤5s`, warm `≈0.05s`.
+
 ## 0.74.2 (patch) — BC4 2026-10-21 — Canonical legacy context list (Agent BC1)
 
 - Persist an empty context list in rebuilt Light rows when legacy Deep data has a null `context_ids`, matching a fresh source replay while preserving all source observations.
