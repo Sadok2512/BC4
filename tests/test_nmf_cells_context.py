@@ -1,6 +1,6 @@
 """TEST-only inputs exercise privacy, distinct clocks and unequal cell weights."""
 from app.nmf_decoder.decoder import decode
-from app.nmf_decoder.light import Light
+from app.nmf_decoder.light import Light, dimensions
 from app.nmf_decoder.cells import cell_rows
 from app.nmf_decoder.pairs import Pairs
 
@@ -66,6 +66,12 @@ def test_volte_cause_is_conditional_and_privacy_unknown_layout_fails_closed():
     r=record('CAA,00:00:01.000,2,123,456,7,14,1,"TEST-phone","TEST-own"')
     assert r.system is None and r.context_id is None and r.context_ids==[]
     assert not any(r.tokens[3:])
+
+
+def test_legacy_null_context_ids_replay_as_empty_dimension():
+    decoded=record('DRATE,00:00:00.000,1,1,4,0,100,0,100',1)
+    decoded.context_ids=None
+    assert dimensions(decoded)=='context_ids='
 
 
 def test_drate_keeps_independent_context_dimensions():
