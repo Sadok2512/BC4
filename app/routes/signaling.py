@@ -2,6 +2,7 @@
 import csv
 import io
 import math
+import time
 from collections import Counter, defaultdict
 from typing import Literal, Any
 from fastapi import APIRouter, Depends, Query, HTTPException
@@ -13,6 +14,11 @@ from app.routes.tasks import project
 from app.signaling import service as svc
 
 router=APIRouter(prefix='/projects/{project_id}/signaling',tags=['signaling'],dependencies=[Depends(get_current_user)])
+
+# Capture selector data is project-scoped and changes only when ingestion adds
+# a file. Keep the expensive raw-event DISTINCT off the request path after the
+# first load; the short TTL also guarantees eventual visibility of new files.
+_CAPTURES_CACHE: dict[str, tuple[float, list[dict]]] = {}
 
 class Line(BaseModel):
     capture_id:str
@@ -136,8 +142,12 @@ def envelope(pid,cap,rows,params):
 @router.get('/captures',response_model=Captures)
 def captures(project_id:str,db:Session=Depends(get_db)):
     project(db,project_id)
+    cached = _CAPTURES_CACHE.get(project_id)
+    if cached and time.monotonic() - cached[0] < 60:
+        return dict(project_id=project_id,captures=cached[1])
     rows=svc.query(db,'''SELECT DISTINCT r.capture_id,n.filename AS label,n.env FROM stg_event_raw r
        JOIN nmf_file n ON n.id=r.nmf_file_id WHERE r.project_id=:pid ORDER BY r.capture_id''',dict(pid=project_id))
+    _CAPTURES_CACHE[project_id] = (time.monotonic(), rows)
     return dict(project_id=project_id,captures=rows)
 
 @router.get('',response_model=Lines)
