@@ -5,11 +5,9 @@
   ],
   "system_col": 4,
   "min_format": "2.19",
-  "schema_version": "1.1.0",
+  "schema_version": "1.2.0",
   "unknown_tail": "keep",
   "generated_from": "specs/nmf_all_events_lte_fields_2.19.csv",
-  "inactive": true,
-  "inactive_reason": "baseline généré en 1.1.0 ; agg/metric/group raffinements P2",
   "header": [
     {
       "code": "sei.measured_sys",
@@ -17,7 +15,7 @@
       "type": "int",
       "unit": null,
       "proof": "NFF 2.19 SEI Parameters #1",
-      "agg": null,
+      "agg": "last",
       "metric": false,
       "col": 4,
       "category": "signalling_states"
@@ -28,11 +26,79 @@
       "type": "int",
       "unit": null,
       "proof": "NFF 2.19 SEI Parameters #2",
-      "agg": null,
+      "agg": "last",
       "metric": false,
       "col": 5,
       "category": "signalling_states"
+    },
+    {
+      "col": 7,
+      "code": "sei.mcc",
+      "label": "MCC",
+      "type": "int",
+      "unit": "index",
+      "range": [
+        0,
+        999
+      ],
+      "agg": "last",
+      "metric": false,
+      "proof": "NFF 2.19 SEI p299, GSM/UMTS/LTE parameters",
+      "category": "signalling_states"
+    },
+    {
+      "col": 8,
+      "code": "sei.mnc",
+      "label": "MNC",
+      "type": "int",
+      "unit": "index",
+      "range": [
+        0,
+        999
+      ],
+      "agg": "last",
+      "metric": false,
+      "proof": "NFF 2.19 SEI p299, GSM/UMTS/LTE parameters",
+      "category": "signalling_states"
+    },
+    {
+      "col": 11,
+      "code": "sei.mme_group",
+      "label": "MME group ID",
+      "type": "int",
+      "unit": "index",
+      "range": [
+        0,
+        null
+      ],
+      "agg": "last",
+      "metric": false,
+      "proof": "NFF 2.19 SEI p299, GSM/UMTS/LTE parameters",
+      "category": "signalling_states"
+    },
+    {
+      "col": 12,
+      "code": "sei.mme_code",
+      "label": "MME code",
+      "type": "int",
+      "unit": "index",
+      "range": [
+        0,
+        null
+      ],
+      "agg": "last",
+      "metric": false,
+      "proof": "NFF 2.19 SEI p299, GSM/UMTS/LTE parameters",
+      "category": "signalling_states"
     }
   ],
-  "marker": true
+  "marker": true,
+  "context_count": 0,
+  "kind": "event",
+  "private_cols": [
+    6,
+    9,
+    10,
+    13
+  ]
 }

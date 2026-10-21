@@ -5,7 +5,7 @@
   ],
   "system_col": 4,
   "min_format": "2.19",
-  "schema_version": "1.0.0",
+  "schema_version": "1.2.0",
   "unknown_tail": "keep",
   "header": [
     {
@@ -92,7 +92,8 @@
         "col": 5,
         "eq": 2
       },
-      "category": "link_quality"
+      "category": "link_quality",
+      "weight_code": "pdsch.block_rate"
     },
     {
       "col": 10,
@@ -151,14 +152,14 @@
     {
       "col": 7,
       "code": "pusch.cell_type",
-      "label": "Serving cell type (0 PCell,1 SCell)",
+      "label": "Serving cell index (0 PCell, 1–4 SCell1–4)",
       "type": "int",
       "unit": "enum",
       "proof": "NFF 2.19 PHRATE Parameters for LTE PUSCH #2",
-      "agg": "dominant",
+      "agg": "last",
       "range": [
         0,
-        1
+        4
       ],
       "dimension": true,
       "when": {
@@ -201,7 +202,8 @@
         "col": 5,
         "eq": 1
       },
-      "category": "link_quality"
+      "category": "link_quality",
+      "weight_code": "pbch.block_rate"
     },
     {
       "code": "pdsch.pdcch_bler_est",
@@ -224,10 +226,10 @@
     },
     {
       "code": "pdsch.cell_type",
-      "label": "pdsch.cell_type",
+      "label": "Serving cell index (0 PCell, 1–4 SCell1–4)",
       "type": "int",
       "unit": "enum",
-      "agg": "mean",
+      "agg": "last",
       "when": {
         "col": 5,
         "eq": 2
@@ -236,7 +238,7 @@
       "proof": "NFF 2.19 pp156–157 PHRATE LTE PDSCH #8",
       "range": [
         0,
-        1
+        4
       ],
       "col": 13,
       "category": "terminal_cell"
@@ -300,10 +302,10 @@
     },
     {
       "code": "pbch.cell_type",
-      "label": "pbch.cell_type",
+      "label": "Serving cell index (0 PCell, 1–4 SCell1–4)",
       "type": "int",
       "unit": "enum",
-      "agg": "mean",
+      "agg": "last",
       "when": {
         "col": 5,
         "eq": 1
@@ -312,7 +314,7 @@
       "proof": "NFF 2.19 p155 PHRATE LTE PBCH #3",
       "range": [
         0,
-        1
+        4
       ],
       "col": 8,
       "category": "terminal_cell"
@@ -327,5 +329,7 @@
       "2": "PDSCH",
       "3": "PUSCH"
     }
-  }
+  },
+  "cell_scoped": true,
+  "context_count": 0
 }

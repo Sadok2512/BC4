@@ -5,7 +5,7 @@
   ],
   "system_col": 4,
   "min_format": "2.19",
-  "schema_version": "1.0.0",
+  "schema_version": "1.2.0",
   "unknown_tail": "keep",
   "header": [
     {
@@ -78,14 +78,14 @@
     {
       "col": 10,
       "code": "plaid.cell_type",
-      "label": "Serving cell type",
+      "label": "Serving cell index (0 PCell, 1–4 SCell1–4)",
       "type": "int",
       "unit": "enum",
       "proof": "NFF 2.19 PLAID Parameters for LTE #6",
-      "agg": "dominant",
+      "agg": "last",
       "range": [
         0,
-        1
+        4
       ],
       "dimension": true,
       "category": "terminal_cell"
@@ -257,5 +257,7 @@
       "params_code": "plaid.params_prb_indexes",
       "proof": "NFF 2.19 PLAID LTE #prb_indexes count / params"
     }
-  ]
+  ],
+  "cell_scoped": true,
+  "context_count": 0
 }

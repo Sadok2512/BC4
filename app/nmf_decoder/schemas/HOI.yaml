@@ -1,15 +1,11 @@
 {
   "event": "HOI",
-  "systems": [
-    7
-  ],
-  "system_col": 4,
+  "systems": "any_numeric",
+  "system_col": null,
   "min_format": "2.19",
-  "schema_version": "1.1.0",
+  "schema_version": "1.2.0",
   "unknown_tail": "keep",
   "generated_from": "specs/nmf_all_events_lte_fields_2.19.csv",
-  "inactive": true,
-  "inactive_reason": "baseline généré en 1.1.0 ; agg/metric/group raffinements P2",
   "header": [
     {
       "code": "hoi.header",
@@ -17,9 +13,9 @@
       "type": "int",
       "unit": null,
       "proof": "NFF 2.19 HOI Parameters #1",
-      "agg": null,
+      "agg": "last",
       "metric": false,
-      "col": 4,
+      "col": 5,
       "category": "signalling_states"
     },
     {
@@ -28,22 +24,7 @@
       "type": "int",
       "unit": "ms",
       "proof": "NFF 2.19 HOI Parameters #2",
-      "agg": null,
-      "metric": false,
-      "range": [
-        0,
-        null
-      ],
-      "col": 5,
-      "category": "signalling_states"
-    },
-    {
-      "code": "hoi.ho_to",
-      "label": "HO to",
-      "type": "int",
-      "unit": "ms",
-      "proof": "NFF 2.19 HOI Parameters #3",
-      "agg": null,
+      "agg": "last",
       "metric": false,
       "range": [
         0,
@@ -53,12 +34,12 @@
       "category": "signalling_states"
     },
     {
-      "code": "hoi.ho_u_plane",
-      "label": "HO U­plane",
+      "code": "hoi.ho_to",
+      "label": "HO to",
       "type": "int",
       "unit": "ms",
-      "proof": "NFF 2.19 HOI Parameters #4",
-      "agg": null,
+      "proof": "NFF 2.19 HOI Parameters #3",
+      "agg": "last",
       "metric": false,
       "range": [
         0,
@@ -66,7 +47,25 @@
       ],
       "col": 7,
       "category": "signalling_states"
+    },
+    {
+      "code": "hoi.ho_u_plane",
+      "label": "HO U­plane",
+      "type": "int",
+      "unit": "ms",
+      "proof": "NFF 2.19 HOI Parameters #4",
+      "agg": "last",
+      "metric": false,
+      "range": [
+        0,
+        null
+      ],
+      "col": 8,
+      "category": "signalling_states"
     }
   ],
-  "marker": true
+  "marker": true,
+  "context_count": 1,
+  "layout_proof": "NFF 2.19 section 3 p5; event Context fields precede specific parameters",
+  "kind": "event"
 }

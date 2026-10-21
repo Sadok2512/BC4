@@ -8,13 +8,15 @@ from .schema import fields
 from .decoder import Record
 from .source import records
 from .light import Light
+from .cells import cell_rows
+from .pairs import Pairs
 
 HEADERS=sorted(k for k,v in fields().items() if v['group'] is None)
 GROUPS=sorted(k for k,v in fields().items() if v['group'] is not None)
 ALL=sorted(fields())
-DEEP_BASE=['project_id','capture_id','seq','line_no','event_code','system','ts','t_rel_s','format_version','decoder_version','schema_version','decode_status','reasons','tokens','field_codes','unk_string','quoted']
+DEEP_BASE=['project_id','capture_id','seq','line_no','event_code','system','ts','t_rel_s','format_version','decoder_version','schema_version','decode_status','reasons','tokens','field_codes','unk_string','quoted','context_id','context_ids']
 GROUP_BASE=['project_id','capture_id','seq','group_name','set_index']
-LIGHT_BASE=['project_id','capture_id','seq','seq_last','event_code','system','second','dimension','t_rel_s','decoder_version','schema_version','format_version','decode_status','reasons','unknown','n_records','n_partial']
+LIGHT_BASE=['project_id','capture_id','seq','seq_last','event_code','system','second','dimension','t_rel_s','decoder_version','schema_version','format_version','decode_status','reasons','unknown','n_records','n_partial','context_id','context_ids']
 
 def copy_rows(db,table,columns,rows):
     if not rows:return
@@ -51,6 +53,9 @@ def write_light(db,pid,cap,light):
         if len(rows)>=1000:copy_rows(db,'nmf_event_light',LIGHT_BASE+ALL,rows);rows=[]
     copy_rows(db,'nmf_event_light',LIGHT_BASE+ALL,rows)
     copy_rows(db,'nmf_event_light_group',GROUP_BASE+['identity','n_records']+GROUPS,groups)
+    db.execute(text('DELETE FROM nmf_cell_second WHERE project_id=:pid AND capture_id=:cap'),{'pid':pid,'cap':cap})
+    cell_values=[dict(project_id=pid,capture_id=cap,decoder_version=DECODER_VERSION,**r) for r in cell_rows(light)]
+    if cell_values:copy_rows(db,'nmf_cell_second',list(cell_values[0]),cell_values)
 
 def decode_capture(db,pid,cap,level,*,force=False):
     start=time.perf_counter();params={'pid':pid,'cap':cap}
@@ -72,10 +77,11 @@ def decode_capture(db,pid,cap,level,*,force=False):
             ddl.execute(text('SELECT nmf_decoder_partition(:cap)'),{'cap':cap})
         for table in ('nmf_event_group','nmf_event_deep'):
             db.execute(text('DELETE FROM '+table+' WHERE project_id=:pid AND capture_id=:cap'),params)
-    light=Light();deep_rows=[];group_rows=[];n=partial=0;version='unknown'
+    light=Light();pairs=Pairs();deep_rows=[];group_rows=[];n=partial=0;version='unknown'
     for r in records(file['source_path'],cap,file['sha256']):
         if r.excluded:continue
         n+=1;partial+=r.decode_status=='partial';version=r.format_version
+        pairs.add(r)
         if level=='deep':
             deep_rows.append(dict(project_id=pid,**{k:getattr(r,k) for k in DEEP_BASE if k!='project_id'},**r.values))
             for g in r.groups:
@@ -88,6 +94,9 @@ def decode_capture(db,pid,cap,level,*,force=False):
         # Deep is the sole stored truth. Light is rebuilt from the rows just written.
         for r in read_deep(db,pid,cap):light.add(r)
     write_light(db,pid,cap,light)
+    db.execute(text('DELETE FROM nmf_event_pair WHERE project_id=:pid AND capture_id=:cap'),params)
+    pair_values=[dict(project_id=pid,capture_id=cap,decoder_version=DECODER_VERSION,**r) for r in pairs.rows()]
+    if pair_values:copy_rows(db,'nmf_event_pair',list(pair_values[0]),pair_values)
     elapsed=time.perf_counter()-start
     db.execute(text('''INSERT INTO nmf_capture(project_id,capture_id,nmf_file_id,decode_level,decoder_version,schema_version,format_version,
         deep_decoded_at,n_records,n_partial,elapsed_s) VALUES(:pid,:cap,:fid,:level,:version,:version,:format,

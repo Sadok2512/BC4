@@ -5,7 +5,7 @@
   ],
   "system_col": 4,
   "min_format": "2.19",
-  "schema_version": "1.0.0",
+  "schema_version": "1.2.0",
   "unknown_tail": "keep",
   "header": [
     {
@@ -48,7 +48,8 @@
         0,
         100
       ],
-      "category": "link_quality"
+      "category": "link_quality",
+      "weight_code": "mac.dl_block_rate"
     },
     {
       "col": 8,
@@ -62,7 +63,8 @@
         0,
         100
       ],
-      "category": "link_quality"
+      "category": "link_quality",
+      "weight_code": "mac.dl_block_rate"
     },
     {
       "col": 9,
@@ -76,7 +78,8 @@
         0,
         100
       ],
-      "category": "link_quality"
+      "category": "link_quality",
+      "weight_code": "mac.dl_block_rate"
     },
     {
       "col": 10,
@@ -90,7 +93,8 @@
         0,
         100
       ],
-      "category": "link_quality"
+      "category": "link_quality",
+      "weight_code": "mac.dl_block_rate"
     },
     {
       "col": 11,
@@ -104,7 +108,8 @@
         0,
         100
       ],
-      "category": "link_quality"
+      "category": "link_quality",
+      "weight_code": "mac.dl_block_rate"
     },
     {
       "col": 12,
@@ -132,23 +137,26 @@
         0,
         100
       ],
-      "category": "link_quality"
+      "category": "link_quality",
+      "weight_code": "mac.dl_block_rate"
     },
     {
       "col": 14,
       "code": "mac.cell_type",
-      "label": "Serving cell type",
+      "label": "Serving cell index (0 PCell, 1–4 SCell1–4)",
       "type": "int",
       "unit": "enum",
       "proof": "NFF 2.19 MACRATE Parameters for LTE #10",
-      "agg": "dominant",
+      "agg": "last",
       "range": [
         0,
-        1
+        4
       ],
       "dimension": true,
       "category": "terminal_cell"
     }
   ],
-  "groups": []
+  "groups": [],
+  "cell_scoped": true,
+  "context_count": 0
 }

@@ -107,5 +107,8 @@
       "category": "link_quality"
     }
   ],
-  "groups": []
+  "groups": [],
+  "cell_scoped": false,
+  "cell_scope_reason": "No serving cell field documented in NFF 2.19 LTE section",
+  "context_count": 0
 }

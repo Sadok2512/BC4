@@ -1,0 +1,14 @@
+{
+  "event": "HOS",
+  "systems": "any_numeric",
+  "system_col": null,
+  "min_format": "2.19",
+  "schema_version": "1.2.0",
+  "unknown_tail": "keep",
+  "kind": "event",
+  "header": [],
+  "groups": [],
+  "proof": "NFF 2.19 p263 context only",
+  "attributes_reason": "Position non prouvée; occurrence only",
+  "context_count": 1
+}

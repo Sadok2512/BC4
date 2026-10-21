@@ -2,6 +2,14 @@
 
 Version independent of the API. Patch: corrected position/unit or additional documented field. Minor: new event/system. Major: changed meaning of an existing field, requiring re-decode.
 
+## 1.2.0 (minor) — 2026-10-21 (Agent BC2)
+
+- Event schemas declare physical system columns and expected context count. Context IDs are separate typed attributes. System-less events remain partial/system_missing while documented attributes are decoded.
+- Corrected HOA/HOI and context-bearing event positions; explicit occurrence-only schemas for unproved events. Corrected CAA/SEI privacy positions, including numeric and hexadecimal values.
+- Serving index 0–4 discriminants on documented LTE PHRATE/MACRATE/PLAID/CQI/CI; no guessed MACRATEU/PLAIU cell index. Per-cell and total projections use the same Light accumulators.
+- Both HO clocks retained: state-event difference versus NFF 2.19 p266 RRC-to-RACH duration. Old captures require deterministic replay to acquire the new attributes and projections.
+- Unproved CELLMEAS secondary-cell mapping, CQI total weighting, configured-CA occupation time and SCell band/add/remove attribution remain unavailable.
+
 ## 1.0.0 — 2026-10-19 (Agent BC2)
 
 - Declarative NFF 2.19 schemas seeded from the supplied 95-row CSV, extended with documented repeated groups and common application metrics. 1-based columns; dynamic header/group counts. Source format is recorded; later formats and NR remain explicitly partial.

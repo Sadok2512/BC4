@@ -1,7 +1,7 @@
 {
   "event": "PPPRATE",
   "systems": "any_numeric",
-  "system_col": 4,
+  "system_col": null,
   "min_format": "2.19",
   "schema_version": "1.0.0",
   "unknown_tail": "keep",
@@ -38,5 +38,6 @@
     }
   ],
   "groups": [],
-  "tech": "BOTH"
+  "tech": "BOTH",
+  "context_count": 0
 }

@@ -1,7 +1,7 @@
 {
   "event": "RTPJITTER",
   "systems": "any_numeric",
-  "system_col": 4,
+  "system_col": null,
   "min_format": "2.19",
   "schema_version": "1.0.0",
   "unknown_tail": "keep",
@@ -31,5 +31,7 @@
       2,
       3
     ]
-  }
+  },
+  "context_count": 0,
+  "parameter_dimension_col": 4
 }

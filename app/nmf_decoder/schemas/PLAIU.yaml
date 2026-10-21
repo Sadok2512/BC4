@@ -214,5 +214,8 @@
       "params_code": "plaiu.params_prb_indexes",
       "proof": "NFF 2.19 PLAIU LTE #prb_indexes count / params"
     }
-  ]
+  ],
+  "cell_scoped": false,
+  "cell_scope_reason": "No serving cell field documented in NFF 2.19 LTE section",
+  "context_count": 0
 }

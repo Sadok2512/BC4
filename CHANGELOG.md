@@ -1,3 +1,12 @@
+## 0.68.0 (minor) — BC4 2026-10-21 — Métriques v3 phase A (Agent BC2)
+
+- Nemo 1.2.0: explicit schema system positions and separate context IDs; corrected context-bearing LTE event layouts. No inferred system for events without one.
+- Per-cell Light projections and PHY/MAC throughput totals; documented block/Percentage weighting for quality; NULL with reason for unproved total weights. Observed SCell activity and share, last observed neighbor snapshot.
+- Capture-local, context-matched event pairs preserve Nemo and HOI durations independently. No inter-capture time matching or forced duration equality.
+- CAA phone fields and SEI private fields redacted before staging/Deep persistence; migration sanitizes retained fields without deleting observations.
+- CELLMEAS 10–13 mapping, undocumented UL cell fields and undemonstrated 2.59/NR attributes remain explicit gaps. No front or metrics-contract phase B/C changes.
+- Manual guards: scripts/_guard_G16_phase_a.py; tests/test_nmf_cells_context.py.
+
 ## 0.67.1 (patch) — BC4 2026-10-20 — Fraîcheur temporelle Signaling (Agent BC2)
 
 - Contexte radio : `time_gap_s` depuis les temps capture validés, nullable, et relation `same_timestamp` / `previous_timestamp` / `unavailable`. Ordre strictement précédent par seq conservé.

@@ -1,9 +1,7 @@
 {
   "event": "#HASH",
-  "systems": [
-    7
-  ],
-  "system_col": 4,
+  "systems": "any_numeric",
+  "system_col": null,
   "min_format": "2.19",
   "schema_version": "1.1.0",
   "unknown_tail": "keep",

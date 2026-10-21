@@ -3,13 +3,11 @@
   "systems": [
     7
   ],
-  "system_col": 4,
+  "system_col": 5,
   "min_format": "2.19",
-  "schema_version": "1.1.0",
+  "schema_version": "1.2.0",
   "unknown_tail": "keep",
   "generated_from": "specs/nmf_all_events_lte_fields_2.19.csv",
-  "inactive": true,
-  "inactive_reason": "baseline généré en 1.1.0 ; agg/metric/group raffinements P2",
   "header": [
     {
       "code": "rra.measured_sys",
@@ -17,9 +15,9 @@
       "type": "int",
       "unit": null,
       "proof": "NFF 2.19 RRA Parameters #1",
-      "agg": null,
+      "agg": "last",
       "metric": false,
-      "col": 4,
+      "col": 5,
       "category": "signalling_states"
     },
     {
@@ -28,11 +26,14 @@
       "type": "int",
       "unit": null,
       "proof": "NFF 2.19 RRA Parameters for LTE #1",
-      "agg": null,
+      "agg": "last",
       "metric": false,
-      "col": 5,
+      "col": 6,
       "category": "signalling_states"
     }
   ],
-  "marker": true
+  "marker": true,
+  "context_count": 1,
+  "layout_proof": "NFF 2.19 section 3 p5; event Context fields precede specific parameters",
+  "kind": "event"
 }

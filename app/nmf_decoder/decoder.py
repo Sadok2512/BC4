@@ -10,7 +10,7 @@ from .schema import schemas,column
 
 NUMBER=re.compile(r'^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$')
 TIME=re.compile(r'^\d{2}:\d{2}:\d{2}(?:\.\d+)?$')
-IDENTITIES={'#EI','#SI','#DN'}
+IDENTITIES={'#EI','#SI','#DN','#SP'}
 
 def hashed(value):return hashlib.sha256(value.encode('utf-8')).hexdigest()[:16]
 
@@ -65,12 +65,14 @@ class Record:
     t_rel_s:float|None=None
     line_no:int=0
     excluded:bool=False
+    context_id:int|None=None
+    context_ids:list=field(default_factory=list)
     def partial(self,reason):
         self.decode_status='partial'
         if reason not in self.reasons:self.reasons.append(reason)
 
 def decode(line,system=None,format_version='unknown',*,capture_id='',seq=0,line_no=0):
-    # The supplied system is intentionally not trusted: only column 4 is authoritative.
+    # Only a schema-declared physical column can identify a system (NFF 2.19 §3).
     try:tokens,quoted=tokenize(line)
     except (csv.Error,StopIteration):
         r=Record('MALFORMED',capture_id,seq,None,format_version,line_no=line_no)
@@ -81,9 +83,26 @@ def decode(line,system=None,format_version='unknown',*,capture_id='',seq=0,line_
         r.excluded=True;r.partial('identity_header_redacted');return r
     r.ts=tokens[1] if len(tokens)>1 and TIME.fullmatch(tokens[1]) else None
     if r.ts is None:r.partial('time_missing')
-    try:r.system=numeric(tokens[3],'int') if len(tokens)>3 else None
+    schema=schemas().get(code)
+    if schema:r.schema_version=schema.get('schema_version',DECODER_VERSION)
+    system_col=schema.get('system_col') if schema else None
+    try:r.system=numeric(tokens[system_col-1],'int') if system_col and len(tokens)>=system_col else None
     except (ValueError,InvalidOperation):r.system=None
     if r.system is None:r.partial('system_missing')
+    try:
+        count=numeric(tokens[2],'int') or 0
+        if count<0 or count>len(tokens)-3:raise ValueError()
+        r.context_ids=[numeric(v,'int') for v in tokens[3:3+count]]
+        if any(v is None for v in r.context_ids):raise ValueError()
+        r.context_id=r.context_ids[0] if r.context_ids else None
+    except (ValueError,IndexError,InvalidOperation):
+        count=None;r.context_ids=[];r.partial('context_layout_unsupported')
+    if schema and 'context_count' in schema and count!=schema['context_count']:
+        r.system=None;r.partial('context_layout_unsupported');r.partial('system_missing')
+    from .privacy import redact_tokens
+    tokens,masked=redact_tokens(code,tokens,count)
+    if code in {'CAA','SEI'} and count!=({'CAA':1,'SEI':0}[code]):
+        r.context_id=None;r.context_ids=[]
     # Redact command XML using the existing canonical policy BEFORE hashing it.
     if code=='CMDREQ' and len(tokens)>5:
         from app.services.task_privacy import redact_command
@@ -91,12 +110,20 @@ def decode(line,system=None,format_version='unknown',*,capture_id='',seq=0,line_
         tokens[5]=safe['payload_b64'] or ''
     r.tokens=list(tokens);r.quoted=quoted;r.field_codes=[f'unk_{code}_{i+1}' for i in range(len(tokens))];r.unk_string=[False]*len(tokens)
     known=set()
-    for i,label in [(0,'event_code'),(1,'ts'),(2,'context_count'),(3,'system')]:
+    labels=[(0,'event_code'),(1,'ts'),(2,'context_count')]
+    labels += [(3+i,'context_id' if i==0 else f'context_id_{i+1}') for i in range(len(r.context_ids))]
+    if system_col and r.system is not None:labels.append((system_col-1,'system'))
+    for i,label in labels:
         if i<len(tokens) and (i==0 and tokens[0]==code or (i==1 and r.ts is not None) or (i>=2 and (tokens[i]=='' or NUMBER.fullmatch(tokens[i])))):
             r.field_codes[i]=label;known.add(i)
-    schema=schemas().get(code)
+    for i in masked:
+        known.add(i);r.field_codes[i]='identity_redacted'
     active=bool(schema and (schema['systems']=='any_numeric' or r.system in schema['systems']))
-    if schema and schema.get('parameter_types') and r.system not in schema['parameter_types']['values']:
+    if schema and 'context_count' in schema and count!=schema['context_count']:active=False
+    if schema and any(len(tokens)<check['col'] or tokens[check['col']-1]!=str(check['eq']) for check in schema.get('layout_checks',[])):
+        active=False;r.partial('context_layout_unsupported')
+    parameter_types=schema.get('parameter_types') if schema else None
+    if parameter_types and (len(tokens)<parameter_types.get('col',4) or tokens[parameter_types.get('col',4)-1] not in {str(v) for v in parameter_types['values']}):
         active=False;r.partial('parameter_type_undocumented')
     if not schema:r.schema_version='none';r.partial('event_undocumented')
     elif not active:r.partial('system_undocumented')
@@ -108,6 +135,8 @@ def decode(line,system=None,format_version='unknown',*,capture_id='',seq=0,line_
     def read(f,idx,dest):
         name=column(f['code'])
         if idx>=len(tokens):r.partial('fields_truncated');return
+        if idx in masked:
+            dest[name]=None;return
         known.add(idx);r.field_codes[idx]=f['code']
         try:
             value=numeric(tokens[idx],f['type'])

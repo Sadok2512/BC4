@@ -5,11 +5,9 @@
   ],
   "system_col": 4,
   "min_format": "2.19",
-  "schema_version": "1.1.0",
+  "schema_version": "1.2.0",
   "unknown_tail": "keep",
   "generated_from": "specs/nmf_all_events_lte_fields_2.19.csv",
-  "inactive": true,
-  "inactive_reason": "baseline généré en 1.1.0 ; agg/metric/group raffinements P2",
   "header": [
     {
       "code": "rachi.measured_sys",
@@ -17,7 +15,7 @@
       "type": "int",
       "unit": null,
       "proof": "NFF 2.19 RACHI Parameters #1",
-      "agg": null,
+      "agg": "last",
       "metric": false,
       "col": 4,
       "category": "signalling_states"
@@ -28,7 +26,7 @@
       "type": "int",
       "unit": null,
       "proof": "NFF 2.19 RACHI Parameters for LTE #1",
-      "agg": null,
+      "agg": "last",
       "metric": false,
       "col": 5,
       "category": "signalling_states"
@@ -39,7 +37,7 @@
       "type": "int",
       "unit": null,
       "proof": "NFF 2.19 RACHI Parameters for LTE #2",
-      "agg": null,
+      "agg": "last",
       "metric": false,
       "col": 6,
       "category": "signalling_states"
@@ -50,7 +48,7 @@
       "type": "int",
       "unit": null,
       "proof": "NFF 2.19 RACHI Parameters for LTE #3",
-      "agg": null,
+      "agg": "last",
       "metric": false,
       "col": 7,
       "category": "signalling_states"
@@ -61,7 +59,7 @@
       "type": "int",
       "unit": null,
       "proof": "NFF 2.19 RACHI Parameters for LTE #4",
-      "agg": null,
+      "agg": "last",
       "metric": false,
       "range": [
         3,
@@ -76,7 +74,7 @@
       "type": "int",
       "unit": null,
       "proof": "NFF 2.19 RACHI Parameters for LTE #5",
-      "agg": null,
+      "agg": "last",
       "metric": false,
       "col": 9,
       "category": "signalling_states"
@@ -87,7 +85,7 @@
       "type": "int",
       "unit": null,
       "proof": "NFF 2.19 RACHI Parameters for LTE #6",
-      "agg": null,
+      "agg": "last",
       "metric": false,
       "col": 10,
       "category": "signalling_states"
@@ -98,7 +96,7 @@
       "type": "int",
       "unit": null,
       "proof": "NFF 2.19 RACHI Parameters for LTE #7",
-      "agg": null,
+      "agg": "last",
       "metric": false,
       "col": 11,
       "category": "signalling_states"
@@ -109,7 +107,7 @@
       "type": "int",
       "unit": null,
       "proof": "NFF 2.19 RACHI Parameters for LTE #8",
-      "agg": null,
+      "agg": "last",
       "metric": false,
       "col": 12,
       "category": "signalling_states"
@@ -120,7 +118,7 @@
       "type": "float",
       "unit": "dB",
       "proof": "NFF 2.19 RACHI Parameters for LTE #9",
-      "agg": null,
+      "agg": "last",
       "metric": false,
       "range": [
         0,
@@ -135,7 +133,7 @@
       "type": "float",
       "unit": "dBm",
       "proof": "NFF 2.19 RACHI Parameters for LTE #10",
-      "agg": null,
+      "agg": "last",
       "metric": false,
       "col": 14,
       "category": "signalling_states"
@@ -146,7 +144,7 @@
       "type": "float",
       "unit": "dB",
       "proof": "NFF 2.19 RACHI Parameters for LTE #11",
-      "agg": null,
+      "agg": "last",
       "metric": false,
       "range": [
         0,
@@ -161,7 +159,7 @@
       "type": "float",
       "unit": "dBm",
       "proof": "NFF 2.19 RACHI Parameters for LTE #12",
-      "agg": null,
+      "agg": "last",
       "metric": false,
       "col": 16,
       "category": "signalling_states"
@@ -172,7 +170,7 @@
       "type": "int",
       "unit": null,
       "proof": "NFF 2.19 RACHI Parameters for LTE #13",
-      "agg": null,
+      "agg": "last",
       "metric": false,
       "range": [
         0,
@@ -187,11 +185,13 @@
       "type": "int",
       "unit": "ms",
       "proof": "NFF 2.19 RACHI Parameters for LTE #14",
-      "agg": null,
+      "agg": "last",
       "metric": false,
       "col": 18,
       "category": "signalling_states"
     }
   ],
-  "marker": true
+  "marker": true,
+  "context_count": 0,
+  "kind": "event"
 }

@@ -135,5 +135,8 @@
       "aggregate_selection": "first",
       "aggregation_note": "Light exposes first reported cell/port only; every set is retained in Deep, no averaging across cells/ports."
     }
-  ]
+  ],
+  "cell_scoped": false,
+  "cell_scope_reason": "depends on BC1 /dict/v2/scells; types 10–13: cellule servante secondaire — hypothèse non prouvée",
+  "context_count": 0
 }

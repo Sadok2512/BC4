@@ -3,13 +3,11 @@
   "systems": [
     7
   ],
-  "system_col": 4,
+  "system_col": 7,
   "min_format": "2.19",
-  "schema_version": "1.1.0",
+  "schema_version": "1.2.0",
   "unknown_tail": "keep",
   "generated_from": "specs/nmf_all_events_lte_fields_2.19.csv",
-  "inactive": true,
-  "inactive_reason": "baseline généré en 1.1.0 ; agg/metric/group raffinements P2",
   "header": [
     {
       "code": "hoa.header",
@@ -17,9 +15,9 @@
       "type": "int",
       "unit": null,
       "proof": "NFF 2.19 HOA Parameters #1",
-      "agg": null,
+      "agg": "last",
       "metric": false,
-      "col": 4,
+      "col": 5,
       "category": "signalling_states"
     },
     {
@@ -28,9 +26,9 @@
       "type": "int",
       "unit": null,
       "proof": "NFF 2.19 HOA Parameters #2",
-      "agg": null,
+      "agg": "last",
       "metric": false,
-      "col": 5,
+      "col": 6,
       "category": "signalling_states"
     },
     {
@@ -39,9 +37,9 @@
       "type": "int",
       "unit": null,
       "proof": "NFF 2.19 HOA Parameters #3",
-      "agg": null,
+      "agg": "last",
       "metric": false,
-      "col": 6,
+      "col": 7,
       "category": "signalling_states"
     },
     {
@@ -50,9 +48,9 @@
       "type": "int",
       "unit": null,
       "proof": "NFF 2.19 HOA Parameters #4",
-      "agg": null,
+      "agg": "last",
       "metric": false,
-      "col": 7,
+      "col": 8,
       "category": "signalling_states"
     },
     {
@@ -61,9 +59,9 @@
       "type": "int",
       "unit": null,
       "proof": "NFF 2.19 HOA Parameters for LTE #1",
-      "agg": null,
+      "agg": "last",
       "metric": false,
-      "col": 8,
+      "col": 9,
       "category": "signalling_states"
     },
     {
@@ -72,13 +70,13 @@
       "type": "int",
       "unit": null,
       "proof": "NFF 2.19 HOA Parameters for LTE #2",
-      "agg": null,
+      "agg": "last",
       "metric": false,
       "range": [
         0,
         503
       ],
-      "col": 9,
+      "col": 10,
       "category": "signalling_states"
     },
     {
@@ -87,9 +85,9 @@
       "type": "int",
       "unit": null,
       "proof": "NFF 2.19 HOA Parameters for LTE #3",
-      "agg": null,
+      "agg": "last",
       "metric": false,
-      "col": 10,
+      "col": 11,
       "category": "signalling_states"
     },
     {
@@ -98,9 +96,9 @@
       "type": "int",
       "unit": null,
       "proof": "NFF 2.19 HOA Parameters for LTE #1",
-      "agg": null,
+      "agg": "last",
       "metric": false,
-      "col": 11,
+      "col": 14,
       "category": "signalling_states"
     },
     {
@@ -109,13 +107,13 @@
       "type": "int",
       "unit": null,
       "proof": "NFF 2.19 HOA Parameters for LTE #2",
-      "agg": null,
+      "agg": "last",
       "metric": false,
       "range": [
         0,
         503
       ],
-      "col": 12,
+      "col": 15,
       "category": "signalling_states"
     },
     {
@@ -124,10 +122,31 @@
       "type": "int",
       "unit": null,
       "proof": "NFF 2.19 HOA Parameters for LTE #3",
-      "agg": null,
+      "agg": "last",
       "metric": false,
-      "col": 13,
+      "col": 16,
       "category": "signalling_states"
     }
-  ]
+  ],
+  "context_count": 1,
+  "layout_proof": "NFF 2.19 section 3 p5; event Context fields precede specific parameters",
+  "layout_checks": [
+    {
+      "col": 5,
+      "eq": 1
+    },
+    {
+      "col": 8,
+      "eq": 3
+    },
+    {
+      "col": 12,
+      "eq": 7
+    },
+    {
+      "col": 13,
+      "eq": 3
+    }
+  ],
+  "kind": "event"
 }

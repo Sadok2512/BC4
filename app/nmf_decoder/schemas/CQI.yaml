@@ -5,7 +5,7 @@
   ],
   "system_col": 4,
   "min_format": "2.19",
-  "schema_version": "1.0.0",
+  "schema_version": "1.2.0",
   "unknown_tail": "keep",
   "header": [
     {
@@ -116,14 +116,14 @@
     {
       "col": 13,
       "code": "cqi.cell_type",
-      "label": "Serving cell type",
+      "label": "Serving cell index (0 PCell, 1–4 SCell1–4)",
       "type": "int",
       "unit": "enum",
       "proof": "NFF 2.19 CQI Parameters for LTE #9",
-      "agg": "dominant",
+      "agg": "last",
       "range": [
         0,
-        1
+        4
       ],
       "dimension": true,
       "category": "terminal_cell"
@@ -212,5 +212,7 @@
       "params_code": "cqi.params_subbands",
       "proof": "NFF 2.19 CQI LTE #subbands count / params"
     }
-  ]
+  ],
+  "cell_scoped": true,
+  "context_count": 0
 }

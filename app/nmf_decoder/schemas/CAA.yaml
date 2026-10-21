@@ -3,13 +3,11 @@
   "systems": [
     7
   ],
-  "system_col": 4,
+  "system_col": 5,
   "min_format": "2.19",
-  "schema_version": "1.1.0",
+  "schema_version": "1.2.0",
   "unknown_tail": "keep",
   "generated_from": "specs/nmf_all_events_lte_fields_2.19.csv",
-  "inactive": true,
-  "inactive_reason": "baseline généré en 1.1.0 ; agg/metric/group raffinements P2",
   "header": [
     {
       "code": "caa.measured_sys",
@@ -17,9 +15,9 @@
       "type": "int",
       "unit": null,
       "proof": "NFF 2.19 CAA Parameters #1",
-      "agg": null,
+      "agg": "last",
       "metric": false,
-      "col": 4,
+      "col": 5,
       "category": "signalling_states"
     },
     {
@@ -28,9 +26,9 @@
       "type": "int",
       "unit": null,
       "proof": "NFF 2.19 CAA Parameters #2",
-      "agg": null,
+      "agg": "last",
       "metric": false,
-      "col": 5,
+      "col": 6,
       "category": "signalling_states"
     },
     {
@@ -39,9 +37,9 @@
       "type": "int",
       "unit": null,
       "proof": "NFF 2.19 CAA Parameters #3",
-      "agg": null,
+      "agg": "last",
       "metric": false,
-      "col": 6,
+      "col": 7,
       "category": "signalling_states"
     },
     {
@@ -52,8 +50,9 @@
       "proof": "NFF 2.19 CAA Parameters #4",
       "agg": null,
       "metric": false,
-      "col": 7,
-      "category": "signalling_states"
+      "col": 8,
+      "category": "signalling_states",
+      "private": true
     },
     {
       "code": "caa.own_phone_number",
@@ -63,8 +62,9 @@
       "proof": "NFF 2.19 CAA Parameters #5",
       "agg": null,
       "metric": false,
-      "col": 8,
-      "category": "signalling_states"
+      "col": 9,
+      "category": "signalling_states",
+      "private": true
     },
     {
       "code": "caa.call_timeout",
@@ -72,9 +72,9 @@
       "type": "int",
       "unit": "ms",
       "proof": "NFF 2.19 CAA Parameters #6",
-      "agg": null,
+      "agg": "last",
       "metric": false,
-      "col": 9,
+      "col": 10,
       "category": "signalling_states"
     },
     {
@@ -85,8 +85,15 @@
       "proof": "NFF 2.19 CAA Parameters #7",
       "agg": null,
       "metric": false,
-      "col": 10,
+      "col": 11,
       "category": "signalling_states"
     }
+  ],
+  "context_count": 1,
+  "layout_proof": "NFF 2.19 section 3 p5; event Context fields precede specific parameters",
+  "kind": "event",
+  "private_cols": [
+    8,
+    9
   ]
 }

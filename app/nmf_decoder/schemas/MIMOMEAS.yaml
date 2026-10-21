@@ -149,5 +149,6 @@
       "aggregate_selection": "first",
       "aggregation_note": "Light exposes first reported cell/port only; every set is retained in Deep, no averaging across cells/ports."
     }
-  ]
+  ],
+  "context_count": 0
 }
