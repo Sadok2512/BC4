@@ -57,7 +57,7 @@ def definitions():
             event=f['event'],event_code=f['event'],category=category,category_label=CATEGORIES.get(category,category),
             cell_scoped=scoped,cells=[],cell_options=[],attributes=[],proof='documented',proof_ref=f['proof'],
             decoder_version=DECODER_VERSION,n_in_project=0,available=True,reason=s.get('cell_scope_reason'),
-            alias_of=ALIASES.get(code),agg=f.get('agg'),sql=m.sql)
+            alias_of=ALIASES.get(code),agg=f.get('agg'),weighted=bool(f.get('weight')),sql=m.sql)
     for event in sorted(EVENTS):
         s=ss.get(event,{});attrs=[]
         for f in s.get('header',[]):
@@ -99,7 +99,7 @@ def _catalog(db,pid):
     unknown=[dict(event_code=r['event_code'],n=r['unknown_n']) for r in event_rows if r['unknown_n']]
     out=[]
     for code,m in defs.items():
-        m=dict(m);m.pop('sql',None);m.pop('agg',None)
+        m=dict(m);m.pop('sql',None);m.pop('agg',None);m.pop('weighted',None)
         if m['kind']=='event':m['n_in_project']=int(event_counts.get(m['event'],0))
         elif code in DERIVED:m['n_in_project']=sum(x['n'] for x in cells[code] if x['cell_index']==-1)
         else:m['n_in_project']=counts.get(m['source_column'],0);m['source_tables']=sources.get(m['source_column'],m['source_tables'])
@@ -153,6 +153,7 @@ def aggregate_values(rows,agg):
     if agg=='dominant':
         c=Counter(values);return min(c,key=lambda x:(-c[x],str(x)))
     if agg=='sum':return sum(values)
+    if agg=='count':return len(values)
     if agg=='min':return min(values)
     if agg=='max':return max(values)
     return sum(values)/len(values)
@@ -272,6 +273,10 @@ class Dataset:
                 row=table.setdefault(second,dict(second=second,t_rel_s=float(second),seq_first=rs[0]['seq'],seq_last=rs[-1]['seq'],values={},counts={}))
                 row['seq_first']=min(row['seq_first'],rs[0]['seq']);row['seq_last']=max(row['seq_last'],rs[-1]['seq'])
                 value=1 if m['kind']=='event' else aggregate_values(rs,'last' if m.get('attr') or m['cell_scoped'] else m.get('agg','last'))
+                if m.get('weighted') and not m['cell_scoped'] and len([r for r in rs if r['value'] is not None])>1:
+                    # Projection preserves weighted per-seq values but does not expose their denominators.
+                    # Never average those means again to manufacture a second-level statistic.
+                    value=None;gaps.append(m['selection']+': pondérations inter-échantillons absentes ; agrégat seconde N/D, série par seq conservée')
                 row['values'][m['selection']]=value;row['counts'][m['selection']]=sum(r.get('count',1) for r in rs)
             groups=defaultdict(list)
             for r in rows:
