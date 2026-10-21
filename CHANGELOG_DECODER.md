@@ -2,6 +2,10 @@
 
 Version independent of the API. Patch: corrected position/unit or additional documented field. Minor: new event/system. Major: changed meaning of an existing field, requiring re-decode.
 
+## 1.2.1 (patch) — 2026-10-21 (Agent BC2)
+
+- Emit neighbor snapshots only when the CELLMEAS group count was decoded. Unknown NR layouts yield no inferred zero and cannot collide with LTE in a second.
+
 ## 1.2.0 (minor) — 2026-10-21 (Agent BC2)
 
 - Event schemas declare physical system columns and expected context count. Context IDs are separate typed attributes. System-less events remain partial/system_missing while documented attributes are decoded.

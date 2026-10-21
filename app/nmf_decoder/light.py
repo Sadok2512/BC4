@@ -41,7 +41,8 @@ class Light:
                 t_rel_s=r.t_rel_s,n_records=0,n_partial=0,reasons=set(),unknown=set(),stats={},groupstats={},format_version=r.format_version)
         b['seq_last']=r.seq;b['n_records']+=1;b['n_partial']+=r.decode_status=='partial';b['reasons'].update(r.reasons)
         b['context_id']=r.context_id;b['context_ids']=r.context_ids
-        if r.event_code=='CELLMEAS':
+        if r.event_code=='CELLMEAS':b.pop('neighbors',None)
+        if r.event_code=='CELLMEAS' and r.values.get('cellmeas_n_cells') is not None:
             cells=[g['values'] for g in r.groups if g['group_name']=='cells']
             neighbors=[c for c in cells if c.get('cell_type')==2]
             serving=[c for c in cells if c.get('cell_type')==0]

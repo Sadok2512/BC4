@@ -1,3 +1,8 @@
+## 0.68.1 (patch) — BC4 2026-10-21 — Voisines sur observations décodées (Agent BC2)
+
+- Skip neighbor projections for unsupported or undecodable CELLMEAS layouts. An NR record without decoded groups no longer creates a synthetic zero or collides with a real LTE observation in the same second.
+- Decoder 1.2.1; capture replay remains transactional. Added mixed LTE/NR regression coverage.
+
 ## 0.68.0 (minor) — BC4 2026-10-21 — Métriques v3 phase A (Agent BC2)
 
 - Nemo 1.2.0: explicit schema system positions and separate context IDs; corrected context-bearing LTE event layouts. No inferred system for events without one.

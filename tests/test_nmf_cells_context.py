@@ -74,3 +74,14 @@ def test_drate_keeps_independent_context_dimensions():
     light.add(record('DRATE,00:00:00.000,1,2,4,0,900,0,900',2))
     rows=list(light.rows())
     assert len(rows)==2 and {r['context_id'] for r in rows}=={1,2}
+
+
+def test_undecoded_nr_does_not_create_zero_neighbors_or_collide_with_lte():
+    light=Light()
+    light.add(record('CELLMEAS,00:00:00.000,,7,0,1,9,0,70007,2825,1,-44,-71,-8,100,50',1))
+    light.add(record('CELLMEAS,00:00:00.000,,9,0,0,9',2))
+    rows=list(cell_rows(light))
+    assert len({(r['second'],r['event_code'],r['metric_code'],r['cell_index']) for r in rows})==len(rows)
+    assert all(r['seq_first']==1 for r in rows)
+    only_nr=Light();only_nr.add(record('CELLMEAS,00:00:00.000,,9,0,0,9'))
+    assert list(cell_rows(only_nr))==[]
