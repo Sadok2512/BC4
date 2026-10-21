@@ -130,7 +130,9 @@ LABELS = {'Accessibilité': 'Accessibility',
  'position non prouvée (NFF 2.19)': 'Unproven field position (NFF 2.19)',
  'Événements': 'Events'}
 
-FRAGMENTS = {' (CELLMEAS prouvé)': ' (proven CELLMEAS)',
+FRAGMENTS = {"référentiel cellule non chargé": "Cell reference data not loaded",
+ "même KPI, deux dénominations dans le xlsx": "Same KPI with two names in the source workbook",
+ ' (CELLMEAS prouvé)': ' (proven CELLMEAS)',
  ' (frères Compteur du catalogue)': ' (corresponding catalogue counters)',
  ' (tous opérateurs)': ' (all operators)',
  ' NULL partout': ' is NULL throughout',
