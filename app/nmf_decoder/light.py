@@ -3,6 +3,19 @@ import math
 from collections import defaultdict
 from .schema import fields,schemas,column
 
+def txpc_cell_type(r):
+    """Return the content-proven LTE TXPC cell discriminator.
+
+    NMF 2.59 appends it as the last token.  NMF 2.62 adds one more
+    undocumented value after it.  System 9 records are deliberately left
+    unbound until the P4 NR proof is closed.
+    """
+    if r.event_code!='TXPC' or r.system!=7 or not r.tokens:return None
+    index=-2 if r.format_version=='2.62' else -1
+    try:value=float(r.tokens[index])
+    except (ValueError,TypeError,IndexError):return None
+    return int(value) if value.is_integer() and 0<=value<=4 else None
+
 class Stat:
     def __init__(self,agg):self.agg=agg;self.total=0.;self.weight=0.;self.n=0;self.last=None;self.lo=None;self.hi=None;self.freq={}
     def add(self,value,weight=1.):
@@ -27,6 +40,8 @@ def dimensions(r):
         if f.get('dimension') or f['code']=='phrate.ph_ch_type':
             idx=f['col']-1
             if idx<len(r.tokens) and r.field_codes[idx]==f['code']:keys.append(f['code']+'='+r.tokens[idx])
+    cell_type=txpc_cell_type(r)
+    if cell_type is not None:keys.append('txpc.cell_type='+str(cell_type))
     return '|'.join(keys)
 
 class Light:
@@ -39,6 +54,7 @@ class Light:
         if b is None:
             b=self.buckets[key]=dict(event_code=r.event_code,system=r.system,second=second,dimension=key[3],seq=r.seq,seq_last=r.seq,
                 t_rel_s=r.t_rel_s,n_records=0,n_partial=0,reasons=set(),unknown=set(),stats={},groupstats={},format_version=r.format_version)
+        if r.event_code=='TXPC':b['cell_type']=txpc_cell_type(r)
         b['seq_last']=r.seq;b['n_records']+=1;b['n_partial']+=r.decode_status=='partial';b['reasons'].update(r.reasons)
         b['context_id']=r.context_id;b['context_ids']=r.context_ids
         if r.event_code=='CELLMEAS':b.pop('neighbors',None)

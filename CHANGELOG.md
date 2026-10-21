@@ -1,3 +1,9 @@
+## 0.74.0 (minor) — BC4 2026-10-21 — Metrics catalogue v6 and serving-cell projection (Agent BC1)
+
+- Expose the complete approved Metrics v6 hierarchy while retaining absent leaves with `n=0` and explicit `open` proof status.
+- Project LTE CELLMEAS serving observations by documented/content-proven cell discriminator: PCell `0`, SCell1–4 `10–13`; codes 1, 2, 14 and 15 remain unassigned.
+- Count catalogue cell availability by distinct capture-local seconds. Existing series, table, provenance and `(capture_id, seq)` ordering remain unchanged.
+
 ## 0.73.1 (patch) — BC4 2026-10-21 — Signaling details : attributs décodeur sur événements d'état BC2 (Agent BC3)
 
 - `app/signaling/service.py:details()` : nouvelle branche fallback pour les événements d'état BC2 (RACHI/HOA/HOS/HOI/MEI/CREL/RRA/RRC/RRD/PBA/PBC/PBD/CAA/CAC/CAD/DAA/DAC/DAD/GAA/GAC/GAD/LOCK/MARK/SCELLMOD). Au lieu du message « Absence d'identité non certifiée », expose les **attributs décodeur** depuis `nmf_event_deep` (fallback `nmf_event_light`), préfixés par `event_code/attribute` (ex. `RACHI/access_delay`, `RACHI/pathloss`, `RACHI/preambles_successes`).

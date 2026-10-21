@@ -6,6 +6,7 @@
   "system_col": 4,
   "min_format": "2.19",
   "schema_version": "1.0.0",
+  "cell_scoped": true,
   "unknown_tail": "keep",
   "header": [
     {
