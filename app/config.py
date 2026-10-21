@@ -12,7 +12,10 @@ class Settings(BaseSettings):
     # lever le préflight CORS depuis le navigateur dev sans Vite proxy.
     cors_origins: str = Field(
         "http://localhost:5173,http://localhost:5174,http://localhost:8080,"
-        "http://127.0.0.1:5173,http://127.0.0.1:5174,http://127.0.0.1:8080",
+        "http://127.0.0.1:5173,http://127.0.0.1:5174,http://127.0.0.1:8080,"
+        "https://franco-focus-forge.lovable.app,"
+        "https://id-preview--a8015a08-bb84-4b94-b38f-e26461097bfa.lovable.app,"
+        "https://a8015a08-bb84-4b94-b38f-e26461097bfa.lovableproject.com",
         alias="BC4_CORS_ORIGINS",
     )
 
