@@ -349,8 +349,24 @@ def build_catalog_v2_response(
         for e in entries
     )
     if needs_transfers:
+        # 0.74.5 (BC3) — compute_transfers scanne nmf_event_deep + nmf_event_light
+        # (UNION ALL) sur tout le projet. Sur TEST2 (767k rows), ça dépasse le
+        # statement_timeout Postgres et faisait planter /kpi/catalog en 500.
+        # Fallback propre : liste vide → les KPIs transferts tombent en PENDING
+        # avec la raison explicite déjà portée par compute_status_v2 (0 transfert
+        # `proven`), au lieu de 500. Rule 2 : écart déclaré, pas fabriqué.
+        import logging
+        from sqlalchemy.exc import DBAPIError, OperationalError
         from app.measure.throughput import compute_transfers
-        transfers_cache = compute_transfers(db, project_id)
+        try:
+            transfers_cache = compute_transfers(db, project_id)
+        except (DBAPIError, OperationalError) as exc:
+            logging.getLogger("bc4.kpi.catalog").warning(
+                "compute_transfers timeout on project %s (%s) — transfers KPIs will be PENDING",
+                project_id, type(exc).__name__,
+            )
+            db.rollback()
+            transfers_cache = []
     # 0.74.2 (B) — batch nmf_metric availability : UN seul scan de
     # nmf_event_light au lieu de ~100 EXISTS. metric_counts retourne un
     # dict {code: count} ; count>0 → disponible.

@@ -1,3 +1,11 @@
+## 0.74.5 (patch) — BC4 2026-10-21 — /kpi/catalog : fallback propre sur timeout compute_transfers (Agent BC3)
+
+**Problème** : page BC4 bloquée sur « Loading KPI catalogue… » puis 500 Internal Server Error. Trace : `psycopg.errors.QueryCanceled: canceling statement due to statement timeout` dans `app/services/task_run.py:113` (`load_tasks`) appelé par `app/measure/throughput.py:50` (`compute_transfers`) depuis `app/kpi/service_v2.py:353`. Sur TEST2/Test_3 (767k rows `nmf_event_deep`+`nmf_event_light`), le `UNION ALL` dépasse le `statement_timeout` Postgres.
+
+**Fix** — `app/kpi/service_v2.py:build_catalog_v2_response` : wrap de `compute_transfers(db, project_id)` dans try/except `(DBAPIError, OperationalError)`. Sur timeout : rollback de la transaction, log WARN, `transfers_cache = []`. Les KPIs `transfers_table` / `transfers_dms` tombent alors en PENDING avec la raison explicite déjà portée par `compute_status_v2` ("0 transfert `proven` direction=..."). Au lieu d'un 500 opaque, le catalogue répond 200 et les KPIs touchés affichent leur écart déclaré — conformément à CLAUDE.md Rule 2 (écart ouvert, pas fabriqué).
+
+**Non-régression** : les projets dont `compute_transfers` tient dans le budget (TEST, projets < ~500k rows) ne changent pas de comportement. Seul le path d'erreur est modifié.
+
 ## 0.74.3 (patch) — BC4 2026-10-21 — /kpi/catalog cold ≈ 60s → ~3s + warm boot (Agent BC3)
 
 **Problème** : page BC4 bloquée sur « Loading KPI catalogue… » pendant 55-67 s au premier chargement sur TEST2 / Test_3 (767k rows stg_event_raw, 197 KPIs). Cache TTL 30s expirait entre deux navigations → cold à chaque fois.
