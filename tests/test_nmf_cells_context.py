@@ -85,3 +85,26 @@ def test_undecoded_nr_does_not_create_zero_neighbors_or_collide_with_lte():
     assert all(r['seq_first']==1 for r in rows)
     only_nr=Light();only_nr.add(record('CELLMEAS,00:00:00.000,,9,0,0,9'))
     assert list(cell_rows(only_nr))==[]
+
+
+def test_crel_variable_header_has_declared_system_and_preserves_long_cell_ids():
+    r=record('CREL,00:00:00.000,,1,,7,3,49603,162119527,70007,7,3,49603,162119524,70007')
+    assert r.system==7 and r.values['crel_old_cell_id']==162119527
+    assert r.values['crel_cell_id']==162119524 and 'crel_crs_reason' not in r.values
+    r=record('CREL,00:00:00.000,,2,20,1,7,3,49603,162119527,70007,7,3,49603,162119524,70007')
+    assert r.system==7 and r.values['crel_crs_time']==20 and r.values['crel_crs_reason']==1
+    r=record('CREL,00:00:00.000,,1,,5,3,49603,162119527,70007,7,3,49603,162119524,70007')
+    assert r.system is None and not r.values  # An unproved mixed-system layout is not LTE.
+
+
+def test_lock_variable_groups_and_light_last_snapshot():
+    r=record('LOCK,00:00:00.000,,3,3,2,7,106,4,2,70007,106,10,3,423,2850,70007')
+    assert r.system is None and len(r.groups)==3
+    assert r.groups[0]['values']['lock_system']==7
+    assert r.groups[1]['values']['lock_band']==70007
+    assert r.groups[2]['values']['lock_pci']==423
+    assert r.tokens[7]=='106' and r.field_codes[7].startswith('unk_')
+    light=Light();light.add(r)
+    light.add(record('LOCK,00:00:00.100,,0',2,.1))
+    rows=list(light.rows());assert len(rows)==1 and rows[0]['groups']==[]
+    assert rows[0]['values']['lock_forcings']==0 and 'lock_system' not in rows[0]['values']

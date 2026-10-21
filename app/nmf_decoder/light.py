@@ -60,6 +60,10 @@ class Light:
         for code,value in r.values.items():
             weight_code=fields().get(code,{}).get('weight_code')
             add(code,value,r.values.get(column(weight_code)) if weight_code else 1)
+        if schemas().get(r.event_code,{}).get('groups_last'):
+            b['groupstats']={}
+            for code in list(b['stats']):
+                if fields().get(code,{}).get('group') is not None:del b['stats'][code]
         for g in r.groups:
             definition=next(x for x in schemas()[r.event_code]['groups'] if x['name']==g['group_name'])
             identity=str(g['set_index'])+'|'+ '|'.join(f'{k}={v}' for k,v in sorted(g['values'].items()) if v is not None and k.endswith(('_pci','_ch','_port','_band')))

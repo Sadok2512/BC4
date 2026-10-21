@@ -2,6 +2,11 @@
 
 Version independent of the API. Patch: corrected position/unit or additional documented field. Minor: new event/system. Major: changed meaning of an existing field, requiring re-decode.
 
+## 1.2.2 (patch) — 2026-10-21 (Agent BC2)
+
+- Correct documented CREL positions for header sizes 1 and 2; reject unproved mixed-system layouts instead of guessing a system.
+- Add documented LOCK attributes and repeated variable-size forcing blocks. Preserve extensions as unknown; Light uses the last full snapshot.
+
 ## 1.2.1 (patch) — 2026-10-21 (Agent BC2)
 
 - Emit neighbor snapshots only when the CELLMEAS group count was decoded. Unknown NR layouts yield no inferred zero and cannot collide with LTE in a second.

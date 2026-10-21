@@ -3,9 +3,15 @@
   "systems": [
     7
   ],
-  "system_col": null,
+  "system_col": {
+    "selector_col": 4,
+    "columns": {
+      "1": 11,
+      "2": 12
+    }
+  },
   "min_format": "2.19",
-  "schema_version": "1.2.0",
+  "schema_version": "1.2.2",
   "unknown_tail": "keep",
   "generated_from": "specs/nmf_all_events_lte_fields_2.19.csv",
   "header": [
@@ -40,36 +46,97 @@
       "agg": "last",
       "metric": false,
       "col": 6,
-      "category": "signalling_states"
+      "category": "signalling_states",
+      "when": {
+        "col": 4,
+        "eq": 2
+      }
     },
     {
       "code": "crel.old_system",
       "label": "Old system",
       "type": "int",
       "unit": null,
-      "proof": "NFF 2.19 CREL Parameters #4",
+      "proof": "NFF 2.19 CREL pp266–272; header size and old/current LTE parameter blocks",
+      "agg": "last",
+      "metric": false,
+      "col": 6,
+      "category": "signalling_states",
+      "when": {
+        "col": 4,
+        "eq": 1
+      }
+    },
+    {
+      "code": "crel.old_system",
+      "label": "Old system",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 CREL pp266–272; header size and old/current LTE parameter blocks",
       "agg": "last",
       "metric": false,
       "col": 7,
-      "category": "signalling_states"
+      "category": "signalling_states",
+      "when": {
+        "col": 4,
+        "eq": 2
+      }
     },
     {
       "code": "crel.params",
       "label": "#Params",
       "type": "int",
       "unit": null,
-      "proof": "NFF 2.19 CREL Parameters #5",
+      "proof": "NFF 2.19 CREL pp266–272; header size and old/current LTE parameter blocks",
+      "agg": "last",
+      "metric": false,
+      "col": 7,
+      "category": "signalling_states",
+      "when": {
+        "col": 4,
+        "eq": 1
+      }
+    },
+    {
+      "code": "crel.params",
+      "label": "#Params",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 CREL pp266–272; header size and old/current LTE parameter blocks",
       "agg": "last",
       "metric": false,
       "col": 8,
-      "category": "signalling_states"
+      "category": "signalling_states",
+      "when": {
+        "col": 4,
+        "eq": 2
+      }
     },
     {
       "code": "crel.old_tac",
       "label": "Old TAC",
       "type": "int",
       "unit": null,
-      "proof": "NFF 2.19 CREL Parameters for LTE #1",
+      "proof": "NFF 2.19 CREL pp266–272; header size and old/current LTE parameter blocks",
+      "agg": "last",
+      "metric": false,
+      "range": [
+        0,
+        65535
+      ],
+      "col": 8,
+      "category": "signalling_states",
+      "when": {
+        "col": 4,
+        "eq": 1
+      }
+    },
+    {
+      "code": "crel.old_tac",
+      "label": "Old TAC",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 CREL pp266–272; header size and old/current LTE parameter blocks",
       "agg": "last",
       "metric": false,
       "range": [
@@ -77,14 +144,37 @@
         65535
       ],
       "col": 9,
-      "category": "signalling_states"
+      "category": "signalling_states",
+      "when": {
+        "col": 4,
+        "eq": 2
+      }
     },
     {
       "code": "crel.old_cell_id",
       "label": "Old Cell ID",
       "type": "int",
       "unit": null,
-      "proof": "NFF 2.19 CREL Parameters for LTE #2",
+      "proof": "NFF 2.19 CREL pp266–272; header size and old/current LTE parameter blocks",
+      "agg": "last",
+      "metric": false,
+      "range": [
+        0,
+        268435455
+      ],
+      "col": 9,
+      "category": "signalling_states",
+      "when": {
+        "col": 4,
+        "eq": 1
+      }
+    },
+    {
+      "code": "crel.old_cell_id",
+      "label": "Old Cell ID",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 CREL pp266–272; header size and old/current LTE parameter blocks",
       "agg": "last",
       "metric": false,
       "range": [
@@ -92,62 +182,191 @@
         268435455
       ],
       "col": 10,
-      "category": "signalling_states"
+      "category": "signalling_states",
+      "when": {
+        "col": 4,
+        "eq": 2
+      }
     },
     {
       "code": "crel.old_band",
       "label": "Old band",
       "type": "int",
       "unit": null,
-      "proof": "NFF 2.19 CREL Parameters for LTE #3",
+      "proof": "NFF 2.19 CREL pp266–272; header size and old/current LTE parameter blocks",
+      "agg": "last",
+      "metric": false,
+      "col": 10,
+      "category": "signalling_states",
+      "when": {
+        "col": 4,
+        "eq": 1
+      }
+    },
+    {
+      "code": "crel.old_band",
+      "label": "Old band",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 CREL pp266–272; header size and old/current LTE parameter blocks",
       "agg": "last",
       "metric": false,
       "col": 11,
-      "category": "signalling_states"
+      "category": "signalling_states",
+      "when": {
+        "col": 4,
+        "eq": 2
+      }
     },
     {
       "code": "crel.new_tac",
       "label": "New TAC",
       "type": "int",
       "unit": null,
-      "proof": "NFF 2.19 CREL Parameters for LTE #1",
+      "proof": "NFF 2.19 CREL pp266–272; header size and old/current LTE parameter blocks",
       "agg": "last",
       "metric": false,
       "range": [
         0,
         65535
       ],
-      "col": 12,
-      "category": "signalling_states"
+      "col": 13,
+      "category": "signalling_states",
+      "when": {
+        "col": 4,
+        "eq": 1
+      }
+    },
+    {
+      "code": "crel.new_tac",
+      "label": "New TAC",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 CREL pp266–272; header size and old/current LTE parameter blocks",
+      "agg": "last",
+      "metric": false,
+      "range": [
+        0,
+        65535
+      ],
+      "col": 14,
+      "category": "signalling_states",
+      "when": {
+        "col": 4,
+        "eq": 2
+      }
     },
     {
       "code": "crel.cell_id",
       "label": "Cell ID",
       "type": "int",
       "unit": null,
-      "proof": "NFF 2.19 CREL Parameters for LTE #2",
+      "proof": "NFF 2.19 CREL pp266–272; header size and old/current LTE parameter blocks",
       "agg": "last",
       "metric": false,
       "range": [
         0,
         268435455
       ],
-      "col": 13,
-      "category": "signalling_states"
+      "col": 14,
+      "category": "signalling_states",
+      "when": {
+        "col": 4,
+        "eq": 1
+      }
+    },
+    {
+      "code": "crel.cell_id",
+      "label": "Cell ID",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 CREL pp266–272; header size and old/current LTE parameter blocks",
+      "agg": "last",
+      "metric": false,
+      "range": [
+        0,
+        268435455
+      ],
+      "col": 15,
+      "category": "signalling_states",
+      "when": {
+        "col": 4,
+        "eq": 2
+      }
     },
     {
       "code": "crel.band",
       "label": "Band",
       "type": "int",
       "unit": null,
-      "proof": "NFF 2.19 CREL Parameters for LTE #3",
+      "proof": "NFF 2.19 CREL pp266–272; header size and old/current LTE parameter blocks",
       "agg": "last",
       "metric": false,
-      "col": 14,
-      "category": "signalling_states"
+      "col": 15,
+      "category": "signalling_states",
+      "when": {
+        "col": 4,
+        "eq": 1
+      }
+    },
+    {
+      "code": "crel.band",
+      "label": "Band",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.19 CREL pp266–272; header size and old/current LTE parameter blocks",
+      "agg": "last",
+      "metric": false,
+      "col": 16,
+      "category": "signalling_states",
+      "when": {
+        "col": 4,
+        "eq": 2
+      }
     }
   ],
   "marker": true,
   "context_count": 0,
-  "kind": "event"
+  "kind": "event",
+  "layout_variants": {
+    "selector_col": 4,
+    "checks": {
+      "1": [
+        {
+          "col": 6,
+          "eq": 7
+        },
+        {
+          "col": 7,
+          "eq": 3
+        },
+        {
+          "col": 11,
+          "eq": 7
+        },
+        {
+          "col": 12,
+          "eq": 3
+        }
+      ],
+      "2": [
+        {
+          "col": 7,
+          "eq": 7
+        },
+        {
+          "col": 8,
+          "eq": 3
+        },
+        {
+          "col": 12,
+          "eq": 7
+        },
+        {
+          "col": 13,
+          "eq": 3
+        }
+      ]
+    }
+  }
 }

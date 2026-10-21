@@ -1,3 +1,9 @@
+## 0.68.2 (patch) — BC4 2026-10-21 — Variantes CREL et forçages LOCK (Agent BC2)
+
+- Decode documented LTE CREL header variants with explicit conditional system columns, preserving old/new cell IDs and optional reason.
+- Decode variable-length LOCK groups for documented system/band/channel/LTE cell forcings; retain unknown extension fields. Light retains the last complete forcing snapshot.
+- Migration 0039 adds typed LOCK attributes. Decoder 1.2.2.
+
 ## 0.68.1 (patch) — BC4 2026-10-21 — Voisines sur observations décodées (Agent BC2)
 
 - Skip neighbor projections for unsupported or undecodable CELLMEAS layouts. An NR record without decoded groups no longer creates a synthetic zero or collides with a real LTE observation in the same second.

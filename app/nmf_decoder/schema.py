@@ -23,5 +23,6 @@ def fields():
             for f in g['fields']:
                 result.setdefault(column(f['code']),dict(f,event=s['event'],group=g['name']))
             for k in ('count_code','params_code'):
+                if k not in g:continue
                 result.setdefault(column(g[k]),dict(code=g[k],label=g[k],type='int',unit='count',agg='last',event=s['event'],group=None,proof=g['proof'],metric=k=='count_code'))
     return result

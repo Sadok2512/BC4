@@ -2,12 +2,247 @@
   "event": "LOCK",
   "systems": "any_numeric",
   "system_col": null,
+  "context_count": 0,
   "min_format": "2.19",
-  "schema_version": "1.2.0",
+  "schema_version": "1.2.2",
   "unknown_tail": "keep",
   "kind": "event",
-  "header": [],
-  "groups": [],
-  "proof": "none",
-  "attributes_reason": "Position non prouvée; occurrence only"
+  "groups_last": true,
+  "header": [
+    {
+      "col": 4,
+      "code": "lock.forcings",
+      "label": "Number of active forcings",
+      "type": "int",
+      "unit": "count",
+      "range": [
+        0,
+        null
+      ],
+      "agg": "last",
+      "metric": false,
+      "proof": "NFF 2.19 LOCK p447 Parameters #1",
+      "category": "signalling_states"
+    }
+  ],
+  "groups": [
+    {
+      "name": "forcings",
+      "layout": "variable",
+      "count_col": 4,
+      "start": 5,
+      "fields": [
+        {
+          "code": "lock.type",
+          "label": "type",
+          "type": "int",
+          "unit": "index",
+          "agg": "last",
+          "metric": false,
+          "category": "signalling_states",
+          "offset": 0,
+          "part": "header",
+          "proof": "NFF 2.19 LOCK p447, documented forcing variant",
+          "range": [
+            1,
+            11
+          ]
+        },
+        {
+          "code": "lock.params",
+          "label": "params",
+          "type": "int",
+          "unit": "index",
+          "agg": "last",
+          "metric": false,
+          "category": "signalling_states",
+          "offset": 1,
+          "part": "header",
+          "proof": "NFF 2.19 LOCK p447, documented forcing variant",
+          "range": [
+            0,
+            null
+          ]
+        },
+        {
+          "code": "lock.system",
+          "label": "system",
+          "type": "int",
+          "unit": "index",
+          "agg": "last",
+          "metric": false,
+          "category": "signalling_states",
+          "offset": 0,
+          "part": "payload",
+          "proof": "NFF 2.19 LOCK p450, documented forcing variant",
+          "types": [
+            3
+          ]
+        },
+        {
+          "code": "lock.band",
+          "label": "band",
+          "type": "int",
+          "unit": "index",
+          "agg": "last",
+          "metric": false,
+          "category": "signalling_states",
+          "offset": 0,
+          "part": "payload",
+          "proof": "NFF 2.19 LOCK p450, documented forcing variant",
+          "types": [
+            4
+          ]
+        },
+        {
+          "code": "lock.channel",
+          "label": "channel",
+          "type": "int",
+          "unit": "index",
+          "agg": "last",
+          "metric": false,
+          "category": "signalling_states",
+          "offset": 0,
+          "part": "payload",
+          "proof": "NFF 2.19 LOCK p448, documented forcing variant",
+          "types": [
+            1
+          ]
+        },
+        {
+          "code": "lock.band",
+          "label": "band",
+          "type": "int",
+          "unit": "index",
+          "agg": "last",
+          "metric": false,
+          "category": "signalling_states",
+          "offset": 1,
+          "part": "payload",
+          "proof": "NFF 2.19 LOCK p448, documented forcing variant",
+          "types": [
+            1
+          ]
+        },
+        {
+          "code": "lock.pci",
+          "label": "pci",
+          "type": "int",
+          "unit": "index",
+          "agg": "last",
+          "metric": false,
+          "category": "signalling_states",
+          "offset": 0,
+          "part": "payload",
+          "proof": "NFF 2.19 LOCK p454, documented forcing variant",
+          "types": [
+            10
+          ],
+          "range": [
+            0,
+            503
+          ]
+        },
+        {
+          "code": "lock.channel",
+          "label": "channel",
+          "type": "int",
+          "unit": "index",
+          "agg": "last",
+          "metric": false,
+          "category": "signalling_states",
+          "offset": 1,
+          "part": "payload",
+          "proof": "NFF 2.19 LOCK p454, documented forcing variant",
+          "types": [
+            10
+          ]
+        },
+        {
+          "code": "lock.band",
+          "label": "band",
+          "type": "int",
+          "unit": "index",
+          "agg": "last",
+          "metric": false,
+          "category": "signalling_states",
+          "offset": 2,
+          "part": "payload",
+          "proof": "NFF 2.19 LOCK p454, documented forcing variant",
+          "types": [
+            10
+          ]
+        },
+        {
+          "code": "lock.barring",
+          "label": "barring",
+          "type": "int",
+          "unit": "index",
+          "agg": "last",
+          "metric": false,
+          "category": "signalling_states",
+          "offset": 0,
+          "part": "payload",
+          "proof": "NFF 2.19 LOCK p453, documented forcing variant",
+          "types": [
+            5
+          ],
+          "range": [
+            1,
+            3
+          ]
+        },
+        {
+          "code": "lock.ho_band",
+          "label": "ho_band",
+          "type": "int",
+          "unit": "index",
+          "agg": "last",
+          "metric": false,
+          "category": "signalling_states",
+          "offset": 0,
+          "part": "payload",
+          "proof": "NFF 2.19 LOCK p455, documented forcing variant",
+          "types": [
+            11
+          ]
+        },
+        {
+          "code": "lock.ho_channel",
+          "label": "ho_channel",
+          "type": "int",
+          "unit": "index",
+          "agg": "last",
+          "metric": false,
+          "category": "signalling_states",
+          "offset": 1,
+          "part": "payload",
+          "proof": "NFF 2.19 LOCK pp455–456, documented forcing variant",
+          "types": [
+            11
+          ]
+        },
+        {
+          "code": "lock.ho_pci",
+          "label": "ho_pci",
+          "type": "int",
+          "unit": "index",
+          "agg": "last",
+          "metric": false,
+          "category": "signalling_states",
+          "offset": 2,
+          "part": "payload",
+          "proof": "NFF 2.19 LOCK pp455–456, documented forcing variant",
+          "types": [
+            11
+          ],
+          "range": [
+            0,
+            503
+          ]
+        }
+      ],
+      "proof": "NFF 2.19 LOCK pp447–456; repeated type/parameter-count blocks"
+    }
+  ]
 }

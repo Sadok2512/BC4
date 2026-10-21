@@ -86,6 +86,16 @@ def decode(line,system=None,format_version='unknown',*,capture_id='',seq=0,line_
     schema=schemas().get(code)
     if schema:r.schema_version=schema.get('schema_version',DECODER_VERSION)
     system_col=schema.get('system_col') if schema else None
+    if isinstance(system_col,dict):
+        selector=system_col['selector_col']-1
+        system_col=system_col['columns'].get(tokens[selector]) if selector<len(tokens) else None
+    checks=schema.get('layout_checks',[]) if schema else []
+    if schema and schema.get('layout_variants'):
+        variant=schema['layout_variants'];idx=variant['selector_col']-1
+        checks=variant['checks'].get(tokens[idx],[]) if idx<len(tokens) else []
+        if not checks:system_col=None;r.partial('context_layout_unsupported')
+    layout_valid=all(len(tokens)>=c['col'] and tokens[c['col']-1]==str(c['eq']) for c in checks)
+    if not layout_valid:system_col=None;r.partial('context_layout_unsupported')
     try:r.system=numeric(tokens[system_col-1],'int') if system_col and len(tokens)>=system_col else None
     except (ValueError,InvalidOperation):r.system=None
     if r.system is None:r.partial('system_missing')
@@ -120,7 +130,7 @@ def decode(line,system=None,format_version='unknown',*,capture_id='',seq=0,line_
         known.add(i);r.field_codes[i]='identity_redacted'
     active=bool(schema and (schema['systems']=='any_numeric' or r.system in schema['systems']))
     if schema and 'context_count' in schema and count!=schema['context_count']:active=False
-    if schema and any(len(tokens)<check['col'] or tokens[check['col']-1]!=str(check['eq']) for check in schema.get('layout_checks',[])):
+    if not layout_valid:
         active=False;r.partial('context_layout_unsupported')
     parameter_types=schema.get('parameter_types') if schema else None
     if parameter_types and (len(tokens)<parameter_types.get('col',4) or tokens[parameter_types.get('col',4)-1] not in {str(v) for v in parameter_types['values']}):
@@ -157,6 +167,25 @@ def decode(line,system=None,format_version='unknown',*,capture_id='',seq=0,line_
             read(f,f['col']-1,r.values)
         previous_end=None
         for g in schema.get('groups', []):
+            if g.get('layout')=='variable':
+                try:
+                    count=numeric(tokens[g['count_col']-1],'int');pos=g['start']-1
+                    if count is None or count<0:raise ValueError()
+                    for k in range(count):
+                        if pos+1>=len(tokens):raise ValueError()
+                        typ=numeric(tokens[pos],'int');width=numeric(tokens[pos+1],'int')
+                        if width is None or width<0:raise ValueError()
+                        values={}
+                        for f in g['fields']:
+                            if f.get('types') and typ not in f['types']:continue
+                            idx=pos+f['offset']+(0 if f.get('part')=='header' else 2)
+                            if idx>=pos+2+width:r.partial('group_width:'+g['name']);continue
+                            read(f,idx,values)
+                        r.groups.append(dict(group_name=g['name'],set_index=k,values=values))
+                        pos+=2+width
+                        if pos>len(tokens):raise ValueError()
+                except (ValueError,IndexError,InvalidOperation):r.partial('group_layout:'+g['name'])
+                continue
             start=g['start']
             try:
                 if start=='previous_end':idx=previous_end
