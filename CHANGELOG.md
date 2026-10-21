@@ -1,3 +1,10 @@
+## 0.72.1 (patch) — BC4 2026-10-21 — NAS redact par path complet (fix P0) (Agent BC3)
+
+- **Fix critique** : la version 0.72.0 exposait les sous-champs d'IE identité (`OldGUTI/EPSID/MMEGroupID`, `MMECode`, `Digit1`, `NAS_KSI/Value`, `TMSIBasedNRICont/NRICont/Value`, `OldGUTIType/*`) car `_is_sensitive()` ne matchait que le NOM de la feuille, pas le PATH complet.
+- `app/signaling/nas_decoder.py:_walk()` : check sur `full_path` au lieu de `name` → tout sous-arbre d'un ancêtre redacted hérite du statut REDACTED (comportement défensif correct).
+- Regex `_REDACT` enrichi : ajout de `NRI`, `EPSID`, `NAS_KSI`, `\bKSI\b` + word boundaries pour éviter faux positifs comme `RestrictEC` (bit UENetCap safe).
+- Validé live sur TAU_REQUEST seq 36 TEST2 : 17/155 champs REDACTED, 138 safes exposés. Guards G18 PASS inchangés, G18b_nas réévalué : FULLY=152 PARTIAL=728 REDACTED=20 UNSUPPORTED=100 (zéro leak sur 1000 messages).
+
 ## 0.72.0 (minor) — BC4 2026-10-21 — NAS sanitized decoder (SIGNALING FULL DECODE LTE/NR) (Agent BC3)
 
 - **Décodage NAS complet** via `pycrate 0.8.1` (déjà installé), avec P0 CLAUDE.md préservée : zéro IMSI/IMEI/MSISDN/GUTI/TMSI/SUPI/SUCI/PEI/MAC/RAND/AUTN/RES/KSI/clé dans la réponse.

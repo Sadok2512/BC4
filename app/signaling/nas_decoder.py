@@ -48,12 +48,13 @@ except Exception:  # pragma: no cover
 _REDACT = re.compile(
     r"""
     IMSI | IMEI | IMEISV | MSISDN | SUPI | SUCI | PEI
-    | GUTI | 5GGUTI | MTMSI | STMSI | MTMSI | TMSI
+    | GUTI | MTMSI | STMSI | TMSI | NRI | EPSID
     | MobileId | MobID
-    | MAC | MACShort | NAS_MAC
-    | RAND | AUTN | RES | XRES | AUTS | AUTH[A-Z_]*Response
+    | \bMAC\b | MACShort | NAS_MAC
+    | RAND | AUTN | \bRES\b | XRES | AUTS | AUTH[A-Z_]*Response
     | KASME | KAMF | KSEAF | KAUSF | KSIasme | KSIsgsn
-    | CK | IK | NASKey
+    | NAS_KSI | \bKSI\b
+    | NASKey
     | EmergencyNumber
     """,
     re.IGNORECASE | re.VERBOSE,
@@ -138,8 +139,10 @@ def _walk(obj: Any, path: str, params: list[dict], redacted_count: list[int]) ->
             _walk(ch, full_path, params, redacted_count)
         return
 
-    # Leaf atom
-    sensitive = _is_sensitive(name)
+    # Leaf atom — check the FULL PATH (not just the leaf name) so that any
+    # sensitive ancestor container (ex. OldGUTI, NAS_KSI, TMSIBasedNRICont)
+    # redacts all its descendants recursively.
+    sensitive = _is_sensitive(full_path)
     if sensitive:
         redacted_count[0] += 1
         params.append({
