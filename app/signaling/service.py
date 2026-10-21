@@ -18,7 +18,7 @@ PROTOCOLS = ('RRC LTE', 'RRC NR', 'NAS', 'Événements Nemo', 'MAC-RACH')
 # 0.67.0 — layer slugs added alongside the human protocol labels (dual field).
 LAYERS = ('rrc_lte', 'rrc_nr', 'nas', 'event', 'mac')
 LAYER_FOR_PROTOCOL = dict(zip(PROTOCOLS, LAYERS))
-MARKERS = ('RRA','RRC','RRD','HOA','HOS','CAA','CAC','CAD','DAA','DAC','DAD','RACHI','CREL','MEI','PBA','PBC','PBD','GAA','GAC','GAD')
+MARKERS = ('RRA','RRC','RRD','HOA','HOS','HOI','CAA','CAC','CAD','DAA','DAC','DAD','RACHI','CREL','MEI','PBA','PBC','PBD','GAA','GAC','GAD','LOCK','MARK','SCELLMOD')
 SENSITIVE = re.compile(r'rnti|guti|tmsi|imsi|imei|msisdn|phone|subscriber|ue.identity|randomValue|dedicated.*nas', re.I)
 PDU_LOCK = Lock()
 SOURCE_SQL = '''SELECT s.seq,s.id AS event_id,s.event_code,s.system AS technology,s.direction,s.message AS message_name,
@@ -189,3 +189,97 @@ def details(db,pid,cap,seq):
         node['$value']=p['value']
     return dict(tree=tree,parameters=parameters,text='\n'.join(p['path']+' = '+str(p['value']) for p in parameters),hex=hex_value,hex_reason=reason,
                 tree_source='BC1 param_occurrence (sanitized)',tree_route_gap='No per-message BC1 tree endpoint in current OpenAPI')
+
+
+# ---------------------------------------------------------------------------
+# 0.70.0 — Timeline événements. Agrège markers + procedures en events pour
+# le ruban front, en appliquant les règles d'appariement explicites de
+# app.signaling.links. Aucun ts, aucune invention.
+# ---------------------------------------------------------------------------
+from .links import EVENT_RULES, EVENT_LANE, PROCEDURE_LANE, LANES, LinkContext
+
+
+def events(db, pid, cap, lanes=None, failures_only=False):
+    rows, procedures, meta, _times = population(db, pid, cap, persist=False)
+    rows_by_seq = {r['seq']: r for r in rows}
+    seqs = sorted(rows_by_seq)
+    ctx = LinkContext(project_id=pid, capture_id=cap, rows_by_seq=rows_by_seq, seqs=seqs, db=db)
+    allowed = set(lanes.split(',')) if lanes else set(LANES)
+    out = []
+    # 1) State events (markers) → one event each, lane + rule from links.py
+    for r in rows:
+        code = r['event_code']
+        if code not in EVENT_LANE:
+            continue
+        lane = EVENT_LANE[code]
+        if lane not in allowed:
+            continue
+        rule = EVENT_RULES.get(code)
+        link = rule(ctx, r) if rule else dict(pivot_seq=None, linked_seqs=[], link_rule='no_rule', seq_gap=None)
+        ok = None
+        # Outcome for HOI = ok ; LOCK/MARK/MEI = None ; others = None (BC2 doesn't
+        # tag per-marker outcome, procedure outcomes carry it below).
+        ev = dict(
+            id=f"{code.lower()}:{r['seq']}",
+            lane=lane,
+            type=code,
+            kind='mark',
+            seq=r['seq'],
+            seq_end=None,
+            t_rel_s=r['t_rel_s'],
+            t_rel_end_s=None,
+            duration_ms=None,
+            outcome=ok,
+            cause=None,
+            label=code,
+            attrs={},
+            pivot_seq=link['pivot_seq'],
+            linked_seqs=link['linked_seqs'],
+            link_rule=link['link_rule'],
+            seq_gap=link['seq_gap'],
+        )
+        if failures_only and ok != 'fail':
+            # markers alone cannot assert failures ; always drop in this mode
+            # unless CREL (connection release) + RACHI with no-success flag,
+            # which BC2 doesn't expose yet.
+            continue
+        out.append(ev)
+    # 2) Procedures (reconstructed by procedures.reconstruct) → bars with duration.
+    for p in procedures:
+        lane = PROCEDURE_LANE.get(p['type'])
+        if not lane or lane not in allowed:
+            continue
+        if failures_only and p['outcome'] != 'fail':
+            continue
+        # Pivot/linked already materialized as boundary_seqs by reconstruct.
+        boundaries = p['boundary_seqs']
+        pivot = boundaries[0] if boundaries else None
+        gap = max((abs(s - (pivot or 0)) for s in boundaries), default=None)
+        out.append(dict(
+            id=f"proc:{p['id']}",
+            lane=lane,
+            type=p['type'],
+            kind='bar',
+            seq=p['seq_start'],
+            seq_end=p['seq_end'],
+            t_rel_s=_times_for_seq(rows_by_seq, p['seq_start']),
+            t_rel_end_s=_times_for_seq(rows_by_seq, p['seq_end']) if p['seq_end'] else None,
+            duration_ms=p['duration_ms'],
+            outcome=p['outcome'],
+            cause=p['cause'],
+            label=p['type'],
+            attrs={'technology': p['technology']},
+            pivot_seq=pivot,
+            linked_seqs=boundaries,
+            link_rule='procedure_boundary',
+            seq_gap=gap,
+        ))
+    out.sort(key=lambda e: (e['seq'], e['type']))
+    return out, meta
+
+
+def _times_for_seq(rows_by_seq, seq):
+    if seq is None:
+        return None
+    row = rows_by_seq.get(seq)
+    return row['t_rel_s'] if row else None

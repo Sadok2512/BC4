@@ -1,3 +1,24 @@
+## 0.71.0 (minor) — BC4 2026-10-21 — Signaling timeline events (addendum spec) (Agent BC3)
+
+- **Nouvelle route** `GET /projects/{id}/signaling/events?capture_id=&lanes=&failures_only=` (modèle `SignalingEvent` + `EventsResponse`) : agrège les markers BC2 (state events) et les procedures reconstruites en événements prêts pour le ruban front, avec pivot/linked/seq_gap/link_rule explicites.
+- `app/signaling/links.py` **nouveau** : table de règles d'appariement événement → messages, strictement ordonnée en `(capture_id, seq)` — jamais `ts`.
+  - `ho_reconfig_mobility` : pivot = dernière `RRCConnectionReconfiguration` portant `mobilityControlInfo` (lookup `param_occurrence`) ≤ 50 seq AVANT HOA ; linked = Complete + MeasurementReport + MEI + RACHI fenêtre.
+  - `rrc_setup_message` : RRA/RRC/RRD → RRCConnectionRequest/Setup/SetupComplete, fenêtre ≤ 20 seq.
+  - `rlf_reestab_request` : RLF marker → ReestablishmentRequest, fenêtre ≤ 50 seq.
+  - `pivot_on_state_event` : CAA/DAA/GAA/PBA/… → événement pivote sur lui-même (SIPSM / task payload pas dans le contrat signaling).
+  - `no_dict_support` : SgNB addition / SCell add → BC1 dict decoder n'expose actuellement ni `nr-Config-r15` ni `sCellToAddModList-r10` (audit confirmé : 0 occurrences cross-project). Pivot=null, lien=[], jamais inventé.
+- `app/signaling/service.py` :
+  - `MARKERS` étendu avec `HOI`, `LOCK`, `MARK`, `SCELLMOD` (déjà présents dans `nmf_event_deep/light`).
+  - Nouvelle fonction `events(db, pid, cap, lanes, failures_only)` : parcourt rows + procedures et applique les règles.
+- `scripts/_guard_G18_signaling_events.py` **nouveau** :
+  - **G18f** — pour chaque HOA (≤ 100), pivot vérifié = Reconfiguration mobilityControlInfo ≤ 50 seq avant, backup SQL direct `param_occurrence`.
+  - **G18g** — SgNB addition : si l'IE `nr-Config-r15` n'est pas dans `param_occurrence`, règle = `no_dict_support`, aucun lien NR fabriqué.
+  - **G18h** — chaque `seq_gap` ≤ fenêtre de sa règle.
+  - Section déterministe en mémoire (TEST-only).
+- Écarts ouverts : routes `/dict/v2/scells`, `/dict/v2/rlf`, `/dict/v2/endc` toujours absentes de `/openapi.json` → lecture directe `param_occurrence` quand nécessaire. SgNB/SCell rules restent déclarées sans linkage tant que le decoder BC1 n'expose pas ces IE.
+- Capture cible pour les guards : Test_3 `01bfc2fc5350` (spec signaling_timeline.html).
+- Zéro migration, zéro modification des routes existantes.
+
 ## 0.69.1 (patch) — BC4 2026-10-21 — English KPI and Metrics labels (Agent BC2)
 
 - Serve English catalogue categories, metric groups, attributes and availability explanations directly from the API. Preserve source catalogue definitions, decoder schemas, values, formulas and evidence identifiers.

@@ -194,6 +194,48 @@ def details(project_id:str,capture_id:str,seq:int=Query(...,ge=0),db:Session=Dep
     data=svc.details(db,project_id,capture_id,seq)
     return dict(**envelope(project_id,capture_id,data,dict(seq=seq)),seq=seq,**data)
 
+class SignalingEvent(BaseModel):
+    """0.70.0 — Timeline événements. Un événement = un marker BC2 ou une
+    procédure reconstruite. Les règles de linkage (pivot/linked/seq_gap)
+    sont déclarées dans app.signaling.links et appliquées capture-local."""
+    id:str
+    lane:Literal['radio','connexion','mobilite','endc','ca','services','acces','contexte']
+    type:str
+    kind:Literal['mark','bar','band','fail','tri','x']
+    seq:int
+    seq_end:int|None
+    t_rel_s:float|None
+    t_rel_end_s:float|None
+    duration_ms:float|None
+    outcome:Literal['ok','fail','incomplete']|None
+    cause:str|None
+    label:str
+    attrs:dict[str,Any]
+    pivot_seq:int|None
+    linked_seqs:list[int]
+    link_rule:str
+    seq_gap:int|None
+
+class EventsResponse(Envelope):
+    events:list[SignalingEvent]
+    total:int
+    lanes:list[str]
+    counts_by_lane:dict[str,int]
+    link_rule_counts:dict[str,int]
+
+@router.get('/events',response_model=EventsResponse)
+def events(project_id:str,capture_id:str,lanes:str|None=None,failures_only:bool=False,db:Session=Depends(get_db)):
+    """0.70.0 — Spec signaling_timeline.html. Retourne les événements
+    agrégés (markers BC2 + procedures) avec appartenance stricte (règles
+    explicites dans app.signaling.links). Jamais ts, jamais invention."""
+    evs,_=svc.events(db,project_id,capture_id,lanes=lanes,failures_only=failures_only)
+    counts={}
+    for e in evs:counts[e['lane']]=counts.get(e['lane'],0)+1
+    rules={}
+    for e in evs:rules[e['link_rule']]=rules.get(e['link_rule'],0)+1
+    return dict(**envelope(project_id,capture_id,evs,dict(lanes=lanes,failures_only=failures_only)),
+      events=evs,total=len(evs),lanes=sorted(counts),counts_by_lane=counts,link_rule_counts=rules)
+
 class Procedures(Envelope):
     procedures:list[Procedure]
     total:int
