@@ -180,7 +180,25 @@ def details(db,pid,cap,seq):
                     else:hex_value=event['payload_hex'];reason=None
             except Exception:
                 reason='Décodage incomplet : absence d’identité non certifiée, hexadécimal masqué.'
-    elif events:reason='NAS : seul le nom du message est exposé.'
+    elif events and events[0]['event_code']=='L3SM':
+        # 0.72.0 — NAS sanitized decode via pycrate. Allowlist safe IE,
+        # denylist identité + crypto. P0 CLAUDE.md : jamais imsi/imei/
+        # tmsi/guti/mac/rand/autn/res/keys dans la réponse.
+        from .nas_decoder import decode as nas_decode
+        event=events[0]
+        if event['payload_hex']:
+            nas=nas_decode(event['payload_hex'],event['direction'],event['system'])
+            # pycrate param rows → même format que RRC (path/value/param_key).
+            parameters=[dict(path=p['path'],value=p['value'] if p['safe'] else '<redacted>',
+                             param_key=p['name'],
+                             redacted_reason=p['redacted_reason'] if not p['safe'] else None)
+                        for p in nas['parameters']]
+            reason=(f"NAS {nas['pdu_class']} — statut {nas['status']}. "
+                    f"Identités et secrets de sécurité masqués (CLAUDE.md P0). "
+                    f"Payload binaire non exposé.") if nas['status']!='UNSUPPORTED' else \
+                   (nas['reason'] or 'NAS : décodage indisponible.')
+        else:
+            reason='NAS : pas de payload.'
     tree={}
     for p in parameters:
         node=tree

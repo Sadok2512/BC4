@@ -1,3 +1,16 @@
+## 0.72.0 (minor) — BC4 2026-10-21 — NAS sanitized decoder (SIGNALING FULL DECODE LTE/NR) (Agent BC3)
+
+- **Décodage NAS complet** via `pycrate 0.8.1` (déjà installé), avec P0 CLAUDE.md préservée : zéro IMSI/IMEI/MSISDN/GUTI/TMSI/SUPI/SUCI/PEI/MAC/RAND/AUTN/RES/KSI/clé dans la réponse.
+- `app/signaling/nas_decoder.py` **nouveau** : wrapper `decode(payload_hex, direction, system)` → dict `{status, parameters, pdu_class, reason}` avec :
+  - **Allowlist** IE techniques (MessageType, ProtDisc, SecHdr, EMMCause, ESMCause, ServiceType, EpsAttachType, EPSBearerIdentity, PTI, QoS, ApnAmbr, ESMInformationTransferFlag, PDNType, RequestType, NAS/UESecurityCapability, PLMN, Seqn, Spare, Type enum).
+  - **Denylist** regex sur `IMSI|IMEI|IMEISV|MSISDN|SUPI|SUCI|PEI|GUTI|TMSI|MobileId|MAC|RAND|AUTN|RES|XRES|AUTS|KASME|KAMF|KSEAF|KAUSF|CK|IK|NASKey|EmergencyNumber` + marker défensif sur bytes bruts (`<binary · N bytes · redacted>`).
+  - **4 statuts** : `FULLY_DECODED` / `PARTIALLY_DECODED` / `REDACTED` / `UNSUPPORTED`.
+- `app/signaling/service.py:details()` : la branche `event_code='L3SM'` appelle maintenant `nas_decoder.decode()` au lieu de retourner `parameters=[]`. Statut + raison explicites remontés dans `hex_reason`. Payload hex binaire **jamais exposé** dans l'API.
+- `scripts/_guard_G18_signaling_live.py` : nouveau guard **G18b_nas** — scan 1000 messages NAS LTE/NR/UMTS, assert zéro token identité/crypto dans aucun paramètre SAFE.
+- Validation live sur TEST2 : **1000 messages, 0 leak** ; distribution statuts : `FULLY=190 PARTIAL=710 REDACTED=0 UNSUPPORTED=100`.
+- Couverture types NAS : 26/27 types LTE OK, UMTS/NR OK via même wrapper. 1 écart ouvert : `ACTIVATE_DEFAULT_EPS_BEARER_CONTEXT_REQUEST` → `UNSUPPORTED` (variant encoding à investiguer).
+- Zéro migration, zéro nouvelle route, zéro modification des contrats existants. Format des `parameters` compatible RRC (path/value/param_key).
+
 ## 0.71.0 (minor) — BC4 2026-10-21 — Signaling timeline events (addendum spec) (Agent BC3)
 
 - **Nouvelle route** `GET /projects/{id}/signaling/events?capture_id=&lanes=&failures_only=` (modèle `SignalingEvent` + `EventsResponse`) : agrège les markers BC2 (state events) et les procedures reconstruites en événements prêts pour le ruban front, avec pivot/linked/seq_gap/link_rule explicites.

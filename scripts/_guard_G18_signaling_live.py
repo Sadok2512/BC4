@@ -116,12 +116,48 @@ def g18e(db):
             f"gps_fixes={len(real)} no fabricated point")
 
 
+def g18b_nas(db):
+    """0.72.0 — NAS sanitized decode: scan 1000 L3SM messages, assert no
+    identity/crypto token (imsi/imei/msisdn/guti/tmsi/supi/suci/pei/mac/
+    rand/autn/res/xres/auts/kasme/kamf/kseaf/kausf/naskey) appears in any
+    SAFE parameter value. REDACTED values are expected to carry the marker
+    "<redacted>" or "<binary · N bytes · redacted>" — those don't count."""
+    from app.signaling.nas_decoder import decode
+    import re as _re, json as _json
+    rows = db.execute(text("""
+        SELECT message, direction, payload_hex FROM stg_event
+        WHERE event_code='L3SM' AND payload_hex IS NOT NULL
+        LIMIT 1000
+    """)).mappings().all()
+    assert rows, 'G18b_nas: no NAS messages in DB'
+    pat = _re.compile(
+        r'imsi|imei|msisdn|guti|tmsi|supi|suci|pei|\bmac\b|\brand\b|'
+        r'\bautn\b|\bres\b|xres|auts|kasme|kamf|kseaf|kausf|naskey',
+        _re.I)
+    leaked = []
+    stats = {'FULLY_DECODED': 0, 'PARTIALLY_DECODED': 0,
+             'REDACTED': 0, 'UNSUPPORTED': 0}
+    for r in rows:
+        res = decode(r['payload_hex'], r['direction'], 'LTE')
+        stats[res['status']] = stats.get(res['status'], 0) + 1
+        for p in res['parameters']:
+            if p['safe']:
+                v = str(p.get('value', ''))
+                if pat.search(v):
+                    leaked.append((r['message'], p['path'], v[:80]))
+    assert not leaked, f'G18b_nas leaks: {leaked[:3]}'
+    return (f"G18b_nas PASS — {len(rows)} NAS scanned, 0 identity leak | "
+            f"FULLY={stats['FULLY_DECODED']} PARTIAL={stats['PARTIALLY_DECODED']} "
+            f"REDACTED={stats['REDACTED']} UNSUPPORTED={stats['UNSUPPORTED']}")
+
+
 def run():
     with SessionLocal() as db:
         print(g18a(db))
         print(g18b(db))
         print(g18d(db))
         print(g18e(db))
+        print(g18b_nas(db))
 
 
 if __name__ == '__main__':
