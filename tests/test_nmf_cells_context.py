@@ -72,6 +72,8 @@ def test_legacy_null_context_ids_replay_as_empty_dimension():
     decoded=record('DRATE,00:00:00.000,1,1,4,0,100,0,100',1)
     decoded.context_ids=None
     assert dimensions(decoded)=='context_ids='
+    light=Light();light.add(decoded)
+    assert list(light.rows())[0]['context_ids']==[]
 
 
 def test_drate_keeps_independent_context_dimensions():
