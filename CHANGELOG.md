@@ -1,3 +1,9 @@
+## 0.73.0 (minor) — BC4 2026-10-21 — Proven RF timeline (Agent BC2)
+
+- Existing signaling/events accepts view=rf: capture-clock events, context-bound handovers, connected intervals from connection indication, and directional task_run bounds.
+- Explicit source sequences, rule version, evidence status and unavailable NR/call semantics; missing times and unfinished intervals are never filled. Existing legacy response remains compatible.
+- No parser, ASN.1, source-data, KPI formula or migration changes.
+
 ## 0.72.1 (patch) — BC4 2026-10-21 — NAS redact par path complet (fix P0) (Agent BC3)
 
 - **Fix critique** : la version 0.72.0 exposait les sous-champs d'IE identité (`OldGUTI/EPSID/MMEGroupID`, `MMECode`, `Digit1`, `NAS_KSI/Value`, `TMSIBasedNRICont/NRICont/Value`, `OldGUTIType/*`) car `_is_sensitive()` ne matchait que le NOM de la feuille, pas le PATH complet.

@@ -222,19 +222,32 @@ class EventsResponse(Envelope):
     lanes:list[str]
     counts_by_lane:dict[str,int]
     link_rule_counts:dict[str,int]
+    rule_version:str|None=None
+    unavailable:dict[str,str]={}
+    missing_time:int=0
 
 @router.get('/events',response_model=EventsResponse)
-def events(project_id:str,capture_id:str,lanes:str|None=None,failures_only:bool=False,db:Session=Depends(get_db)):
+def events(project_id:str,capture_id:str,lanes:str|None=None,failures_only:bool=False,
+           view:Literal["legacy","rf"]="legacy",protocols:str|None=None,technology:str|None=None,
+           direction:str|None=None,q:str|None=None,db:Session=Depends(get_db)):
     """0.70.0 — Spec signaling_timeline.html. Retourne les événements
     agrégés (markers BC2 + procedures) avec appartenance stricte (règles
     explicites dans app.signaling.links). Jamais ts, jamais invention."""
-    evs,_=svc.events(db,project_id,capture_id,lanes=lanes,failures_only=failures_only)
+    from app.signaling import rf
+    if view == 'rf':
+        evs,_=rf.events(db,project_id,capture_id,protocols,technology,direction,q)
+        if failures_only:evs=[e for e in evs if e['outcome']=='fail']
+        if lanes is not None:evs=[e for e in evs if e['lane'] in lanes.split(',')]
+    else:
+        evs,_=svc.events(db,project_id,capture_id,lanes=lanes,failures_only=failures_only)
     counts={}
     for e in evs:counts[e['lane']]=counts.get(e['lane'],0)+1
     rules={}
     for e in evs:rules[e['link_rule']]=rules.get(e['link_rule'],0)+1
-    return dict(**envelope(project_id,capture_id,evs,dict(lanes=lanes,failures_only=failures_only)),
-      events=evs,total=len(evs),lanes=sorted(counts),counts_by_lane=counts,link_rule_counts=rules)
+    return dict(**envelope(project_id,capture_id,evs,dict(lanes=lanes,failures_only=failures_only,view=view,protocols=protocols,technology=technology,direction=direction,q=q)),
+      events=evs,total=len(evs),lanes=sorted(counts),counts_by_lane=counts,link_rule_counts=rules,
+      rule_version=rf.RULE_VERSION if view=='rf' else None,unavailable=rf.UNAVAILABLE if view=='rf' else {},
+      missing_time=sum(e['t_rel_s'] is None for e in evs))
 
 class Procedures(Envelope):
     procedures:list[Procedure]

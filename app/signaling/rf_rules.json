@@ -1,0 +1,65 @@
+{
+  "version": "1.0.0",
+  "time": "metrics.clock; capture-local source timestamps",
+  "order": [
+    "capture_id",
+    "seq"
+  ],
+  "rules": [
+    {
+      "id": "raw_protocol",
+      "source": [
+        "stg_event RRCSM/L3SM",
+        "decoded Nemo state events"
+      ],
+      "detection": "Source event exists in selected capture.",
+      "success": "Never inferred from name.",
+      "failure": "Not inferred.",
+      "end": "None.",
+      "limitations": [
+        "Names only for raw messages; no causal association."
+      ]
+    },
+    {
+      "id": "nemo_context_ho",
+      "source": [
+        "nmf_event_pair",
+        "nmf_event_deep HOA/HOS"
+      ],
+      "detection": "Pair rebuilt by nmf_decoder.pairs using identical non-null context_id.",
+      "success": "Pair outcome ok and terminal typed event HOS.",
+      "failure": "No causal failure classification.",
+      "end": "HOS source sequence.",
+      "limitations": [
+        "Nemo and HOI durations are separate; NR subtype is unknown without proof."
+      ]
+    },
+    {
+      "id": "nemo_context_connected",
+      "source": [
+        "nmf_event_pair",
+        "nmf_event_deep RRA/RRC/RRD or CAA/CAC/CAD"
+      ],
+      "detection": "Exactly one connection indication in same context, strictly between boundaries; LTE system 7/8 or CAD call type 14 (VoLTE).",
+      "success": "Connection indication proves connected state, not normal release.",
+      "failure": "Decoder pair explicit fail only.",
+      "end": "Observed terminal event; no capture-end extension.",
+      "limitations": [
+        "No NSA/SA/VoNR inference; ambiguous or missing indications omitted."
+      ]
+    },
+    {
+      "id": "task_daa_dcomp",
+      "source": [
+        "task_run HTTP_DL/HTTP_UL"
+      ],
+      "detection": "Task has seq_daa, directional task_type supplied by task parser.",
+      "success": "status ok and seq_dcomp present.",
+      "failure": "Integrity partial is not automatically a failed transfer.",
+      "end": "seq_dcomp only.",
+      "limitations": [
+        "No task throughput mean fabricated; incomplete task is a marker."
+      ]
+    }
+  ]
+}
