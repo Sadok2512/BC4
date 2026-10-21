@@ -32,7 +32,7 @@ class Stat:
 def dimensions(r):
     s=schemas().get(r.event_code,{})
     keys=[]
-    if s.get('context_dimension'):keys.append('context_ids='+','.join(map(str,r.context_ids)))
+    if s.get('context_dimension'):keys.append('context_ids='+','.join(map(str,r.context_ids or [])))
     if s.get('parameter_dimension_col'):
         idx=s['parameter_dimension_col']-1
         if idx<len(r.tokens):keys.append('parameter_type='+r.tokens[idx])

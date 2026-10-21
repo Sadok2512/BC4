@@ -1,3 +1,7 @@
+## 0.74.1 (patch) — BC4 2026-10-21 — Legacy Deep projection compatibility (Agent BC1)
+
+- Rebuild Light projections from legacy Deep captures whose `context_ids` is null, treating the absent context list as an empty grouping key without changing stored source data.
+
 ## 0.74.0 (minor) — BC4 2026-10-21 — Metrics catalogue v6 and serving-cell projection (Agent BC1)
 
 - Expose the complete approved Metrics v6 hierarchy while retaining absent leaves with `n=0` and explicit `open` proof status.
