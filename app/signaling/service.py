@@ -7,6 +7,7 @@ import math
 from decimal import Decimal
 import re
 from threading import Lock
+from time import monotonic
 from sqlalchemy import text
 from fastapi import HTTPException
 from app.routes.metrics import clock
@@ -21,6 +22,9 @@ LAYER_FOR_PROTOCOL = dict(zip(PROTOCOLS, LAYERS))
 MARKERS = ('RRA','RRC','RRD','HOA','HOS','HOI','CAA','CAC','CAD','DAA','DAC','DAD','RACHI','CREL','MEI','PBA','PBC','PBD','GAA','GAC','GAD','LOCK','MARK','SCELLMOD')
 SENSITIVE = re.compile(r'rnti|guti|tmsi|imsi|imei|msisdn|phone|subscriber|ue.identity|randomValue|dedicated.*nas', re.I)
 PDU_LOCK = Lock()
+_POPULATION_CACHE: dict[tuple[str, str], tuple[tuple, float, tuple]] = {}
+_POPULATION_CACHE_LOCK = Lock()
+_POPULATION_BUILD_LOCK = Lock()
 SOURCE_SQL = '''SELECT s.seq,s.id AS event_id,s.event_code,s.system AS technology,s.direction,s.message AS message_name,
  s.pci,CASE WHEN s.payload_hex ~ '^[0-9A-Fa-f]+$' THEN length(s.payload_hex)/2 END AS size_bytes,
  EXISTS(SELECT 1 FROM param_occurrence p WHERE p.project_id=s.project_id AND p.stg_event_id=s.id AND NOT COALESCE(p.is_identifier,false)) AS has_tree,
@@ -56,7 +60,44 @@ def result_id(pid,cap,rows,params):
     return sha256(json.dumps([pid,cap,params,rows],sort_keys=True,default=str,ensure_ascii=False).encode()).hexdigest()[:32]
 
 
+def _population_stamp(db, pid, cap) -> tuple:
+    """Cheap source/decode stamp used to reuse one capture projection.
+
+    Every Signaling endpoint used to rebuild the same population independently.
+    The stamp changes when staged rows or the capture decode state changes, so
+    cached values never cross a source mutation or a Deep/Light upgrade.
+    """
+    row = db.execute(text("""SELECT
+        (SELECT count(*) FROM stg_event WHERE project_id=:pid AND capture_id=:cap) AS event_count,
+        (SELECT COALESCE(max(seq),-1) FROM stg_event WHERE project_id=:pid AND capture_id=:cap) AS max_seq,
+        (SELECT count(*) FROM stg_event_raw WHERE project_id=:pid AND capture_id=:cap) AS raw_count,
+        (SELECT decode_level FROM nmf_capture WHERE project_id=:pid AND capture_id=:cap) AS decode_level,
+        (SELECT decoder_version FROM nmf_capture WHERE project_id=:pid AND capture_id=:cap) AS decoder_version
+    """), {"pid": pid, "cap": cap}).mappings().one()
+    return tuple(row.values())
+
+
 def population(db,pid,cap, persist=True):
+    stamp = _population_stamp(db, pid, cap)
+    key = (pid, cap)
+    with _POPULATION_CACHE_LOCK:
+        cached = _POPULATION_CACHE.get(key)
+        if cached is not None and cached[0] == stamp:
+            return cached[2]
+    # The first page load fans out to several endpoints. Serialize only the
+    # cold projection build so those requests share one computed population.
+    with _POPULATION_BUILD_LOCK:
+        with _POPULATION_CACHE_LOCK:
+            cached = _POPULATION_CACHE.get(key)
+            if cached is not None and cached[0] == stamp:
+                return cached[2]
+        value = _build_population(db, pid, cap, persist=persist)
+        with _POPULATION_CACHE_LOCK:
+            _POPULATION_CACHE[key] = (stamp, monotonic(), value)
+        return value
+
+
+def _build_population(db,pid,cap, persist=True):
     meta=capture(db,pid,cap)
     times,_,_=clock(db,pid,cap)
     rows=query(db,SOURCE_SQL,dict(pid=pid,cap=cap,markers=list(MARKERS)))

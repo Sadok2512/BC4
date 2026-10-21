@@ -5389,3 +5389,7 @@ du front `franco-focus-forge` et lancer **front + back** de bout en bout.
 - Les gardes sont lancées **à la main** (pas de CI dans le dépôt).
 - `BC4_DSN` et `BC4_API_BASE` sont obligatoires ; sans ces variables,
   les scripts échouent avec un message explicite (voir `scripts/_lib.sh`).
+## 0.74.4 (patch) — BC4 2026-10-21 — Capture-scoped Signaling query reuse (Agent BC2)
+
+- Reuse one capture population across concurrent Signaling endpoints with source/decode stamps; the first page load no longer rebuilds messages, procedures and event links once per request.
+- Add composite `(project_id, capture_id, event_code, seq)` indexes for staged and raw NMF rows.
