@@ -199,6 +199,36 @@ def details(db,pid,cap,seq):
                    (nas['reason'] or 'NAS : décodage indisponible.')
         else:
             reason='NAS : pas de payload.'
+    else:
+        # 0.73.1 — Événements d'état BC2 (RACHI, HOA, HOS, HOI, MEI, CREL,
+        # RRA, RRC, RRD, PBA, PBC, PBD, CAA, CAC, CAD, DAA, DAC, DAD, GAA,
+        # GAC, GAD, LOCK, MARK, SCELLMOD) : pas de PDU ASN.1 par nature.
+        # Expose les attributs décodeur depuis nmf_event_deep / light,
+        # préfixés par event_code (ex. rachi_pathloss, hoi_ho_duration).
+        marker=query(db,"""SELECT r.event_code,r.ts
+          FROM stg_event_raw r
+          WHERE r.project_id=:pid AND r.capture_id=:cap AND r.seq=:seq
+          AND r.event_code=ANY(:markers) LIMIT 1""",
+          dict(pid=pid,cap=cap,seq=seq,markers=list(MARKERS)))
+        if marker:
+            ec=marker[0]['event_code']
+            prefix=ec.lower()+'_'
+            # Pull non-null attributes from nmf_event_deep (fall back to _light).
+            attrs=query(db,f"""SELECT * FROM nmf_event_deep
+              WHERE project_id=:pid AND capture_id=:cap AND seq=:seq LIMIT 1""",
+              dict(pid=pid,cap=cap,seq=seq))
+            if not attrs:
+                attrs=query(db,"""SELECT * FROM nmf_event_light
+                  WHERE project_id=:pid AND capture_id=:cap AND seq=:seq
+                  AND event_code=:ec LIMIT 1""",dict(pid=pid,cap=cap,seq=seq,ec=ec))
+            if attrs:
+                row=attrs[0]
+                parameters=[dict(path=f'{ec}/{k[len(prefix):]}',value=v,
+                                 param_key=k[len(prefix):],redacted_reason=None)
+                            for k,v in row.items()
+                            if k.startswith(prefix) and v not in (None,'',[],{})]
+            reason=(f"Événement d'état décodeur BC2 ({ec}) — pas de PDU ASN.1 "
+                    f"par nature. {len(parameters)} attribut(s) décodeur exposé(s).")
     tree={}
     for p in parameters:
         node=tree

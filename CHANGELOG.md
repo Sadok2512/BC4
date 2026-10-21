@@ -1,3 +1,10 @@
+## 0.73.1 (patch) — BC4 2026-10-21 — Signaling details : attributs décodeur sur événements d'état BC2 (Agent BC3)
+
+- `app/signaling/service.py:details()` : nouvelle branche fallback pour les événements d'état BC2 (RACHI/HOA/HOS/HOI/MEI/CREL/RRA/RRC/RRD/PBA/PBC/PBD/CAA/CAC/CAD/DAA/DAC/DAD/GAA/GAC/GAD/LOCK/MARK/SCELLMOD). Au lieu du message « Absence d'identité non certifiée », expose les **attributs décodeur** depuis `nmf_event_deep` (fallback `nmf_event_light`), préfixés par `event_code/attribute` (ex. `RACHI/access_delay`, `RACHI/pathloss`, `RACHI/preambles_successes`).
+- `hex_reason` devient explicite : `« Événement d'état décodeur BC2 (RACHI) — pas de PDU ASN.1 par nature. 14 attribut(s) décodeur exposé(s). »`
+- Validé live : RACHI seq 80 TEST2 → 14 attributs techniques (`access_delay=23ms`, `pathloss=103dB`, `preambles 1/1`, `tx_power=-7dBm`, `preamble_step=4`, `rach_result=1`, etc.).
+- Pas de nouvelle route ni de migration, zéro impact sur RRCSM/L3SM existants.
+
 ## 0.73.0 (minor) — BC4 2026-10-21 — Proven RF timeline (Agent BC2)
 
 - Existing signaling/events accepts view=rf: capture-clock events, context-bound handovers, connected intervals from connection indication, and directional task_run bounds.
