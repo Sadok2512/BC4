@@ -1,11 +1,11 @@
 """Indexes for capture-scoped Signaling View projections.
 
-Revision ID: 0041_signaling_capture_query_indexes
+Revision ID: 0041_sig_idx
 Revises: 0040_metrics_catalog_cache
 """
 from alembic import op
 
-revision = "0041_signaling_capture_query_indexes"
+revision = "0041_sig_idx"
 down_revision = "0040_metrics_catalog_cache"
 branch_labels = None
 depends_on = None
