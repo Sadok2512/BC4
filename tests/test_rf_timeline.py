@@ -14,18 +14,26 @@ def pair(kind,start,end,**kw):
 def test_connected_starts_at_indication_not_attempt_and_never_extends_open_end():
     d=[row(1,'RRA'),row(2,'RRC'),row(3,'RRD')]
     out=project_events([],d,[pair('rrc_connection',1,3)],[],{1:0,2:0.012,3:1.5},capture_id='TEST-capture')
-    assert out[0]['seq']==2 and out[0]['t_rel_s']==0.012 and out[0]['seq_end']==3
-    assert out[0]['duration_ms']==1488
-    assert out[0]['context_id']==1
-    assert out[0]['session_id']=='context:TEST-capture:1'
-    assert out[0]['attrs']['time_evidence_status']=='PROVEN'
-    open_=project_events([],d[:2],[pair('rrc_connection',1,None)],[],{1:0,2:0.012})[0]
-    assert open_['seq_end'] is None and open_['duration_ms'] is None and open_['kind']=='mark'
+    assert len(out) == 2
+    ue=next(e for e in out if e['attrs']['track']=='UE_STATE')
+    rrc=next(e for e in out if e['attrs']['track']=='RRC_STATE')
+    assert ue['seq']==2 and ue['t_rel_s']==0.012 and ue['seq_end']==3
+    assert ue['duration_ms']==1488
+    assert ue['context_id']==1
+    assert ue['session_id']=='context:TEST-capture:1'
+    assert ue['attrs']['time_evidence_status']=='PROVEN'
+    assert ue['attrs']['capture_id']=='TEST-capture' and ue['attrs']['state']=='LTE'
+    assert rrc['attrs']['capture_id']=='TEST-capture' and rrc['attrs']['state']=='CONNECTED'
+    open_events=project_events([],d[:2],[pair('rrc_connection',1,None)],[],{1:0,2:0.012})
+    assert all(e['seq_end'] is None and e['duration_ms'] is None and e['kind']=='mark'
+               for e in open_events)
 
 
 def test_equal_source_timestamps_are_not_rendered_as_a_fabricated_period():
     d=[row(1,'RRA'),row(2,'RRC'),row(3,'RRD')]
-    event=project_events([],d,[pair('rrc_connection',1,3)],[],{1:0.001,2:0.001,3:0.001},capture_id='TEST-capture')[0]
+    event=next(e for e in project_events([],d,[pair('rrc_connection',1,3)],[],
+               {1:0.001,2:0.001,3:0.001},capture_id='TEST-capture')
+               if e['attrs']['track']=='UE_STATE')
     assert event['seq_end']==3 and event['t_rel_end_s']==0.001
     assert event['kind']=='mark'
     assert event['attrs']['time_evidence_status']=='RESOLUTION_LIMITED'

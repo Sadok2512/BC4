@@ -44,7 +44,8 @@ def project_events(rows, deep, pairs, tasks, times, capture_id=None):
         session_id = (f'context:{capture_id}:{context_id}'
                       if capture_id is not None and context_id is not None
                       and rule == 'nemo_context_connected' and evidence == 'PROVEN' else None)
-        out.append(dict(id=key, lane={'lte':'connexion','sa':'connexion','nsa':'endc','mobility':'mobilite',
+        out.append(dict(id=key, lane={'lte':'connexion','UE_STATE':'connexion','RRC_STATE':'connexion',
+            'sa':'connexion','nsa':'endc','mobility':'mobilite',
             'dl':'services','ul':'services','volte':'services','vonr':'services'}.get(track,'radio'),
             type=label, kind='band' if end is not None and end_t != start_t else 'fail' if status=='FAILURE' else 'mark',
             seq=seq,seq_end=end,t_rel_s=start_t,t_rel_end_s=end_t,duration_ms=duration,
@@ -52,7 +53,9 @@ def project_events(rows, deep, pairs, tasks, times, capture_id=None):
             attrs=dict(track=track,technology=tech or 'UNKNOWN',status=status,source=source,
                 source_seqs=refs or [seq],evidence_status=evidence,rule_id=rule,rule_version=RULE_VERSION,
                 time_evidence_status=time_evidence_status,
-                protocol=protocol,source_message=source_rows.get(seq,{}).get("message_name"),**(attrs or {})),pivot_seq=seq,linked_seqs=refs or [seq],
+                protocol=protocol,source_message=source_rows.get(seq,{}).get("message_name"),
+                **({'capture_id': capture_id} if capture_id is not None else {}),
+                **(attrs or {})),pivot_seq=seq,linked_seqs=refs or [seq],
             link_rule=rule,seq_gap=0,context_id=context_id,session_id=session_id))
 
     for r in rows:
@@ -95,11 +98,23 @@ def project_events(rows, deep, pairs, tasks, times, capture_id=None):
             if p['type']=='call' and end and end.get('cad_call_type')==14:track='volte'
             if not track:continue
             refs=[p['seq_start'],middle['seq']] + ([p['seq_end']] if end else [])
-            emit(f"connected:{p['seq_start']}",track,'LTE Connected' if track=='lte' else 'VoLTE Connected',
-                 middle['seq'],p['seq_end'],refs,tech,'FAILURE' if p['outcome']=='fail' else 'UNKNOWN',
-                 source='nmf_event_pair + nmf_event_deep',rule='nemo_context_connected',
-                 evidence='PROVEN' if end else 'PARTIAL',attrs=dict(cause=p['cause']),protocol='Procedures',
-                 context_id=p['context_id'])
+            common = dict(
+                end=p['seq_end'], refs=refs, tech=tech,
+                status='FAILURE' if p['outcome']=='fail' else 'UNKNOWN',
+                source='nmf_event_pair + nmf_event_deep', rule='nemo_context_connected',
+                evidence='PROVEN' if end else 'PARTIAL', protocol='Procedures',
+                context_id=p['context_id'],
+            )
+            if track == 'lte':
+                # One proven connection interval feeds two independent UI tracks.
+                # Both retain the exact same source tuple; no Idle interval is inferred.
+                emit(f"connected:{p['seq_start']}",'UE_STATE','LTE Connected',middle['seq'],
+                     attrs=dict(cause=p['cause'],state='LTE'),**common)
+                emit(f"rrc-state:{p['seq_start']}",'RRC_STATE','RRC Connected',middle['seq'],
+                     attrs=dict(cause=p['cause'],state='CONNECTED'),**common)
+            else:
+                emit(f"connected:{p['seq_start']}",track,'VoLTE Connected',middle['seq'],
+                     attrs=dict(cause=p['cause']),**common)
 
     for task in tasks:
         if task['seq_daa'] is None:continue
@@ -125,6 +140,7 @@ def enrich_legacy_connected_events(legacy_events, evidence_events, capture_id):
         attrs = evidence.get('attrs') or {}
         source_seqs = attrs.get('source_seqs') or []
         if (attrs.get('rule_id') == 'nemo_context_connected'
+                and attrs.get('track') == 'UE_STATE'
                 and attrs.get('evidence_status') == 'PROVEN'
                 and evidence.get('context_id') is not None
                 and evidence.get('session_id') is not None):

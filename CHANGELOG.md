@@ -1,3 +1,11 @@
+## 0.74.10 (patch) — BC4 2026-10-22 — Signaling V2 : pistes UE et RRC prouvées (Agent BC1)
+
+- `view=rf` expose chaque intervalle LTE Connected prouvé sur deux pistes distinctes :
+  `UE_STATE` avec `state=LTE` et `RRC_STATE` avec `state=CONNECTED`.
+- Les deux événements portent `capture_id`, technologie, contexte, session, règle,
+  version et les trois séquences source exactes. Aucun intervalle Idle, NR, NSA ou SA
+  n'est créé sans preuve source.
+
 ## 0.74.8 (patch) — BC4 2026-10-22 — Signaling V2 : preuves de session dans la vue par défaut (Agent BC1)
 
 - La vue `legacy`, utilisée par défaut par `/signaling/events`, rattache désormais
