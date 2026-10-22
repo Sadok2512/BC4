@@ -252,13 +252,18 @@ def events(project_id:str,capture_id:str,lanes:str|None=None,failures_only:bool=
         if lanes is not None:evs=[e for e in evs if e['lane'] in lanes.split(',')]
     else:
         evs,_=svc.events(db,project_id,capture_id,lanes=lanes,failures_only=failures_only)
+        # The default legacy view is still consumed by Signaling V2.  Enrich
+        # only exact, proven LTE Connected procedures; do not infer sessions
+        # for markers, partial pairs, NR, NSA or SA.
+        evidence,_=rf.events(db,project_id,capture_id)
+        evs=rf.enrich_legacy_connected_events(evs,evidence,capture_id)
     counts={}
     for e in evs:counts[e['lane']]=counts.get(e['lane'],0)+1
     rules={}
     for e in evs:rules[e['link_rule']]=rules.get(e['link_rule'],0)+1
     return dict(**envelope(project_id,capture_id,evs,dict(lanes=lanes,failures_only=failures_only,view=view,protocols=protocols,technology=technology,direction=direction,q=q)),
       events=evs,total=len(evs),lanes=sorted(counts),counts_by_lane=counts,link_rule_counts=rules,
-      rule_version=rf.RULE_VERSION if view=='rf' else None,unavailable=rf.UNAVAILABLE if view=='rf' else {},
+      rule_version=rf.RULE_VERSION,unavailable=rf.UNAVAILABLE if view=='rf' else {},
       missing_time=sum(e['t_rel_s'] is None for e in evs))
 
 class Procedures(Envelope):
