@@ -98,14 +98,38 @@ def decode_capture(db,pid,cap,level,*,force=False):
     pair_values=[dict(project_id=pid,capture_id=cap,decoder_version=DECODER_VERSION,**r) for r in pairs.rows()]
     if pair_values:copy_rows(db,'nmf_event_pair',list(pair_values[0]),pair_values)
     elapsed=time.perf_counter()-start
+    # 0.76.0 — kind detection by content (jamais inventé) :
+    # 'scanner' = events SCAN* présents ET aucun event cell-scoped UE (CELLMEAS,CI).
+    # 'ue' = CELLMEAS ou CI présent.
+    # null = capture non classifiable (très rare : ni SCAN* ni CELLMEAS/CI).
+    kind=classify_capture_kind(db,pid,cap)
     db.execute(text('''INSERT INTO nmf_capture(project_id,capture_id,nmf_file_id,decode_level,decoder_version,schema_version,format_version,
-        deep_decoded_at,n_records,n_partial,elapsed_s) VALUES(:pid,:cap,:fid,:level,:version,:version,:format,
-        CASE WHEN :level='deep' THEN now() END,:n,:partial,:elapsed)
+        deep_decoded_at,n_records,n_partial,elapsed_s,kind) VALUES(:pid,:cap,:fid,:level,:version,:version,:format,
+        CASE WHEN :level='deep' THEN now() END,:n,:partial,:elapsed,:kind)
         ON CONFLICT(project_id,capture_id) DO UPDATE SET decode_level=excluded.decode_level,decoder_version=excluded.decoder_version,
         schema_version=excluded.schema_version,format_version=excluded.format_version,deep_decoded_at=excluded.deep_decoded_at,
-        decoded_at=now(),n_records=excluded.n_records,n_partial=excluded.n_partial,elapsed_s=excluded.elapsed_s'''),
-        dict(params,fid=file['id'],level=level,version=DECODER_VERSION,format=version,n=n,partial=partial,elapsed=elapsed))
-    return dict(capture_id=cap,level=level,n_records=n,n_partial=partial,elapsed_s=elapsed)
+        decoded_at=now(),n_records=excluded.n_records,n_partial=excluded.n_partial,elapsed_s=excluded.elapsed_s,kind=excluded.kind'''),
+        dict(params,fid=file['id'],level=level,version=DECODER_VERSION,format=version,n=n,partial=partial,elapsed=elapsed,kind=kind))
+    return dict(capture_id=cap,level=level,n_records=n,n_partial=partial,elapsed_s=elapsed,kind=kind)
+
+
+# 0.76.0 — Classification capture par CONTENU (NFF 2.19 events observés), jamais
+# devinée depuis le nom du fichier. Les 4 event_codes SCAN sont les marqueurs
+# propres au mode Ibflex-Scanner Nemo HANDY ; CELLMEAS/CI sont les 2 events
+# cell-scoped systématiques en mode UE.
+SCANNER_EVENTS={'SCANCONFIG','STARTSCAN','CELLSCAN','OFDMSCAN'}
+UE_CELL_SCOPED_EVENTS={'CELLMEAS','CI'}
+
+
+def classify_capture_kind(db,pid,cap):
+    codes={r[0] for r in db.execute(text(
+        'SELECT DISTINCT event_code FROM nmf_event_light WHERE project_id=:pid AND capture_id=:cap'
+    ),{'pid':pid,'cap':cap}).all()}
+    has_ue=bool(codes & UE_CELL_SCOPED_EVENTS)
+    has_scan=bool(codes & SCANNER_EVENTS)
+    if has_ue:return 'ue'
+    if has_scan:return 'scanner'
+    return None
 
 def ensure_light(db,pid):
     caps=db.execute(text('SELECT DISTINCT capture_id FROM stg_event_raw WHERE project_id=:pid ORDER BY capture_id'),{'pid':pid}).scalars().all()

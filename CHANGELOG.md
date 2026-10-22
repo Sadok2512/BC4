@@ -1,3 +1,38 @@
+## 0.76.0 (minor) — BC4 2026-10-22 — nmf_capture.kind ('ue' | 'scanner') + G20 révisé = 0 (Agent BC3)
+
+Mission `[BC3] GO (b) capture.kind scanner + G20=0`.
+
+### Migration + ORM
+
+- `alembic/versions/0043_nmf_capture_kind.py` : `ALTER TABLE nmf_capture ADD COLUMN kind text NULL` + CHECK libéral `kind IS NULL OR kind IN ('ue','scanner')`. Null autorisé explicitement (jamais inventé).
+- `nmf_capture` n'a pas d'ORM Mapped (requêtes SQL brutes dans `decode_capture`) — pas de changement models.
+
+### Classification par CONTENU — `store.py:classify_capture_kind`
+
+Jamais depuis le nom de fichier. Query `SELECT DISTINCT event_code FROM nmf_event_light WHERE project_id=:pid AND capture_id=:cap` :
+
+- `kind='ue'` si `event_codes ∩ {CELLMEAS, CI}` non vide.
+- `kind='scanner'` sinon, si `event_codes ∩ {SCANCONFIG, STARTSCAN, CELLSCAN, OFDMSCAN}` non vide.
+- `kind=NULL` sinon.
+
+Priorité `ue > scanner` : si une capture a à la fois CELLMEAS et un SCAN* (cas atypique Nemo), elle est `ue` (le mode UE prime pour les KPI cell-scoped).
+
+### `decode_capture` écrit `kind` dans nmf_capture (store.py:101-112)
+
+- INSERT ... VALUES(..., :kind) + ON CONFLICT ... DO UPDATE SET ..., kind=excluded.kind.
+- Appelée systématiquement à la fin du decode (deep ET light), après `write_light` qui a repopulé `nmf_event_light`. L'ordre garantit que `classify_capture_kind` observe les events frais.
+
+### Backfill CLI
+
+- `app/scripts/backfill_capture_kind.py` : options `--dry-run`, `--force`. Rapporte `ue / scanner / null / already_set`. Idempotent.
+
+### Garde G20 révisé
+
+- **Avant** (0.74.11) : `SELECT count(*) FROM nmf_capture WHERE decode_level IS NOT NULL AND NOT EXISTS cell_second` → **10 captures scanner-only comptées à tort**.
+- **Après** (0.76.0) : `WHERE decode_level IS NOT NULL AND kind != 'scanner' AND NOT EXISTS cell_second` → attendu **0**.
+
+Les 10 scanners restent `cell_second = []` par design (aucun event cell-scoped à agréger), mais G20 ne les compte plus comme écart.
+
 ## 0.75.0 (minor) — BC4 2026-10-22 — Metrics API : time_local/time_utc + GPS par ligne (Agent BC3)
 
 Mission `[BC3] [bc4-back + franco-focus-forge] — GO lot Time/GPS (fixes 1→10)`, section Back (A+B).

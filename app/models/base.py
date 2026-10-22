@@ -123,6 +123,7 @@ class NmfFile(Base):
     # Ex. 120 → local = UTC + 2h (CEST). Null si l'en-tête `#UT` absent.
     utc_offset_min: Mapped[int | None] = mapped_column(Integer, nullable=True)
     device_sw: Mapped[str | None] = mapped_column(String, nullable=True)
+    # (nmf_file n'a pas de `kind` — c'est sur nmf_capture, voir migration 0043.)
     device_name: Mapped[str | None] = mapped_column(String, nullable=True)
     product: Mapped[str | None] = mapped_column(String, nullable=True)
     imei_present: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
