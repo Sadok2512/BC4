@@ -112,6 +112,49 @@ def project_events(rows, deep, pairs, tasks, times, capture_id=None):
     return sorted(out,key=lambda e:(e['seq'],e['id']))
 
 
+def enrich_legacy_connected_events(legacy_events, evidence_events, capture_id):
+    """Attach proven RF context evidence to matching legacy procedures.
+
+    The legacy timeline remains the default API view.  Its reconstructed
+    ``rrc_connection`` procedures and the RF evidence view describe the same
+    procedure with different ids, so the exact ordered source sequence tuple
+    is the stable join key.  Partial/open evidence is deliberately ignored.
+    """
+    proven = {}
+    for evidence in evidence_events:
+        attrs = evidence.get('attrs') or {}
+        source_seqs = attrs.get('source_seqs') or []
+        if (attrs.get('rule_id') == 'nemo_context_connected'
+                and attrs.get('evidence_status') == 'PROVEN'
+                and evidence.get('context_id') is not None
+                and evidence.get('session_id') is not None):
+            proven[tuple(source_seqs)] = evidence
+
+    for event in legacy_events:
+        if event.get('type') != 'rrc_connection':
+            continue
+        evidence = proven.get(tuple(event.get('linked_seqs') or []))
+        if evidence is None:
+            continue
+        proof_attrs = evidence['attrs']
+        event['context_id'] = evidence['context_id']
+        event['session_id'] = evidence['session_id']
+        event['kind'] = evidence['kind']
+        event['link_rule'] = proof_attrs['rule_id']
+        event['attrs'] = {
+            **(event.get('attrs') or {}),
+            'capture_id': capture_id,
+            'technology': proof_attrs['technology'],
+            'track': 'UE_STATE',
+            'rule_id': proof_attrs['rule_id'],
+            'rule_version': proof_attrs['rule_version'],
+            'evidence_status': proof_attrs['evidence_status'],
+            'source_seqs': proof_attrs['source_seqs'],
+            'time_evidence_status': proof_attrs['time_evidence_status'],
+        }
+    return legacy_events
+
+
 def events(db,pid,cap,protocols=None,technology=None,direction=None,q=None):
     meta=svc.capture(db,pid,cap)
     times,_,_=svc.clock(db,pid,cap)

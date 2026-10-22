@@ -1,3 +1,12 @@
+## 0.74.8 (patch) — BC4 2026-10-22 — Signaling V2 : preuves de session dans la vue par défaut (Agent BC1)
+
+- La vue `legacy`, utilisée par défaut par `/signaling/events`, rattache désormais
+  `context_id`, `session_id` et les attributs de preuve aux procédures
+  `rrc_connection` dont le tuple ordonné des séquences source correspond exactement
+  à une preuve `nemo_context_connected` complète.
+- Les procédures partielles, NR, NSA et SA restent sans session : aucun état n'est
+  déduit ou complété. La vue `rf` et les données sources ne changent pas.
+
 ## 0.74.7 (patch) — BC4 2026-10-22 — Signaling V2 : sessions LTE Connected traçables (Agent BC1)
 
 - `/projects/{id}/signaling/events?view=rf` expose `context_id` et un `session_id`

@@ -1,5 +1,5 @@
 """Synthetic TEST-only evidence checks; not reference data."""
-from app.signaling.rf import project_events
+from app.signaling.rf import enrich_legacy_connected_events, project_events
 
 
 def row(seq, code, **kw):
@@ -59,3 +59,37 @@ def test_ho_success_requires_hos_and_source_order_is_seq():
     assert e['attrs']['status']=='SUCCESS'
     d[-1]['event_code']='RRD'
     assert project_events([],d,[pair('ho',1,3)],[],{1:0,3:0.1})[0]['attrs']['status']=='UNKNOWN'
+
+
+def test_proven_context_evidence_enriches_matching_legacy_connection_only():
+    evidence = project_events(
+        [], [{**row(234, 'RRA'), 'context_id': 54},
+             {**row(243, 'RRC'), 'context_id': 54},
+             {**row(1608, 'RRD'), 'context_id': 54}],
+        [{**pair('rrc_connection', 234, 1608), 'context_id': 54}], [],
+        {234: 1.4, 243: 1.4, 1608: 24.182}, capture_id='TEST-capture',
+    )
+    legacy = [{
+        'id': 'proc:TEST-procedure', 'type': 'rrc_connection', 'kind': 'bar',
+        'linked_seqs': [234, 243, 1608], 'attrs': {'technology': None},
+        'context_id': None, 'session_id': None, 'link_rule': 'procedure_boundary',
+    }, {
+        'id': 'proc:TEST-unmatched', 'type': 'rrc_connection', 'kind': 'bar',
+        'linked_seqs': [1, 2, 3], 'attrs': {'technology': None},
+        'context_id': None, 'session_id': None, 'link_rule': 'procedure_boundary',
+    }]
+
+    enriched = enrich_legacy_connected_events(legacy, evidence, 'TEST-capture')
+
+    assert enriched[0]['context_id'] == 54
+    assert enriched[0]['session_id'] == 'context:TEST-capture:54'
+    assert enriched[0]['kind'] == 'band'
+    assert enriched[0]['link_rule'] == 'nemo_context_connected'
+    assert enriched[0]['attrs'] == {
+        'technology': 'LTE', 'capture_id': 'TEST-capture', 'track': 'UE_STATE',
+        'rule_id': 'nemo_context_connected', 'rule_version': '1.0.0',
+        'evidence_status': 'PROVEN', 'source_seqs': [234, 243, 1608],
+        'time_evidence_status': 'PROVEN',
+    }
+    assert enriched[1]['context_id'] is None
+    assert enriched[1]['session_id'] is None
