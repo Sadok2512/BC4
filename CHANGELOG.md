@@ -1,3 +1,48 @@
+## 0.75.0 (minor) — BC4 2026-10-22 — Metrics API : time_local/time_utc + GPS par ligne (Agent BC3)
+
+Mission `[BC3] [bc4-back + franco-focus-forge] — GO lot Time/GPS (fixes 1→10)`, section Back (A+B).
+
+### Modèle (A1 — migration `0042_utc_offset`)
+
+- `nmf_file.utc_offset_min int NULL` : NFF 2.19 `#UT` col 1 (`UTC_to_local` en minutes, signe `local - UTC`). Null si l'en-tête `#UT` absent — jamais inventé.
+- ORM : `app/models/base.py:122` `utc_offset_min: Mapped[int | None]`.
+
+### Ingest (A2)
+
+- `app/ingest/nmf.py:159-192` : helper `_extract_utc_offset_min(path)` lit les premiers 32 KB du NMF, parse la première ligne commençant par `#UT`, retourne col 1 (`int`) ou `None` (format invalide / absent).
+- Hook d'ingest `app/ingest/nmf.py:521` : `nmf.utc_offset_min = _extract_utc_offset_min(tmp_path)`.
+- Jamais injecté dans `nmf_event_deep` : le décodeur externe `bc4_decoder.py` n'expose pas `#UT` dans `meta` (vérifié : `/opt/nmf_decoder/bc4_decoder.py:319-320`), et aucun event `#...` n'est jamais persisté en light/deep (confirmé par `SELECT DISTINCT event_code FROM nmf_event_* WHERE event_code LIKE '#%'` → 0 row). D'où la lecture directe fichier.
+
+### Backfill (A2)
+
+- `app/scripts/backfill_utc_offset_min.py` : CLI idempotent lisant chaque `nmf_file.source_path`, extrait `#UT` col 1, UPDATE. Options `--dry-run`, `--force`. Rapporte `ok / already_set / no_source_path / file_missing / no_header`.
+- 104 fichiers en base (toutes projects), tous `#UT,,,120,120` observés via `grep -m1 '^#UT'` sur tous les `source_path/*.nmf`.
+
+### API (B1 — `/metrics/analysis` + `/metrics/table`)
+
+- `app/kpi/metrics_v3.py:19-37` : helper `_pair_previous_or_same(xr, yr)` extrait du pattern inline existant (scatter G14 RSRP↔DRATE). Réutilisé pour join GPS seq→(lat,lon) sur `seq_first` de chaque ligne.
+- `Dataset.__init__` ligne 206 : charge `file_meta` (join `nmf_capture × nmf_file`) → `start_at`, `utc_offset_min`.
+- `response()` :
+  - Chaque row expose désormais `time_local` (= `time_label` historique, `HH:MM:SS.mmm` local), `time_utc` (= `time_local − utc_offset_min · 60s`, null + `reason='no_utc_offset_header'` si `#UT` absent), `lat`, `lon`, `gps_source ∈ {'exact','previous_fix'}`, `gps_age_s` (différence `t_rel_s`), `reason ∈ {None,'no_gps_in_capture','light_decode_no_gps','no_fix_before_seq','no_utc_offset_header'}`.
+  - Join GPS = `_pair_previous_or_same(gps_fixes, [{'seq': seq_first, ...}])` sur `stg_event_raw(lat, lon)` filtré `lat IS NOT NULL AND lon IS NOT NULL AND NOT (lat=0 AND lon=0)` (règle déjà en place pour `map_points`, inchangée).
+  - Top-level ajoute `nmf_start_at` (verbatim `DD.MM.YYYY HH:MM:SS.mmm`), `capture_date` (dérivé `YYYY-MM-DD`), `utc_offset_min`.
+- `app/routes/metrics_v3.py:TableRow` + `Analysis` : nouveaux champs typés `str|None` / `float|None` / `Literal['exact','previous_fix']|None` ; champs rétro-compatibles (tous optionnels).
+- CSV `response.csv` : nouvelles colonnes `time_local,time_utc,lat,lon,gps_source,gps_age_s,reason` entre `seq_last` et les métriques, dans l'ordre d'affichage front.
+
+### Factoring (B2)
+
+- `app/kpi/service.py:38-66` : `_date_from_start_at(alias)` conservé (SQL) + ajout `date_from_start_at_py(start_at)` (Python, utilisé par `metrics_v3.py` et importable depuis `kpi_timeseries.py` en lot suivant).
+
+### Non modifié / écarts déclarés
+
+- `nmf_file.start_at` reste `varchar DD.MM.YYYY HH:MM:SS.mmm` — pas de migration vers `timestamp` (confirmé par utilisateur, choix A). Le parseur ingest copie verbatim ; preuve `#START,10:33:20.677,,"23.06.2026"` ↔ `23.06.2026 10:33:20.677` strictement identique.
+- GPS en light decode : non traité ici (lot BC2 décodeur séparé). Rows sur captures light exposent `gps_source=None, reason='light_decode_no_gps'` (si aucun fix) ou `reason='no_gps_in_capture'` (si `stg_event_raw` sans lat/lon).
+
+### Gardes
+
+- `G22` : `date_from_start_at_py(nmf_file.start_at) = date du nom YYMonDD`. Prouvé statistiquement sur les 16 captures TEST2 (`BCNE..._26Jun11_` → `2026-06-11` ✓ ; `M1_..._26Jun23_` → `2026-06-23` ✓).
+- `G21` (après activation front) : sur `1e4e8d879a83` (deep, TEST2) ≥ 50 % lignes `lat/lon not null` + `gps_age_s >= 0` ; sur `44621571bccc` (light, Test_3) 100 % null avec `reason`.
+
 ## 0.74.11 (patch) — BC4 2026-10-22 — CLI backfill cell_second + garde G20 (Agent BC3)
 
 **Diagnostic N1** : capture `44621571bccc` (Test_3) → table Metrics vide. Cause racine `nmf_cell_second` = 0 row alors que `nmf_event_light` = 27 126 rows. Pattern cross-captures :

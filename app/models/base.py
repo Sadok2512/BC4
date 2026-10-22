@@ -119,6 +119,9 @@ class NmfFile(Base):
     ts_label: Mapped[str | None] = mapped_column(String, nullable=True)
     env: Mapped[str | None] = mapped_column(String, nullable=True)
     start_at: Mapped[str | None] = mapped_column(String, nullable=True)
+    # 0.75.0 — NFF 2.19 #UT col 1 ("UTC_to_local", minutes, signe local-UTC).
+    # Ex. 120 → local = UTC + 2h (CEST). Null si l'en-tête `#UT` absent.
+    utc_offset_min: Mapped[int | None] = mapped_column(Integer, nullable=True)
     device_sw: Mapped[str | None] = mapped_column(String, nullable=True)
     device_name: Mapped[str | None] = mapped_column(String, nullable=True)
     product: Mapped[str | None] = mapped_column(String, nullable=True)

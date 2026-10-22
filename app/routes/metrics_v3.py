@@ -14,6 +14,12 @@ class Column(BaseModel):
     code:str;label:str;unit:str;kind:Literal['numeric','categorical','event'];cell:str
 class TableRow(BaseModel):
     second:int;t_rel_s:float;seq_first:int;seq_last:int;time_label:str
+    # 0.75.0 — temps absolu + GPS par ligne (previous-or-same seq, jamais interpolé).
+    time_local:str|None=None;time_utc:str|None=None
+    lat:float|None=None;lon:float|None=None
+    gps_source:Literal['exact','previous_fix']|None=None
+    gps_age_s:float|None=None
+    reason:str|None=None
     values:dict[str,Scalar];counts:dict[str,int]
 class Distribution(BaseModel):
     value:float|str;n:int
@@ -30,6 +36,10 @@ class PairRate(BaseModel):
 class Analysis(BaseModel):
     project_id:str;capture_id:str;result_id:str;decoder_version:str;schema_version:str
     decode_level:Literal['deep','light'];origin_seq:int;origin_ts:str;duration_s:float
+    # 0.75.0 — meta temporelle fichier source (NFF 2.19 #START + #UT).
+    nmf_start_at:str|None=None    # verbatim "DD.MM.YYYY HH:MM:SS.mmm"
+    capture_date:str|None=None    # dérivé YYYY-MM-DD (null si start_at absent)
+    utc_offset_min:int|None=None  # #UT col 1, signe local-UTC (null si absent)
     aggregation:str;time_policy:str;pairing:str
     columns:list[Column];rows:list[TableRow];series:list[MetricSeries]
     histogram:list[Histogram];scatter:list[Scatter];map_points:list[MapPoint]

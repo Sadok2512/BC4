@@ -33,9 +33,13 @@ from app.kpi.catalog import (
 
 
 # ---------------------------------------------------------------------------
-# Parsing de date "DD.MM.YYYY HH:MM:SS.mmm" → "YYYY-MM-DD" côté SQL.
+# Parsing de date "DD.MM.YYYY HH:MM:SS.mmm" → "YYYY-MM-DD".
 # ---------------------------------------------------------------------------
-# `nmf_file.start_at` est stocké en VARCHAR par l'ingest.
+# `nmf_file.start_at` est stocké en VARCHAR par l'ingest (format NFF 2.19
+# `#START` col 3 : `DD.MM.YYYY`). Exposé en SQL et en Python pour éviter la
+# duplication dans metrics_v3.py et kpi_timeseries.py.
+
+
 def _date_from_start_at(alias: str = "nmf_file") -> str:
     """SQL expression returning YYYY-MM-DD from `<alias>.start_at`."""
     return (
@@ -43,6 +47,19 @@ def _date_from_start_at(alias: str = "nmf_file") -> str:
         f"substr({alias}.start_at, 4, 2) || '-' || "
         f"substr({alias}.start_at, 1, 2))"
     )
+
+
+def date_from_start_at_py(start_at: str | None) -> str | None:
+    """Python equivalent: `"DD.MM.YYYY HH:MM:SS.mmm"` → `"YYYY-MM-DD"`.
+
+    None si `start_at` null, trop court, ou mal formé (jamais inventé).
+    """
+    if not start_at or len(start_at) < 10:
+        return None
+    dd, mm, yyyy = start_at[0:2], start_at[3:5], start_at[6:10]
+    if not (dd.isdigit() and mm.isdigit() and yyyy.isdigit()):
+        return None
+    return f"{yyyy}-{mm}-{dd}"
 
 
 # ---------------------------------------------------------------------------

@@ -156,6 +156,39 @@ def resolve_decoder() -> DecoderHandle:
 # ---------------------------------------------------------------------------
 
 
+def _extract_utc_offset_min(path: str) -> int | None:
+    """Lit `#UT` dans les premiers KB de l'en-tête NMF et renvoie la col 1
+    (NFF 2.19 : "UTC_to_local" en minutes, signe `local - UTC`).
+
+    Pas de dépendance au décodeur externe : scan direct, format latin-1.
+    Jamais inventé : si `#UT` absent ou valeur non-entière, renvoie `None`.
+    """
+    try:
+        with open(path, "rb") as fh:
+            head = fh.read(32 * 1024).decode("latin-1", errors="replace")
+    except OSError:
+        return None
+    for line in head.splitlines():
+        if not line.startswith("#"):
+            # Les headers sont tous en tête avant les events.
+            break
+        if not line.startswith("#UT"):
+            continue
+        # Format attendu : `#UT,,,120,120` — f[0]=tag, f[1..2]=vides,
+        # f[3]=UTC_to_local, f[4]=UTC_to_timestamp (NFF 2.19 cols 1 et 2).
+        f = line.split(",")
+        if len(f) <= 3:
+            return None
+        raw = f[3].strip().strip('"')
+        if not raw:
+            return None
+        try:
+            return int(raw)
+        except ValueError:
+            return None
+    return None
+
+
 def spool_and_hash(
     src: IO[bytes],
     dst: IO[bytes],
@@ -516,6 +549,12 @@ def ingest_upload(
             nmf.product = m.get("product")
             nmf.imei_present = bool(m.get("imei_present")) if m.get("imei_present") is not None else None
             nmf.imsi_present = bool(m.get("imsi_present")) if m.get("imsi_present") is not None else None
+            # 0.75.0 — #UT col 1 (NFF 2.19 "UTC_to_local", minutes, signe
+            # local-UTC). Lu directement depuis l'en-tête du fichier source :
+            # le décodeur externe n'expose pas ce champ dans `meta`, et les
+            # events `#UT` ne sont jamais persistés dans `nmf_event_*`.
+            # Jamais inventé : si l'en-tête n'a pas de `#UT`, reste NULL.
+            nmf.utc_offset_min = _extract_utc_offset_min(tmp_path)
 
         if result.error:
             nmf.status = "error"

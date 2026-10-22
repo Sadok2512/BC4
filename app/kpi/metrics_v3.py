@@ -15,6 +15,25 @@ from app.nmf_decoder.projection import ALIASES, metric_counts
 from app.kpi.english import english_text
 from app.kpi.metrics import metric_catalog
 from app.kpi.population import context_sql, predicate, validate_operators
+from app.kpi.service import date_from_start_at_py
+
+
+def _pair_previous_or_same(xr, yr):
+    """Yields `(y, previous)` for each `y` of `yr` (sorted by seq), where
+    `previous` is the last element of `xr` (sorted by seq) with
+    `xr.seq <= y.seq`, or `None` if no such element exists.
+
+    0.75.0 — extraction du pattern inline historiquement en place pour les
+    pairings G14 (scatter RSRP↔DRATE). Réutilisé pour le join GPS (seq →
+    lat/lon le plus récent). Jamais interpolé.
+    """
+    j = 0
+    previous = None
+    for y in yr:
+        while j < len(xr) and xr[j]['seq'] <= y['seq']:
+            previous = xr[j]
+            j += 1
+        yield y, previous
 
 CATEGORIES = {
  'radio_serving':'Radio serving', 'neighbours':'Neighbours', 'carrier_aggregation':'Carrier Aggregation',
@@ -185,6 +204,9 @@ class Dataset:
         self.times,self.origin_seq,self.origin_ts=clock(db,pid,cap)
         self.state=self.query('SELECT decoder_version,schema_version,decode_level FROM nmf_capture WHERE project_id=:pid AND capture_id=:cap').first()
         if not self.state:raise HTTPException(409,'capture_requires_decode')
+        # 0.75.0 — meta temporelle du fichier source joint via nmf_capture.
+        # Lecture read-only ; jamais inventé (NULL si absent).
+        self.file_meta=self.query('SELECT f.start_at AS start_at, f.utc_offset_min AS utc_offset_min FROM nmf_capture c JOIN nmf_file f ON f.id=c.nmf_file_id WHERE c.project_id=:pid AND c.capture_id=:cap').first() or {'start_at':None,'utc_offset_min':None}
         self.context={r['seq']:dict(r) for r in self.query(context_sql())}
         condition,params=predicate(f);self.params.update(params)
         self.allowed=None if condition=='TRUE' else {r['seq'] for r in self.query('SELECT seq FROM ('+context_sql()+') c WHERE '+condition)}
@@ -313,33 +335,77 @@ class Dataset:
             for m,yr in loaded:
                 if m['cell']!=xm['cell'] or m['cell_scoped']!=xm['cell_scoped']:
                     gaps.append('scatter_cell_scope_mismatch');continue
-                j=0;previous=None
-                for y in yr:
-                    while j<len(xr) and xr[j]['seq']<=y['seq']:
-                        previous=xr[j];j+=1
+                for y, previous in _pair_previous_or_same(xr, yr):
                     if previous and previous['value'] is not None and y['value'] is not None:
                         scatter.append(dict(code=m['selection'],seq=y['seq'],x_seq=previous['seq'],seq_gap=y['seq']-previous['seq'],cell=m['cell'],x=previous['value'],value=y['value']))
+        # 0.75.0 — GPS seq→(lat,lon). Lu une fois, utilisé pour map_points
+        # ET pour enrichir chaque row de la table (previous-or-same seq).
+        gps_fixes=sorted(({'seq':r['seq'],'lat':r['lat'],'lon':r['lon']} for r in self.query('SELECT seq,lat,lon FROM stg_event_raw WHERE project_id=:pid AND capture_id=:cap AND lat IS NOT NULL AND lon IS NOT NULL AND NOT(lat=0 AND lon=0) ORDER BY seq')), key=lambda f: f['seq'])
+        gps_exact={f['seq']:(f['lat'],f['lon']) for f in gps_fixes}
         if include_map:
             # Exact recorded GPS only: no previous-position point presented as exact.
-            gps={r['seq']:(r['lat'],r['lon']) for r in self.query('SELECT seq,lat,lon FROM stg_event_raw WHERE project_id=:pid AND capture_id=:cap AND lat IS NOT NULL AND lon IS NOT NULL AND NOT(lat=0 AND lon=0) ORDER BY seq')}
             for m,rows in loaded:
                 for r in rows:
-                    if r['seq'] in gps and r['value'] is not None:
-                        lat,lng=gps[r['seq']];map_points.append(dict(seq=r['seq'],lat=lat,lng=lng,code=m['selection'],value=r['value'],t_rel_s=r['t_rel_s'],tooltip=f"{m['label']} · seq {r['seq']} · {r['value']} {m['unit']}"))
+                    if r['seq'] in gps_exact and r['value'] is not None:
+                        lat,lng=gps_exact[r['seq']];map_points.append(dict(seq=r['seq'],lat=lat,lng=lng,code=m['selection'],value=r['value'],t_rel_s=r['t_rel_s'],tooltip=f"{m['label']} · seq {r['seq']} · {r['value']} {m['unit']}"))
         pair_rows=[dict(p) for p in self.pairs if self.admissible(p['seq_start']) and (p['seq_end'] is None or self.admissible(p['seq_end']))]
         pair_rates=[]
         for kind in sorted({p['type'] for p in pair_rows}):
             ps=[p for p in pair_rows if p['type']==kind];known=[p for p in ps if p['outcome'] in ('ok','fail')]
             pair_rates.append(dict(type=kind,attempts=len(ps),completed=sum(p['seq_end'] is not None for p in ps),success=sum(p['outcome']=='ok' for p in ps),known_outcomes=len(known),success_pct=100*sum(p['outcome']=='ok' for p in known)/len(known) if known else None))
         rid=evidence(self.db,self.pid,';\n'.join(q['sql'] for q in self.sqls),{'queries':self.sqls,'capture_id':self.cap,'selections':[m['selection'] for m in selections],'filters':self.f},dict(rows=len(table),series=len(series)))
-        output=io.StringIO();writer=csv.writer(output);keys=[m['selection'] for m in selections]
-        writer.writerow(['result_id','capture_id','second','seq_first','seq_last',*keys])
         ordered=[table[k] for k in sorted(table)]
         from decimal import Decimal
+        # 0.75.0 — time_local (= ancien time_label), time_utc (local - offset)
+        # et join GPS previous-or-same seq (sur seq_first).
         h,minute,sec=self.origin_ts.split(':');origin=Decimal(h)*3600+Decimal(minute)*60+Decimal(sec)
+        nmf_start_at=self.file_meta['start_at']
+        capture_date=date_from_start_at_py(nmf_start_at)
+        utc_offset_min=self.file_meta['utc_offset_min']
+        # t_rel_s de chaque row (sur capture_id, seq_first) : identique à self.times[seq_first]
         for row in ordered:
             actual=origin+Decimal(str(self.times[row['seq_first']]))
             hh=int(actual//3600);mm=int((actual%3600)//60);ss=actual%60
             row['time_label']=f'{hh:02d}:{mm:02d}:{ss:06.3f}'
-        for row in ordered:writer.writerow([rid,self.cap,row['second'],row['seq_first'],row['seq_last'],*[row['values'].get(k) for k in keys]])
-        return dict(**dict(self.state),project_id=self.pid,capture_id=self.cap,result_id=rid,origin_seq=self.origin_seq,origin_ts=self.origin_ts,duration_s=max(self.times.values()),aggregation='cell: schema-weighted capture-second; other numeric: schema aggregate; event: presence + count / last attribute',time_policy='capture-local source clock in seq order; no interpolation',columns=[dict(code=m['selection'],label=m['label'],unit=m['unit'],kind=m['kind'],cell=m['cell']) for m in selections],series=series,rows=ordered,histogram=hist,scatter=scatter,map_points=map_points,connected_seconds=connected,connected_reason=None if connected else 'No proven complete eligible RRC → RRD interval',pair_rates=pair_rates,gaps=sorted(set(gaps)),csv=output.getvalue(),pairing='previous-or-same seq, same capture and same cell; no interpolation')
+            row['time_local']=row['time_label']
+            if utc_offset_min is None:
+                row['time_utc']=None
+                row.setdefault('reason',None)
+                if row.get('reason') is None:row['reason']='no_utc_offset_header'
+            else:
+                utc_actual=actual-Decimal(utc_offset_min)*60
+                # Garder modulo 86400 (temps du jour) ; jamais inventer de date.
+                while utc_actual<0:utc_actual+=86400
+                while utc_actual>=86400:utc_actual-=86400
+                hh=int(utc_actual//3600);mm=int((utc_actual%3600)//60);ss=utc_actual%60
+                row['time_utc']=f'{hh:02d}:{mm:02d}:{ss:06.3f}'
+        # GPS enrichment par ligne — previous-or-same seq, zero fabrication.
+        gps_source=self.state['decode_level']
+        no_gps_reason='no_gps_in_capture' if not gps_fixes else None
+        # yr pour le join = ordered rows avec clé seq=seq_first
+        yr=[{'seq':row['seq_first'],'_row':row} for row in ordered]
+        for y, prev in _pair_previous_or_same(gps_fixes, yr):
+            row=y['_row']
+            if prev is None:
+                row['lat']=None;row['lon']=None;row['gps_source']=None;row['gps_age_s']=None
+                if no_gps_reason is not None:
+                    row['reason']=no_gps_reason
+                elif gps_source=='light':
+                    row['reason']='light_decode_no_gps'
+                else:
+                    row['reason']='no_fix_before_seq'
+            else:
+                row['lat']=prev['lat'];row['lon']=prev['lon']
+                row['gps_source']='exact' if prev['seq']==y['seq'] else 'previous_fix'
+                # Age en secondes = différence t_rel_s(seq actuel) - t_rel_s(seq GPS).
+                # self.times[seq_first] est en secondes depuis origin. On recalcule
+                # self.times[prev.seq] si disponible, sinon age inconnu.
+                prev_t=self.times.get(prev['seq'])
+                cur_t=self.times[row['seq_first']]
+                row['gps_age_s']=float(cur_t-prev_t) if prev_t is not None else None
+                row['reason']=None
+        # CSV = exactement les colonnes de la table UI (0.75.0).
+        output=io.StringIO();writer=csv.writer(output);keys=[m['selection'] for m in selections]
+        writer.writerow(['result_id','capture_id','second','seq_first','seq_last','time_local','time_utc','lat','lon','gps_source','gps_age_s','reason',*keys])
+        for row in ordered:writer.writerow([rid,self.cap,row['second'],row['seq_first'],row['seq_last'],row['time_local'],row['time_utc'],row['lat'],row['lon'],row['gps_source'],row['gps_age_s'],row['reason'],*[row['values'].get(k) for k in keys]])
+        return dict(**dict(self.state),project_id=self.pid,capture_id=self.cap,result_id=rid,origin_seq=self.origin_seq,origin_ts=self.origin_ts,nmf_start_at=nmf_start_at,capture_date=capture_date,utc_offset_min=utc_offset_min,duration_s=max(self.times.values()),aggregation='cell: schema-weighted capture-second; other numeric: schema aggregate; event: presence + count / last attribute',time_policy='capture-local source clock in seq order; no interpolation',columns=[dict(code=m['selection'],label=m['label'],unit=m['unit'],kind=m['kind'],cell=m['cell']) for m in selections],series=series,rows=ordered,histogram=hist,scatter=scatter,map_points=map_points,connected_seconds=connected,connected_reason=None if connected else 'No proven complete eligible RRC → RRD interval',pair_rates=pair_rates,gaps=sorted(set(gaps)),csv=output.getvalue(),pairing='previous-or-same seq, same capture and same cell; no interpolation')
