@@ -1,3 +1,44 @@
+## 0.74.11 (patch) — BC4 2026-10-22 — CLI backfill cell_second + garde G20 (Agent BC3)
+
+**Diagnostic N1** : capture `44621571bccc` (Test_3) → table Metrics vide. Cause racine `nmf_cell_second` = 0 row alors que `nmf_event_light` = 27 126 rows. Pattern cross-captures :
+```
+decoder_version | captures | with_cell_second | missing
+     1.0.0      |    52    |       12         |    40    ← projection ajoutée après ces décodages
+     1.3.0      |    22    |       19         |     3    ← échecs ponctuels
+```
+40 captures 1.0.0 Light du 2026-10-19 : la projection `cell_second` (lignes 56-58 de `app/nmf_decoder/store.py:write_light`) a été ajoutée au décodeur en 1.3.0 — pas rétroactive. 3 captures 1.3.0 Deep du 2026-10-21 : cas particuliers (ex. `d8d7fa995c44`, `50b0370a23c6`).
+
+**Correctif** :
+- `app/scripts/project_cell_second.py` (nouveau) : CLI idempotent qui relance `decode_capture(..., force=True)` sur chaque capture ciblée. **Pas de one-shot SQL**, pas de reconstruction hors du décodeur authoritative — même code path que `POST /decode`.
+- Deux modes : `--capture <id>` ou `--missing` (toutes captures `decode_level IS NOT NULL` sans aucune ligne `nmf_cell_second`).
+- `--dry-run` liste sans écrire.
+- Idempotence : `decode_capture` DELETE+INSERT ; rejouer sur une capture déjà OK = no-op fonctionnel.
+
+**Usage** :
+```
+docker exec bc4-api-1 python -m app.scripts.project_cell_second --capture 44621571bccc
+docker exec bc4-api-1 python -m app.scripts.project_cell_second --missing --dry-run
+docker exec bc4-api-1 python -m app.scripts.project_cell_second --missing
+```
+
+**Garde G20** (manuel avant/après) :
+```sql
+SELECT count(*) FROM nmf_capture c
+ WHERE c.decode_level IS NOT NULL
+   AND NOT EXISTS (SELECT 1 FROM nmf_cell_second s WHERE s.capture_id=c.capture_id);
+```
+→ `0` attendu après `--missing`.
+
+**Preuve exécution capture 44621571bccc** :
+```
+targets: 1
+[OK] project=4b7bfd50ddb6 capture=44621571bccc level=light rows=171161 elapsed=92.18s
+summary: ok=1 failed=0
+```
+`/metrics/table?capture_id=44621571bccc&codes=ci_rs_snr&cell=0` : **0 rows → 953 rows**, first value `ci_rs_snr@0 = 29.7 dB`.
+
+**Non-régression** : la projection cell_second reste exclusivement dans `write_light()`. La CLI ne duplique pas la logique, elle rejoue le même `decode_capture(force=True)`.
+
 ## 0.74.10 (patch) — BC4 2026-10-22 — Signaling V2 : pistes UE et RRC prouvées (Agent BC1)
 
 - `view=rf` expose chaque intervalle LTE Connected prouvé sur deux pistes distinctes :
