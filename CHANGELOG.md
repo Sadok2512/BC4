@@ -1,3 +1,9 @@
+## 0.76.2 (patch) — BC4 2026-10-22 — /metrics/captures union scanner captures (Agent BC3)
+
+Les captures `kind='scanner'` n'ont jamais de `measurement_points` par design → elles étaient filtrées hors de `/metrics/captures`. L'utilisateur ne pouvait donc pas les sélectionner dans Metrics tab → impossible de voir le banner "Scanner capture" + leaves grayed (feature 1.92.0 front).
+
+- `app/routes/metrics.py:289-315` : union des captures `measurement_points`-filtered (UE) + `nmf_capture WHERE kind='scanner'` (scanners), dédoublonnée. Label + kind enrichis via JOIN nmf_file.
+
 ## 0.76.1 (patch) — BC4 2026-10-22 — Expose capture.kind + label fichier dans endpoints captures (Agent BC3)
 
 Suite directe du 0.76.0 — pour que le front puisse afficher un badge "Scanner" sur les captures et désactiver les métriques UE sur les captures scanner.

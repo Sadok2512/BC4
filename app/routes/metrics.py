@@ -299,9 +299,16 @@ def captures(project_id: str,f: dict=Depends(filters),db: Session=Depends(get_db
         if f.get(key):geo.append(f'c.{col}=ANY(:{key})');p[key]=f[key]
     if geo:clauses.append("m.ecgi_source='sib1_strict_capture_earfcn' AND EXISTS (SELECT 1 FROM cell_ref c WHERE c.eci=m.ecgi AND "+' AND '.join(geo)+')')
     rows=db.execute(text('SELECT DISTINCT m.capture_id FROM measurement_points m WHERE '+' AND '.join(clauses)+' ORDER BY m.capture_id'),p)
-    caps=[r[0] for r in rows]
-    # 0.76.1 — enrich with kind + filename label from nmf_capture + nmf_file.
-    # LEFT JOIN : capture non encore décodée → kind=NULL + label=capture_id fallback.
+    caps_from_measurements=[r[0] for r in rows]
+    # 0.76.2 — expose AUSSI les captures scanner (kind='scanner') qui n'ont jamais
+    # de measurement_points par design. L'utilisateur peut les sélectionner et
+    # voir le banner "Scanner capture" + leaves UE grayed.
+    scanner_rows=db.execute(text(
+        'SELECT capture_id FROM nmf_capture WHERE project_id=:pid AND kind=:kind ORDER BY capture_id'
+    ),{'pid':project_id,'kind':'scanner'})
+    scanner_caps=[r[0] for r in scanner_rows]
+    # Union ordonnée : UE captures (measurement_points) + scanner (dédoublonné).
+    caps=caps_from_measurements+[c for c in scanner_caps if c not in caps_from_measurements]
     if not caps: return []
     meta={r['capture_id']:dict(r) for r in db.execute(text(
         '''SELECT c.capture_id, c.kind, n.filename
