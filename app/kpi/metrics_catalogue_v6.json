@@ -9,49 +9,6 @@
       "class": "row c1",
       "children": [
         {
-          "label": "Cell discriminator (applies to every ★ metric)",
-          "source": null,
-          "note": "5 values",
-          "class": "row c2",
-          "children": [
-            {
-              "label": "PHRATE/MACRATE/CQI/PLAID/CI: cell_type=0 (documented 2.19) · CELLMEAS LTE: type 0",
-              "source": null,
-              "note": "cell_type 0",
-              "class": "row leaf",
-              "children": []
-            },
-            {
-              "label": "PHRATE/MACRATE/CQI/PLAID/CI: cell_type 1-4 (documented) · CELLMEAS LTE: type 10-13 — proven: MIMOMEAS #8 « MIMO cell type » (documented) uses the same codes 0/10/11/12/13 on the same bands; cross-check EARFCN = dl-CarrierFreq of sCellToAddModList · TXPC/MACRATEU: cell_type 0-4 (TXPC undocumented trailing column)",
-              "source": null,
-              "note": "cell_type 1-4",
-              "class": "row leaf",
-              "children": []
-            },
-            {
-              "label": "CELLMEAS system 9: cell with serving flag=1 (param #13); SS-RSRP/RSRQ/SINR present; proof: PCI+ARFCN = nr-SecondaryCellGroupConfig (spCellConfig) · Test_3: n78 ARFCN 650400 PCI 961, SINR −0.9 dB, 5,552 lines",
-              "source": null,
-              "note": "NR serving",
-              "class": "row leaf",
-              "children": []
-            },
-            {
-              "label": "CELLMEAS system 9: 2nd cell with serving flag=1 on another band (Test_3: n1 ARFCN 426990, 1,627 lines with 2 serving cells, 4 with 3); proof: sCellToAddModList of the NR CellGroupConfig",
-              "source": null,
-              "note": "NR serving 2",
-              "class": "row leaf",
-              "children": []
-            },
-            {
-              "label": "CELLMEAS LTE type 2 · CELLMEAS NR code 1000, flag 0, no SINR",
-              "source": null,
-              "note": "type 2 / 1000",
-              "class": "row leaf",
-              "children": []
-            }
-          ]
-        },
-        {
           "label": "SINR (CI)",
           "source": null,
           "note": "4 fields · 44 791 lines",
@@ -831,13 +788,6 @@
       "note": "9",
       "class": "row c1",
       "children": [
-        {
-          "label": "Cell discriminator: MIMOMEAS #8 « MIMO cell type », documented 2.19 · values read in Test_3: 0, 10, 11, 12, 13 only (serving cells, no neighbours) · same coding as CELLMEAS → closes the CELLMEAS 10-13 = SCell1-4 hypothesis · per-port measures (RSSI/P, RSRQ/P, RSRP/P, Timing/P) are ★; Band/Ch/PCI/Port identify the row",
-          "source": null,
-          "note": null,
-          "class": "row leaf dim",
-          "children": []
-        },
         {
           "label": "MIMO band[MIMOMEAS #4]",
           "source": "[MIMOMEAS #4]",
@@ -5115,13 +5065,6 @@
       "note": "7",
       "class": "row c1",
       "children": [
-        {
-          "label": "Cell discriminator: undocumented trailing column of TXPC in 2.59 (absent from 2.19), values 0-4 · proof by content: lines come in groups per timestamp (7,434 ts with 2 lines, 3,130 with 3…), PUCCH TX power is only present on cell 0 (PUCCH carried by the PCell), PH differs per line · counts Test_3: 0 → 15,922 · 1 → 8,022 · 2 → 1,166 · 3 → 3,932 · 4 → 2,759 (UL CA up to 5 carriers)",
-          "source": null,
-          "note": null,
-          "class": "row leaf dim",
-          "children": []
-        },
         {
           "label": "TX power PUSCH ★[TXPC #1]",
           "source": "[TXPC #1]",

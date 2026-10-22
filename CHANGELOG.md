@@ -1,3 +1,11 @@
+## 0.74.6 (patch) — BC4 2026-10-22 — Metrics catalogue : suppression des 3 nœuds "Cell discriminator" (Agent BC3)
+
+**Problème** : les 3 nœuds `Cell discriminator*` sous `Serving radio ★`, `MIMO per port ★` et `UL power ★` étaient des descriptions textuelles de l'encodage `cell_type` (ex. `"PHRATE/MACRATE/CQI/PLAID/CI: cell_type=0 (documented 2.19) · CELLMEAS LTE: type 0"`), pas des métriques exploitables. Ils polluaient l'arbre `/metrics` sans valeur analytique.
+
+**Fix** — `app/kpi/metrics_catalogue_v6.json` : suppression des 3 nœuds (1 avec 5 enfants prose + 2 nœuds-leaves descriptifs). Impact : feuilles 893 → 886 (delta -7). Les 3 nœuds étaient le principal facteur de divergence G18b `/metrics vs spec HTML v10` identifié en 1.76 Task #50.
+
+**Rebuild** : nécessite `docker compose build api && up -d`. `/health` à 0.74.6.
+
 ## 0.74.5 (patch) — BC4 2026-10-21 — /kpi/catalog : fallback propre sur timeout compute_transfers (Agent BC3)
 
 **Problème** : page BC4 bloquée sur « Loading KPI catalogue… » puis 500 Internal Server Error. Trace : `psycopg.errors.QueryCanceled: canceling statement due to statement timeout` dans `app/services/task_run.py:113` (`load_tasks`) appelé par `app/measure/throughput.py:50` (`compute_transfers`) depuis `app/kpi/service_v2.py:353`. Sur TEST2/Test_3 (767k rows `nmf_event_deep`+`nmf_event_light`), le `UNION ALL` dépasse le `statement_timeout` Postgres.
