@@ -1,3 +1,15 @@
+## 0.76.1 (patch) — BC4 2026-10-22 — Expose capture.kind + label fichier dans endpoints captures (Agent BC3)
+
+Suite directe du 0.76.0 — pour que le front puisse afficher un badge "Scanner" sur les captures et désactiver les métriques UE sur les captures scanner.
+
+- `app/routes/signaling.py:51-57` : `Capture.kind: Literal['ue','scanner']|None` ajouté. `/projects/{p}/signaling/captures` LEFT JOIN `nmf_capture` pour exposer `kind`.
+- `app/routes/metrics.py:71-77` : `CaptureInfo.kind: Literal['ue','scanner']|None` ajouté. `/projects/{p}/metrics/captures` enrichi via requête complémentaire (JOIN `nmf_capture + nmf_file`) : `label=filename` (plus de hash capture_id en label), `kind` exposé.
+- Rétro-compatibilité : les 2 champs sont `Optional[None]` → les clients antérieurs continuent à parser.
+
+### Écart ouvert — scanner metrics (lot futur)
+
+Les captures `kind='scanner'` exposent 4 events spécifiques dans `nmf_event_light` : `CELLSCAN` (RSRP/RSRQ par PCI scanné, par EARFCN), `OFDMSCAN` (power per PRB), `SCANCONFIG` (plan de scan), `STARTSCAN` (marker début). **Pas de projection UE possible** (`nmf_cell_second` vide par design). Les KPI Metrics UE actuels (RSRP serving, CA, débit par couche) ne s'y appliquent pas. **Lot futur à ouvrir : "Scanner view"** avec sa propre projection (ex. `nmf_scan_second` ou direct depuis `CELLSCAN`), ses propres cartes (histogram RSRP par PCI top-N, map geo par EARFCN, séries temporelles de power). Hors scope lot Time/GPS et Phase 2 Charts.
+
 ## 0.76.0 (minor) — BC4 2026-10-22 — nmf_capture.kind ('ue' | 'scanner') + G20 révisé = 0 (Agent BC3)
 
 Mission `[BC3] GO (b) capture.kind scanner + G20=0`.

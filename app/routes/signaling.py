@@ -52,6 +52,9 @@ class Capture(BaseModel):
     capture_id:str
     label:str
     env:str|None
+    # 0.76.1 — kind='ue'|'scanner'|null depuis nmf_capture.kind (classifié par
+    # CONTENU, voir app/nmf_decoder/store.py:classify_capture_kind).
+    kind:Literal['ue','scanner']|None=None
 
 class Captures(BaseModel):
     project_id:str
@@ -145,8 +148,12 @@ def captures(project_id:str,db:Session=Depends(get_db)):
     cached = _CAPTURES_CACHE.get(project_id)
     if cached and time.monotonic() - cached[0] < 60:
         return dict(project_id=project_id,captures=cached[1])
-    rows=svc.query(db,'''SELECT DISTINCT r.capture_id,n.filename AS label,n.env FROM stg_event_raw r
-       JOIN nmf_file n ON n.id=r.nmf_file_id WHERE r.project_id=:pid ORDER BY r.capture_id''',dict(pid=project_id))
+    # 0.76.1 — expose kind depuis nmf_capture (LEFT JOIN : capture non encore
+    # décodée → kind=NULL). Jamais inventé.
+    rows=svc.query(db,'''SELECT DISTINCT r.capture_id,n.filename AS label,n.env,c.kind FROM stg_event_raw r
+       JOIN nmf_file n ON n.id=r.nmf_file_id
+       LEFT JOIN nmf_capture c ON c.project_id=r.project_id AND c.capture_id=r.capture_id
+       WHERE r.project_id=:pid ORDER BY r.capture_id''',dict(pid=project_id))
     _CAPTURES_CACHE[project_id] = (time.monotonic(), rows)
     return dict(project_id=project_id,captures=rows)
 

@@ -71,6 +71,9 @@ class MetricCatalogResponse(BaseModel):
 class CaptureInfo(BaseModel):
     capture_id: str
     label: str
+    # 0.76.1 — kind='ue'|'scanner'|null depuis nmf_capture (classifié par CONTENU).
+    # Null si capture non encore décodée.
+    kind: Literal['ue', 'scanner'] | None = None
 class Sample(BaseModel):
     seq: int
     t_rel_s: float
@@ -296,7 +299,16 @@ def captures(project_id: str,f: dict=Depends(filters),db: Session=Depends(get_db
         if f.get(key):geo.append(f'c.{col}=ANY(:{key})');p[key]=f[key]
     if geo:clauses.append("m.ecgi_source='sib1_strict_capture_earfcn' AND EXISTS (SELECT 1 FROM cell_ref c WHERE c.eci=m.ecgi AND "+' AND '.join(geo)+')')
     rows=db.execute(text('SELECT DISTINCT m.capture_id FROM measurement_points m WHERE '+' AND '.join(clauses)+' ORDER BY m.capture_id'),p)
-    return [dict(capture_id=r[0],label=r[0]) for r in rows]
+    caps=[r[0] for r in rows]
+    # 0.76.1 — enrich with kind + filename label from nmf_capture + nmf_file.
+    # LEFT JOIN : capture non encore décodée → kind=NULL + label=capture_id fallback.
+    if not caps: return []
+    meta={r['capture_id']:dict(r) for r in db.execute(text(
+        '''SELECT c.capture_id, c.kind, n.filename
+           FROM nmf_capture c JOIN nmf_file n ON n.id=c.nmf_file_id
+           WHERE c.project_id=:pid AND c.capture_id=ANY(:caps)'''
+    ),{'pid':project_id,'caps':caps}).mappings()}
+    return [dict(capture_id=c,label=meta.get(c,{}).get('filename',c),kind=meta.get(c,{}).get('kind')) for c in caps]
 
 TIME_SQL = '''SELECT seq,ts FROM stg_event_raw WHERE project_id=:pid AND capture_id=:cap
  UNION SELECT seq,ts FROM stg_event WHERE project_id=:pid AND capture_id=:cap ORDER BY seq'''
