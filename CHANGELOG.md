@@ -1,3 +1,12 @@
+## 0.76.3 (patch) — BC4 2026-10-22 — /metrics/series expose nmf_start_at + utc_offset_min (Agent BC3)
+
+Lot `(C) Axe X time` front : le front doit pouvoir rendre un axe Clock (local|UTC) sans recalcul depuis un autre endpoint. `/metrics/series` manquait les deux champs — fix ici.
+
+- `app/routes/metrics.py:105-123` : `SeriesResponse` gagne 3 champs optionnels `nmf_start_at`, `capture_date`, `utc_offset_min` (identique à `MetricAnalysisSchema` déjà en 0.75.0). Null si capture non enrichie (`#START` ou `#UT` absent) → front repli sur Capture time (s).
+- `app/routes/metrics.py:425-432` : enrichit la réponse via JOIN `nmf_capture + nmf_file` + `date_from_start_at_py()` (déjà factorisé en `app/kpi/service.py:38-66`). Rétro-compatible (champs optionnels).
+
+Aucun calcul temporel côté front : identique à la source back qui joint `nmf_file.start_at` + `nmf_file.utc_offset_min`.
+
 ## 0.76.2 (patch) — BC4 2026-10-22 — /metrics/captures union scanner captures (Agent BC3)
 
 Les captures `kind='scanner'` n'ont jamais de `measurement_points` par design → elles étaient filtrées hors de `/metrics/captures`. L'utilisateur ne pouvait donc pas les sélectionner dans Metrics tab → impossible de voir le banner "Scanner capture" + leaves grayed (feature 1.92.0 front).

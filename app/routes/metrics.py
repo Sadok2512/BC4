@@ -113,6 +113,13 @@ class SeriesResponse(BaseModel):
     origin_seq: int
     origin_ts: str
     duration_s: float
+    # 0.76.3 — meta temporelle (NFF 2.19 #START + #UT) exposée aussi côté
+    # /metrics/series pour que le front puisse rendre un axe X en Clock
+    # (local|UTC) sans recalcul depuis un autre endpoint. Null = capture non
+    # enrichie (#START ou #UT absent) → front repli sur Capture time (s).
+    nmf_start_at: str | None = None
+    capture_date: str | None = None
+    utc_offset_min: int | None = None
     series: list[MetricSeries]
     csv: str
     time_policy: str
@@ -421,7 +428,14 @@ def series(project_id: str,capture_id: str,codes: str,cell: str|None=None,attr: 
     for result in results:
         metric=definitions[result['code']]
         result.update(source_table='nmf_event_light' if state['decode_level']=='light' else metric.source_table,source_column=metric.source_column)
-    return dict(**state,aggregation='schema per capture-second' if state['decode_level']=='light' else 'none',project_id=project_id,capture_id=capture_id,result_id=rid,origin_seq=origin_seq,origin_ts=origin_ts,duration_s=max(times.values()),series=results,csv=output.getvalue(),time_policy='ts - premier ts valide en ordre seq ; égalités conservées ; régression rejetée ; aucune interpolation')
+    # 0.76.3 — meta temporelle du fichier source joint via nmf_capture.
+    file_meta = db.execute(text(
+        'SELECT f.start_at AS start_at, f.utc_offset_min AS utc_offset_min '
+        'FROM nmf_capture c JOIN nmf_file f ON f.id=c.nmf_file_id '
+        'WHERE c.project_id=:pid AND c.capture_id=:cap'
+    ),{'pid':project_id,'cap':capture_id}).mappings().first() or {'start_at':None,'utc_offset_min':None}
+    from app.kpi.service import date_from_start_at_py
+    return dict(**state,aggregation='schema per capture-second' if state['decode_level']=='light' else 'none',project_id=project_id,capture_id=capture_id,result_id=rid,origin_seq=origin_seq,origin_ts=origin_ts,nmf_start_at=file_meta['start_at'],capture_date=date_from_start_at_py(file_meta['start_at']),utc_offset_min=file_meta['utc_offset_min'],duration_s=max(times.values()),series=results,csv=output.getvalue(),time_policy='ts - premier ts valide en ordre seq ; égalités conservées ; régression rejetée ; aucune interpolation')
 
 EVENT_SQL = '''SELECT e.seq,e.message, EXISTS(SELECT 1 FROM param_occurrence p WHERE p.project_id=:pid AND p.stg_event_id=e.id AND p.path LIKE '%mobilityControlInfo%') mobility
  FROM stg_event e WHERE e.project_id=:pid AND e.capture_id=:cap AND e.message IN
