@@ -22,7 +22,23 @@ CATEGORIES = {
  'csi':'CSI', 'mimo_port':'MIMO by port', 'ul_power':'UL power', 'voice':'Voice',
  'services':'Services', 'position':'Position', 'signalling_states':'Events',
  'session':'Capture context', 'terminal_cell':'Capture context', 'undocumented':'Undocumented'}
-FIELD_LABELS={'plaid_mcs0':'MCS CW0 (DL)','plaid_mcs1':'MCS CW1 (DL)','plaiu_mcs0':'MCS CW0 (UL)'}
+FIELD_LABELS={'plaid_mcs0':'MCS CW0 (DL)','plaid_mcs1':'MCS CW1 (DL)','plaiu_mcs0':'MCS CW0 (UL)',
+ # 0.74.7 — labels manquants côté YAML, override explicite ici (plus simple
+ # qu'un sweep des schemas/*.yaml). Les codes sont ceux de source_column.
+ 'ci_snr_port':'RS SNR/Antenna port','ci_port':'Antenna port or channel',
+ 'aqdl_mos':'Audio quality MOS DL',
+ 'app_dl_bitrate':'App DL bitrate','app_ul_bitrate':'App UL bitrate',
+ 'app_dl_bytes':'App DL bytes','app_ul_bytes':'App UL bytes',
+ 'ppp_dl_bitrate':'PPP DL bitrate','ppp_ul_bitrate':'PPP UL bitrate'}
+def _humanize_label(raw: str) -> str:
+    """Fallback: si YAML label ressemble à un code brut (contient `.` ou `_`
+    et pas d'espace), produire une forme Title Case lisible. Ex. 'ci.snr_port'
+    → 'Ci snr port'. Ne modifie pas les vrais labels (contenant déjà espaces)."""
+    if not raw or ' ' in raw:
+        return raw
+    if '.' in raw or '_' in raw:
+        return raw.replace('.', ' ').replace('_', ' ').strip().capitalize()
+    return raw
 EVENT_GROUPS={
  'RRC':{'RRA','RRC','RRD'}, 'Mobility':{'HOA','HOS','HOI','CREL'},
  'Attach':{'GAA','GAC','GAD'}, 'Bearers':{'PBA','PBC','PBD','RABA','RABC','RABD'},
@@ -53,7 +69,7 @@ def definitions():
         f=fs[m.source_column];s=ss[f['event']]
         scoped=bool(s.get('cell_scoped')) and not f.get('dimension') and not code.endswith('_cell_type') and code!='phrate_ph_ch_type'
         category=f.get('category') or 'session'
-        result[code]=dict(code=code,label=english_text(FIELD_LABELS.get(m.source_column,m.label)),unit=m.unit or '',source_table=m.source_table,
+        result[code]=dict(code=code,label=english_text(FIELD_LABELS.get(m.source_column,_humanize_label(m.label))),unit=m.unit or '',source_table=m.source_table,
             source_tables=[m.source_table],source_column=m.source_column,tech=m.tech,kind=m.kind,
             event=f['event'],event_code=f['event'],category=category,category_label=CATEGORIES.get(category,category),
             cell_scoped=scoped,cells=[],cell_options=[],attributes=[],proof='documented',proof_ref=f['proof'],
