@@ -1,3 +1,12 @@
+## 0.74.7 (patch) — BC4 2026-10-22 — Signaling V2 : sessions LTE Connected traçables (Agent BC1)
+
+- `/projects/{id}/signaling/events?view=rf` expose `context_id` et un `session_id`
+  composite capture/contexte pour les seuls intervalles `LTE Connected` prouvés par
+  `nemo_context_connected`.
+- Chaque événement expose `attrs.time_evidence_status`. Une paire dont les timestamps
+  source sont identiques reste un marqueur `RESOLUTION_LIMITED`; aucune durée artificielle
+  n'est créée. Les bornes distinctes restent des bandes avec leur `t_rel_end_s` source.
+
 ## 0.74.6 (patch) — BC4 2026-10-22 — Metrics catalogue : suppression des 3 nœuds "Cell discriminator" (Agent BC3)
 
 **Problème** : les 3 nœuds `Cell discriminator*` sous `Serving radio ★`, `MIMO per port ★` et `UL power ★` étaient des descriptions textuelles de l'encodage `cell_type` (ex. `"PHRATE/MACRATE/CQI/PLAID/CI: cell_type=0 (documented 2.19) · CELLMEAS LTE: type 0"`), pas des métriques exploitables. Ils polluaient l'arbre `/metrics` sans valeur analytique.
