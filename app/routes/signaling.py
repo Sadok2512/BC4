@@ -225,6 +225,8 @@ class SignalingEvent(BaseModel):
     linked_seqs:list[int]
     link_rule:str
     seq_gap:int|None
+    context_id:int|None=None
+    session_id:str|None=None
 
 class EventsResponse(Envelope):
     events:list[SignalingEvent]

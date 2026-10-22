@@ -26,27 +26,34 @@ TASK_SQL = '''SELECT id,task_type,tech,seq_daa,seq_dcomp,status,reason FROM task
  WHERE project_id=:pid AND capture_id=:cap AND task_type IN ('HTTP_DL','HTTP_UL') ORDER BY seq_start'''
 
 
-def project_events(rows, deep, pairs, tasks, times):
+def project_events(rows, deep, pairs, tasks, times, capture_id=None):
     """Pure, testable evidence projection. Inputs belong to exactly one capture."""
     decoded = {r['seq']: r for r in deep}
     out = []
     source_rows = {r["seq"]:r for r in rows}
 
     def emit(key, track, label, seq, end=None, refs=None, tech=None, status='UNKNOWN',
-             source='stg_event', rule='raw_protocol', evidence='PROVEN', attrs=None, protocol=None):
+             source='stg_event', rule='raw_protocol', evidence='PROVEN', attrs=None, protocol=None,
+             context_id=None):
         start_t, end_t = times.get(seq), times.get(end)
         if end is not None and (start_t is None or end_t is None or end_t < start_t):
             end = None; end_t = None; evidence = 'PARTIAL'
         duration = float((Decimal(str(end_t))-Decimal(str(start_t)))*1000) if end_t is not None else None
+        time_evidence_status = ('UNAVAILABLE' if end_t is None else
+                                'RESOLUTION_LIMITED' if end_t == start_t else 'PROVEN')
+        session_id = (f'context:{capture_id}:{context_id}'
+                      if capture_id is not None and context_id is not None
+                      and rule == 'nemo_context_connected' and evidence == 'PROVEN' else None)
         out.append(dict(id=key, lane={'lte':'connexion','sa':'connexion','nsa':'endc','mobility':'mobilite',
             'dl':'services','ul':'services','volte':'services','vonr':'services'}.get(track,'radio'),
-            type=label, kind='band' if end is not None else 'fail' if status=='FAILURE' else 'mark',
+            type=label, kind='band' if end is not None and end_t != start_t else 'fail' if status=='FAILURE' else 'mark',
             seq=seq,seq_end=end,t_rel_s=start_t,t_rel_end_s=end_t,duration_ms=duration,
             outcome={'SUCCESS':'ok','FAILURE':'fail'}.get(status),cause=(attrs or {}).get('cause'),label=label,
             attrs=dict(track=track,technology=tech or 'UNKNOWN',status=status,source=source,
                 source_seqs=refs or [seq],evidence_status=evidence,rule_id=rule,rule_version=RULE_VERSION,
+                time_evidence_status=time_evidence_status,
                 protocol=protocol,source_message=source_rows.get(seq,{}).get("message_name"),**(attrs or {})),pivot_seq=seq,linked_seqs=refs or [seq],
-            link_rule=rule,seq_gap=0))
+            link_rule=rule,seq_gap=0,context_id=context_id,session_id=session_id))
 
     for r in rows:
         d = decoded.get(r['seq'], {})
@@ -63,7 +70,7 @@ def project_events(rows, deep, pairs, tasks, times):
         if attrs.get('cause') is not None:attrs['cause']='RRD cause '+str(attrs['cause'])
         emit(f"raw:{r['seq']}",track,r.get('message_name') or code,r['seq'],tech=tech,
              status='ATTEMPT' if code in ('HOA','RRA','CAA','DAA') else 'UNKNOWN',
-             source=r['source'],attrs=attrs,protocol=protocol)
+             source=r['source'],attrs=attrs,protocol=protocol,context_id=d.get('context_id'))
 
     for p in pairs:
         start, end = decoded.get(p['seq_start']), decoded.get(p['seq_end'])
@@ -74,7 +81,8 @@ def project_events(rows, deep, pairs, tasks, times):
             emit(f"ho:{p['seq_start']}",'mobility','Handover',p['seq_start'],p['seq_end'],bounds,tech,
                  'SUCCESS' if p['outcome']=='ok' and end and end['event_code']=='HOS' else 'UNKNOWN',
                  source='nmf_event_pair',rule='nemo_context_ho',evidence='PROVEN' if end else 'PARTIAL',
-                 attrs=dict(cause=p['cause'],ho_duration_nemo_ms=p['ho_duration_nemo_ms'],ho_duration_hoi_ms=p['ho_duration_hoi_ms']),protocol='Procedures')
+                 attrs=dict(cause=p['cause'],ho_duration_nemo_ms=p['ho_duration_nemo_ms'],ho_duration_hoi_ms=p['ho_duration_hoi_ms']),protocol='Procedures',
+                 context_id=p['context_id'])
         elif p['type'] in ('rrc_connection','call'):
             middle_code='RRC' if p['type']=='rrc_connection' else 'CAC'
             middles=[d for d in deep if d['event_code']==middle_code and d['context_id']==p['context_id']
@@ -90,7 +98,8 @@ def project_events(rows, deep, pairs, tasks, times):
             emit(f"connected:{p['seq_start']}",track,'LTE Connected' if track=='lte' else 'VoLTE Connected',
                  middle['seq'],p['seq_end'],refs,tech,'FAILURE' if p['outcome']=='fail' else 'UNKNOWN',
                  source='nmf_event_pair + nmf_event_deep',rule='nemo_context_connected',
-                 evidence='PROVEN' if end else 'PARTIAL',attrs=dict(cause=p['cause']),protocol='Procedures')
+                 evidence='PROVEN' if end else 'PARTIAL',attrs=dict(cause=p['cause']),protocol='Procedures',
+                 context_id=p['context_id'])
 
     for task in tasks:
         if task['seq_daa'] is None:continue
@@ -111,7 +120,7 @@ def events(db,pid,cap,protocols=None,technology=None,direction=None,q=None):
     deep=svc.query(db,DEEP_SQL,params)
     pairs=svc.query(db,PAIR_SQL,params)
     tasks=svc.query(db,TASK_SQL,params)
-    out=project_events(rows,deep,pairs,tasks,times)
+    out=project_events(rows,deep,pairs,tasks,times,capture_id=cap)
     if protocols is not None:
         selected=protocols.split(',')
         out=[e for e in out if e['attrs']['protocol'] in selected]
