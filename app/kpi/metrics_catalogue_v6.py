@@ -91,6 +91,20 @@ def _source(node: dict) -> tuple[str | None, int | None, str | None]:
     if not match:
         return None, None, DERIVED_FIELDS.get(node["label"])
     event, field_idx = match.group(1), int(match.group(2))
+    # A 2.19 field number is scoped by event *and section*.  Legacy HTML
+    # labels only carry ``EVENT #n``; resolve collisions from the documented
+    # YAML label before falling back to the unique index map.
+    candidates = [(code, f) for code, f in fields().items()
+                  if f.get('event') == event and re.search(rf'#{field_idx}(?:\D|$)', f.get('proof',''))]
+    if len(candidates) > 1:
+        needle = re.sub(r'[^a-z0-9 ]+', ' ', node.get('label','').lower())
+        scored=[]
+        for code, f in candidates:
+            words=[w for w in re.sub(r'[^a-z0-9 ]+', ' ', f.get('label','').lower()).split() if len(w)>2]
+            scored.append((sum(w in needle for w in words), code))
+        best=max(scored)
+        if best[0] > 0:
+            return event, field_idx, best[1]
     return event, field_idx, field_index().get((event, field_idx))
 
 
@@ -189,6 +203,7 @@ def catalogue(db, project_id: str, metrics: list[dict]) -> dict:
                 selection=selection,
                 event=event,
                 field_idx=field_idx,
+                binding_key=(f"{event}:{'/'.join(path)}:{field_idx}" if event and field_idx is not None else None),
                 system_col=offsets(event).get('system_col') if event else None,
                 first_param_col=offsets(event).get('first_param_col') if event else None,
                 source_column=source_column,
