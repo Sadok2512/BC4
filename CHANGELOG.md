@@ -1,3 +1,7 @@
+## 0.78.1 (patch) — BC2 metrics truth
+
+- Correct documented NMF string fields storage and preserve raw values during Light/Deep re-decode.
+
 ## 0.76.3 (patch) — BC4 2026-10-22 — /metrics/series expose nmf_start_at + utc_offset_min (Agent BC3)
 
 Lot `(C) Axe X time` front : le front doit pouvoir rendre un axe Clock (local|UTC) sans recalcul depuis un autre endpoint. `/metrics/series` manquait les deux champs — fix ici.
