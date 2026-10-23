@@ -19,7 +19,7 @@ GROUP_BASE=['project_id','capture_id','seq','group_name','set_index']
 LIGHT_BASE=['project_id','capture_id','seq','seq_last','event_code','system','second','dimension','t_rel_s','decoder_version','schema_version','format_version','decode_status','reasons','unknown','n_records','n_partial','context_id','context_ids']
 
 
-LEGACY_NUMERIC_STRING_FIELDS=set('daa_host_address pac_ip rrcsm_rrc_msg rrcsm_subchannel rrcsm_rrc_data'.split())
+LEGACY_NUMERIC_STRING_FIELDS=set('bf_bts_file dl_device_label dn_device_name ei_device_identity ff_file_format_version hv_handler_version hw_hardware_version hw_manufacturer hw_model id_measurement_id mf_map_file product_product_name product_product_version si_subscriber_identity sp_subscriber_phone_number start_date stop_date sw_device_software_version ts_test_script_file caa_phone_number caa_own_phone_number caa_unique_id daa_host_address pac_ip rrcsm_rrc_msg rrcsm_subchannel rrcsm_rrc_data rtpsm_rtp_message rtpsm_rtp_data sipsm_sip_name sipsm_sip_data'.split())
 
 def copy_rows(db,table,columns,rows):
     if not rows:return
