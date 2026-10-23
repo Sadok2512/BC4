@@ -12,6 +12,24 @@ NUMBER=re.compile(r'^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$')
 TIME=re.compile(r'^\d{2}:\d{2}:\d{2}(?:\.\d+)?$')
 IDENTITIES={'#EI','#SI','#DN','#SP'}
 
+def effective_col(schema, field, context_count=None):
+    """Resolve an event field against its actual context prefix."""
+    col = field.get('col') if isinstance(field, dict) else field
+    if col is None or context_count is None:
+        return col
+    first = schema.get('first_param_col')
+    if first is None:
+        return col
+    system_col = schema.get('system_col')
+    if isinstance(system_col, int):
+        expected_context = max(0, system_col - 4)
+    else:
+        expected_context = schema.get('context_count', 0)
+        if not isinstance(expected_context, int): expected_context = 0
+    if isinstance(system_col, int) and col == system_col:
+        return col + (context_count - expected_context)
+    return col + (context_count - expected_context) if col >= first else col
+
 def hashed(value):return hashlib.sha256(value.encode('utf-8')).hexdigest()[:16]
 
 def tokenize(line):
@@ -85,10 +103,18 @@ def decode(line,system=None,format_version='unknown',*,capture_id='',seq=0,line_
     if r.ts is None:r.partial('time_missing')
     schema=schemas().get(code)
     if schema:r.schema_version=schema.get('schema_version',DECODER_VERSION)
+    try:
+        raw_context_count=numeric(tokens[2],'int') if len(tokens)>2 and tokens[2] != '' else 0
+        if raw_context_count is not None and (raw_context_count < 0 or raw_context_count > len(tokens)-3):
+            raw_context_count=None
+    except (ValueError, InvalidOperation):
+        raw_context_count=None
     system_col=schema.get('system_col') if schema else None
     if isinstance(system_col,dict):
         selector=system_col['selector_col']-1
         system_col=system_col['columns'].get(tokens[selector]) if selector<len(tokens) else None
+    if schema and system_col is not None:
+        system_col=effective_col(schema, {'col':system_col}, raw_context_count)
     checks=schema.get('layout_checks',[]) if schema else []
     if schema and schema.get('layout_variants'):
         variant=schema['layout_variants'];idx=variant['selector_col']-1
@@ -98,17 +124,15 @@ def decode(line,system=None,format_version='unknown',*,capture_id='',seq=0,line_
     if not layout_valid:system_col=None;r.partial('context_layout_unsupported')
     try:r.system=numeric(tokens[system_col-1],'int') if system_col and len(tokens)>=system_col else None
     except (ValueError,InvalidOperation):r.system=None
-    if r.system is None:r.partial('system_missing')
+    if r.system is None and schema and system_col is not None:r.partial('system_missing')
     try:
         count=numeric(tokens[2],'int') or 0
         if count<0 or count>len(tokens)-3:raise ValueError()
-        r.context_ids=[numeric(v,'int') for v in tokens[3:3+count]]
-        if any(v is None for v in r.context_ids):raise ValueError()
-        r.context_id=r.context_ids[0] if r.context_ids else None
+        r.context_ids=[numeric(v,'int') if v != '' else None for v in tokens[3:3+count]]
+        r.context_id=next((v for v in r.context_ids if v is not None),None)
     except (ValueError,IndexError,InvalidOperation):
         count=None;r.context_ids=[];r.partial('context_layout_unsupported')
-    if schema and 'context_count' in schema and count!=schema['context_count']:
-        r.system=None;r.partial('context_layout_unsupported');r.partial('system_missing')
+    # Context count is a per-record prefix, not a fixed event property.
     from .privacy import redact_tokens
     tokens,masked=redact_tokens(code,tokens,count)
     if code in {'CAA','SEI'} and count!=({'CAA':1,'SEI':0}[code]):
@@ -129,7 +153,7 @@ def decode(line,system=None,format_version='unknown',*,capture_id='',seq=0,line_
     for i in masked:
         known.add(i);r.field_codes[i]='identity_redacted'
     active=bool(schema and (schema['systems']=='any_numeric' or r.system in schema['systems']))
-    if schema and 'context_count' in schema and count!=schema['context_count']:active=False
+    if schema and count is None:active=False
     if not layout_valid:
         active=False;r.partial('context_layout_unsupported')
     parameter_types=schema.get('parameter_types') if schema else None
@@ -149,7 +173,11 @@ def decode(line,system=None,format_version='unknown',*,capture_id='',seq=0,line_
             dest[name]=None;return
         known.add(idx);r.field_codes[idx]=f['code']
         try:
-            value=numeric(tokens[idx],f['type'])
+            # Documented string fields (RRC/Nemo names, host names, …) are
+            # legitimate schema values.  Only undocumented strings are
+            # hashed below; treating every field as numeric shifted or
+            # discarded the first documented textual parameter.
+            value=(tokens[idx] if f.get('type') == 'str' and tokens[idx] != '' else None) if f.get('type') == 'str' else numeric(tokens[idx],f['type'])
             if value is not None:
                 lo,hi=f.get('range',[None,None])
                 if (lo is not None and value<lo) or (hi is not None and value>hi) or ('enum' in f and value not in f['enum']):raise ValueError('range')
@@ -161,10 +189,11 @@ def decode(line,system=None,format_version='unknown',*,capture_id='',seq=0,line_
     if active:
         for f in schema['header']:
             condition=f.get('when')
-            if condition and (len(tokens)<condition['col'] or tokens[condition['col']-1]!=str(condition['eq'])):continue
+            condition_col=effective_col(schema,condition,count) if condition else None
+            if condition and (condition_col is None or len(tokens)<condition_col or tokens[condition_col-1]!=str(condition['eq'])):continue
             if f.get('context_count') is not None and (len(tokens)<3 or (tokens[2] or '0')!=str(f['context_count'])):
                 r.partial('context_layout_unsupported');continue
-            read(f,f['col']-1,r.values)
+            read(f,effective_col(schema,f,count)-1,r.values)
         previous_end=None
         for g in schema.get('groups', []):
             if g.get('layout')=='variable':

@@ -5593,3 +5593,11 @@ du front `franco-focus-forge` et lancer **front + back** de bout en bout.
   catalogue nodes; no consumer needs a universal column-5 assumption.
 - A3 five-class audit and G24 cross-capture evidence are shipped under the
   repository root audit artifacts.
+## 0.78.0 (minor) — BC4 2026-10-23 — Metrics truth pipeline (BC2)
+
+- Decoder keeps documented fields from NFF 2.59/2.62 while preserving an
+  explicit extension warning; event context prefixes now shift fields from
+  YAML `first_param_col` instead of assuming column 5.
+- Documented string fields are retained as strings; only undocumented strings
+  are hashed. Metrics projections therefore expose the same values as the NMF
+  source and preserve zero-valued measurements.

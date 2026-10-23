@@ -2,6 +2,7 @@
 import math
 from collections import defaultdict
 from .schema import fields,schemas,column
+from .decoder import effective_col
 
 def txpc_cell_type(r):
     """Return the content-proven LTE TXPC cell discriminator.
@@ -38,7 +39,9 @@ def dimensions(r):
         if idx<len(r.tokens):keys.append('parameter_type='+r.tokens[idx])
     for f in s.get('header',[]):
         if f.get('dimension') or f['code']=='phrate.ph_ch_type':
-            idx=f['col']-1
+            try: context_count=int(r.tokens[2]) if len(r.tokens)>2 and r.tokens[2] != '' else 0
+            except (ValueError,TypeError): context_count=None
+            idx=effective_col(s,f,context_count)-1
             if idx<len(r.tokens) and r.field_codes[idx]==f['code']:keys.append(f['code']+'='+r.tokens[idx])
     cell_type=txpc_cell_type(r)
     if cell_type is not None:keys.append('txpc.cell_type='+str(cell_type))

@@ -36,3 +36,10 @@ Version independent of the API. Patch: corrected position/unit or additional doc
 
 - Metrics population uses distinct capture-seconds with non-NULL values; numeric zero is preserved.
 - Schema metadata exposes authoritative `system_col` and `first_param_col` offsets for catalogue/audit consumers.
+## 1.4.0 (minor) — 2026-10-23 — Context offsets and documented strings (BC2)
+
+- Context count is read per record and applied to schema-declared offsets.
+- NFF 2.59/2.62 documented columns are decoded; extension tails remain
+  `unk_` and are never shifted into documented fields.
+- Documented textual parameters are retained; privacy redaction remains active
+  for identity headers and private event fields.
