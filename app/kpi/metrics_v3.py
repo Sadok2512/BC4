@@ -129,7 +129,7 @@ def _catalog(db,pid):
     if cached and cached[0]==stamp:return cached[2]
     defs=definitions(); counts,sources=metric_counts(db,pid)
     cells=defaultdict(list)
-    for r in db.execute(text('SELECT metric_code,cell_index,count(value) n FROM nmf_cell_second WHERE project_id=:pid GROUP BY 1,2'),{'pid':pid}).mappings():cells[r['metric_code']].append(dict(r))
+    for r in db.execute(text('SELECT metric_code,cell_index,count(DISTINCT (capture_id,second)) FILTER (WHERE value IS NOT NULL) n FROM nmf_cell_second WHERE project_id=:pid GROUP BY 1,2'),{'pid':pid}).mappings():cells[r['metric_code']].append(dict(r))
     event_rows=list(db.execute(text("SELECT event_code,sum(n_records) n,count(*) FILTER(WHERE cardinality(unknown)>0) unknown_n FROM nmf_event_light WHERE project_id=:pid GROUP BY event_code"),{'pid':pid}).mappings())
     event_counts={r['event_code']:r['n'] for r in event_rows}
     unknown=[dict(event_code=r['event_code'],n=r['unknown_n']) for r in event_rows if r['unknown_n']]
@@ -143,7 +143,11 @@ def _catalog(db,pid):
             by={x['cell_index']:x['n'] for x in cells[m['source_column']]}
             m['cells']=sorted(i for i,n in by.items() if i>=0 and n)
             m['cell_options']=[dict(cell='all' if i==-1 else str(i),label='Total CA' if i==-1 else 'PCell' if i==0 else f'SCell{i}',n_in_project=by.get(i,0),available=bool(by.get(i,0)),reason=None if by.get(i,0) else 'No observations or total weighting unproven') for i in [-1,0,1,2,3,4]]
-        if m['n_in_project']:out.append(m)
+        # Keep the complete contract in the catalogue.  A metric with no
+        # observation is still rendered (greyed) with an explicit reason;
+        # silently dropping it made cell_absent and absent_in_capture
+        # indistinguishable from a missing schema.
+        out.append(m)
     for r in unknown:
         out.append(dict(code='unk_'+r['event_code'],label=r['event_code']+' · undocumented fields',unit='',source_table='nmf_event_light',source_tables=['nmf_event_light'],source_column='unknown',tech='BOTH',kind='categorical',event=r['event_code'],event_code=r['event_code'],category='undocumented',category_label='Undocumented',cell_scoped=False,cells=[],cell_options=[],attributes=[],proof='none',proof_ref='',decoder_version=DECODER_VERSION,n_in_project=r['n'],available=False,reason='Unproven field position (NFF 2.19)',alias_of=None))
     # Explicitly visible blocked hypothesis, not an invented SCell measurement.

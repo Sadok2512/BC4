@@ -5,7 +5,31 @@ from functools import lru_cache
 
 @lru_cache(maxsize=1)
 def schemas():
-    return {p.stem:json.loads(p.read_text()) for p in sorted((Path(__file__).parent/'schemas').glob('*.yaml'))}
+    result = {p.stem:json.loads(p.read_text()) for p in sorted((Path(__file__).parent/'schemas').glob('*.yaml'))}
+    # The NFF prefix is event,time,context-count,context-ids.  Expose the
+    # schema-declared beginning of the event parameters to consumers so no
+    # catalogue or audit has to assume a universal column 5.  Existing
+    # absolute ``col`` values remain untouched for backwards compatibility.
+    for schema in result.values():
+        system_col = schema.get('system_col')
+        if isinstance(system_col, int):
+            schema.setdefault('first_param_col', system_col + 1)
+        elif isinstance(schema.get('context_count'), int):
+            schema.setdefault('first_param_col', 4 + schema['context_count'])
+        else:
+            schema.setdefault('first_param_col', 4)
+    return result
+
+def offsets(event: str) -> dict:
+    """Return the authoritative positional metadata for an event schema."""
+    schema = schemas().get(event, {})
+    system_col = schema.get('system_col')
+    if isinstance(system_col, dict):
+        system_col = None
+    return {
+        'system_col': system_col,
+        'first_param_col': schema.get('first_param_col'),
+    }
 
 def column(code):
     return code.replace('.', '_')

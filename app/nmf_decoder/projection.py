@@ -69,15 +69,16 @@ def refresh_projections(db,pid):
     return {'observations':len(values),'updated_sequences':len(rows)}
 
 def metric_counts(db,pid):
-    """Count capture-second observations from the canonical Light projection.
+    """Count measured capture-seconds, retaining measured zero values.
 
-    Light is populated for every decoded capture, including captures whose
-    detailed rows are also retained.  Reading it once avoids the former wide
-    ``COUNT(DISTINCT ...)`` scan over the repeated Deep group table, which
-    could spill to disk and made the catalogue endpoint unbounded.
+    Light has one row per event, discriminator and second.  Counting rows
+    therefore overstates ``n`` for repeated events and can bind a value from
+    the wrong discriminator.  The contract defines ``n`` as distinct
+    ``(capture_id, second)`` buckets where the field is non-NULL; SQL COUNT
+    counts numeric zero as a real observation.
     """
     codes=list(fields())
-    expressions=[f'count(d.{code}) AS {code}' for code in codes]
+    expressions=[f'count(DISTINCT (d.capture_id,d.second)) FILTER (WHERE d.{code} IS NOT NULL) AS {code}' for code in codes]
     row=db.execute(text('SELECT '+','.join(expressions)+
         ' FROM nmf_event_light d WHERE d.project_id=:pid'),{'pid':pid}).mappings().one()
     result={code:int(n or 0) for code,n in row.items()}

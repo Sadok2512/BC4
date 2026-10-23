@@ -31,3 +31,8 @@ Version independent of the API. Patch: corrected position/unit or additional doc
 - Partitioned typed Deep, typed repeated groups, deterministic per-second Light and Light group summaries. Deep replay uses the same aggregation as streaming ingestion. First reported cell/port is the default radio projection; all groups remain in storage. Weighted PLA/CQI distribution summaries use the declared weights. No interpolation.
 - Admin replay jobs use the existing import worker. Idempotent capture-level commits and versioned status. Metrics derive from schemas and decoded tables; obsolete positional metric extraction is retired.
 - Seed discrepancy corrected from PDF p136: MIMOMEAS antenna-port channels 100..133 are an explicit enumeration in addition to ports 0..3.
+
+## 1.3.0 maintenance — 2026-10-23
+
+- Metrics population uses distinct capture-seconds with non-NULL values; numeric zero is preserved.
+- Schema metadata exposes authoritative `system_col` and `first_param_col` offsets for catalogue/audit consumers.

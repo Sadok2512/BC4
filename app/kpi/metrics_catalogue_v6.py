@@ -14,7 +14,7 @@ import re
 
 from sqlalchemy import text
 
-from app.nmf_decoder.schema import fields
+from app.nmf_decoder.schema import fields, offsets
 
 CELLS = (
     ("pcell", "PCell", 0),
@@ -115,6 +115,12 @@ def catalogue(db, project_id: str, metrics: list[dict]) -> dict:
             {"pid": project_id},
         )
     }
+    present_events = {row[0] for row in db.execute(
+        text("SELECT DISTINCT event_code FROM nmf_event_light WHERE project_id=:pid"),
+        {"pid": project_id},
+    )}
+    event_codes = {"HOA","HOS","HOI","CAA","CAC","CAD","DAA","DAC","DAD","RRA","RRC","RRD",
+                   "GAA","GAC","GAD","PBA","PBC","PBD","RACHI","MEI","SEI","SCELLMOD","LOCK","ROAM","MARK"}
     nodes: list[dict] = []
 
     def visit(node: dict, parent_id: str | None, path: list[str], order: int, inherited=None):
@@ -162,14 +168,14 @@ def catalogue(db, project_id: str, metrics: list[dict]) -> dict:
                 n = cell_counts.get((source_column, cell_index), 0) if cell_index is not None else 0
                 selectable = selection is not None and n > 0
                 if n == 0:
-                    reason = "not present in this project"
+                    reason = "cell_absent"
             else:
                 selection = base_code
                 # Non-cell counts are retained from the existing, proven projection.
                 n = metric_counts.get(base_code, 0)
                 selectable = n > 0
                 if n == 0:
-                    reason = "not present in this project"
+                    reason = "absent_in_capture" if event and event not in present_events else "field_empty"
         nodes.append(
             dict(
                 node_id=node_id,
@@ -183,6 +189,8 @@ def catalogue(db, project_id: str, metrics: list[dict]) -> dict:
                 selection=selection,
                 event=event,
                 field_idx=field_idx,
+                system_col=offsets(event).get('system_col') if event else None,
+                first_param_col=offsets(event).get('first_param_col') if event else None,
                 source_column=source_column,
                 unit=_unit(node.get("note")),
                 cell=cell,
@@ -190,6 +198,7 @@ def catalogue(db, project_id: str, metrics: list[dict]) -> dict:
                 proof=proof,
                 selectable=selectable,
                 reason=reason,
+                count_semantics="occurrences" if event in event_codes else "distinct capture-seconds with non-NULL value",
             )
         )
         for child_order, child in enumerate(node["children"]):

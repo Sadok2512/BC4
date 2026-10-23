@@ -5583,3 +5583,13 @@ du front `franco-focus-forge` et lancer **front + back** de bout en bout.
 
 - Reuse one capture population across concurrent Signaling endpoints with source/decode stamps; the first page load no longer rebuilds messages, procedures and event links once per request.
 - Add composite `(project_id, capture_id, event_code, seq)` indexes for staged and raw NMF rows.
+## 0.77.0 (minor) — BC4 2026-10-23 — Metrics population and binding audit (BC3)
+
+- `/metrics` counts distinct `(capture_id, second)` observations with a non-NULL
+  value; measured zero is retained and event metrics remain occurrence counts.
+- Catalogue leaves remain visible when absent, with explicit `cell_absent`,
+  `absent_in_capture` or `field_empty` reasons and count semantics for the UI.
+- Schema-derived `system_col` / `first_param_col` metadata is exposed on
+  catalogue nodes; no consumer needs a universal column-5 assumption.
+- A3 five-class audit and G24 cross-capture evidence are shipped under the
+  repository root audit artifacts.
