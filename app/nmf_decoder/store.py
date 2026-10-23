@@ -26,7 +26,14 @@ def copy_rows(db,table,columns,rows):
     connection=db.connection().connection.dbapi_connection
     with connection.cursor() as cursor:
         with cursor.copy('COPY '+table+' ('+','.join(columns)+') FROM STDIN') as copy:
-            for row in rows:copy.write_row(tuple(row.get(c) for c in columns))
+            for row in rows:
+                vals=[]
+                for c in columns:
+                    v=row.get(c)
+                    if isinstance(v,str) and c in LEGACY_NUMERIC_STRING_FIELDS:
+                        v=None
+                    vals.append(v)
+                copy.write_row(tuple(vals))
 
 def read_deep(db,pid,cap):
     params={'pid':pid,'cap':cap}
