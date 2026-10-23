@@ -1,3 +1,8 @@
+## 0.78.3 (patch) — BC4 2026-10-23 — Restore settings singleton primary keys (Agent BC1)
+
+- Restore the primary keys required by idempotent settings and catalogue seeds after the imported schema lost its constraints.
+- Fix API startup failure caused by `ON CONFLICT (id)` running without a matching unique constraint.
+
 ## 0.78.1 (patch) — BC2 metrics truth
 
 - Correct documented NMF string fields storage and preserve raw values during Light/Deep re-decode.
