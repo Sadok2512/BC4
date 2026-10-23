@@ -4,7 +4,7 @@ revision='0044_nmf_string_columns'
 down_revision='0043_kind'
 branch_labels=None
 depends_on=None
-COLS = 'daa_host_address pac_ip rrcsm_rrc_msg rrcsm_subchannel rrcsm_rrc_data'.split()
+COLS = []
 def upgrade():
     bind = op.get_bind()
     view = bind.exec_driver_sql("SELECT pg_get_viewdef('nmf_metric_value'::regclass, true)").scalar()
