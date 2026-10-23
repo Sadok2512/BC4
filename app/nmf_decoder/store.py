@@ -18,6 +18,9 @@ DEEP_BASE=['project_id','capture_id','seq','line_no','event_code','system','ts',
 GROUP_BASE=['project_id','capture_id','seq','group_name','set_index']
 LIGHT_BASE=['project_id','capture_id','seq','seq_last','event_code','system','second','dimension','t_rel_s','decoder_version','schema_version','format_version','decode_status','reasons','unknown','n_records','n_partial','context_id','context_ids']
 
+
+LEGACY_NUMERIC_STRING_FIELDS=set('daa_host_address pac_ip rrcsm_rrc_msg rrcsm_subchannel rrcsm_rrc_data'.split())
+
 def copy_rows(db,table,columns,rows):
     if not rows:return
     connection=db.connection().connection.dbapi_connection
