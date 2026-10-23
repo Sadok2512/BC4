@@ -33,7 +33,6 @@ from typing import Any, Iterable, Literal
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 from app.kpi.population import source_predicate
-
 from app.dict.cell_ref_group import (
     CELL_REF_DIMS,
     build_group_by_options,
@@ -56,6 +55,116 @@ from app.kpi.catalog_v2 import (
     not_applicable_reason,
     sorted_entries,
 )
+
+
+def _nmf_metric_availability(
+    db: Session,
+    project_id: str,
+    metric_codes: set[str],
+) -> dict[str, bool]:
+    """Return metric presence without recomputing exact catalogue counts.
+
+    ``/metrics`` already persists its exact per-field counts, keyed by the
+    decoder stamp. The KPI catalogue only needs a boolean presence flag, so
+    re-running ``COUNT(DISTINCT (capture_id, second))`` for every decoded
+    column made the initial workspace load needlessly expensive.
+
+    When the persistent cache is absent or stale, bounded presence checks
+    provide the same semantics while the Metrics route remains the owner of
+    exact counts.
+    """
+    if not metric_codes:
+        return {}
+
+    stamp = db.execute(
+        text(
+            """SELECT md5(coalesce(string_agg(
+              capture_id || ':' || decoder_version || ':' || coalesce(decoded_at::text,''),
+              ',' ORDER BY capture_id),''))
+              FROM nmf_capture WHERE project_id=:pid"""
+        ),
+        {"pid": project_id},
+    ).scalar_one()
+    payload = db.execute(
+        text(
+            """SELECT payload FROM metrics_catalog_cache
+               WHERE project_id=:pid AND decode_stamp=:stamp"""
+        ),
+        {"pid": project_id, "stamp": stamp},
+    ).scalar_one_or_none()
+    if payload is not None:
+        available = {code: False for code in metric_codes}
+        for metric in payload.get("metrics", []):
+            source_column = metric.get("source_column")
+            if source_column in available and int(metric.get("n_in_project") or 0) > 0:
+                available[source_column] = True
+        return available
+
+    # Column names are accepted only from the decoder's closed schema before
+    # interpolation. Independent EXISTS subqueries stop at the first measured
+    # value and preserve measured zero as present. This is much cheaper than a
+    # full-table boolean aggregate when a freshly decoded project has not yet
+    # populated the persistent Metrics cache.
+    from app.nmf_decoder.schema import fields
+
+    known = set(fields())
+    valid_codes = sorted(metric_codes & known)
+    available = {code: False for code in metric_codes}
+    if not valid_codes:
+        return available
+    expressions = [
+        "EXISTS(SELECT 1 FROM nmf_event_light d "
+        f"WHERE d.project_id=:pid AND d.{code} IS NOT NULL LIMIT 1) AS {code}"
+        for code in valid_codes
+    ]
+    row = db.execute(
+        text("SELECT " + ",".join(expressions)),
+        {"pid": project_id},
+    ).mappings().one()
+    available.update({code: bool(value) for code, value in row.items()})
+    return available
+
+
+def _materialized_catalog_transfers(db: Session, project_id: str) -> list[Any]:
+    """Return the transfer fields needed solely for catalogue availability.
+
+    Full KPI computation keeps using ``compute_transfers``. The catalogue can
+    use the canonical materialized ``task_run`` / ``task_sample`` population
+    and avoid reconstructing every task from raw events during page load.
+    """
+    from types import SimpleNamespace
+
+    rows = db.execute(
+        text(
+            """SELECT t.task_type,t.status,t.duration_s,t.bytes_dcomp,
+                      EXISTS(
+                        SELECT 1 FROM task_sample s
+                        WHERE s.task_id=t.id AND s.bps IS NOT NULL AND s.bps >= 0
+                      ) AS has_bps
+               FROM task_run t
+               WHERE t.project_id=:pid
+                 AND t.task_type IN ('HTTP_DL','HTTP_UL')"""
+        ),
+        {"pid": project_id},
+    ).mappings()
+    return [
+        SimpleNamespace(
+            verdict="proven" if row["status"] == "ok" else "rejected",
+            direction="dl" if row["task_type"] == "HTTP_DL" else "ul",
+            thrpt_mbps=(
+                0.0
+                if row["has_bps"]
+                else (
+                    8 * int(row["bytes_dcomp"]) / float(row["duration_s"]) / 1_000_000
+                    if row["bytes_dcomp"] is not None
+                    and row["duration_s"] is not None
+                    and row["duration_s"] > 0
+                    else None
+                )
+            ),
+        )
+        for row in rows
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -357,9 +466,8 @@ def build_catalog_v2_response(
         # `proven`), au lieu de 500. Rule 2 : écart déclaré, pas fabriqué.
         import logging
         from sqlalchemy.exc import DBAPIError, OperationalError
-        from app.measure.throughput import compute_transfers
         try:
-            transfers_cache = compute_transfers(db, project_id)
+            transfers_cache = _materialized_catalog_transfers(db, project_id)
         except (DBAPIError, OperationalError) as exc:
             logging.getLogger("bc4.kpi.catalog").warning(
                 "compute_transfers timeout on project %s (%s) — transfers KPIs will be PENDING",
@@ -367,15 +475,19 @@ def build_catalog_v2_response(
             )
             db.rollback()
             transfers_cache = []
-    # 0.74.2 (B) — batch nmf_metric availability : UN seul scan de
-    # nmf_event_light au lieu de ~100 EXISTS. metric_counts retourne un
-    # dict {code: count} ; count>0 → disponible.
+    # 0.78.4 — reuse the persisted Metrics catalogue counts. The KPI
+    # catalogue only needs presence, not exact distinct-second counts.
     needs_nmf = any((e.get("available_check") or {}).get("kind") == "nmf_metric" for e in entries)
     nmf_cache: dict[str, bool] | None = None
     if needs_nmf:
-        from app.nmf_decoder.projection import metric_counts
-        counts, _ = metric_counts(db, project_id)
-        nmf_cache = {code: bool(n) for code, n in counts.items()}
+        nmf_codes = {
+            (e.get("available_check") or {}).get("arg")
+            for e in entries
+            if (e.get("available_check") or {}).get("kind") == "nmf_metric"
+        }
+        nmf_cache = _nmf_metric_availability(
+            db, project_id, {code for code in nmf_codes if code}
+        )
     status_cache: dict[str, KpiStatusV2] = {}
     check_cache: dict[str, KpiStatusV2] = {}
     for e in entries:

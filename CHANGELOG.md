@@ -1,3 +1,8 @@
+## 0.78.4 (patch) — BC4 2026-10-23 — Fast KPI catalogue loading (Agent BC1)
+
+- Read transfer availability from `task_run` / `task_sample`, populated by the canonical `(capture_id, seq)` task pipeline; KPI computations and formulas are unchanged.
+- Reuse the valid persistent Metrics cache for NMF presence and use bounded `EXISTS` checks on a cache miss instead of recomputing every distinct capture-second count.
+
 ## 0.78.3 (patch) — BC4 2026-10-23 — Restore settings singleton primary keys (Agent BC1)
 
 - Restore the primary keys required by idempotent settings and catalogue seeds after the imported schema lost its constraints.
