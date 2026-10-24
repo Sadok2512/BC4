@@ -195,3 +195,20 @@ events:
 
   # ===== Shared / dette BC2 =====
   ROHC:            {tech: Shared, category: "Capture context", cell_scoped: false}
+
+  # ===== Capture context : completion (BC3 Phase 2 feedback) =====
+  "#PRODUCT": {tech: Shared, category: "Capture context", cell_scoped: false}
+  "#PROJECT": {tech: Shared, category: "Capture context", cell_scoped: false}
+  "#REPORT": {tech: Shared, category: "Capture context", cell_scoped: false}
+  "#SERVER": {tech: Shared, category: "Capture context", cell_scoped: false}
+  "#SERVERHW": {tech: Shared, category: "Capture context", cell_scoped: false}
+  "#SP": {tech: Shared, category: "Capture context", cell_scoped: false}
+  "#STOP": {tech: Shared, category: "Capture context", cell_scoped: false}
+  "#UNITID": {tech: Shared, category: "Capture context", cell_scoped: false}
+  "#VQ": {tech: Shared, category: "Capture context", cell_scoped: false}
+
+# Technology "Other (out of scope)" : UMTS/HSPA/CDMA/GSM/DVB/WLAN/GAN legacy.
+# Catégorie "Legacy UMTS/CDMA/DVB" ; repliée côté UI, comptée, jamais perdue.
+# Fallback dans build_catalog.py pour tout event non listé ci-dessus.
+default_tech: "Other"
+default_category: "Legacy UMTS/CDMA/DVB"

@@ -129,9 +129,11 @@ def main():
 
     # (B) categories.yaml
     with open(args.categories) as f:
-        cat_cfg = yaml.safe_load(f)["events"]
-    classified = {ev: cfg for ev, cfg in cat_cfg.items()}
-    print(f"[build] categorised={len(classified)}")
+        cat_doc = yaml.safe_load(f)
+    classified = {ev: cfg for ev, cfg in cat_doc["events"].items()}
+    default_tech = cat_doc.get("default_tech", "Other")
+    default_category = cat_doc.get("default_category", "Legacy UMTS/CDMA/DVB")
+    print(f"[build] categorised={len(classified)} default_tech={default_tech!r} default_cat={default_category!r}")
 
     # (C) enums
     enums = parse_enums(Path(args.txt))
@@ -148,7 +150,8 @@ def main():
     # (E) hiérarchie
     nodes = []
     tech_nodes = {t: {"node_type": "tech", "node_id": f"tech_{t}", "label": t,
-                      "parent_id": None} for t in ("LTE", "NR", "Shared")}
+                      "parent_id": None, "collapsed_default": (t == "Other")}
+                  for t in ("LTE", "NR", "Shared", "Other")}
     nodes.extend(tech_nodes.values())
     cat_nodes = {}
     event_nodes = {}
@@ -169,11 +172,13 @@ def main():
             continue
         if cfg is None:
             unclassified_events.append(ev)
-            tech, cat, cell_scoped = "Shared", "Unclassified", False
+            tech, cat, cell_scoped = default_tech, default_category, False
         else:
             tech = cfg.get("tech", "Shared"); cat = cfg.get("category", "Unclassified")
             cell_scoped = bool(cfg.get("cell_scoped", False))
-        if cat not in CATEGORIES: cat = "Unclassified"
+        # Dédoublonnage "Capture context" : toujours tech=Shared (BC3 2.50.3).
+        if cat == "Capture context": tech = "Shared"
+        if cat not in CATEGORIES and cat != default_category: cat = "Unclassified"
         # category node (lazy create)
         cat_key = (tech, cat)
         if cat_key not in cat_nodes:
@@ -240,10 +245,12 @@ def main():
 
     n_metrics = len(leaves_bare)
     n_leaves = len(leaves_bare) + len(leaves_cell)
-    print(f"[build] tech=3 categories={len(cat_nodes)} events_kept={len(event_nodes)}")
+    n_displayed = sum(1 for lf in (leaves_bare + leaves_cell) if lf.get("displayed", True))
+    print(f"[build] tech={len(tech_nodes)} categories={len(cat_nodes)} events_kept={len(event_nodes)}")
     print(f"[build] excluded_events={len(excluded_events)} unclassified={len(unclassified_events)}")
     print(f"[build] fields_excluded_total={exclude_fields_total}")
     print(f"[build] n_metrics_bare={n_metrics} leaves_cell={len(leaves_cell)} n_leaves_total={n_leaves}")
+    print(f"[build] n_leaves_displayed={n_displayed}  <-- contrat G18b")
 
     payload = {
         "catalog_version": args.version,
@@ -252,11 +259,12 @@ def main():
         "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "source_csv": args.csv,
         "source_txt": args.txt,
-        "n_tech": 3,
+        "n_tech": len(tech_nodes),
         "n_categories": len(cat_nodes),
         "n_events_kept": len(event_nodes),
         "n_metrics": n_metrics,  # feuilles hors cellule
         "n_leaves": n_leaves,
+        "n_leaves_displayed": n_displayed,
         "excluded_events": excluded_events,
         "unclassified_events": unclassified_events,
         "enums": enums,

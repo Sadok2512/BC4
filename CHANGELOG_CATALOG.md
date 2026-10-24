@@ -29,6 +29,30 @@ Chaque build écrit une ligne dans `catalog_release` (sha256, counts) ;
 
 ## Versions
 
+### 2.50.3 — 2026-10-24 — BC3 Phase 2 feedback
+
+- (a) `Capture context` dédoublonné : toujours `tech=Shared` (plus de
+  duplication Shared/LTE).
+- (b) Nouvelle Technology **"Other (out of scope)"** (`collapsed_default=
+  true` côté UI) ; fallback dans `build_catalog.py` : `default_tech="Other"`,
+  `default_category="Legacy UMTS/CDMA/DVB"` depuis `categories.yaml`. Les
+  140 events restants (UMTS/HSPA/CDMA/GSM/DVB/WLAN/GAN legacy) y
+  atterrissent, repliés, comptés, jamais perdus.
+- (c) **`n_leaves_displayed = 5 710`** — chiffre contrat G18b (feuilles
+  visibles par l'utilisateur) vs 28 415 total (incluant les feuilles
+  cellule spec-déclarées non-présentes dans le corpus → `displayed=false`).
+- 9 events `#*` ajoutés à `categories.yaml` (#PRODUCT, #PROJECT, #REPORT,
+  #SERVER, #SERVERHW, #SP, #STOP, #UNITID, #VQ) → Capture context Shared.
+- Compte final :
+    - tech = **4** (LTE, NR, Shared, Other)
+    - categories = 19 (17 BC3 + Unclassified + Legacy UMTS/CDMA/DVB)
+    - events_kept = 280 ; classified = 150 ; unclassified = 140 (→ Other)
+    - excluded = 2 (règle identité : #EI, #SI)
+    - n_metrics (bare) = 3 419 ; n_leaves (total) = 28 415 ;
+      **n_leaves_displayed = 5 710**
+- sha256 : `556be8e9cf546416f884d5db6011c07620cbc2e2bb2781d0481f5102960e9ced`
+- GC1 : PASS.
+
 ### 2.50.2 — 2026-10-24 — Phase 1 bis (hiérarchie v10 + enums + corpus)
 
 - Hiérarchie imposée par BC3 : Technology (LTE/NR/Shared) → 17 catégories
