@@ -3,7 +3,43 @@
 Fichier de passation entre sessions BC3. Une session neuve doit pouvoir
 reprendre en lisant **ce fichier seul**.
 
-Dernière mise à jour : 2026-10-24 19:00Z (session Opus 4.7 1M, 4e passe).
+Dernière mise à jour : 2026-10-24 19:40Z (session Opus 4.7 1M, 5e passe).
+
+## 5e passe — Audit colonnes + migration 0049
+
+- `scripts/catalog/audit_light_cols.py` + `audit_refined.py` : audit
+  comparant les codes requis par les 113 corpus events (schemas-2.50/)
+  vs les colonnes existantes de `nmf_event_light` (+ `nmf_event_group` /
+  `nmf_event_deep` pour couverture 1.5.1 complète).
+- Résultat : **336 colonnes manquantes** pour 98 "simple" events (sans
+  groups 1.5.1) + 12 "complex" events (CELLMEAS/CI/CQI/MIMOMEAS/PLAID/
+  PLAIU/PDCPRATE*/RLCRATE/TXPC) avec 93 nouveaux champs flat impossibles
+  à ajouter sans casser la structure header+group 1.5.1.
+- BC3 attendu <100, observé 336 — **écart déclaré** (NFF 2.50 CSV expose
+  bcp plus de champs par event que 1.5.1 n'en gardait : Measured system
+  répété, structurels Params/… non-filtrés, etc.).
+- Export JSON exact : `/home/devmat/BC4/exports/missing_cols_2.50_vs_1.5.1.json`
+  (40 KB, 451 entrées avec `(col, pg_type, event, label)`).
+- **Alembic 0049_nmf_event_light_ext** créée + appliquée :
+    - Table narrow `(project_id, capture_id, seq, second, event_code, field, value jsonb, decoder_version)`.
+    - 2 index : lookup + per-second.
+    - Downgrade = drop table.
+    - PAS de ADD COLUMN sur nmf_event_light (évite le 336-cols migration risquée).
+- `alembic_version=0049_nmf_event_light_ext`.
+- Decoder **reste 1.5.1** (schema.py reverté passe 4). Pour activer 2.50,
+  options :
+    - (a) migration bis ajoutant les 336 colonnes de 98 simple events +
+      refactor decoder pour dual-write (colonne OU ext si absente).
+    - (b) decoder dual-write dès maintenant : colonne existante → light,
+      sinon → light_ext (jsonb). Pas de migration columns.
+
+## Décision requise BC3 pour 2.2a terminal
+
+Choisir (a) ADD COLUMN × 336 + decoder lit schemas-2.50/, OU
+(b) decoder dual-write light ↔ light_ext, 0 column migration.
+L'option (b) minimise le risque corpus (zéro schema change) mais
+distribue les champs 2.50 nouveaux entre deux tables (requêtes plus
+complexes côté /metrics).
 
 ## 4e passe — Phase 2.2a partial
 
