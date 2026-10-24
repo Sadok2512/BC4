@@ -1,0 +1,105 @@
+{
+  "event": "CI",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": 4,
+  "cell_scoped": true,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 4,
+      "code": "ci.measured_system",
+      "label": "Measured system",
+      "section": "Parameters",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 CI Parameters #1",
+      "agg": "last",
+      "metric": true,
+      "category": "Serving radio"
+    },
+    {
+      "col": 6,
+      "code": "ci.snr",
+      "label": "SNR",
+      "section": "Parameters for LTE",
+      "type": "float",
+      "unit": "dB",
+      "range": "−40 – 50",
+      "proof": "NFF 2.50 CI Parameters for LTE #2",
+      "agg": "mean",
+      "metric": true,
+      "category": "Serving radio"
+    },
+    {
+      "col": 7,
+      "code": "ci.cell_type",
+      "label": "Cell type",
+      "section": "Parameters for LTE",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 CI Parameters for LTE #3",
+      "agg": "last",
+      "metric": true,
+      "category": "Serving radio"
+    },
+    {
+      "col": 8,
+      "code": "ci.antennas",
+      "label": "#Antennas",
+      "section": "Parameters for LTE",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 CI Parameters for LTE #4",
+      "agg": "last",
+      "metric": true,
+      "category": "Serving radio"
+    },
+    {
+      "col": 9,
+      "code": "ci.params_antenna",
+      "label": "#Params/antenna",
+      "section": "Parameters for LTE",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 CI Parameters for LTE #5",
+      "agg": "last",
+      "metric": true,
+      "category": "Serving radio"
+    },
+    {
+      "col": 10,
+      "code": "ci.snr_p",
+      "label": "SNR/P",
+      "section": "Parameters for LTE",
+      "type": "float",
+      "unit": "dB",
+      "range": "−40 – 50",
+      "proof": "NFF 2.50 CI Parameters for LTE #6",
+      "agg": "mean",
+      "metric": true,
+      "category": "Serving radio"
+    },
+    {
+      "col": 11,
+      "code": "ci.port",
+      "label": "Port",
+      "section": "Parameters for LTE",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 CI Parameters for LTE #7",
+      "agg": "last",
+      "metric": true,
+      "category": "Serving radio"
+    }
+  ]
+}

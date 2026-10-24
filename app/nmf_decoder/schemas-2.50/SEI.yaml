@@ -11,26 +11,12 @@
   "unknown_tail": "keep",
   "header": [
     {
-      "col": 4,
-      "code": "sei.measured_system",
-      "label": "Measured system",
-      "section": "Parameters",
-      "type": "int",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 SEI Parameters #1",
-      "agg": "last",
-      "metric": true,
-      "category": "Events ⚑"
-    },
-    {
       "col": 5,
       "code": "sei.service_status",
       "label": "Service status",
       "section": "Parameters",
       "type": "int",
       "unit": null,
-      "range": null,
       "proof": "NFF 2.50 SEI Parameters #2",
       "agg": "last",
       "metric": true,

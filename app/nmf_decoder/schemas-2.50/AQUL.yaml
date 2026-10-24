@@ -17,7 +17,6 @@
       "section": "Parameters",
       "type": "int",
       "unit": null,
-      "range": null,
       "proof": "NFF 2.50 AQUL Parameters #1",
       "agg": "last",
       "metric": true,

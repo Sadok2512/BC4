@@ -11,26 +11,12 @@
   "unknown_tail": "keep",
   "header": [
     {
-      "col": 4,
-      "code": "tua.measured_system",
-      "label": "Measured system",
-      "section": "Parameters",
-      "type": "int",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 TUA Parameters #1",
-      "agg": "last",
-      "metric": true,
-      "category": "Unclassified"
-    },
-    {
       "col": 5,
       "code": "tua.tau_type",
       "label": "TAU type",
       "section": "Parameters",
       "type": "int",
       "unit": null,
-      "range": null,
       "proof": "NFF 2.50 TUA Parameters #2",
       "agg": "last",
       "metric": true,

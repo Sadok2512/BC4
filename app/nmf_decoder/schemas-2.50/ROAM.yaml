@@ -11,26 +11,12 @@
   "unknown_tail": "keep",
   "header": [
     {
-      "col": 4,
-      "code": "roam.measured_system",
-      "label": "Measured system",
-      "section": "Parameters",
-      "type": "int",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 ROAM Parameters #1",
-      "agg": "last",
-      "metric": true,
-      "category": "Events ⚑"
-    },
-    {
       "col": 5,
       "code": "roam.roaming_status",
       "label": "Roaming status",
       "section": "Parameters",
       "type": "int",
       "unit": null,
-      "range": null,
       "proof": "NFF 2.50 ROAM Parameters #2",
       "agg": "last",
       "metric": true,

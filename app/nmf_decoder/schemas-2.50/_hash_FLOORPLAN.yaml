@@ -5,88 +5,9 @@
   "systems": [
     7
   ],
-  "system_col": null,
+  "system_col": 4,
   "cell_scoped": false,
   "min_format": "2.50",
   "unknown_tail": "keep",
-  "header": [
-    {
-      "col": 4,
-      "code": "#floorplan.floorplan_file_name",
-      "label": "Floorplan file name",
-      "section": "Parameters",
-      "type": "text",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 #FLOORPLAN Parameters #1",
-      "agg": "last",
-      "metric": true,
-      "category": "Capture context"
-    },
-    {
-      "col": 5,
-      "code": "#floorplan.floorplan_coordinate",
-      "label": "Floorplan coordinate",
-      "section": "Parameters",
-      "type": "int",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 #FLOORPLAN Parameters #2",
-      "agg": "last",
-      "metric": true,
-      "category": "Capture context"
-    },
-    {
-      "col": 6,
-      "code": "#floorplan.ibwave_file_name",
-      "label": "iBwave file name",
-      "section": "Parameters",
-      "type": "text",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 #FLOORPLAN Parameters #3",
-      "agg": "last",
-      "metric": true,
-      "category": "Capture context"
-    },
-    {
-      "col": 7,
-      "code": "#floorplan.venue_name",
-      "label": "Venue name",
-      "section": "Parameters",
-      "type": "text",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 #FLOORPLAN Parameters #4",
-      "agg": "last",
-      "metric": true,
-      "category": "Capture context"
-    },
-    {
-      "col": 8,
-      "code": "#floorplan.building_name",
-      "label": "Building name",
-      "section": "Parameters",
-      "type": "text",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 #FLOORPLAN Parameters #5",
-      "agg": "last",
-      "metric": true,
-      "category": "Capture context"
-    },
-    {
-      "col": 9,
-      "code": "#floorplan.floor_name",
-      "label": "Floor name",
-      "section": "Parameters",
-      "type": "text",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 #FLOORPLAN Parameters #6",
-      "agg": "last",
-      "metric": true,
-      "category": "Capture context"
-    }
-  ]
+  "header": []
 }

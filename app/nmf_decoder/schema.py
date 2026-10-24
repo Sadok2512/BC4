@@ -5,31 +5,36 @@ from functools import lru_cache
 
 @lru_cache(maxsize=1)
 def schemas():
-    """Phase 2.2a — charge schemas-2.50/ pour les SIMPLE events corpus
-    (98) ; fallback schemas/ 1.5.1 pour tous les autres (12 complex events
-    avec header+group + 3 events absents du 2.50 HOS/SIPREGC/STARTSCAN +
-    events hors corpus).
+    """Phase 2.2a — charge schemas-2.50/ UNIQUEMENT pour les 113 events
+    du corpus (scope BC3). Les autres events restent sur schemas/ 1.5.1 ;
+    s'ils ne sont pas dans 1.5.1 non plus → absents (decoder tag `unk_`).
 
-    COMPLEX_CORPUS_EVENTS listent les events corpus qui ont des groups
-    dans 1.5.1 ; leur schema 2.50 flat écraserait la structure header+
-    group → on force le fallback 1.5.1 pour ces events (nmf_event_light_
-    group conserve ses colonnes).
+    Pour les 12 events COMPLEX du corpus (header+group 1.5.1), on garde
+    la 1.5.1 pour préserver nmf_event_light_group.
     """
     base = Path(__file__).parent
+    # Scope 113 corpus events — fichier source généré par
+    #   SELECT DISTINCT event_code FROM nmf_event_light ORDER BY event_code
+    corpus_file = base / 'corpus_events_2_2a.txt'
+    corpus = set()
+    if corpus_file.exists():
+        corpus = {line.strip() for line in corpus_file.read_text().splitlines() if line.strip()}
     result: dict = {}
-    # Fallback 1.5.1 d'abord
+    # Fallback 1.5.1 d'abord — TOUS les events
     for p in sorted((base / 'schemas').glob('*.yaml')):
         result[p.stem] = json.loads(p.read_text())
-    # 2.50 override uniquement pour les SIMPLE events (pas de groups 1.5.1).
+    # 2.50 override UNIQUEMENT pour les corpus events, et seulement s'ils
+    # ne sont pas COMPLEX (header+group 1.5.1).
     for p in sorted((base / 'schemas-2.50').glob('*.yaml')):
         try:
             doc = json.loads(p.read_text())
         except Exception:
             continue
         ev = doc.get('event') or p.stem.replace('_hash_', '#')
-        # Skip override si event a des groups 1.5.1 (COMPLEX)
+        if ev not in corpus:
+            continue  # scope BC3 : hors corpus = pas d'override 2.50
         if ev in result and result[ev].get('groups'):
-            continue  # keep 1.5.1 header+group structure
+            continue  # keep 1.5.1 header+group structure (COMPLEX)
         result[ev] = doc
     # The NFF prefix is event,time,context-count,context-ids.  Expose the
     # schema-declared beginning of the event parameters to consumers so no

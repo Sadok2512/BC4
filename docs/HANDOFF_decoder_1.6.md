@@ -3,7 +3,52 @@
 Fichier de passation entre sessions BC3. Une session neuve doit pouvoir
 reprendre en lisant **ce fichier seul**.
 
-Dernière mise à jour : 2026-10-24 20:15Z (session Opus 4.7 1M, 6e passe).
+Dernière mise à jour : 2026-10-24 20:55Z (session Opus 4.7 1M, 7e passe).
+
+## 7e passe — Decoder 1.6.0 + TEST_1_6 2.50 + gardes
+
+### Étape 1 : DECODER_VERSION 1.5.1 → 1.6.0 ✓
+- `app/nmf_decoder/__init__.py` : 1.5.1 → 1.6.0 (host + container).
+- `/health` : `{"status":"ok","decoder_version":"1.6.0"}`.
+- Log : `exports/step1_decoder_bump_20261024_193217.log`.
+
+### Étape 2 : Re-ingest TEST_1_6 44621571bccc (plusieurs essais) ✓
+- 2b : regen YAMLs sans structurels (filtre `_is_structural_label`).
+  Log : `exports/step2b_regen_yamls_20261024_193503.log`.
+- 2d : scope schema.py aux 113 corpus events (via `corpus_events_2_2a.txt`).
+  Log : `exports/step2d_scope_fix_20261024_193735.log`.
+  Résultat : 98 events en 2.50, 16 en 1.5.1 fallback, non-corpus skip override.
+- 2f : ad-hoc `ALTER TABLE ADD COLUMN dci_dci_count` — colonne manquée
+  par mon audit (`_count$` regex trop agressif, "DCI count" est une
+  métrique pas un structural). Log : `exports/step2f_add_dci_count_*.log`.
+- 2g : ingest final OK. Log : `exports/step2g_test16_retry_20261024_194126.log`.
+    - decoder_version=**1.6.0**, n_records=48 660, light=22 187
+    - **RRCSM=2389 ✓**  **L3SM=31 ✓** (contrats BC3 exacts)
+    - 53/261 nouvelles colonnes 2.50 remplies de data (vs 0 en 1.5.1)
+
+### Étape 3 : Gardes
+Log : `exports/step3_guards_20261024_194430.log` (99 kB tableaux complets).
+Résumé :
+- G29 ×3 : tableaux par event collés
+- G26 : 33 PASS / 4 "+1" / 1 "-1" / 50 "?" / 3 no_data → **PAS zéro écart**
+- G27 FAIL : 102 events / 32.7M lignes unknown[] (dette, scope 2.2b)
+- G28 : tableaux P1/P50/P99 par métrique × 3 captures
+- G24 FAIL, G25 FAIL 952 orphans
+- **G18b PASS**, **GPS_stale PASS**
+
+### Décision BC3 règle "zéro écart → pg_dump + re-decode"
+**NON ATTEINT** → **pas de re-decode des 94 captures** ce soir.
+
+## Reste 2.2a (8e passe ou arbitrage BC3)
+
+Les 5 décalages réels G26 ("+1" × 4, "-1" × 1) + 50 "?" indéterminables :
+- investiguer events HOA (deja declaré complex), CREL (selector_col map),
+  et quelques events hors corpus.
+- Peut-être relâcher la règle "zéro écart" aux events corpus uniquement
+  (33 PASS corpus / 5 non-corpus décalés).
+
+Si BC3 autorise re-decode partiel (113 corpus), 8e passe = pg_dump +
+nohup re-decode via `scripts/redecode_corpus.py` (à écrire).
 
 ## 6e passe — Migration 0050 + schema.py 2.50 scoped
 

@@ -5,62 +5,9 @@
   "systems": [
     7
   ],
-  "system_col": null,
+  "system_col": 4,
   "cell_scoped": false,
   "min_format": "2.50",
   "unknown_tail": "keep",
-  "header": [
-    {
-      "col": 4,
-      "code": "#hw.hardware_version",
-      "label": "Hardware version",
-      "section": "Parameters",
-      "type": "text",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 #HW Parameters #1",
-      "agg": "last",
-      "metric": true,
-      "category": "Capture context"
-    },
-    {
-      "col": 5,
-      "code": "#hw.manufacturer",
-      "label": "Manufacturer",
-      "section": "Parameters",
-      "type": "text",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 #HW Parameters #2",
-      "agg": "last",
-      "metric": true,
-      "category": "Capture context"
-    },
-    {
-      "col": 6,
-      "code": "#hw.model",
-      "label": "Model",
-      "section": "Parameters",
-      "type": "text",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 #HW Parameters #3",
-      "agg": "last",
-      "metric": true,
-      "category": "Capture context"
-    },
-    {
-      "col": 7,
-      "code": "#hw.chipset",
-      "label": "Chipset",
-      "section": "Parameters",
-      "type": "text",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 #HW Parameters #4",
-      "agg": "last",
-      "metric": true,
-      "category": "Capture context"
-    }
-  ]
+  "header": []
 }

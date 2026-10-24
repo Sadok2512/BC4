@@ -1,3 +1,27 @@
+# CHANGELOG_DECODER
+
+## 1.6.0 — 2026-10-24 — Phase 2.2a (Agent BC3)
+
+- `DECODER_VERSION` bumped 1.5.1 → 1.6.0.
+- `app/nmf_decoder/schema.py` : charge `schemas-2.50/` pour les 98 SIMPLE
+  events du corpus (fichier scope `corpus_events_2_2a.txt`, 113 events),
+  fallback `schemas/` 1.5.1 pour les 12 COMPLEX events (header+group
+  préservés) + non-corpus.
+- `app/nmf_decoder/source.py` : skip binary NMFS header pour futur support
+  Keysight `.nmfs` (oracle hors chemin critique Phase 2.2a).
+- `scripts/catalog/build_yamls.py` : filtre structurels synchro avec audit
+  (Measured system, #Header params, #Cells, #Params/*, Scope, counters #).
+- Alembic 0049_nmf_event_light_ext : table narrow jsonb pour events hors
+  corpus (futur dual-write si besoin).
+- Alembic 0050_light_2_50_cols : ADD COLUMN × 261 non-structurels pour
+  les 98 SIMPLE events corpus. nmf_event_light : 393 → 654 cols.
+- Gap manuel : `dci_dci_count` ADD COLUMN ad-hoc (audit regex `_count$`
+  trop agressif — DCI count est métrique, pas compteur).
+
+Test TEST_1_6 44621571bccc :
+- n_records = 48 660, light = 22 187 (vs 27 651 en 1.5.1, agg 2.50 différente),
+- RRCSM = 2389, L3SM = 31 (contrats BC3 exacts),
+- 53/261 nouvelles colonnes 2.50 enrichies de data.
 # Nemo decoder changelog
 
 Version independent of the API. Patch: corrected position/unit or additional documented field. Minor: new event/system. Major: changed meaning of an existing field, requiring re-decode.

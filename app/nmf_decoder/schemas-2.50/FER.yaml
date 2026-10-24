@@ -11,26 +11,12 @@
   "unknown_tail": "keep",
   "header": [
     {
-      "col": 4,
-      "code": "fer.measured_system",
-      "label": "Measured system",
-      "section": "Parameters",
-      "type": "int",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 FER Parameters #1",
-      "agg": "last",
-      "metric": true,
-      "category": "Link quality"
-    },
-    {
       "col": 5,
       "code": "fer.fer",
       "label": "FER",
       "section": "Parameters for LTE",
       "type": "float",
       "unit": "%",
-      "range": "0 – 100",
       "proof": "NFF 2.50 FER Parameters for LTE #1",
       "agg": "mean",
       "metric": true,

@@ -11,40 +11,13 @@
   "unknown_tail": "keep",
   "header": [
     {
-      "col": 4,
-      "code": "lock.forcings",
-      "label": "#Forcings",
-      "section": "Parameters",
-      "type": "int",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 LOCK Parameters #1",
-      "agg": "last",
-      "metric": true,
-      "category": "Events ⚑"
-    },
-    {
       "col": 5,
       "code": "lock.lock_type",
       "label": "Lock type",
       "section": "Parameters",
       "type": "int",
       "unit": null,
-      "range": null,
       "proof": "NFF 2.50 LOCK Parameters #2",
-      "agg": "last",
-      "metric": true,
-      "category": "Events ⚑"
-    },
-    {
-      "col": 6,
-      "code": "lock.params",
-      "label": "#Params",
-      "section": "Parameters",
-      "type": "int",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 LOCK Parameters #3",
       "agg": "last",
       "metric": true,
       "category": "Events ⚑"

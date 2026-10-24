@@ -5,23 +5,9 @@
   "systems": [
     7
   ],
-  "system_col": null,
+  "system_col": 4,
   "cell_scoped": false,
   "min_format": "2.50",
   "unknown_tail": "keep",
-  "header": [
-    {
-      "col": 4,
-      "code": "#evrc.evrc_status",
-      "label": "EVRC status",
-      "section": "Parameters",
-      "type": "int",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 #EVRC Parameters #1",
-      "agg": "last",
-      "metric": true,
-      "category": "Capture context"
-    }
-  ]
+  "header": []
 }

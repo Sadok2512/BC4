@@ -17,21 +17,7 @@
       "section": "Parameters",
       "type": "int",
       "unit": null,
-      "range": null,
       "proof": "NFF 2.50 RACHSM Parameters #1",
-      "agg": "last",
-      "metric": true,
-      "category": "Signalling"
-    },
-    {
-      "col": 5,
-      "code": "rachsm.params",
-      "label": "#Params",
-      "section": "Parameters",
-      "type": "int",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 RACHSM Parameters #2",
       "agg": "last",
       "metric": true,
       "category": "Signalling"

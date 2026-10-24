@@ -9,19 +9,5 @@
   "cell_scoped": false,
   "min_format": "2.50",
   "unknown_tail": "keep",
-  "header": [
-    {
-      "col": 4,
-      "code": "prxq.measured_system",
-      "label": "Measured system",
-      "section": "Parameters",
-      "type": "int",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 PRXQ Parameters #1",
-      "agg": "last",
-      "metric": true,
-      "category": "Unclassified"
-    }
-  ]
+  "header": []
 }

@@ -37,7 +37,20 @@ CSV_TO_SCHEMA_TYPE = {
     "Enum": "int", "Hex": "hex", "Timestamp": "text",
 }
 STRUCTURAL = {"#Header params", "#Cells", "Scope", "PRB index", "RB ID",
-              "#Params/Serving cell", "#Params/SCell", "#Params/Neighbour"}
+              "#Params/Serving cell", "#Params/SCell", "#Params/Neighbour",
+              "Measured system"}
+
+# Patterns structurels par label (via regex) — synchro avec audit_strict.py
+import re as _re
+STRUCTURAL_LABEL_RX = _re.compile(
+    r"^(measured system|#header params?|#cells|#params/|scope|#antennas|#apps|#tsl results|#chs|#act set pns|#headers|#(.*) results|#(.*) sets|#ranks|#rbs|#(sym|phich|pbch|rb))",
+    _re.IGNORECASE,
+)
+
+def _is_structural_label(name: str) -> bool:
+    if name in STRUCTURAL: return True
+    if name and name.startswith("#"): return True
+    return bool(STRUCTURAL_LABEL_RX.match(name or ""))
 
 # Rule : (event_system_set, section_name) → inclure dans YAML
 # system_set : {7,8} = LTE, {9} = NR, mixte = {7,8,9}
@@ -143,7 +156,7 @@ def main():
         for row in flds_sorted:
             section = row["section"] or ""
             name = row["name"]
-            if name in STRUCTURAL: continue
+            if _is_structural_label(name): continue
             if not section_matches(system_set, section): continue
             fno = _no(row)
             if section.strip().lower() == "parameters":

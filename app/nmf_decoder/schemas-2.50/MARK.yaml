@@ -11,26 +11,12 @@
   "unknown_tail": "keep",
   "header": [
     {
-      "col": 4,
-      "code": "mark.marker_seq",
-      "label": "#Marker SEQ",
-      "section": "Parameters",
-      "type": "int",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 MARK Parameters #1",
-      "agg": "last",
-      "metric": true,
-      "category": "Position"
-    },
-    {
       "col": 5,
       "code": "mark.marker",
       "label": "Marker#",
       "section": "Parameters",
       "type": "int",
       "unit": null,
-      "range": "0 – 9",
       "proof": "NFF 2.50 MARK Parameters #2",
       "agg": "last",
       "metric": true,

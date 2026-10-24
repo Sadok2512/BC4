@@ -11,26 +11,12 @@
   "unknown_tail": "keep",
   "header": [
     {
-      "col": 5,
-      "code": "cac.measured_system",
-      "label": "Measured system",
-      "section": "Parameters",
-      "type": "int",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 CAC Parameters #1",
-      "agg": "last",
-      "metric": true,
-      "category": "Carrier aggregation"
-    },
-    {
       "col": 6,
       "code": "cac.call_type",
       "label": "Call type",
       "section": "Parameters",
       "type": "int",
       "unit": null,
-      "range": null,
       "proof": "NFF 2.50 CAC Parameters #2",
       "agg": "last",
       "metric": true,
@@ -43,21 +29,7 @@
       "section": "Parameters",
       "type": "int",
       "unit": null,
-      "range": null,
       "proof": "NFF 2.50 CAC Parameters #3",
-      "agg": "last",
-      "metric": true,
-      "category": "Carrier aggregation"
-    },
-    {
-      "col": 8,
-      "code": "cac.parameters",
-      "label": "#Parameters",
-      "section": "Parameters",
-      "type": "int",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 CAC Parameters #4",
       "agg": "last",
       "metric": true,
       "category": "Carrier aggregation"

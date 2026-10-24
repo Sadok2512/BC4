@@ -17,21 +17,7 @@
       "section": "Parameters",
       "type": "int",
       "unit": null,
-      "range": null,
       "proof": "NFF 2.50 IHI Parameters #1",
-      "agg": "last",
-      "metric": true,
-      "category": "Unclassified"
-    },
-    {
-      "col": 5,
-      "code": "ihi.params_module_type",
-      "label": "#Params/module type",
-      "section": "Parameters",
-      "type": "int",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 IHI Parameters #2",
       "agg": "last",
       "metric": true,
       "category": "Unclassified"

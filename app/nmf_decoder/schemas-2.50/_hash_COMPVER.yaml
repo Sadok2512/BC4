@@ -5,49 +5,9 @@
   "systems": [
     7
   ],
-  "system_col": null,
+  "system_col": 4,
   "cell_scoped": false,
   "min_format": "2.50",
   "unknown_tail": "keep",
-  "header": [
-    {
-      "col": 4,
-      "code": "#compver.components",
-      "label": "#Components",
-      "section": "Parameters",
-      "type": "int",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 #COMPVER Parameters #1",
-      "agg": "last",
-      "metric": true,
-      "category": "Capture context"
-    },
-    {
-      "col": 5,
-      "code": "#compver.params_component",
-      "label": "#Params/component",
-      "section": "Parameters",
-      "type": "int",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 #COMPVER Parameters #2",
-      "agg": "last",
-      "metric": true,
-      "category": "Capture context"
-    },
-    {
-      "col": 6,
-      "code": "#compver.component_name",
-      "label": "Component name",
-      "section": "Parameters",
-      "type": "text",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 #COMPVER Parameters #3",
-      "agg": "last",
-      "metric": true,
-      "category": "Capture context"
-    }
-  ]
+  "header": []
 }
