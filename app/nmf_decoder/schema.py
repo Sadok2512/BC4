@@ -5,7 +5,17 @@ from functools import lru_cache
 
 @lru_cache(maxsize=1)
 def schemas():
-    result = {p.stem:json.loads(p.read_text()) for p in sorted((Path(__file__).parent/'schemas').glob('*.yaml'))}
+    """2.2a REVERTED : charge uniquement `schemas/` (1.5.1) pour éviter
+    les colonnes `nmf_event_light` manquantes (le refactor 2.50 requiert
+    DDL alembic préalable pour les 193 events ADDED). Les YAMLs 2.50
+    restent dans `schemas-2.50/` pour la régénération et la génération
+    du catalogue, mais le decoder reste 1.5.1 tant que la migration DDL
+    n'est pas appliquée. Prochaine session 2.2a bis.
+    """
+    base = Path(__file__).parent
+    result: dict = {}
+    for p in sorted((base / 'schemas').glob('*.yaml')):
+        result[p.stem] = json.loads(p.read_text())
     # The NFF prefix is event,time,context-count,context-ids.  Expose the
     # schema-declared beginning of the event parameters to consumers so no
     # catalogue or audit has to assume a universal column 5.  Existing

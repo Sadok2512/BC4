@@ -104,6 +104,20 @@ def main():
         if ev_cfg.get("exclude"):
             skipped += 1
             continue
+        # Events `#X` sont des metadata capture-level (Capture context),
+        # pas stockés en colonnes nmf_event_light. PG rejette un nom de
+        # colonne commençant par `#`. On génère un YAML vide (header=[])
+        # pour que source.py ignore la ligne (déjà fait via startswith('#'))
+        # — pas de nouvelle colonne requise. 2.2b : exposer ces metadata
+        # dans nmf_capture ou une table capture_attributes dédiée.
+        if ev.startswith("#"):
+            doc = {"event": ev, "spec_version": "2.50", "schema_version": "1.6.0",
+                   "systems": [7], "system_col": 4, "cell_scoped": False,
+                   "min_format": "2.50", "unknown_tail": "keep", "header": []}
+            safe_name = ev.replace("#", "_hash_")
+            (out_dir / f"{safe_name}.yaml").write_text(json.dumps(doc, indent=2, ensure_ascii=False))
+            produced += 1
+            continue
         # Determine systems : 1) legacy_sys 2) default LTE (7) pour cell_scoped,
         # Shared sinon [7] pour LTE (conservateur).
         systems = legacy_sys.get(ev) or [7]
@@ -140,19 +154,22 @@ def main():
             # Dédup : si une section LTE et NR partage un field, on garde la 1ère.
             if code in seen_codes: continue
             seen_codes.add(code)
-            headers.append({
+            h = {
                 "col": col_abs,
                 "code": code,
                 "label": name,
                 "section": section,
                 "type": CSV_TO_SCHEMA_TYPE.get(row.get("type", "").strip(), "text"),
                 "unit": row.get("unit") or None,
-                "range": row.get("range") or None,
                 "proof": f"NFF 2.50 {ev} {section} #{fno}",
                 "agg": "mean" if row.get("type", "") == "Float" else "last",
                 "metric": True,
                 "category": ev_cfg.get("category") or "Unclassified",
-            })
+            }
+            # Décodeur attend `range` comme list [lo, hi] si présente. Omettre
+            # la clé plutôt que None pour éviter le TypeError sur unpack.
+            # TODO 2.2b : parser "a – b" / "a..b" du CSV pour les bornes.
+            headers.append(h)
         doc = {
             "event": ev,
             "spec_version": "2.50",
