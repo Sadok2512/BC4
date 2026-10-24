@@ -18,7 +18,7 @@ from pathlib import Path
 from sqlalchemy import text
 from app.db import SessionLocal
 from app.models import Project
-from app.ingest.nmf import ingest_upload, resolve_decoder
+from app.nmf_decoder.store import decode_capture
 from app.nmf_decoder import DECODER_VERSION
 
 PROGRESS = Path("/app/exports/redecode_progress.txt")
@@ -30,55 +30,62 @@ def log_line(s: str):
     print(f"[{now}] {s}", flush=True)
 
 def purge_capture(db, pid: str, cap: str):
-    """Supprime toutes les traces d'une capture pour re-ingest clean."""
-    for tbl, where in [
-        ("nmf_cell_second", "project_id=:p AND capture_id=:c"),
-        ("nmf_event_light", "project_id=:p AND capture_id=:c"),
-        ("nmf_event_light_ext", "project_id=:p AND capture_id=:c"),
-        ("nmf_event_group", "project_id=:p AND capture_id=:c"),
-        ("stg_event", "project_id=:p AND capture_id=:c"),
-        ("stg_event_raw", "project_id=:p AND capture_id=:c"),
-        ("nmf_capture", "project_id=:p AND capture_id=:c"),
-    ]:
+    """Supprime UNIQUEMENT les tables light/group/deep/cell_second.
+
+    BC3 arbitrage 10e passe : le replay ne touche PAS stg_event ni
+    stg_event_raw ni param_occurrence (dictionnaire BC1 préservé). Le
+    cascade stg_event → param_occurrence (FK ON DELETE CASCADE, 1.25M
+    lignes, sans index support jusqu'à 0051) coûtait ~14 min par
+    capture + effaçait les observations du dict. nmf_capture reste
+    (UPSERT par ingest_upload via ON CONFLICT).
+    """
+    for tbl in ("nmf_cell_second", "nmf_event_light", "nmf_event_light_ext",
+                "nmf_event_group", "nmf_event_deep"):
         try:
-            db.execute(text(f"DELETE FROM {tbl} WHERE {where}"), {"p": pid, "c": cap})
+            db.execute(text(f"DELETE FROM {tbl} WHERE project_id=:p AND capture_id=:c"),
+                       {"p": pid, "c": cap})
         except Exception as e:
             log_line(f"  purge WARN {tbl}: {e!r}")
     db.commit()
 
 def main():
+    """BC3 10e passe : utilise decode_capture (replay-only, lit source via
+    nmf_file.source_path, NE TOUCHE PAS stg_event ni stg_event_raw ni
+    param_occurrence). Les tables Light/Group/Deep sont purgées puis
+    re-remplies ; nmf_capture est UPSERT."""
+    args = sys.argv[1:]
+    only_cap = None
+    if args and args[0] == "--one":
+        only_cap = args[1] if len(args) > 1 else None
     db = SessionLocal()
     try:
-        handle = resolve_decoder()
-        log_line(f"START decoder={DECODER_VERSION} underlying={handle.version if handle.available else 'N/A'}")
-        # Scope corpus = tous les (project, capture) existants
+        log_line(f"START decoder={DECODER_VERSION} replay-only (no stg_* touch)")
         rows = db.execute(text("""
-            SELECT c.project_id, c.capture_id, c.nmf_file_id, f.filename, f.source_path
+            SELECT c.project_id, c.capture_id, c.decoder_version, c.decode_level, f.source_path
             FROM nmf_capture c JOIN nmf_file f ON f.id=c.nmf_file_id
             ORDER BY c.project_id, c.capture_id
         """)).all()
+        if only_cap:
+            rows = [r for r in rows if r[1] == only_cap]
         total = len(rows)
         log_line(f"captures to redecode: {total}")
         done = 0; failed = []
-        for pid, cap, nmf_file_id, filename, source_path in rows:
+        for pid, cap, old_ver, old_level, source_path in rows:
             t0 = time.time()
-            project = db.get(Project, pid)
-            if not project:
-                log_line(f"[{done+1}/{total}] {pid}/{cap} SKIP project_not_found")
-                continue
             if not source_path or not Path(source_path).exists():
                 log_line(f"[{done+1}/{total}] {pid}/{cap} SKIP source_missing={source_path}")
+                done += 1
                 continue
             try:
                 purge_capture(db, pid, cap)
-                with open(source_path, "rb") as stream:
-                    nmf = ingest_upload(db, project, stream, filename, handle, populate=False)
+                level = old_level if old_level in ("light", "deep") else "light"
+                result = decode_capture(db, pid, cap, level, force=True)
                 db.commit()
                 dt = time.time() - t0
-                log_line(f"[{done+1}/{total}] {pid}/{cap} OK n_rec={nmf.n_records} n_cap={nmf.n_captures} elapsed={dt:.1f}s")
+                log_line(f"[{done+1}/{total}] {pid}/{cap} OK level={level} n_rec={result.get('n_records')} prev={old_ver} elapsed={dt:.1f}s")
             except Exception as exc:
                 db.rollback()
-                log_line(f"[{done+1}/{total}] {pid}/{cap} FAIL {exc!r}")
+                log_line(f"[{done+1}/{total}] {pid}/{cap} FAIL {type(exc).__name__}: {str(exc)[:200]}")
                 failed.append((pid, cap, str(exc)))
             done += 1
         log_line(f"DONE total={total} failed={len(failed)}")
