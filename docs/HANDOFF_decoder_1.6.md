@@ -3,7 +3,39 @@
 Fichier de passation entre sessions BC3. Une session neuve doit pouvoir
 reprendre en lisant **ce fichier seul**.
 
-Dernière mise à jour : 2026-10-24 19:40Z (session Opus 4.7 1M, 5e passe).
+Dernière mise à jour : 2026-10-24 20:15Z (session Opus 4.7 1M, 6e passe).
+
+## 6e passe — Migration 0050 + schema.py 2.50 scoped
+
+- `alembic 0050_light_2_50_cols` appliquée en **3.1s** : ADD COLUMN × 261
+  (NON-structurels) sur `nmf_event_light` pour les 98 SIMPLE events corpus.
+  `missing_cols_2.50_simple.json` committé (source migration).
+- 12 COMPLEX events restent 1.5.1 (header+group split préservé).
+- `schema.py` : charge schemas-2.50/ pour 268 events + fallback 1.5.1
+  pour 16 events (12 complex + HOS/SIPREGC/STARTSCAN + autres).
+- État DB : alembic_version=0050_light_2_50_cols, nmf_event_light 654 cols
+  (était 393).
+
+## État TEST_1_6 (6e passe fin)
+
+- Ingest précédent (passe 4) toujours en place : capture=44621571bccc,
+  decoder_version=1.5.1 (DECODER_VERSION dans container), 27 651 lignes
+  Light, RRCSM=2389 ✓ L3SM=31 ✓.
+- Re-ingest avec 2.50 schemas tenté mais aucune sortie capturée (shell
+  terminé prématurément). À refaire 7e passe.
+
+## Reste 2.2a (7e passe)
+
+1. **Bump DECODER_VERSION** dans `/app/app/nmf_decoder/__init__.py` :
+   1.5.1 → 1.6.0 (host + container). Add CHANGELOG_DECODER entry.
+2. **Clean TEST_1_6 complet** (nmf_capture + file + stg + light + group + ext).
+3. **Re-ingest** avec schemas-2.50/ actifs (déjà le cas).
+4. **Vérifier `nmf_capture.decoder_version=1.6.0`** après re-ingest.
+5. **Gardes** : G29 ×3 (keysight ne compte pas, oracle sort du chemin),
+   G26 = 0 décalage (via schemas-2.50 cols alignés), G28 plages.
+6. **pg_dump** explicite (sha collé).
+7. **nohup re-decode 94+2** (`scripts/redecode_corpus.py` à écrire).
+8. **Rapport matin** : captures 1.6.0 vs 1.5.1 restantes.
 
 ## 5e passe — Audit colonnes + migration 0049
 
