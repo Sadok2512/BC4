@@ -3,7 +3,75 @@
 Fichier de passation entre sessions BC3. Une session neuve doit pouvoir
 reprendre en lisant **ce fichier seul**.
 
-Dernière mise à jour : 2026-10-24 18:00Z (session Opus 4.7 1M, 3e passe).
+Dernière mise à jour : 2026-10-24 19:00Z (session Opus 4.7 1M, 4e passe).
+
+## 4e passe — Phase 2.2a partial
+
+Progrès :
+- Patch `app/nmf_decoder/schema.py` tenté puis **reverté** vers 1.5.1 seul
+  (les 193 events ADDED du 2.50 requièrent une DDL migration — colonnes
+  type `adjmeas_measured_system` manquantes dans `nmf_event_light`).
+- Patch `app/nmf_decoder/source.py` : skip binary NMFS header pour les
+  .nmfs Keysight (bytes avant le premier `#...`).
+- Fix sequences `stg_event_id_seq` / `stg_event_raw_id_seq` /
+  `stg_measurement_raw_id_seq` (resync après restauration dump).
+- `build_yamls.py` : events `#X` → header vide (PG rejette colonnes avec `#`).
+- Projet TEST **test_1_6_26** (TEST_1_6) : ingest 44621571bccc depuis
+  `/var/lib/bc4/nmf-source/4b7bfd50ddb6/718d93e0d9414492.nmf` avec decoder
+  **1.5.1** (fallback obligatoire). Résultat :
+    - n_records=48660  stg_event_raw=48660  nmf_event_light=27651
+    - **RRCSM=2389 ✓** (BC3 attendu 2389)
+    - **L3SM=31 ✓** (BC3 attendu 31)
+    - n_gps=0 (M1 benchmark, pas de GPS fix dans le source — comme original)
+    - IDENTIQUE au capture dans projet d'origine → G29 écart=0 pipeline-level
+      (pas oracle Keysight au sens 1.6.0 vs Keysight).
+
+## BLOCKERS RESTANTS (prochaine session)
+
+### B4 — Keysight .nmfs format NMFS compressé
+
+```
+Content : NMFS\x01\x00\x00Q... [95b binary header]
+          #PRODUCT,...  [plaintext metadata]
+          \x80"\x00\x00\x82o...  [binary compressed chunks]
+```
+
+Les événements NFF 2.50 réels sont dans les chunks compressés après les
+headers plaintext. Décoder nécessite :
+1. Parse chunk header (0x80 markers suivis de taille 2 bytes LE ?).
+2. Décompresser le chunk (format inconnu — probablement zlib/LZ4/custom).
+3. Lire les events plaintext du chunk décompressé.
+
+Référence : `/home/devmat/BC4/specs/Nemo_FileFormat/Nemo File Format_2.50.pdf`
+devrait détailler le format NMFS compressé.
+
+### B5 — DDL migration pour decoder 1.6.0
+
+Avec schemas-2.50/ chargés dans schema.py, le decoder tente d'écrire des
+colonnes 193×plusieurs = ~500+ colonnes nouvelles dans `nmf_event_light`.
+Besoin d'une alembic migration ajoutant toutes ces colonnes (noms + types)
+AVANT que le decoder puisse écrire. Workflow :
+
+1. Script d'audit : lister tous les codes `event.field_slug` dans
+   `app/nmf_decoder/schemas-2.50/*.yaml` → produire la DDL (ADD COLUMN).
+2. Migration alembic 0049_light_fields_2.50.py.
+3. Appliquer migration (`alembic upgrade head`).
+4. Alors seulement remettre `schemas()` à charger `schemas-2.50/`.
+5. Test TEST_1_6 avec 1.6.0.
+6. Si OK : re-decode corpus nohup.
+
+## Reste à faire pour 2.2a terminal
+
+1. **B4 fix** : patch source.py pour NMFS décompression.
+2. **B5 fix** : alembic 0049 avec audit automatique.
+3. Re-ingest Keysight dans NFF_SAMPLE (après B4).
+4. Re-ingest 44621571bccc dans TEST_1_6 avec 1.6.0 (après B5).
+5. Comparaison vraie G29 Keysight vs decoder output.
+6. pg_dump + re-decode 94+2 nohup si tout vert.
+
+PAS DE RE-DECODE CORPUS tant que B4+B5 non résolus.
+
+
 
 **ÉTAT 2.2a : YAMLs 2.50 validés (85/87 LTE common events alignés). Keysight uploadé.
 Decoder refactor pas encore commité (prochaine fenêtre).**
