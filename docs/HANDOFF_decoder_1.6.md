@@ -3,7 +3,50 @@
 Fichier de passation entre sessions BC3. Une session neuve doit pouvoir
 reprendre en lisant **ce fichier seul**.
 
-Dernière mise à jour : 2026-10-24 20:55Z (session Opus 4.7 1M, 7e passe).
+Dernière mise à jour : 2026-10-24 21:15Z (session Opus 4.7 1M, 8e passe).
+
+## 8e passe — Light 1.5.1 vs 1.6.0 + G26 par valeur
+
+### Étape 1 : Light counts ✓ ZÉRO PERTE
+- Σ n_records 1.5.1 = Σ n_records 1.6.0 = **48 660** pour 44621571bccc.
+- rows_15=27651 → rows_16=22187 : agrégation 2.50 plus stricte (PHRATE
+  6038→2404 lignes, MACRATE 2584→754) — plusieurs lignes 1.5.1 fusionnées
+  par seconde, n_records conservé.
+- delta_sum=0 sur TOUS les event_codes.
+- Log : `exports/step1_light_15_vs_16_20261024_*.log`.
+
+### Étape 2 : G26 refactor par VALEUR
+- `scripts/guards_2026_10/G26_offsets.py` : règle unifiée, cherche
+  `expected_systems[]` dans raw_fields autour de `system_col`. Verdict
+  ∈ {0, +1, -1} exclusivement. Scope corpus 113 events. Dédup par event.
+- Résultat : `verdicts={'0': 74, '+1': 36, '-1': 2, 'no_data': 172}`.
+
+### ⚠️ Convention de numérotation `raw_fields` ≠ YAML `system_col`
+
+Les 38 "shifts" détectés montrent tous `raw.c3='7'` (LTE code à col 3)
+alors que schemas disent `system_col=4` ou `5`. Investigation :
+- `raw_fields.cN` dans stg_event_raw : N commence à **c2** (c2=timestamp,
+  c3=context_count ou système si context_count=0, c4=context_id ou système).
+- `system_col` YAML : positions **absolues** dans la ligne NMF brute
+  (c1=event_code, c2=timestamp, c3=context_count, c4+=context_ids+system).
+- **Mismatch de base** : raw_fields JSON zéro-index-depuis-event vs YAML
+  1-index-absolu.
+
+Les 38 shifts sont probablement **des faux positifs** du check G26, pas
+des décalages NFF 2.50 réels. À confirmer en 9e passe.
+
+### Décision : zéro écart NON ATTEINT par la convention actuelle du check
+- pg_dump + re-decode 94 : **PAS LANCÉS**.
+
+## Reste 2.2a terminal (9e passe)
+
+1. Investiguer convention raw_fields → aligner G26 (soit normaliser
+   raw_fields pour qu'il indexe depuis c1=event, soit soustraire l'offset
+   dans G26).
+2. Si après fix G26 = 0 corpus shift → pg_dump (sha collé).
+3. `scripts/redecode_corpus.py` nohup les 94 captures + 2 Keysight si
+   convertis en .nmf par l'utilisateur ; log + PID collés.
+4. Rapport matin : captures 1.6.0 vs 1.5.1 restantes.
 
 ## 7e passe — Decoder 1.6.0 + TEST_1_6 2.50 + gardes
 
