@@ -1,190 +1,273 @@
-"""Phase 1 — Générateur catalogue 2.50.X depuis CSV spec.
+"""Phase 1 bis — Générateur catalogue NFF 2.50.
+
+Pipeline :
+  (A) CSV nmf_all_events_fields_2.50.csv → fields par event.
+  (B) categories.yaml → map event → (tech, category, cell_scoped, exclude?, mask?).
+  (C) nemo_file_format_2.50.txt → enums : cell types / bands / causes.
+  (D) corpus DB → cell_type présents par event (feuilles cellule créées pour
+      les cell_type réellement vus ; les autres déclarées non-affichées).
+  (E) hiérarchie Tech → 17 catégories → Event → (feuilles cellule | feuille
+      bare field) ; toute entrée non classée → catégorie "Unclassified" visible.
+  (F) JSON déterministe + sha256 ; row catalog_release (is_current=TRUE).
 
 Usage :
-  docker exec -w /app bc4-api-1 python scripts/catalog/build_catalog.py \
-      --csv /specs/nmf_all_events_fields_2.50.csv \
-      --version 2.50.1 \
-      --decoder-min 1.6.0 \
-      --out app/kpi/catalog_release/catalog_2.50.1.json
-
-Lit le CSV `event,section,field_no,name,type,unit,range,description`
-→ produit un JSON `catalog_<version>.json` + une ligne dans
-`catalog_release` (sha256 recalculé, is_current=TRUE).
-
-Hiérarchie (initiale, raffinée en Phase 1 bis par la table enum
-`nemo_file_format_2.50.txt`) :
-  Technology ∈ {LTE, NR, Shared}
-    └── Category (inféré depuis event ou section)
-        └── Event
-            └── Field (= leaf)
-              - metric_id = `<event>.<field_slug>`  (slug = name lower + _)
-              - type / unit / range / description = CSV
-
-Exclusions documentées (listées dans le JSON) :
-  - `#Header params`, `#Cells`, `#Params/...`, `Scope`, `PRB index`, `RB ID`
-    = attributs structurels, pas feuilles.
-  - identités (#EI, #SI, IMSI/IMEI/TMSI/GUTI) masquées (règle identité).
-  - payloads hex (stockés en stg_event).
-
-Toute feuille non consommable (ex. "Payload" hex) marquée `selectable=false`,
-grisée côté UI avec tooltip (jamais cachée — règle BC3).
+  python scripts/catalog/build_catalog.py \
+    --csv /specs/nmf_all_events_fields_2.50.csv \
+    --txt /specs/nemo_file_format_2.50.txt \
+    --categories scripts/catalog/categories.yaml \
+    --version 2.50.2 --decoder-min 1.6.0 \
+    --out app/kpi/catalog_release/catalog_2.50.2.json --commit
 """
 from __future__ import annotations
-
-import argparse
-import csv
-import hashlib
-import json
-import re
-import sys
+import argparse, csv, hashlib, json, re, sys
+from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
+import yaml  # noqa: E402
 from sqlalchemy import text  # noqa: E402
 from app.db import SessionLocal  # noqa: E402
 
-# Patterns de catégorisation hiérarchique (règles explicites,
-# refinables par un fichier spec séparé en Phase 1 bis).
-TECH_LTE = {"PHRATE", "MACRATE", "PLAID", "PLAIU", "CELLMEAS", "RRC", "CQI",
-            "DCI", "TAD", "CI", "RACHSM", "RRA", "RRC", "RRD", "RRF",
-            "HOA", "HOI", "HOS", "L3SM", "RRCSM", "SIPSM", "RTPSM",
-            "MIMOMEAS", "TXPC", "DRATE", "PDCPRATED", "PDCPRATEU",
-            "RLCRATE", "RLCRATEU", "MACI", "MACRATEU", "PLAISUM", "ROHC"}
-TECH_NR = set()  # NR events détectés par discriminator Scope (field) dans CSV
-TECH_SHARED = {"GPS", "MARK", "SCRIPT", "CMDREQ", "CMDCOMP", "DAA", "DREQ",
-               "DCOMP", "DAC", "DAD", "DAF", "APPLIST", "LOCK", "ROAM",
-               "DEVI", "PSM", "PSMR", "PSMI", "LUA", "LUS", "SEI",
-               "GAA", "GAC", "GAD", "PAA", "PAC", "PAD", "PBA", "PBC",
-               "PBD", "CAA", "CAC", "CAD", "RABA", "RABC", "RABD",
-               "SIPREGA", "SIPREGC", "SIPREGD", "DNSQUERY", "DSUMMARY",
-               "RTPJITTER", "FER", "AMRS", "AQDL", "AQI", "AQRX", "CHI",
-               "RACHI", "NLIST", "QOSFLOW", "BSR", "PCHI"}
-
-EXCLUDE_FIELDS = {
+CATEGORIES = [
+    "Serving radio", "Neighbours", "Carrier aggregation",
+    "Throughput per layer", "Link quality", "Allocation & MCS",
+    "CSI", "UL power", "MIMO per port", "Beams NR", "Voice",
+    "Services (tasks)", "Position", "Events ⚑", "Signalling",
+    "Capture context", "Scanner", "Unclassified",
+]
+STRUCTURAL_FIELDS = {
     "#Header params", "#Cells", "Scope", "PRB index", "RB ID",
-    "#EI", "#SI", "IMSI", "IMEI", "TMSI", "GUTI",
-    "cmd_index", "action_index", "req_index",
-    "Payload",
+    "#Params/Serving cell", "#Params/SCell", "#Params/Neighbour",
 }
+IDENTITY_FIELDS = {"IMSI", "IMEI", "TMSI", "GUTI", "#EI", "#SI"}
+MASKED_INDEX_FIELDS = {"cmd_index", "action_index", "req_index"}
+PAYLOAD_FIELDS = {"Payload", "payload_b64", "Message"}
 
 def slugify(s: str) -> str:
-    s = re.sub(r"[^A-Za-z0-9]+", "_", s.strip()).strip("_").lower()
-    return s or "field"
+    return (re.sub(r"[^A-Za-z0-9]+", "_", s.strip()).strip("_").lower() or "field")
 
-def classify_tech(event: str, section: str | None) -> str:
-    if event in TECH_LTE: return "LTE"
-    if event in TECH_NR: return "NR"
-    if event in TECH_SHARED: return "Shared"
-    if section and "NR" in (section or "").upper(): return "NR"
-    return "LTE"  # défaut conservateur pour LTE-first corpus
+def parse_enums(txt_path: Path) -> dict:
+    """Extrait les enums (Cell type SCell N, Band 70NNN, ...) du spec text.
+    Retourne dict {enum_name: [{value: int, label: str}, ...]}.
+    """
+    enums = defaultdict(list)
+    text_lines = txt_path.read_text(encoding="utf-8", errors="replace").splitlines()
+    # Patterns courants : "70001 = LTE FDD 2100 band 1" ou "0 = PCell"
+    enum_pat = re.compile(r"^\s{10,}(\d+)\s*=\s*(.+?)\s*$")
+    current = None
+    for line in text_lines:
+        s = line.strip()
+        if "Cell type" in s and "Integer" in line:
+            current = "cell_type_lte_scell"
+            continue
+        if "Band" in s and "SCell band" in s:
+            current = "band_lte"
+            continue
+        m = enum_pat.match(line)
+        if m and current:
+            try:
+                enums[current].append({"value": int(m.group(1)), "label": m.group(2)})
+            except ValueError:
+                pass
+        elif current and not m and s and not line.startswith("    "):
+            current = None  # end of enum block
+    # LTE cell types : add 0=PCell + 10+ measurement contexts hardcoded (NFF 2.50 §Cell type)
+    enums["cell_type_lte_mesure"] = [
+        {"value": 0, "label": "PCell"}, {"value": 1, "label": "Listed neighbour"},
+        {"value": 2, "label": "Detected neighbour"}, {"value": 3, "label": "Scanner"},
+        {"value": 4, "label": "Scanner neighbour"},
+    ]
+    enums["cell_type_nr"] = [
+        {"value": 0, "label": "PCell"}, {"value": 199, "label": "SCG PSCell"},
+    ] + [{"value": i, "label": f"SCell {i}"} for i in range(1, 32)] \
+      + [{"value": 100 + i, "label": f"SCG SCell {i}"} for i in range(0, 32)] \
+      + [{"value": 1000, "label": "Listed NR neighbour"},
+         {"value": 1001, "label": "Detected NR neighbour"},
+         {"value": 1002, "label": "Scanner NR neighbour"}]
+    return dict(enums)
 
-def classify_category(event: str, section: str | None) -> str:
-    s = (section or "").strip() or "Unspecified"
-    # Normaliser quelques sections NFF 2.50 vers nos buckets UI.
-    MAP = {
-        "Parameters": "Capture context",
-        "Serving cell measurements": "Serving radio",
-        "Neighbor cells": "Neighbours",
-        "Carrier aggregation": "Carrier aggregation",
-        "Throughput": "Throughput per layer",
-        "Allocation": "Allocation & MCS",
-        "Channel quality": "Link quality",
-        "MIMO": "MIMO per port",
-        "GPS": "Position",
-        "Services": "Services (tasks)",
-        "Scanner": "Scanner",
-        "Signalling": "Signalling",
-        "Events": "Events ⚑",
-    }
-    for k, v in MAP.items():
-        if k.lower() in s.lower(): return v
-    return s
+def corpus_cell_types(db) -> dict[str, set[int]]:
+    """GROUP BY event, cell_type sur nmf_event_light / stg_event_raw.
+    Retourne {event_code: {cell_type_int, ...}}. Les events sans discriminator
+    cellule renvoient set() (feuille bare).
+    """
+    out: dict[str, set[int]] = defaultdict(set)
+    # Dans Light, le discriminateur est `dimension` (text) p.ex. 'cell_type:0'.
+    rows = db.execute(text("""
+        SELECT event_code, dimension FROM nmf_event_light
+        WHERE dimension IS NOT NULL AND dimension ~ '\\.cell_type=[0-9]+'
+        GROUP BY event_code, dimension
+    """)).all()
+    pat = re.compile(r"\.cell_type=(\d+)")
+    for ev, dim in rows:
+        m = pat.search(dim or "")
+        if m:
+            out[ev].add(int(m.group(1)))
+    return dict(out)
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--csv", required=True)
-    ap.add_argument("--version", required=True, help="2.50.1, 2.50.2, ...")
-    ap.add_argument("--decoder-min", required=True, help="e.g. 1.6.0")
+    ap.add_argument("--txt", required=True)
+    ap.add_argument("--categories", required=True)
+    ap.add_argument("--version", required=True)
+    ap.add_argument("--decoder-min", required=True)
     ap.add_argument("--out", required=True)
-    ap.add_argument("--spec-version", default=None, help="defaults to major.minor from --version")
-    ap.add_argument("--commit", action="store_true", help="insert into catalog_release")
+    ap.add_argument("--spec-version", default=None)
+    ap.add_argument("--commit", action="store_true")
     args = ap.parse_args()
-
     spec_v = args.spec_version or ".".join(args.version.split(".")[:2])
 
-    # 1) parse CSV
+    # (A) CSV
     with open(args.csv, newline="", encoding="utf-8") as f:
-        rows = list(csv.DictReader(f))
-    print(f"[build_catalog] CSV loaded: rows={len(rows)}")
-    events = sorted({r["event"] for r in rows})
-    print(f"[build_catalog] distinct events={len(events)}")
+        csv_rows = list(csv.DictReader(f))
+    print(f"[build] csv_rows={len(csv_rows)}")
+    all_events = sorted({r["event"] for r in csv_rows})
+    print(f"[build] distinct_events_csv={len(all_events)}")
 
-    # 2) build hierarchical nodes
-    categories: dict[tuple[str, str], dict] = {}  # (tech, cat) → cat node
-    event_nodes: dict[tuple[str, str, str], dict] = {}  # (tech, cat, event)
-    leaves: list[dict] = []
-    excluded: list[dict] = []
+    # (B) categories.yaml
+    with open(args.categories) as f:
+        cat_cfg = yaml.safe_load(f)["events"]
+    classified = {ev: cfg for ev, cfg in cat_cfg.items()}
+    print(f"[build] categorised={len(classified)}")
 
-    for r in rows:
-        ev, name, sec = r["event"], r["name"], r.get("section")
-        tech = classify_tech(ev, sec)
-        cat = classify_category(ev, sec)
-        if name in EXCLUDE_FIELDS or ev.startswith("#"):
-            excluded.append({"event": ev, "field": name, "reason": "structural_or_identity"})
+    # (C) enums
+    enums = parse_enums(Path(args.txt))
+    print(f"[build] enums={ {k: len(v) for k, v in enums.items()} }")
+
+    # (D) corpus coverage
+    db = SessionLocal()
+    try:
+        cell_coverage = corpus_cell_types(db)
+    finally:
+        db.close()
+    print(f"[build] events_with_cell_type_in_corpus={len(cell_coverage)}")
+
+    # (E) hiérarchie
+    nodes = []
+    tech_nodes = {t: {"node_type": "tech", "node_id": f"tech_{t}", "label": t,
+                      "parent_id": None} for t in ("LTE", "NR", "Shared")}
+    nodes.extend(tech_nodes.values())
+    cat_nodes = {}
+    event_nodes = {}
+    leaves_cell = []
+    leaves_bare = []
+    excluded_events = []
+    unclassified_events = []
+    exclude_fields_total = 0
+
+    fields_by_event = defaultdict(list)
+    for r in csv_rows:
+        fields_by_event[r["event"]].append(r)
+
+    for ev in all_events:
+        cfg = classified.get(ev)
+        if cfg and cfg.get("exclude"):
+            excluded_events.append({"event": ev, "reason": cfg["exclude"]})
             continue
+        if cfg is None:
+            unclassified_events.append(ev)
+            tech, cat, cell_scoped = "Shared", "Unclassified", False
+        else:
+            tech = cfg.get("tech", "Shared"); cat = cfg.get("category", "Unclassified")
+            cell_scoped = bool(cfg.get("cell_scoped", False))
+        if cat not in CATEGORIES: cat = "Unclassified"
+        # category node (lazy create)
         cat_key = (tech, cat)
-        if cat_key not in categories:
-            categories[cat_key] = {
-                "node_type": "category", "tech": tech, "label": cat,
-                "node_id": f"cat_{tech}_{slugify(cat)}", "parent_id": f"tech_{tech}",
-            }
-        ev_key = (tech, cat, ev)
-        if ev_key not in event_nodes:
-            event_nodes[ev_key] = {
-                "node_type": "event", "label": ev, "event": ev,
-                "node_id": f"ev_{slugify(ev)}", "parent_id": categories[cat_key]["node_id"],
-            }
-        leaves.append({
-            "node_type": "leaf", "event": ev, "label": name,
-            "metric_id": f"{ev}.{slugify(name)}",
-            "field_no": r.get("field_no"), "type": r.get("type"),
-            "unit": r.get("unit") or None, "range": r.get("range") or None,
-            "description": r.get("description") or None,
-            "parent_id": event_nodes[ev_key]["node_id"],
-            "node_id": f"lf_{slugify(ev)}_{slugify(name)}",
-            "selectable": True, "n": 0,
-            "proof": "documented-2.50",
-        })
+        if cat_key not in cat_nodes:
+            cat_nodes[cat_key] = {"node_type": "category", "tech": tech,
+                                  "label": cat, "node_id": f"cat_{tech}_{slugify(cat)}",
+                                  "parent_id": f"tech_{tech}"}
+        # event node
+        ev_nid = f"ev_{slugify(ev)}"
+        event_nodes[ev] = {"node_type": "event", "label": ev, "event": ev,
+                           "node_id": ev_nid, "parent_id": cat_nodes[cat_key]["node_id"],
+                           "cell_scoped": cell_scoped,
+                           "tech": tech}
+        # leaves : one per field; cell-scoped events get per-cell_type leaves
+        kept_fields = []
+        for row in fields_by_event[ev]:
+            name = row["name"]
+            if name in STRUCTURAL_FIELDS or name in IDENTITY_FIELDS or \
+               name in MASKED_INDEX_FIELDS or name in PAYLOAD_FIELDS:
+                exclude_fields_total += 1
+                continue
+            kept_fields.append(row)
+        if cell_scoped:
+            cells_seen = sorted(cell_coverage.get(ev, set()))
+            if not cells_seen:
+                cells_seen = []  # pas vu dans le corpus → leaves créées mais displayed=false
+            # Pour chaque cell_type présent dans le corpus, générer les feuilles ;
+            # les autres (déclarés par le spec) sont ajoutés avec displayed=false.
+            spec_cells = []
+            if tech == "LTE":
+                spec_cells = ([0] + list(range(1, 32)) + [1, 2, 3, 4])  # mesure + SCell
+            elif tech == "NR":
+                spec_cells = [0, 199] + list(range(1, 32)) + list(range(100, 132)) + [1000, 1001, 1002]
+            for ct in sorted(set(spec_cells)):
+                displayed = ct in cells_seen
+                for row in kept_fields:
+                    leaves_cell.append({
+                        "node_type": "leaf", "event": ev, "label": row["name"],
+                        "metric_id": f"{ev}.{slugify(row['name'])}@{ct}",
+                        "cell_type": ct, "parent_id": ev_nid,
+                        "node_id": f"lf_{slugify(ev)}_{slugify(row['name'])}_c{ct}",
+                        "field_no": row.get("field_no"), "type": row.get("type"),
+                        "unit": row.get("unit") or None, "range": row.get("range") or None,
+                        "description": row.get("description") or None,
+                        "proof": "documented-2.50", "selectable": True,
+                        "displayed": displayed, "n": 0,
+                    })
+        else:
+            for row in kept_fields:
+                leaves_bare.append({
+                    "node_type": "leaf", "event": ev, "label": row["name"],
+                    "metric_id": f"{ev}.{slugify(row['name'])}", "parent_id": ev_nid,
+                    "node_id": f"lf_{slugify(ev)}_{slugify(row['name'])}",
+                    "field_no": row.get("field_no"), "type": row.get("type"),
+                    "unit": row.get("unit") or None, "range": row.get("range") or None,
+                    "description": row.get("description") or None,
+                    "proof": "documented-2.50", "selectable": True,
+                    "displayed": True, "n": 0,
+                })
 
-    tech_nodes = [{"node_type": "tech", "label": t, "node_id": f"tech_{t}",
-                   "parent_id": None} for t in sorted({tech for tech, _ in categories.keys()})]
-    nodes = tech_nodes + list(categories.values()) + list(event_nodes.values()) + leaves
-    n_categories = len(categories); n_events = len(event_nodes); n_leaves = len(leaves)
-    print(f"[build_catalog] tech={len(tech_nodes)} categories={n_categories} events={n_events} leaves={n_leaves} excluded={len(excluded)}")
+    nodes.extend(cat_nodes.values())
+    nodes.extend(event_nodes.values())
+    nodes.extend(leaves_bare)
+    nodes.extend(leaves_cell)
+
+    n_metrics = len(leaves_bare)
+    n_leaves = len(leaves_bare) + len(leaves_cell)
+    print(f"[build] tech=3 categories={len(cat_nodes)} events_kept={len(event_nodes)}")
+    print(f"[build] excluded_events={len(excluded_events)} unclassified={len(unclassified_events)}")
+    print(f"[build] fields_excluded_total={exclude_fields_total}")
+    print(f"[build] n_metrics_bare={n_metrics} leaves_cell={len(leaves_cell)} n_leaves_total={n_leaves}")
 
     payload = {
         "catalog_version": args.version,
         "spec_version": spec_v,
         "decoder_min_version": args.decoder_min,
-        "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00","Z"),
+        "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "source_csv": args.csv,
-        "n_categories": n_categories,
-        "n_events": n_events,
+        "source_txt": args.txt,
+        "n_tech": 3,
+        "n_categories": len(cat_nodes),
+        "n_events_kept": len(event_nodes),
+        "n_metrics": n_metrics,  # feuilles hors cellule
         "n_leaves": n_leaves,
+        "excluded_events": excluded_events,
+        "unclassified_events": unclassified_events,
+        "enums": enums,
         "nodes": nodes,
-        "excluded": excluded,
     }
-
-    # 3) write JSON (deterministic : sort keys)
     out_path = Path(args.out)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(payload, sort_keys=True, indent=2, ensure_ascii=False))
     sha = hashlib.sha256(out_path.read_bytes()).hexdigest()
-    print(f"[build_catalog] out={out_path} sha256={sha}")
+    print(f"[build] out={out_path} sha256={sha}")
 
-    # 4) register in DB (optional)
     if args.commit:
         db = SessionLocal()
         try:
@@ -192,15 +275,15 @@ def main():
             db.execute(text(
                 "INSERT INTO catalog_release(version, spec_version, decoder_min_version, "
                 "sha256, n_categories, n_metrics, n_leaves, changelog, is_current) "
-                "VALUES(:v, :s, :d, :sha, :nc, :nm, :nl, :cl, TRUE) "
+                "VALUES(:v,:s,:d,:sha,:nc,:nm,:nl,:cl,TRUE) "
                 "ON CONFLICT(version) DO UPDATE SET sha256=excluded.sha256, "
                 "n_categories=excluded.n_categories, n_metrics=excluded.n_metrics, "
                 "n_leaves=excluded.n_leaves, is_current=TRUE"
             ), {"v": args.version, "s": spec_v, "d": args.decoder_min, "sha": sha,
-                "nc": n_categories, "nm": n_events, "nl": n_leaves,
-                "cl": f"generated from {args.csv}"})
+                "nc": len(cat_nodes), "nm": n_metrics, "nl": n_leaves,
+                "cl": f"gen from {Path(args.csv).name}; unclassified={len(unclassified_events)}; excluded={len(excluded_events)}"})
             db.commit()
-            print(f"[build_catalog] catalog_release row written : version={args.version} is_current=TRUE")
+            print(f"[build] catalog_release row v={args.version} is_current=TRUE")
         finally:
             db.close()
 
