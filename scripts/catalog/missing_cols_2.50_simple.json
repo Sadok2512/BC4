@@ -1,0 +1,1568 @@
+[
+  [
+    "amrs_cmr_ul",
+    "DOUBLE PRECISION",
+    "AMRS",
+    "CMR UL"
+  ],
+  [
+    "amrs_cmr_dl",
+    "DOUBLE PRECISION",
+    "AMRS",
+    "CMR DL"
+  ],
+  [
+    "applist_app_name",
+    "TEXT",
+    "APPLIST",
+    "App name"
+  ],
+  [
+    "applist_app_component",
+    "TEXT",
+    "APPLIST",
+    "App component"
+  ],
+  [
+    "applist_app_version",
+    "TEXT",
+    "APPLIST",
+    "App version"
+  ],
+  [
+    "applist_app_state",
+    "DOUBLE PRECISION",
+    "APPLIST",
+    "App state"
+  ],
+  [
+    "aqdl_aq_type_dl",
+    "DOUBLE PRECISION",
+    "AQDL",
+    "AQ type DL"
+  ],
+  [
+    "aqi_aq_signal",
+    "DOUBLE PRECISION",
+    "AQI",
+    "AQ signal"
+  ],
+  [
+    "caa_caa_time_correction",
+    "DOUBLE PRECISION",
+    "CAA",
+    "CAA time correction"
+  ],
+  [
+    "cac_call_connection_status",
+    "DOUBLE PRECISION",
+    "CAC",
+    "Call connection status"
+  ],
+  [
+    "cad_reserved",
+    "DOUBLE PRECISION",
+    "CAD",
+    "Reserved"
+  ],
+  [
+    "cellscan_band",
+    "DOUBLE PRECISION",
+    "CELLSCAN",
+    "Band"
+  ],
+  [
+    "cellscan_earfcn",
+    "DOUBLE PRECISION",
+    "CELLSCAN",
+    "EARFCN"
+  ],
+  [
+    "cellscan_pci",
+    "DOUBLE PRECISION",
+    "CELLSCAN",
+    "PCI"
+  ],
+  [
+    "cellscan_mcc",
+    "DOUBLE PRECISION",
+    "CELLSCAN",
+    "MCC"
+  ],
+  [
+    "cellscan_mnc",
+    "DOUBLE PRECISION",
+    "CELLSCAN",
+    "MNC"
+  ],
+  [
+    "cellscan_tac",
+    "DOUBLE PRECISION",
+    "CELLSCAN",
+    "TAC"
+  ],
+  [
+    "cellscan_cell_id",
+    "DOUBLE PRECISION",
+    "CELLSCAN",
+    "Cell ID"
+  ],
+  [
+    "cellscan_mbsfn_subframe",
+    "DOUBLE PRECISION",
+    "CELLSCAN",
+    "MBSFN subframe"
+  ],
+  [
+    "chi_serving_system",
+    "DOUBLE PRECISION",
+    "CHI",
+    "Serving system"
+  ],
+  [
+    "chi_band",
+    "DOUBLE PRECISION",
+    "CHI",
+    "Band"
+  ],
+  [
+    "chi_rrc_state",
+    "DOUBLE PRECISION",
+    "CHI",
+    "RRC state"
+  ],
+  [
+    "chi_pcell_bw",
+    "DOUBLE PRECISION",
+    "CHI",
+    "PCell BW"
+  ],
+  [
+    "chi_ch",
+    "DOUBLE PRECISION",
+    "CHI",
+    "Ch"
+  ],
+  [
+    "chi_pci",
+    "DOUBLE PRECISION",
+    "CHI",
+    "PCI"
+  ],
+  [
+    "chi_cell_id",
+    "DOUBLE PRECISION",
+    "CHI",
+    "Cell ID"
+  ],
+  [
+    "chi_tac",
+    "DOUBLE PRECISION",
+    "CHI",
+    "TAC"
+  ],
+  [
+    "chi_max_tx_power",
+    "DOUBLE PRECISION",
+    "CHI",
+    "Max TX power"
+  ],
+  [
+    "chi_tm",
+    "DOUBLE PRECISION",
+    "CHI",
+    "TM"
+  ],
+  [
+    "chi_cell_tx_antennas",
+    "DOUBLE PRECISION",
+    "CHI",
+    "Cell TX antennas"
+  ],
+  [
+    "chi_ul_dl_config",
+    "DOUBLE PRECISION",
+    "CHI",
+    "UL/DL config"
+  ],
+  [
+    "chi_cp",
+    "DOUBLE PRECISION",
+    "CHI",
+    "CP"
+  ],
+  [
+    "chi_root_sequence",
+    "DOUBLE PRECISION",
+    "CHI",
+    "Root sequence"
+  ],
+  [
+    "chi_c_rnti",
+    "DOUBLE PRECISION",
+    "CHI",
+    "C-RNTI"
+  ],
+  [
+    "chi_scells",
+    "DOUBLE PRECISION",
+    "CHI",
+    "#SCells"
+  ],
+  [
+    "chi_cell_type",
+    "DOUBLE PRECISION",
+    "CHI",
+    "Cell type"
+  ],
+  [
+    "chi_scell_bw",
+    "DOUBLE PRECISION",
+    "CHI",
+    "SCell BW"
+  ],
+  [
+    "chi_channel",
+    "DOUBLE PRECISION",
+    "CHI",
+    "Channel"
+  ],
+  [
+    "chi_antenna_ports",
+    "DOUBLE PRECISION",
+    "CHI",
+    "Antenna ports"
+  ],
+  [
+    "chi_special_subframe",
+    "DOUBLE PRECISION",
+    "CHI",
+    "Special subframe"
+  ],
+  [
+    "chi_ca",
+    "DOUBLE PRECISION",
+    "CHI",
+    "CA"
+  ],
+  [
+    "chi_mbsfn_subframe",
+    "DOUBLE PRECISION",
+    "CHI",
+    "MBSFN subframe"
+  ],
+  [
+    "chi_emm_substate",
+    "DOUBLE PRECISION",
+    "CHI",
+    "EMM substate"
+  ],
+  [
+    "chi_periodic_rm",
+    "DOUBLE PRECISION",
+    "CHI",
+    "Periodic RM"
+  ],
+  [
+    "chi_aperiodic_rm",
+    "DOUBLE PRECISION",
+    "CHI",
+    "Aperiodic RM"
+  ],
+  [
+    "chi_tti_bundling",
+    "DOUBLE PRECISION",
+    "CHI",
+    "TTI bundling"
+  ],
+  [
+    "chi_operation_mode",
+    "DOUBLE PRECISION",
+    "CHI",
+    "Operation mode"
+  ],
+  [
+    "chi_ul_subcarrier_spacing",
+    "DOUBLE PRECISION",
+    "CHI",
+    "UL subcarrier spacing"
+  ],
+  [
+    "chi_ul_ue_category",
+    "DOUBLE PRECISION",
+    "CHI",
+    "UL UE category"
+  ],
+  [
+    "chi_dl_ue_category",
+    "DOUBLE PRECISION",
+    "CHI",
+    "DL UE category"
+  ],
+  [
+    "cmdcomp_cmd_index",
+    "DOUBLE PRECISION",
+    "CMDCOMP",
+    "Cmd index"
+  ],
+  [
+    "cmdcomp_cmd_result",
+    "DOUBLE PRECISION",
+    "CMDCOMP",
+    "Cmd result"
+  ],
+  [
+    "cmdreq_cmd_index",
+    "DOUBLE PRECISION",
+    "CMDREQ",
+    "Cmd index"
+  ],
+  [
+    "cmdreq_cmd",
+    "TEXT",
+    "CMDREQ",
+    "Cmd"
+  ],
+  [
+    "cmdreq_cmd_arguments",
+    "TEXT",
+    "CMDREQ",
+    "Cmd arguments"
+  ],
+  [
+    "daa_ip",
+    "TEXT",
+    "DAA",
+    "IP"
+  ],
+  [
+    "daa_port",
+    "DOUBLE PRECISION",
+    "DAA",
+    "Port"
+  ],
+  [
+    "daa_authentication_scheme",
+    "DOUBLE PRECISION",
+    "DAA",
+    "Authentication scheme"
+  ],
+  [
+    "daa_transport_protocol",
+    "DOUBLE PRECISION",
+    "DAA",
+    "Transport protocol"
+  ],
+  [
+    "daf_application_protocol",
+    "DOUBLE PRECISION",
+    "DAF",
+    "Application protocol"
+  ],
+  [
+    "daf_data_fail_status",
+    "DOUBLE PRECISION",
+    "DAF",
+    "Data fail. status"
+  ],
+  [
+    "dci_cell_type",
+    "DOUBLE PRECISION",
+    "DCI",
+    "Cell type"
+  ],
+  [
+    "dci_ul_grants",
+    "DOUBLE PRECISION",
+    "DCI",
+    "UL grants"
+  ],
+  [
+    "dci_dl_grants",
+    "DOUBLE PRECISION",
+    "DCI",
+    "DL grants"
+  ],
+  [
+    "dci_variables",
+    "DOUBLE PRECISION",
+    "DCI",
+    "#Variables"
+  ],
+  [
+    "dci_dci_format",
+    "DOUBLE PRECISION",
+    "DCI",
+    "DCI format"
+  ],
+  [
+    "dci_dci_repetitions",
+    "DOUBLE PRECISION",
+    "DCI",
+    "DCI repetitions"
+  ],
+  [
+    "devi_battery_temp",
+    "DOUBLE PRECISION",
+    "DEVI",
+    "Battery temp."
+  ],
+  [
+    "devi_battery_charge",
+    "DOUBLE PRECISION",
+    "DEVI",
+    "Battery charge"
+  ],
+  [
+    "devi_battery_status",
+    "DOUBLE PRECISION",
+    "DEVI",
+    "Battery status"
+  ],
+  [
+    "devi_device_status",
+    "DOUBLE PRECISION",
+    "DEVI",
+    "Device status"
+  ],
+  [
+    "devi_device_battery_current",
+    "DOUBLE PRECISION",
+    "DEVI",
+    "Device battery current"
+  ],
+  [
+    "devi_device_cpu",
+    "DOUBLE PRECISION",
+    "DEVI",
+    "Device CPU"
+  ],
+  [
+    "devi_device_cpu_temp",
+    "DOUBLE PRECISION",
+    "DEVI",
+    "Device CPU temp."
+  ],
+  [
+    "devi_battery_health",
+    "DOUBLE PRECISION",
+    "DEVI",
+    "Battery health"
+  ],
+  [
+    "devi_device_battery_voltage",
+    "DOUBLE PRECISION",
+    "DEVI",
+    "Device battery voltage"
+  ],
+  [
+    "dnsquery_query_address",
+    "TEXT",
+    "DNSQUERY",
+    "Query address"
+  ],
+  [
+    "dnsquery_dns_query_latency",
+    "DOUBLE PRECISION",
+    "DNSQUERY",
+    "DNS query latency"
+  ],
+  [
+    "dnsquery_dns_query_result",
+    "DOUBLE PRECISION",
+    "DNSQUERY",
+    "DNS query result"
+  ],
+  [
+    "dnsquery_results",
+    "DOUBLE PRECISION",
+    "DNSQUERY",
+    "#Results"
+  ],
+  [
+    "dnsquery_resolved_ip",
+    "TEXT",
+    "DNSQUERY",
+    "Resolved IP"
+  ],
+  [
+    "dnsquery_dns_cache",
+    "DOUBLE PRECISION",
+    "DNSQUERY",
+    "DNS cache"
+  ],
+  [
+    "drate_application_protocol",
+    "DOUBLE PRECISION",
+    "DRATE",
+    "Application protocol"
+  ],
+  [
+    "dsummary_application_protocol",
+    "DOUBLE PRECISION",
+    "DSUMMARY",
+    "Application protocol"
+  ],
+  [
+    "err_error",
+    "TEXT",
+    "ERR",
+    "Error"
+  ],
+  [
+    "fer_fer",
+    "DOUBLE PRECISION",
+    "FER",
+    "FER"
+  ],
+  [
+    "gps_quality",
+    "DOUBLE PRECISION",
+    "GPS",
+    "Quality"
+  ],
+  [
+    "gps_pdop",
+    "DOUBLE PRECISION",
+    "GPS",
+    "PDOP"
+  ],
+  [
+    "gps_hdop",
+    "DOUBLE PRECISION",
+    "GPS",
+    "HDOP"
+  ],
+  [
+    "gps_vdop",
+    "DOUBLE PRECISION",
+    "GPS",
+    "VDOP"
+  ],
+  [
+    "gps_status",
+    "DOUBLE PRECISION",
+    "GPS",
+    "Status"
+  ],
+  [
+    "gps_ba_alt",
+    "DOUBLE PRECISION",
+    "GPS",
+    "Ba alt."
+  ],
+  [
+    "hoa_number_of_current",
+    "DOUBLE PRECISION",
+    "HOA",
+    "Number of current"
+  ],
+  [
+    "hof_reserved",
+    "DOUBLE PRECISION",
+    "HOF",
+    "Reserved"
+  ],
+  [
+    "hoi_ho_to_preamble",
+    "DOUBLE PRECISION",
+    "HOI",
+    "HO to preamble"
+  ],
+  [
+    "lua_lau_type",
+    "DOUBLE PRECISION",
+    "LUA",
+    "LAU type"
+  ],
+  [
+    "luf_luf_status",
+    "DOUBLE PRECISION",
+    "LUF",
+    "LUF status"
+  ],
+  [
+    "luf_old_lac",
+    "DOUBLE PRECISION",
+    "LUF",
+    "Old LAC"
+  ],
+  [
+    "lus_old_lac",
+    "DOUBLE PRECISION",
+    "LUS",
+    "Old LAC"
+  ],
+  [
+    "lus_lac",
+    "DOUBLE PRECISION",
+    "LUS",
+    "LAC"
+  ],
+  [
+    "lus_mcc",
+    "DOUBLE PRECISION",
+    "LUS",
+    "MCC"
+  ],
+  [
+    "lus_mnc",
+    "DOUBLE PRECISION",
+    "LUS",
+    "MNC"
+  ],
+  [
+    "maci_serving_cells",
+    "DOUBLE PRECISION",
+    "MACI",
+    "#Serving cells"
+  ],
+  [
+    "maci_cell_type",
+    "DOUBLE PRECISION",
+    "MACI",
+    "Cell type"
+  ],
+  [
+    "maci_cell_state",
+    "DOUBLE PRECISION",
+    "MACI",
+    "Cell state"
+  ],
+  [
+    "macrate_mac_dl_bitrate",
+    "DOUBLE PRECISION",
+    "MACRATE",
+    "MAC DL bitrate"
+  ],
+  [
+    "macrate_mac_dl_block_rate",
+    "DOUBLE PRECISION",
+    "MACRATE",
+    "MAC DL block rate"
+  ],
+  [
+    "macrate_mac_dl_bler",
+    "DOUBLE PRECISION",
+    "MACRATE",
+    "MAC DL BLER"
+  ],
+  [
+    "macrate_mac_dl_bler_1st",
+    "DOUBLE PRECISION",
+    "MACRATE",
+    "MAC DL BLER 1st"
+  ],
+  [
+    "macrate_mac_dl_bler_2nd",
+    "DOUBLE PRECISION",
+    "MACRATE",
+    "MAC DL BLER 2nd"
+  ],
+  [
+    "macrate_mac_dl_bler_3rd",
+    "DOUBLE PRECISION",
+    "MACRATE",
+    "MAC DL BLER 3rd+"
+  ],
+  [
+    "macrate_mac_dl_new",
+    "DOUBLE PRECISION",
+    "MACRATE",
+    "MAC DL new"
+  ],
+  [
+    "macrate_mac_dl_redundant",
+    "DOUBLE PRECISION",
+    "MACRATE",
+    "MAC DL redundant"
+  ],
+  [
+    "macrate_cell_type",
+    "DOUBLE PRECISION",
+    "MACRATE",
+    "Cell type"
+  ],
+  [
+    "macrateu_mac_ul_bitrate",
+    "DOUBLE PRECISION",
+    "MACRATEU",
+    "MAC UL bitrate"
+  ],
+  [
+    "macrateu_mac_ul_block_rate",
+    "DOUBLE PRECISION",
+    "MACRATEU",
+    "MAC UL block rate"
+  ],
+  [
+    "macrateu_mac_ul_retr",
+    "DOUBLE PRECISION",
+    "MACRATEU",
+    "MAC UL retr."
+  ],
+  [
+    "macrateu_mac_ul_retr_1st",
+    "DOUBLE PRECISION",
+    "MACRATEU",
+    "MAC UL retr. 1st"
+  ],
+  [
+    "macrateu_mac_ul_retr_2nd",
+    "DOUBLE PRECISION",
+    "MACRATEU",
+    "MAC UL retr. 2nd"
+  ],
+  [
+    "macrateu_mac_ul_retr_3rd",
+    "DOUBLE PRECISION",
+    "MACRATEU",
+    "MAC UL retr. 3rd+"
+  ],
+  [
+    "macrateu_mac_ul_residual_bler",
+    "DOUBLE PRECISION",
+    "MACRATEU",
+    "MAC UL residual BLER"
+  ],
+  [
+    "macrateu_mac_ul_new",
+    "DOUBLE PRECISION",
+    "MACRATEU",
+    "MAC UL new"
+  ],
+  [
+    "macrateu_cell_type",
+    "DOUBLE PRECISION",
+    "MACRATEU",
+    "Cell type"
+  ],
+  [
+    "msga_message_type",
+    "DOUBLE PRECISION",
+    "MSGA",
+    "Message type"
+  ],
+  [
+    "msgs_message_type",
+    "DOUBLE PRECISION",
+    "MSGS",
+    "Message type"
+  ],
+  [
+    "nlist_source_system",
+    "DOUBLE PRECISION",
+    "NLIST",
+    "Source system"
+  ],
+  [
+    "ofdmscan_ch",
+    "DOUBLE PRECISION",
+    "OFDMSCAN",
+    "Ch"
+  ],
+  [
+    "ofdmscan_ph_ch_type",
+    "DOUBLE PRECISION",
+    "OFDMSCAN",
+    "Ph. ch type"
+  ],
+  [
+    "ofdmscan_dl_bw",
+    "DOUBLE PRECISION",
+    "OFDMSCAN",
+    "DL BW"
+  ],
+  [
+    "ofdmscan_rssi",
+    "DOUBLE PRECISION",
+    "OFDMSCAN",
+    "RSSI"
+  ],
+  [
+    "ofdmscan_band",
+    "DOUBLE PRECISION",
+    "OFDMSCAN",
+    "Band"
+  ],
+  [
+    "pad_deact_time",
+    "DOUBLE PRECISION",
+    "PAD",
+    "Deact. time"
+  ],
+  [
+    "pbc_pb_qci",
+    "DOUBLE PRECISION",
+    "PBC",
+    "PB QCI"
+  ],
+  [
+    "pbf_esm_cause",
+    "DOUBLE PRECISION",
+    "PBF",
+    "ESM cause"
+  ],
+  [
+    "plaisum_total_prb_usage",
+    "DOUBLE PRECISION",
+    "PLAISUM",
+    "Total PRB usage"
+  ],
+  [
+    "plaisum_total_prb_utilization",
+    "DOUBLE PRECISION",
+    "PLAISUM",
+    "Total PRB utilization"
+  ],
+  [
+    "plaisum_streams",
+    "DOUBLE PRECISION",
+    "PLAISUM",
+    "#Streams"
+  ],
+  [
+    "plaisum_scheduled_cells",
+    "DOUBLE PRECISION",
+    "PLAISUM",
+    "#Scheduled cells"
+  ],
+  [
+    "ppprate_ppp_rate_ul",
+    "DOUBLE PRECISION",
+    "PPPRATE",
+    "PPP rate UL"
+  ],
+  [
+    "ppprate_ppp_rate_dl",
+    "DOUBLE PRECISION",
+    "PPPRATE",
+    "PPP rate DL"
+  ],
+  [
+    "ppprate_sent_ppp_bytes",
+    "DOUBLE PRECISION",
+    "PPPRATE",
+    "Sent PPP bytes"
+  ],
+  [
+    "ppprate_recv_ppp_bytes",
+    "DOUBLE PRECISION",
+    "PPPRATE",
+    "Recv. PPP bytes"
+  ],
+  [
+    "psm_psm",
+    "DOUBLE PRECISION",
+    "PSM",
+    "PSM"
+  ],
+  [
+    "psmi_t3324",
+    "DOUBLE PRECISION",
+    "PSMI",
+    "T3324"
+  ],
+  [
+    "psmi_t3412",
+    "DOUBLE PRECISION",
+    "PSMI",
+    "T3412"
+  ],
+  [
+    "psmi_edrx_cycle",
+    "DOUBLE PRECISION",
+    "PSMI",
+    "eDRX cycle"
+  ],
+  [
+    "psmi_ptw",
+    "DOUBLE PRECISION",
+    "PSMI",
+    "PTW"
+  ],
+  [
+    "psmr_req_t3324",
+    "DOUBLE PRECISION",
+    "PSMR",
+    "Req. T3324"
+  ],
+  [
+    "psmr_req_t3412",
+    "DOUBLE PRECISION",
+    "PSMR",
+    "Req. T3412"
+  ],
+  [
+    "psmr_req_edrx_cycle",
+    "DOUBLE PRECISION",
+    "PSMR",
+    "Req. eDRX cycle"
+  ],
+  [
+    "psmr_req_ptw",
+    "DOUBLE PRECISION",
+    "PSMR",
+    "Req. PTW"
+  ],
+  [
+    "qspn_avg_tput_class",
+    "DOUBLE PRECISION",
+    "QSPN",
+    "Avg TPut class"
+  ],
+  [
+    "qspn_peak_tput_class",
+    "DOUBLE PRECISION",
+    "QSPN",
+    "Peak TPut class"
+  ],
+  [
+    "qspn_delay_class",
+    "DOUBLE PRECISION",
+    "QSPN",
+    "Delay class"
+  ],
+  [
+    "qspn_priority_class",
+    "DOUBLE PRECISION",
+    "QSPN",
+    "Priority class"
+  ],
+  [
+    "qspn_reliab_class",
+    "DOUBLE PRECISION",
+    "QSPN",
+    "Reliab. class"
+  ],
+  [
+    "qspn_traffic_class",
+    "DOUBLE PRECISION",
+    "QSPN",
+    "Traffic class"
+  ],
+  [
+    "qspn_max_ul_tput",
+    "DOUBLE PRECISION",
+    "QSPN",
+    "Max UL TPut"
+  ],
+  [
+    "qspn_max_dl_tput",
+    "DOUBLE PRECISION",
+    "QSPN",
+    "Max DL TPut"
+  ],
+  [
+    "qspn_gr_ul_tput",
+    "DOUBLE PRECISION",
+    "QSPN",
+    "Gr. UL TPut"
+  ],
+  [
+    "qspn_gr_dl_tput",
+    "DOUBLE PRECISION",
+    "QSPN",
+    "Gr. DL TPut"
+  ],
+  [
+    "qspn_deliv_order",
+    "DOUBLE PRECISION",
+    "QSPN",
+    "Deliv. order"
+  ],
+  [
+    "qspn_max_sdu_size",
+    "DOUBLE PRECISION",
+    "QSPN",
+    "Max SDU size"
+  ],
+  [
+    "qspn_sdu_err_ratio",
+    "TEXT",
+    "QSPN",
+    "SDU err. ratio"
+  ],
+  [
+    "qspn_resid_ber",
+    "TEXT",
+    "QSPN",
+    "Resid. BER"
+  ],
+  [
+    "qspn_deliv_err_sdu",
+    "DOUBLE PRECISION",
+    "QSPN",
+    "Deliv. err. SDU"
+  ],
+  [
+    "qspn_transf_delay",
+    "DOUBLE PRECISION",
+    "QSPN",
+    "Transf. delay"
+  ],
+  [
+    "qspn_thp",
+    "DOUBLE PRECISION",
+    "QSPN",
+    "THP"
+  ],
+  [
+    "qspn_qci",
+    "DOUBLE PRECISION",
+    "QSPN",
+    "QCI"
+  ],
+  [
+    "qspn_eps_max_ul_tput",
+    "DOUBLE PRECISION",
+    "QSPN",
+    "EPS max UL TPut"
+  ],
+  [
+    "qspn_eps_max_dl_tput",
+    "DOUBLE PRECISION",
+    "QSPN",
+    "EPS max DL TPut"
+  ],
+  [
+    "qspn_eps_gr_ul_tput",
+    "DOUBLE PRECISION",
+    "QSPN",
+    "EPS gr. UL TPut"
+  ],
+  [
+    "qspn_eps_gr_dl_tput",
+    "DOUBLE PRECISION",
+    "QSPN",
+    "EPS gr. DL TPut"
+  ],
+  [
+    "qspr_req_avg_tput_class",
+    "DOUBLE PRECISION",
+    "QSPR",
+    "Req. avg. TPut class"
+  ],
+  [
+    "qspr_req_peak_tput_class",
+    "DOUBLE PRECISION",
+    "QSPR",
+    "Req. peak TPut class"
+  ],
+  [
+    "qspr_req_delay_class",
+    "DOUBLE PRECISION",
+    "QSPR",
+    "Req. delay class"
+  ],
+  [
+    "qspr_req_priority_class",
+    "DOUBLE PRECISION",
+    "QSPR",
+    "Req. priority class"
+  ],
+  [
+    "qspr_req_reliab_class",
+    "DOUBLE PRECISION",
+    "QSPR",
+    "Req. reliab. class"
+  ],
+  [
+    "qspr_min_avg_tput_class",
+    "DOUBLE PRECISION",
+    "QSPR",
+    "Min avg. TPut class"
+  ],
+  [
+    "qspr_min_peak_tput_class",
+    "DOUBLE PRECISION",
+    "QSPR",
+    "Min peak TPut class"
+  ],
+  [
+    "qspr_min_delay_class",
+    "DOUBLE PRECISION",
+    "QSPR",
+    "Min delay class"
+  ],
+  [
+    "qspr_min_priority_class",
+    "DOUBLE PRECISION",
+    "QSPR",
+    "Min priority class"
+  ],
+  [
+    "qspr_min_reliab_class",
+    "DOUBLE PRECISION",
+    "QSPR",
+    "Min reliab. class"
+  ],
+  [
+    "qspr_req_traffic_class",
+    "DOUBLE PRECISION",
+    "QSPR",
+    "Req. traffic class"
+  ],
+  [
+    "qspr_req_max_ul_tput",
+    "DOUBLE PRECISION",
+    "QSPR",
+    "Req. max UL TPut"
+  ],
+  [
+    "qspr_req_max_dl_tput",
+    "DOUBLE PRECISION",
+    "QSPR",
+    "Req. max DL TPut"
+  ],
+  [
+    "qspr_req_gr_ul_tput",
+    "DOUBLE PRECISION",
+    "QSPR",
+    "Req. gr. UL TPut"
+  ],
+  [
+    "qspr_req_gr_dl_tput",
+    "DOUBLE PRECISION",
+    "QSPR",
+    "Req. gr. DL TPut"
+  ],
+  [
+    "qspr_req_deliv_order",
+    "DOUBLE PRECISION",
+    "QSPR",
+    "Req. deliv. order"
+  ],
+  [
+    "qspr_req_max_sdu_size",
+    "DOUBLE PRECISION",
+    "QSPR",
+    "Req. max SDU size"
+  ],
+  [
+    "qspr_req_sdu_err_ratio",
+    "TEXT",
+    "QSPR",
+    "Req. SDU err. ratio"
+  ],
+  [
+    "qspr_req_resid_ber",
+    "TEXT",
+    "QSPR",
+    "Req. resid. BER"
+  ],
+  [
+    "qspr_req_deliv_err_sdu",
+    "DOUBLE PRECISION",
+    "QSPR",
+    "Req. deliv. err. SDU"
+  ],
+  [
+    "qspr_req_transfer_delay",
+    "DOUBLE PRECISION",
+    "QSPR",
+    "Req. transfer delay"
+  ],
+  [
+    "qspr_req_thp",
+    "DOUBLE PRECISION",
+    "QSPR",
+    "Req. THP"
+  ],
+  [
+    "qspr_min_traffic_class",
+    "DOUBLE PRECISION",
+    "QSPR",
+    "Min traffic class"
+  ],
+  [
+    "qspr_min_max_ul_tput",
+    "DOUBLE PRECISION",
+    "QSPR",
+    "Min max UL TPut"
+  ],
+  [
+    "qspr_min_max_dl_tput",
+    "DOUBLE PRECISION",
+    "QSPR",
+    "Min max DL TPut"
+  ],
+  [
+    "qspr_min_gr_ul_tput",
+    "DOUBLE PRECISION",
+    "QSPR",
+    "Min gr. UL TPut"
+  ],
+  [
+    "qspr_min_gr_dl_tput",
+    "DOUBLE PRECISION",
+    "QSPR",
+    "Min gr. DL TPut"
+  ],
+  [
+    "qspr_min_deliv_order",
+    "DOUBLE PRECISION",
+    "QSPR",
+    "Min deliv. order"
+  ],
+  [
+    "qspr_min_max_sdu_size",
+    "DOUBLE PRECISION",
+    "QSPR",
+    "Min max SDU size"
+  ],
+  [
+    "qspr_min_sdu_err",
+    "TEXT",
+    "QSPR",
+    "Min SDU err."
+  ],
+  [
+    "qspr_min_resid_ber",
+    "TEXT",
+    "QSPR",
+    "Min resid. BER"
+  ],
+  [
+    "qspr_min_del_err_sdu",
+    "DOUBLE PRECISION",
+    "QSPR",
+    "Min del. err. SDU"
+  ],
+  [
+    "qspr_min_tranfer_delay",
+    "DOUBLE PRECISION",
+    "QSPR",
+    "Min tranfer delay"
+  ],
+  [
+    "qspr_min_thp",
+    "DOUBLE PRECISION",
+    "QSPR",
+    "Min THP"
+  ],
+  [
+    "qspr_req_qci",
+    "DOUBLE PRECISION",
+    "QSPR",
+    "Req. QCI"
+  ],
+  [
+    "qspr_req_eps_max_ul_tput",
+    "DOUBLE PRECISION",
+    "QSPR",
+    "Req. EPS max UL TPut"
+  ],
+  [
+    "qspr_req_eps_max_dl_tput",
+    "DOUBLE PRECISION",
+    "QSPR",
+    "Req. EPS max DL TPut"
+  ],
+  [
+    "qspr_req_eps_gr_ul_tput",
+    "DOUBLE PRECISION",
+    "QSPR",
+    "Req. EPS gr. UL TPut"
+  ],
+  [
+    "qspr_req_eps_gr_dl_tput",
+    "DOUBLE PRECISION",
+    "QSPR",
+    "Req. EPS gr. DL TPut"
+  ],
+  [
+    "rachi_preamble_failures",
+    "DOUBLE PRECISION",
+    "RACHI",
+    "Preamble failures"
+  ],
+  [
+    "rachi_preamble_successes",
+    "DOUBLE PRECISION",
+    "RACHI",
+    "Preamble successes"
+  ],
+  [
+    "rachi_cr_failures",
+    "DOUBLE PRECISION",
+    "RACHI",
+    "CR failures"
+  ],
+  [
+    "rachi_ra_rnti",
+    "DOUBLE PRECISION",
+    "RACHI",
+    "RA-RNTI"
+  ],
+  [
+    "rachi_response_window_size",
+    "DOUBLE PRECISION",
+    "RACHI",
+    "Response window size"
+  ],
+  [
+    "rachi_ta",
+    "DOUBLE PRECISION",
+    "RACHI",
+    "TA"
+  ],
+  [
+    "rachi_cr_msg4_decoding",
+    "DOUBLE PRECISION",
+    "RACHI",
+    "CR MSG4 decoding"
+  ],
+  [
+    "rachi_cell_type",
+    "DOUBLE PRECISION",
+    "RACHI",
+    "Cell type"
+  ],
+  [
+    "rachi_ce",
+    "DOUBLE PRECISION",
+    "RACHI",
+    "CE"
+  ],
+  [
+    "rachi_rach_reps",
+    "DOUBLE PRECISION",
+    "RACHI",
+    "RACH reps"
+  ],
+  [
+    "rachi_initial_ce",
+    "DOUBLE PRECISION",
+    "RACHI",
+    "Initial CE"
+  ],
+  [
+    "rachsm_rach_message_type",
+    "DOUBLE PRECISION",
+    "RACHSM",
+    "RACH message type"
+  ],
+  [
+    "rachsm_params",
+    "DOUBLE PRECISION",
+    "RACHSM",
+    "#Params"
+  ],
+  [
+    "rbi_rbs",
+    "DOUBLE PRECISION",
+    "RBI",
+    "#RBs"
+  ],
+  [
+    "rrf_rrc_rej_status",
+    "DOUBLE PRECISION",
+    "RRF",
+    "RRC rej. status"
+  ],
+  [
+    "rrre_re_est_status",
+    "DOUBLE PRECISION",
+    "RRRE",
+    "Re-est status"
+  ],
+  [
+    "rrre_re_est_cause",
+    "DOUBLE PRECISION",
+    "RRRE",
+    "Re-est cause"
+  ],
+  [
+    "rtpjitter_rtp_jitter_type",
+    "DOUBLE PRECISION",
+    "RTPJITTER",
+    "RTP jitter type"
+  ],
+  [
+    "rtpsm_rtp_seq_n",
+    "DOUBLE PRECISION",
+    "RTPSM",
+    "RTP SEQ N"
+  ],
+  [
+    "rua_rau_type",
+    "DOUBLE PRECISION",
+    "RUA",
+    "RAU type"
+  ],
+  [
+    "rus_old_rac",
+    "DOUBLE PRECISION",
+    "RUS",
+    "Old RAC"
+  ],
+  [
+    "rus_old_lac",
+    "DOUBLE PRECISION",
+    "RUS",
+    "Old LAC"
+  ],
+  [
+    "rus_rac",
+    "DOUBLE PRECISION",
+    "RUS",
+    "RAC"
+  ],
+  [
+    "rus_lac",
+    "DOUBLE PRECISION",
+    "RUS",
+    "LAC"
+  ],
+  [
+    "scanconfig_scanning_sets",
+    "DOUBLE PRECISION",
+    "SCANCONFIG",
+    "Scanning sets"
+  ],
+  [
+    "scanconfig_scanning_type",
+    "DOUBLE PRECISION",
+    "SCANCONFIG",
+    "Scanning type"
+  ],
+  [
+    "scellmod_result",
+    "DOUBLE PRECISION",
+    "SCELLMOD",
+    "Result"
+  ],
+  [
+    "scellmod_scells_added",
+    "DOUBLE PRECISION",
+    "SCELLMOD",
+    "#SCells added"
+  ],
+  [
+    "scellmod_cell_type",
+    "DOUBLE PRECISION",
+    "SCELLMOD",
+    "Cell type"
+  ],
+  [
+    "scellmod_band",
+    "DOUBLE PRECISION",
+    "SCELLMOD",
+    "Band"
+  ],
+  [
+    "scellmod_arfcn",
+    "DOUBLE PRECISION",
+    "SCELLMOD",
+    "ARFCN"
+  ],
+  [
+    "scellmod_pci",
+    "DOUBLE PRECISION",
+    "SCELLMOD",
+    "PCI"
+  ],
+  [
+    "scellmod_scells_removed",
+    "DOUBLE PRECISION",
+    "SCELLMOD",
+    "#SCells removed"
+  ],
+  [
+    "script_test_script_file",
+    "TEXT",
+    "SCRIPT",
+    "Test script file"
+  ],
+  [
+    "script_test_script_version",
+    "TEXT",
+    "SCRIPT",
+    "Test script version"
+  ],
+  [
+    "script_repeats",
+    "DOUBLE PRECISION",
+    "SCRIPT",
+    "#Repeats"
+  ],
+  [
+    "script_sync_group",
+    "TEXT",
+    "SCRIPT",
+    "Sync group"
+  ],
+  [
+    "script_test_script_lines",
+    "DOUBLE PRECISION",
+    "SCRIPT",
+    "#Test script lines"
+  ],
+  [
+    "script_cmd_index",
+    "DOUBLE PRECISION",
+    "SCRIPT",
+    "Cmd index"
+  ],
+  [
+    "script_cmd",
+    "TEXT",
+    "SCRIPT",
+    "Cmd"
+  ],
+  [
+    "script_cmd_arguments",
+    "TEXT",
+    "SCRIPT",
+    "Cmd arguments"
+  ],
+  [
+    "tad_cell_type",
+    "DOUBLE PRECISION",
+    "TAD",
+    "Cell type"
+  ],
+  [
+    "trchi_trchs",
+    "DOUBLE PRECISION",
+    "TRCHI",
+    "#TrChs"
+  ],
+  [
+    "tua_tau_type",
+    "DOUBLE PRECISION",
+    "TUA",
+    "TAU type"
+  ],
+  [
+    "tuf_emm_cause",
+    "DOUBLE PRECISION",
+    "TUF",
+    "EMM cause"
+  ],
+  [
+    "tus_tacs",
+    "DOUBLE PRECISION",
+    "TUS",
+    "#TACs"
+  ],
+  [
+    "tus_mcc",
+    "DOUBLE PRECISION",
+    "TUS",
+    "MCC"
+  ],
+  [
+    "tus_mnc",
+    "DOUBLE PRECISION",
+    "TUS",
+    "MNC"
+  ],
+  [
+    "tus_tac",
+    "DOUBLE PRECISION",
+    "TUS",
+    "TAC"
+  ]
+]

@@ -5,17 +5,32 @@ from functools import lru_cache
 
 @lru_cache(maxsize=1)
 def schemas():
-    """2.2a REVERTED : charge uniquement `schemas/` (1.5.1) pour éviter
-    les colonnes `nmf_event_light` manquantes (le refactor 2.50 requiert
-    DDL alembic préalable pour les 193 events ADDED). Les YAMLs 2.50
-    restent dans `schemas-2.50/` pour la régénération et la génération
-    du catalogue, mais le decoder reste 1.5.1 tant que la migration DDL
-    n'est pas appliquée. Prochaine session 2.2a bis.
+    """Phase 2.2a — charge schemas-2.50/ pour les SIMPLE events corpus
+    (98) ; fallback schemas/ 1.5.1 pour tous les autres (12 complex events
+    avec header+group + 3 events absents du 2.50 HOS/SIPREGC/STARTSCAN +
+    events hors corpus).
+
+    COMPLEX_CORPUS_EVENTS listent les events corpus qui ont des groups
+    dans 1.5.1 ; leur schema 2.50 flat écraserait la structure header+
+    group → on force le fallback 1.5.1 pour ces events (nmf_event_light_
+    group conserve ses colonnes).
     """
     base = Path(__file__).parent
     result: dict = {}
+    # Fallback 1.5.1 d'abord
     for p in sorted((base / 'schemas').glob('*.yaml')):
         result[p.stem] = json.loads(p.read_text())
+    # 2.50 override uniquement pour les SIMPLE events (pas de groups 1.5.1).
+    for p in sorted((base / 'schemas-2.50').glob('*.yaml')):
+        try:
+            doc = json.loads(p.read_text())
+        except Exception:
+            continue
+        ev = doc.get('event') or p.stem.replace('_hash_', '#')
+        # Skip override si event a des groups 1.5.1 (COMPLEX)
+        if ev in result and result[ev].get('groups'):
+            continue  # keep 1.5.1 header+group structure
+        result[ev] = doc
     # The NFF prefix is event,time,context-count,context-ids.  Expose the
     # schema-declared beginning of the event parameters to consumers so no
     # catalogue or audit has to assume a universal column 5.  Existing
