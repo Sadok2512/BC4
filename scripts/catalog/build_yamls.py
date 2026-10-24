@@ -1,16 +1,16 @@
-"""Phase 2.1 — Génère les 282 YAML décodeur depuis le CSV NFF 2.50.
+"""Phase 2.1/2.2a — Génère les 282 YAML décodeur depuis le CSV NFF 2.50.
 
-Un fichier par event sous `--out-dir` (défaut `app/nmf_decoder/schemas-2.50/`).
-Format compatible avec le decoder (keys: event, systems, system_col, header,
-schema_version). Les champs sont ordonnés par `field_no` CSV.
-
-Pas d'édition manuelle : si la spec 2.50 décalage, on régénère.
+Format compatible avec le decoder : `col` = INDEX ABSOLU de token dans la
+ligne NMF brute. Correction 2.2a : `col = system_col + field_no` (où
+`field_no` est l'index relatif 1..N dans le CSV spec, et `system_col`
+est hérité des YAMLs 1.5.1 — défaut 4 pour les events nouveaux).
 
 Usage :
   python scripts/catalog/build_yamls.py \
     --csv /specs/nmf_all_events_fields_2.50.csv \
     --categories scripts/catalog/categories.yaml \
-    --out-dir app/nmf_decoder/schemas-2.50/
+    --out-dir app/nmf_decoder/schemas-2.50/ \
+    --legacy-schemas app/nmf_decoder/schemas/
 """
 from __future__ import annotations
 import argparse, csv, re
@@ -33,7 +33,22 @@ def main():
     ap.add_argument("--csv", required=True)
     ap.add_argument("--categories", required=True)
     ap.add_argument("--out-dir", required=True)
+    ap.add_argument("--legacy-schemas", default=None,
+                    help="Dir with 1.5.1 YAMLs to inherit system_col per event")
     args = ap.parse_args()
+    # Load system_col from legacy YAMLs for carry-over
+    legacy_system_col: dict[str, int] = {}
+    if args.legacy_schemas:
+        for p in Path(args.legacy_schemas).glob("*.yaml"):
+            try:
+                d = json.loads(p.read_text())
+                sc = d.get("system_col")
+                if isinstance(sc, int):
+                    legacy_system_col[d.get("event") or p.stem] = sc
+            except Exception:
+                pass
+        print(f"[build_yamls] legacy system_col loaded for {len(legacy_system_col)} events")
+    DEFAULT_SYSTEM_COL = 4
     with open(args.csv, newline="", encoding="utf-8") as f:
         rows = list(csv.DictReader(f))
     with open(args.categories) as f:
@@ -54,7 +69,8 @@ def main():
             try: return int(r["field_no"])
             except (TypeError, ValueError): return 999
         flds = sorted(flds, key=_no)
-        system_col = next((_no(r) for r in flds if r["name"] in ("System", "System code")), None)
+        # Carry-over du system_col depuis les YAMLs 1.5.1 (sinon défaut 4).
+        system_col = legacy_system_col.get(ev, DEFAULT_SYSTEM_COL)
         # Default agg declaration : last / mean / max / sum selon type/unit
         def _agg(row):
             t = (row.get("type") or "").lower(); u = (row.get("unit") or "").lower()
@@ -68,8 +84,9 @@ def main():
         for r in flds:
             name = r["name"]
             if name in STRUCTURAL: continue
+            # col absolu = system_col + field_no CSV (1-based).
             headers.append({
-                "col": _no(r),
+                "col": system_col + _no(r),
                 "code": f"{ev.lower()}.{slugify(name)}" if ev else slugify(name),
                 "label": name,
                 "type": CSV_TO_SCHEMA_TYPE.get(r.get("type", "").strip(), "text"),

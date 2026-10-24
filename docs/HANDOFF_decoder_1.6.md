@@ -3,7 +3,84 @@
 Fichier de passation entre sessions BC3. Une session neuve doit pouvoir
 reprendre en lisant **ce fichier seul**.
 
-Dernière mise à jour : 2026-10-24 16:05Z (session Opus 4.7 1M).
+Dernière mise à jour : 2026-10-24 16:55Z (session Opus 4.7 1M, 2e passe).
+
+**ÉTAT 2.2a : BLOCKED sur col-mapping YAML + Keysight manquant.**
+
+## BLOCKERS DÉCOUVERTS (2.2a, 2e passe)
+
+### B1 — Keysight .nmf absents du filesystem
+
+```
+ls /home/devmat/BC4/specs/*.zip
+  BC4_SPECS_ALL.zip         ← pas de .nmf dedans
+  bc4_dict_v2_specs*.zip    ← pas de .nmf
+  nff_2.50_pack.zip         ← CSV + TXT + PDF uniquement
+  nmf_full_catalogue_2.19.zip ← CSV uniquement
+```
+
+**Aucun `Nemo_FileFormat.zip`** sur le filesystem. L'oracle Keysight G29=0 est
+impossible tant que ce fichier n'est pas livré. Action requise : upload du
+zip Keysight OU chemin corrigé.
+
+### B2 — field_no CSV NFF 2.50 est SECTION-RELATIF
+
+Révélation critique en comparant avec 1.5.1 :
+
+```
+CSV 2.50 : CI, Parameters,          1, Measured system
+CSV 2.50 : CI, Parameters for GSM,  1, C/I                 ← field_no=1 GSM
+CSV 2.50 : CI, Parameters for LTE,  1, #Header params      ← field_no=1 LTE
+CSV 2.50 : CI, Parameters for LTE,  3, Cell type           ← field_no=3 LTE
+```
+
+Mon générateur Phase 2.1 agrégeait tous les sections → collisions col
+(`col=5` 3× pour mêmes field_no de sections différentes).
+
+**Correction attendue** :
+```
+col_absolu = system_col(event) + field_no_SECTION_matching_systems
+```
+
+Donc `ci.cell_type` LTE : system_col=4 + field_no_LTE=3 = **col 7** (=
+1.5.1 existant, pas 3). Le "diff" apparent `ci.cell_type 7→3` était un
+artefact de ma méthode, pas un vrai décalage de la spec.
+
+**Conséquence majeure** : la 1.5.1 était correcte sur les technos actives
+(LTE). La dette G26 que BC3 cite est **beaucoup moins étendue** qu'il ne
+semblait. À confirmer sur chaque event une fois le filtre section-par-system
+implémenté.
+
+### B3 — Scope du refactor réduit
+
+Vu B2, le refactor "lire YAML 2.50" perd 90% de son intérêt pour les events
+LTE déjà bien décodés par 1.5.1. Le vrai gain 2.50 est :
+- Les 193 events ADDED (UMTS legacy + NR advanced + #metadata) jamais
+  décodés avant.
+- La couverture NR explicite (cell_scoped=true pour les events avec `Scope`
+  champ dans le CSV).
+- Les nouveaux champs ajoutés aux 85 events communs (#HW +4 champs,
+  #LICENSE +5, etc.).
+
+## NEXT SESSION — reprise 2.2a (après upload Keysight)
+
+1. **Patch `scripts/catalog/build_yamls.py`** : filtre CSV par section
+   matching les `systems: [N]` de l'event (section_to_system map à construire).
+   Validation : diff vs schemas/ sur les 87 common events doit montrer
+   0 move pour les sections LTE actives (sinon vraie dette G26).
+2. **Après upload** `/home/devmat/BC4/specs/Nemo_FileFormat.zip` :
+   ingérer 2 .nmf → projet NFF_SAMPLE, decode avec decoder actuel (1.5.1)
+   d'abord → ligne de base G29 ×1.
+3. **Decoder 1.6.0** : lire YAMLs 2.50 pour les 193 ADDED events + nouveaux
+   champs des 85 communs, le reste reste 1.5.1. Fallback paresseux.
+4. **Projet TEST_1_6** : décoder 44621571bccc. G29/G26/G28 sur ce seul capture.
+5. Si tout vert : pg_dump + re-decode 94+2 nohup.
+
+## Build 2.50.3 — toujours current (inchangé 2.2a)
+
+- `catalog_release.version = 2.50.3  sha=556be8e9...  is_current=TRUE`
+- `n_leaves_displayed = 5710`  (contrat G18b)
+- GC1 PASS.
 
 ---
 
