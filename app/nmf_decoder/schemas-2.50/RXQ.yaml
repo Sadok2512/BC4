@@ -5,56 +5,21 @@
   "systems": [
     7
   ],
-  "system_col": null,
+  "system_col": 4,
   "cell_scoped": false,
   "min_format": "2.50",
   "unknown_tail": "keep",
   "header": [
     {
-      "col": 1,
+      "col": 4,
       "code": "rxq.measured_system",
       "label": "Measured system",
+      "section": "Parameters",
       "type": "int",
       "unit": null,
       "range": null,
-      "proof": "NFF 2.50 RXQ #1",
-      "agg": "mean",
-      "metric": true,
-      "category": "Unclassified"
-    },
-    {
-      "col": 1,
-      "code": "rxq.rxq_full",
-      "label": "RXQ full",
-      "type": "int",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 RXQ #1",
-      "agg": "mean",
-      "metric": true,
-      "category": "Unclassified"
-    },
-    {
-      "col": 1,
-      "code": "rxq.ber_class",
-      "label": "BER class",
-      "type": "int",
-      "unit": null,
-      "range": "0 – 7",
-      "proof": "NFF 2.50 RXQ #1",
-      "agg": "mean",
-      "metric": true,
-      "category": "Unclassified"
-    },
-    {
-      "col": 2,
-      "code": "rxq.rxq_sub",
-      "label": "RXQ sub",
-      "type": "int",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 RXQ #2",
-      "agg": "mean",
+      "proof": "NFF 2.50 RXQ Parameters #1",
+      "agg": "last",
       "metric": true,
       "category": "Unclassified"
     }

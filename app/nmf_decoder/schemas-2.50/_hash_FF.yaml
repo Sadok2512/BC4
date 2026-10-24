@@ -11,13 +11,14 @@
   "unknown_tail": "keep",
   "header": [
     {
-      "col": 1,
+      "col": 4,
       "code": "#ff.file_format_version",
       "label": "File format version",
+      "section": "Parameters",
       "type": "text",
       "unit": null,
       "range": null,
-      "proof": "NFF 2.50 #FF #1",
+      "proof": "NFF 2.50 #FF Parameters #1",
       "agg": "last",
       "metric": true,
       "category": "Capture context"

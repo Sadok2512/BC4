@@ -5,68 +5,34 @@
   "systems": [
     7
   ],
-  "system_col": null,
+  "system_col": 4,
   "cell_scoped": false,
   "min_format": "2.50",
   "unknown_tail": "keep",
   "header": [
     {
-      "col": 1,
+      "col": 4,
       "code": "ptti.measured_system",
       "label": "Measured system",
+      "section": "Parameters",
       "type": "int",
       "unit": null,
       "range": null,
-      "proof": "NFF 2.50 PTTI #1",
-      "agg": "mean",
-      "metric": true,
-      "category": "Unclassified"
-    },
-    {
-      "col": 1,
-      "code": "ptti.ptt_state",
-      "label": "PTT state",
-      "type": "int",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 PTTI #1",
-      "agg": "mean",
-      "metric": true,
-      "category": "Unclassified"
-    },
-    {
-      "col": 2,
-      "code": "ptti.ptt_tech",
-      "label": "PTT tech.",
-      "type": "int",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 PTTI #2",
-      "agg": "mean",
-      "metric": true,
-      "category": "Unclassified"
-    },
-    {
-      "col": 2,
-      "code": "ptti.ptt_user_identity",
-      "label": "PTT user identity",
-      "type": "text",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 PTTI #2",
+      "proof": "NFF 2.50 PTTI Parameters #1",
       "agg": "last",
       "metric": true,
       "category": "Unclassified"
     },
     {
-      "col": 3,
-      "code": "ptti.ptt_status",
-      "label": "PTT status",
+      "col": 5,
+      "code": "ptti.ptt_tech",
+      "label": "PTT tech.",
+      "section": "Parameters",
       "type": "int",
       "unit": null,
       "range": null,
-      "proof": "NFF 2.50 PTTI #3",
-      "agg": "mean",
+      "proof": "NFF 2.50 PTTI Parameters #2",
+      "agg": "last",
       "metric": true,
       "category": "Unclassified"
     }

@@ -11,13 +11,14 @@
   "unknown_tail": "keep",
   "header": [
     {
-      "col": 1,
+      "col": 4,
       "code": "#dl.device_label",
       "label": "Device label",
+      "section": "Parameters",
       "type": "text",
       "unit": null,
       "range": null,
-      "proof": "NFF 2.50 #DL #1",
+      "proof": "NFF 2.50 #DL Parameters #1",
       "agg": "last",
       "metric": true,
       "category": "Capture context"

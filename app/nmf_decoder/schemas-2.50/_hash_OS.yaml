@@ -11,13 +11,14 @@
   "unknown_tail": "keep",
   "header": [
     {
-      "col": 1,
+      "col": 4,
       "code": "#os.operating_system",
       "label": "Operating system",
+      "section": "Parameters",
       "type": "text",
       "unit": null,
       "range": null,
-      "proof": "NFF 2.50 #OS #1",
+      "proof": "NFF 2.50 #OS Parameters #1",
       "agg": "last",
       "metric": true,
       "category": "Capture context"

@@ -11,26 +11,28 @@
   "unknown_tail": "keep",
   "header": [
     {
-      "col": 1,
+      "col": 4,
       "code": "#ds.number_of_supported",
       "label": "Number of supported",
+      "section": "Parameters",
       "type": "int",
       "unit": null,
       "range": null,
-      "proof": "NFF 2.50 #DS #1",
-      "agg": "mean",
+      "proof": "NFF 2.50 #DS Parameters #1",
+      "agg": "last",
       "metric": true,
       "category": "Capture context"
     },
     {
-      "col": 2,
+      "col": 5,
       "code": "#ds.supported_systems",
       "label": "Supported systems",
+      "section": "Parameters",
       "type": "int",
       "unit": null,
       "range": null,
-      "proof": "NFF 2.50 #DS #2",
-      "agg": "mean",
+      "proof": "NFF 2.50 #DS Parameters #2",
+      "agg": "last",
       "metric": true,
       "category": "Capture context"
     }

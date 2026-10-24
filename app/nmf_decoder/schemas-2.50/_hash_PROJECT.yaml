@@ -11,25 +11,27 @@
   "unknown_tail": "keep",
   "header": [
     {
-      "col": 1,
+      "col": 4,
       "code": "#project.project_id",
       "label": "Project ID",
+      "section": "Parameters",
       "type": "text",
       "unit": null,
       "range": null,
-      "proof": "NFF 2.50 #PROJECT #1",
+      "proof": "NFF 2.50 #PROJECT Parameters #1",
       "agg": "last",
       "metric": true,
       "category": "Capture context"
     },
     {
-      "col": 2,
+      "col": 5,
       "code": "#project.session_id",
       "label": "Session ID",
+      "section": "Parameters",
       "type": "text",
       "unit": null,
       "range": null,
-      "proof": "NFF 2.50 #PROJECT #2",
+      "proof": "NFF 2.50 #PROJECT Parameters #2",
       "agg": "last",
       "metric": true,
       "category": "Capture context"

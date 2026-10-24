@@ -5,92 +5,21 @@
   "systems": [
     7
   ],
-  "system_col": null,
+  "system_col": 4,
   "cell_scoped": false,
   "min_format": "2.50",
   "unknown_tail": "keep",
   "header": [
     {
-      "col": 1,
+      "col": 4,
       "code": "cellinfo.measured_system",
       "label": "Measured system",
+      "section": "Parameters",
       "type": "int",
       "unit": null,
       "range": null,
-      "proof": "NFF 2.50 CELLINFO #1",
-      "agg": "mean",
-      "metric": true,
-      "category": "Unclassified"
-    },
-    {
-      "col": 3,
-      "code": "cellinfo.params_cell",
-      "label": "#Params/cell",
-      "type": "int",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 CELLINFO #3",
-      "agg": "mean",
-      "metric": true,
-      "category": "Unclassified"
-    },
-    {
-      "col": 4,
-      "code": "cellinfo.band",
-      "label": "Band",
-      "type": "int",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 CELLINFO #4",
-      "agg": "mean",
-      "metric": true,
-      "category": "Unclassified"
-    },
-    {
-      "col": 5,
-      "code": "cellinfo.ch",
-      "label": "Ch",
-      "type": "int",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 CELLINFO #5",
-      "agg": "mean",
-      "metric": true,
-      "category": "Unclassified"
-    },
-    {
-      "col": 6,
-      "code": "cellinfo.cell_params_id",
-      "label": "Cell params ID",
-      "type": "int",
-      "unit": null,
-      "range": "0 – 127",
-      "proof": "NFF 2.50 CELLINFO #6",
-      "agg": "mean",
-      "metric": true,
-      "category": "Unclassified"
-    },
-    {
-      "col": 7,
-      "code": "cellinfo.ura_ids",
-      "label": "#URA IDs",
-      "type": "int",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 CELLINFO #7",
-      "agg": "mean",
-      "metric": true,
-      "category": "Unclassified"
-    },
-    {
-      "col": 8,
-      "code": "cellinfo.ura_id",
-      "label": "URA ID",
-      "type": "int",
-      "unit": null,
-      "range": "0 – 65535",
-      "proof": "NFF 2.50 CELLINFO #8",
-      "agg": "mean",
+      "proof": "NFF 2.50 CELLINFO Parameters #1",
+      "agg": "last",
       "metric": true,
       "category": "Unclassified"
     }

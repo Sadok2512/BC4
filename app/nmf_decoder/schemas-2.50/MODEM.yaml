@@ -11,26 +11,15 @@
   "unknown_tail": "keep",
   "header": [
     {
-      "col": 1,
+      "col": 4,
       "code": "modem.modem_message_type",
       "label": "Modem message type",
+      "section": "Parameters",
       "type": "int",
       "unit": null,
       "range": null,
-      "proof": "NFF 2.50 MODEM #1",
-      "agg": "mean",
-      "metric": true,
-      "category": "Unclassified"
-    },
-    {
-      "col": 1,
-      "code": "modem.direction",
-      "label": "Direction",
-      "type": "int",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 MODEM #1",
-      "agg": "mean",
+      "proof": "NFF 2.50 MODEM Parameters #1",
+      "agg": "last",
       "metric": true,
       "category": "Unclassified"
     }

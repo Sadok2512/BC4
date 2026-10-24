@@ -5,80 +5,21 @@
   "systems": [
     7
   ],
-  "system_col": null,
+  "system_col": 4,
   "cell_scoped": false,
   "min_format": "2.50",
   "unknown_tail": "keep",
   "header": [
     {
-      "col": 1,
+      "col": 4,
       "code": "uiscan.measured_system",
       "label": "Measured system",
+      "section": "Parameters",
       "type": "int",
       "unit": null,
       "range": null,
-      "proof": "NFF 2.50 UISCAN #1",
-      "agg": "mean",
-      "metric": true,
-      "category": "Unclassified"
-    },
-    {
-      "col": 2,
-      "code": "uiscan.band",
-      "label": "Band",
-      "type": "int",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 UISCAN #2",
-      "agg": "mean",
-      "metric": true,
-      "category": "Unclassified"
-    },
-    {
-      "col": 3,
-      "code": "uiscan.params_cell",
-      "label": "#Params/cell",
-      "type": "int",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 UISCAN #3",
-      "agg": "mean",
-      "metric": true,
-      "category": "Unclassified"
-    },
-    {
-      "col": 5,
-      "code": "uiscan.arfcn",
-      "label": "ARFCN",
-      "type": "int",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 UISCAN #5",
-      "agg": "mean",
-      "metric": true,
-      "category": "Unclassified"
-    },
-    {
-      "col": 6,
-      "code": "uiscan.sc",
-      "label": "SC",
-      "type": "int",
-      "unit": null,
-      "range": "0 – 511",
-      "proof": "NFF 2.50 UISCAN #6",
-      "agg": "mean",
-      "metric": true,
-      "category": "Unclassified"
-    },
-    {
-      "col": 7,
-      "code": "uiscan.ul_interf",
-      "label": "UL interf.",
-      "type": "float",
-      "unit": "dBm",
-      "range": "−110 – −52",
-      "proof": "NFF 2.50 UISCAN #7",
-      "agg": "mean",
+      "proof": "NFF 2.50 UISCAN Parameters #1",
+      "agg": "last",
       "metric": true,
       "category": "Unclassified"
     }

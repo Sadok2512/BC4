@@ -11,38 +11,15 @@
   "unknown_tail": "keep",
   "header": [
     {
-      "col": 1,
+      "col": 4,
       "code": "rtpjitteru.rtp_jitter_type",
       "label": "RTP jitter type",
+      "section": "Parameters",
       "type": "int",
       "unit": null,
       "range": null,
-      "proof": "NFF 2.50 RTPJITTERU #1",
-      "agg": "mean",
-      "metric": true,
-      "category": "Unclassified"
-    },
-    {
-      "col": 1,
-      "code": "rtpjitteru.rtp_jitter_ul",
-      "label": "RTP jitter UL",
-      "type": "float",
-      "unit": "ms",
-      "range": null,
-      "proof": "NFF 2.50 RTPJITTERU #1",
-      "agg": "mean",
-      "metric": true,
-      "category": "Unclassified"
-    },
-    {
-      "col": 2,
-      "code": "rtpjitteru.rtp_per_ul",
-      "label": "RTP PER UL",
-      "type": "float",
-      "unit": "%",
-      "range": "0 – 100",
-      "proof": "NFF 2.50 RTPJITTERU #2",
-      "agg": "mean",
+      "proof": "NFF 2.50 RTPJITTERU Parameters #1",
+      "agg": "last",
       "metric": true,
       "category": "Unclassified"
     }

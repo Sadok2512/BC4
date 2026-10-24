@@ -5,92 +5,21 @@
   "systems": [
     7
   ],
-  "system_col": null,
+  "system_col": 4,
   "cell_scoped": false,
   "min_format": "2.50",
   "unknown_tail": "keep",
   "header": [
     {
-      "col": 1,
+      "col": 4,
       "code": "rlcsm.measured_system",
       "label": "Measured system",
+      "section": "Parameters",
       "type": "int",
       "unit": null,
       "range": null,
-      "proof": "NFF 2.50 RLCSM #1",
-      "agg": "mean",
-      "metric": true,
-      "category": "Unclassified"
-    },
-    {
-      "col": 1,
-      "code": "rlcsm.direction",
-      "label": "Direction",
-      "type": "int",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 RLCSM #1",
-      "agg": "mean",
-      "metric": true,
-      "category": "Unclassified"
-    },
-    {
-      "col": 2,
-      "code": "rlcsm.rlc_msg",
-      "label": "RLC msg",
-      "type": "text",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 RLCSM #2",
+      "proof": "NFF 2.50 RLCSM Parameters #1",
       "agg": "last",
-      "metric": true,
-      "category": "Unclassified"
-    },
-    {
-      "col": 3,
-      "code": "rlcsm.subchannel",
-      "label": "Subchannel",
-      "type": "text",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 RLCSM #3",
-      "agg": "last",
-      "metric": true,
-      "category": "Unclassified"
-    },
-    {
-      "col": 4,
-      "code": "rlcsm.rb",
-      "label": "RB",
-      "type": "int",
-      "unit": null,
-      "range": "0 – 32",
-      "proof": "NFF 2.50 RLCSM #4",
-      "agg": "mean",
-      "metric": true,
-      "category": "Unclassified"
-    },
-    {
-      "col": 5,
-      "code": "rlcsm.rlc_mode",
-      "label": "RLC mode",
-      "type": "int",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 RLCSM #5",
-      "agg": "mean",
-      "metric": true,
-      "category": "Unclassified"
-    },
-    {
-      "col": 6,
-      "code": "rlcsm.length_indicator",
-      "label": "Length indicator",
-      "type": "int",
-      "unit": "bit",
-      "range": "0 – 15",
-      "proof": "NFF 2.50 RLCSM #6",
-      "agg": "sum",
       "metric": true,
       "category": "Unclassified"
     }

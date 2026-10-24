@@ -11,13 +11,14 @@
   "unknown_tail": "keep",
   "header": [
     {
-      "col": 1,
+      "col": 4,
       "code": "err.error",
       "label": "Error",
+      "section": "Parameters",
       "type": "text",
       "unit": null,
       "range": null,
-      "proof": "NFF 2.50 ERR #1",
+      "proof": "NFF 2.50 ERR Parameters #1",
       "agg": "last",
       "metric": true,
       "category": "Unclassified"

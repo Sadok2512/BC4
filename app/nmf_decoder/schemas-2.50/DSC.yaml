@@ -5,44 +5,21 @@
   "systems": [
     7
   ],
-  "system_col": null,
+  "system_col": 4,
   "cell_scoped": false,
   "min_format": "2.50",
   "unknown_tail": "keep",
   "header": [
     {
-      "col": 1,
+      "col": 4,
       "code": "dsc.measured_system",
       "label": "Measured system",
+      "section": "Parameters",
       "type": "int",
       "unit": null,
       "range": null,
-      "proof": "NFF 2.50 DSC #1",
-      "agg": "mean",
-      "metric": true,
-      "category": "Unclassified"
-    },
-    {
-      "col": 1,
-      "code": "dsc.dsc_current",
-      "label": "DSC current",
-      "type": "int",
-      "unit": null,
-      "range": "0 – 45",
-      "proof": "NFF 2.50 DSC #1",
-      "agg": "mean",
-      "metric": true,
-      "category": "Unclassified"
-    },
-    {
-      "col": 2,
-      "code": "dsc.dsc_max",
-      "label": "DSC max",
-      "type": "int",
-      "unit": null,
-      "range": "0 – 45",
-      "proof": "NFF 2.50 DSC #2",
-      "agg": "mean",
+      "proof": "NFF 2.50 DSC Parameters #1",
+      "agg": "last",
       "metric": true,
       "category": "Unclassified"
     }

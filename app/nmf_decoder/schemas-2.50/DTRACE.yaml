@@ -11,50 +11,15 @@
   "unknown_tail": "keep",
   "header": [
     {
-      "col": 1,
+      "col": 4,
       "code": "dtrace.application_protocol",
       "label": "Application protocol",
+      "section": "Parameters",
       "type": "int",
       "unit": null,
       "range": null,
-      "proof": "NFF 2.50 DTRACE #1",
-      "agg": "mean",
-      "metric": true,
-      "category": "Unclassified"
-    },
-    {
-      "col": 1,
-      "code": "dtrace.address",
-      "label": "Address",
-      "type": "text",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 DTRACE #1",
+      "proof": "NFF 2.50 DTRACE Parameters #1",
       "agg": "last",
-      "metric": true,
-      "category": "Unclassified"
-    },
-    {
-      "col": 2,
-      "code": "dtrace.trace_hop_count",
-      "label": "Trace hop count",
-      "type": "int",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 DTRACE #2",
-      "agg": "mean",
-      "metric": true,
-      "category": "Unclassified"
-    },
-    {
-      "col": 3,
-      "code": "dtrace.rtt",
-      "label": "RTT",
-      "type": "int",
-      "unit": "ms",
-      "range": null,
-      "proof": "NFF 2.50 DTRACE #3",
-      "agg": "mean",
       "metric": true,
       "category": "Unclassified"
     }

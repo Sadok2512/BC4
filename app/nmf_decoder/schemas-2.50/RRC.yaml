@@ -5,32 +5,21 @@
   "systems": [
     7
   ],
-  "system_col": null,
+  "system_col": 5,
   "cell_scoped": false,
   "min_format": "2.50",
   "unknown_tail": "keep",
   "header": [
     {
-      "col": 1,
+      "col": 5,
       "code": "rrc.measured_system",
       "label": "Measured system",
+      "section": "Parameters",
       "type": "int",
       "unit": null,
       "range": null,
-      "proof": "NFF 2.50 RRC #1",
-      "agg": "mean",
-      "metric": true,
-      "category": "Signalling"
-    },
-    {
-      "col": 1,
-      "code": "rrc.rrc_requests",
-      "label": "#RRC requests",
-      "type": "int",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 RRC #1",
-      "agg": "mean",
+      "proof": "NFF 2.50 RRC Parameters #1",
+      "agg": "last",
       "metric": true,
       "category": "Signalling"
     }

@@ -11,13 +11,14 @@
   "unknown_tail": "keep",
   "header": [
     {
-      "col": 1,
+      "col": 4,
       "code": "#cl.cl",
       "label": "CL",
+      "section": "Parameters",
       "type": "float",
       "unit": "dBm",
       "range": null,
-      "proof": "NFF 2.50 #CL #1",
+      "proof": "NFF 2.50 #CL Parameters #1",
       "agg": "mean",
       "metric": true,
       "category": "Capture context"

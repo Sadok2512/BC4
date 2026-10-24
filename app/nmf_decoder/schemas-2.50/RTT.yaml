@@ -11,50 +11,15 @@
   "unknown_tail": "keep",
   "header": [
     {
-      "col": 1,
+      "col": 4,
       "code": "rtt.application_protocol",
       "label": "Application protocol",
+      "section": "Parameters",
       "type": "int",
       "unit": null,
       "range": null,
-      "proof": "NFF 2.50 RTT #1",
-      "agg": "mean",
-      "metric": true,
-      "category": "Unclassified"
-    },
-    {
-      "col": 1,
-      "code": "rtt.rtt_packet_size",
-      "label": "RTT packet size",
-      "type": "int",
-      "unit": "byte",
-      "range": null,
-      "proof": "NFF 2.50 RTT #1",
-      "agg": "mean",
-      "metric": true,
-      "category": "Unclassified"
-    },
-    {
-      "col": 2,
-      "code": "rtt.rtt",
-      "label": "RTT",
-      "type": "int",
-      "unit": "ms",
-      "range": null,
-      "proof": "NFF 2.50 RTT #2",
-      "agg": "mean",
-      "metric": true,
-      "category": "Unclassified"
-    },
-    {
-      "col": 3,
-      "code": "rtt.rtt",
-      "label": "RTT",
-      "type": "float",
-      "unit": "ms",
-      "range": null,
-      "proof": "NFF 2.50 RTT #3",
-      "agg": "mean",
+      "proof": "NFF 2.50 RTT Parameters #1",
+      "agg": "last",
       "metric": true,
       "category": "Unclassified"
     }

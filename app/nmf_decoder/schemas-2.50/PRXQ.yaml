@@ -5,80 +5,21 @@
   "systems": [
     7
   ],
-  "system_col": null,
+  "system_col": 4,
   "cell_scoped": false,
   "min_format": "2.50",
   "unknown_tail": "keep",
   "header": [
     {
-      "col": 1,
+      "col": 4,
       "code": "prxq.measured_system",
       "label": "Measured system",
+      "section": "Parameters",
       "type": "int",
       "unit": null,
       "range": null,
-      "proof": "NFF 2.50 PRXQ #1",
-      "agg": "mean",
-      "metric": true,
-      "category": "Unclassified"
-    },
-    {
-      "col": 1,
-      "code": "prxq.rxq",
-      "label": "RXQ",
-      "type": "int",
-      "unit": null,
-      "range": "0 – 7",
-      "proof": "NFF 2.50 PRXQ #1",
-      "agg": "mean",
-      "metric": true,
-      "category": "Unclassified"
-    },
-    {
-      "col": 2,
-      "code": "prxq.c_value",
-      "label": "C value",
-      "type": "float",
-      "unit": "dBm",
-      "range": "−120 – −48",
-      "proof": "NFF 2.50 PRXQ #2",
-      "agg": "mean",
-      "metric": true,
-      "category": "Unclassified"
-    },
-    {
-      "col": 3,
-      "code": "prxq.sign_var",
-      "label": "SIGN_VAR",
-      "type": "float",
-      "unit": "dBm2",
-      "range": "0 – 16",
-      "proof": "NFF 2.50 PRXQ #3",
-      "agg": "mean",
-      "metric": true,
-      "category": "Unclassified"
-    },
-    {
-      "col": 4,
-      "code": "prxq.tsl_results",
-      "label": "#TSL results",
-      "type": "int",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 PRXQ #4",
-      "agg": "mean",
-      "metric": true,
-      "category": "Unclassified"
-    },
-    {
-      "col": 5,
-      "code": "prxq.tsl_interf",
-      "label": "TSL interf.",
-      "type": "float",
-      "unit": null,
-      "range": "−28 – 0",
-      "proof": "NFF 2.50 PRXQ #5",
-      "agg": "mean",
+      "proof": "NFF 2.50 PRXQ Parameters #1",
+      "agg": "last",
       "metric": true,
       "category": "Unclassified"
     }

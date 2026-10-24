@@ -11,14 +11,15 @@
   "unknown_tail": "keep",
   "header": [
     {
-      "col": 1,
+      "col": 4,
       "code": "#pc.packet_capture_state",
       "label": "Packet capture state",
+      "section": "Parameters",
       "type": "int",
       "unit": null,
       "range": null,
-      "proof": "NFF 2.50 #PC #1",
-      "agg": "mean",
+      "proof": "NFF 2.50 #PC Parameters #1",
+      "agg": "last",
       "metric": true,
       "category": "Capture context"
     }

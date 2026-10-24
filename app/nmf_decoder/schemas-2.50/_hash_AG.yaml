@@ -11,13 +11,14 @@
   "unknown_tail": "keep",
   "header": [
     {
-      "col": 1,
+      "col": 4,
       "code": "#ag.ag",
       "label": "AG",
+      "section": "Parameters",
       "type": "float",
       "unit": "dBi",
       "range": null,
-      "proof": "NFF 2.50 #AG #1",
+      "proof": "NFF 2.50 #AG Parameters #1",
       "agg": "mean",
       "metric": true,
       "category": "Capture context"

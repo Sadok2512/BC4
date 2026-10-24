@@ -11,14 +11,15 @@
   "unknown_tail": "keep",
   "header": [
     {
-      "col": 1,
+      "col": 4,
       "code": "#evrc.evrc_status",
       "label": "EVRC status",
+      "section": "Parameters",
       "type": "int",
       "unit": null,
       "range": null,
-      "proof": "NFF 2.50 #EVRC #1",
-      "agg": "mean",
+      "proof": "NFF 2.50 #EVRC Parameters #1",
+      "agg": "last",
       "metric": true,
       "category": "Capture context"
     }

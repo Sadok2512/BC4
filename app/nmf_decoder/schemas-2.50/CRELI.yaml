@@ -11,14 +11,15 @@
   "unknown_tail": "keep",
   "header": [
     {
-      "col": 2,
+      "col": 5,
       "code": "creli.crs_u_plane",
       "label": "CRS U-plane",
+      "section": "Parameters",
       "type": "int",
       "unit": "ms",
       "range": null,
-      "proof": "NFF 2.50 CRELI #2",
-      "agg": "mean",
+      "proof": "NFF 2.50 CRELI Parameters #2",
+      "agg": "last",
       "metric": true,
       "category": "Unclassified"
     }

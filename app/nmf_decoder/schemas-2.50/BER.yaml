@@ -5,56 +5,21 @@
   "systems": [
     7
   ],
-  "system_col": null,
+  "system_col": 4,
   "cell_scoped": false,
   "min_format": "2.50",
   "unknown_tail": "keep",
   "header": [
     {
-      "col": 1,
+      "col": 4,
       "code": "ber.measured_system",
       "label": "Measured system",
+      "section": "Parameters",
       "type": "int",
       "unit": null,
       "range": null,
-      "proof": "NFF 2.50 BER #1",
-      "agg": "mean",
-      "metric": true,
-      "category": "Unclassified"
-    },
-    {
-      "col": 1,
-      "code": "ber.ber",
-      "label": "BER",
-      "type": "float",
-      "unit": "%",
-      "range": "0 – 100",
-      "proof": "NFF 2.50 BER #1",
-      "agg": "mean",
-      "metric": true,
-      "category": "Unclassified"
-    },
-    {
-      "col": 1,
-      "code": "ber.pilot_ber",
-      "label": "Pilot BER",
-      "type": "float",
-      "unit": "%",
-      "range": "0 – 100",
-      "proof": "NFF 2.50 BER #1",
-      "agg": "mean",
-      "metric": true,
-      "category": "Unclassified"
-    },
-    {
-      "col": 2,
-      "code": "ber.tfci_ber",
-      "label": "TFCI BER",
-      "type": "float",
-      "unit": "%",
-      "range": "0 – 100",
-      "proof": "NFF 2.50 BER #2",
-      "agg": "mean",
+      "proof": "NFF 2.50 BER Parameters #1",
+      "agg": "last",
       "metric": true,
       "category": "Unclassified"
     }

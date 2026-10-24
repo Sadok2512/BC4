@@ -11,14 +11,15 @@
   "unknown_tail": "keep",
   "header": [
     {
-      "col": 1,
+      "col": 5,
       "code": "dac.application_protocol",
       "label": "Application protocol",
+      "section": "Parameters",
       "type": "int",
       "unit": null,
       "range": null,
-      "proof": "NFF 2.50 DAC #1",
-      "agg": "mean",
+      "proof": "NFF 2.50 DAC Parameters #1",
+      "agg": "last",
       "metric": true,
       "category": "Services (tasks)"
     }

@@ -11,26 +11,28 @@
   "unknown_tail": "keep",
   "header": [
     {
-      "col": 1,
+      "col": 4,
       "code": "callmodi.call_modification_type",
       "label": "Call modification type",
+      "section": "Parameters",
       "type": "int",
       "unit": null,
       "range": null,
-      "proof": "NFF 2.50 CALLMODI #1",
-      "agg": "mean",
+      "proof": "NFF 2.50 CALLMODI Parameters #1",
+      "agg": "last",
       "metric": true,
       "category": "Unclassified"
     },
     {
-      "col": 2,
+      "col": 5,
       "code": "callmodi.call_modification_result",
       "label": "Call modification result",
+      "section": "Parameters",
       "type": "int",
       "unit": null,
       "range": null,
-      "proof": "NFF 2.50 CALLMODI #2",
-      "agg": "mean",
+      "proof": "NFF 2.50 CALLMODI Parameters #2",
+      "agg": "last",
       "metric": true,
       "category": "Unclassified"
     }

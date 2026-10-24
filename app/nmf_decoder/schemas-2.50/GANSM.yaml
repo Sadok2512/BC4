@@ -5,55 +5,20 @@
   "systems": [
     7
   ],
-  "system_col": null,
+  "system_col": 4,
   "cell_scoped": false,
   "min_format": "2.50",
   "unknown_tail": "keep",
   "header": [
     {
-      "col": 1,
+      "col": 4,
       "code": "gansm.measured_system",
       "label": "Measured system",
+      "section": "Parameters",
       "type": "int",
       "unit": null,
       "range": null,
-      "proof": "NFF 2.50 GANSM #1",
-      "agg": "mean",
-      "metric": true,
-      "category": "Unclassified"
-    },
-    {
-      "col": 1,
-      "code": "gansm.direction",
-      "label": "Direction",
-      "type": "int",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 GANSM #1",
-      "agg": "mean",
-      "metric": true,
-      "category": "Unclassified"
-    },
-    {
-      "col": 2,
-      "code": "gansm.gan_msg",
-      "label": "GAN msg.",
-      "type": "text",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 GANSM #2",
-      "agg": "last",
-      "metric": true,
-      "category": "Unclassified"
-    },
-    {
-      "col": 3,
-      "code": "gansm.subchannel",
-      "label": "Subchannel",
-      "type": "text",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 GANSM #3",
+      "proof": "NFF 2.50 GANSM Parameters #1",
       "agg": "last",
       "metric": true,
       "category": "Unclassified"

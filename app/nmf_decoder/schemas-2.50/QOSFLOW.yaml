@@ -5,68 +5,21 @@
   "systems": [
     7
   ],
-  "system_col": null,
+  "system_col": 4,
   "cell_scoped": false,
   "min_format": "2.50",
   "unknown_tail": "keep",
   "header": [
     {
-      "col": 1,
+      "col": 4,
       "code": "qosflow.measured_system",
       "label": "Measured system",
+      "section": "Parameters",
       "type": "int",
       "unit": null,
       "range": null,
-      "proof": "NFF 2.50 QOSFLOW #1",
-      "agg": "mean",
-      "metric": true,
-      "category": "Voice"
-    },
-    {
-      "col": 2,
-      "code": "qosflow.qos_flows",
-      "label": "#QoS flows",
-      "type": "int",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 QOSFLOW #2",
-      "agg": "mean",
-      "metric": true,
-      "category": "Voice"
-    },
-    {
-      "col": 3,
-      "code": "qosflow.params_qos_flow",
-      "label": "#Params/QoS flow",
-      "type": "int",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 QOSFLOW #3",
-      "agg": "mean",
-      "metric": true,
-      "category": "Voice"
-    },
-    {
-      "col": 4,
-      "code": "qosflow.pdu_session",
-      "label": "PDU session",
-      "type": "int",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 QOSFLOW #4",
-      "agg": "mean",
-      "metric": true,
-      "category": "Voice"
-    },
-    {
-      "col": 5,
-      "code": "qosflow.qfi",
-      "label": "QFI",
-      "type": "int",
-      "unit": null,
-      "range": "1 – 255",
-      "proof": "NFF 2.50 QOSFLOW #5",
-      "agg": "mean",
+      "proof": "NFF 2.50 QOSFLOW Parameters #1",
+      "agg": "last",
       "metric": true,
       "category": "Voice"
     }

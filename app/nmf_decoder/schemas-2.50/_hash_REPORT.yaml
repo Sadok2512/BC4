@@ -11,49 +11,14 @@
   "unknown_tail": "keep",
   "header": [
     {
-      "col": 1,
+      "col": 4,
       "code": "#report.report_type",
       "label": "Report type",
+      "section": "Parameters",
       "type": "int",
       "unit": null,
       "range": null,
-      "proof": "NFF 2.50 #REPORT #1",
-      "agg": "mean",
-      "metric": true,
-      "category": "Capture context"
-    },
-    {
-      "col": 1,
-      "code": "#report.report_name",
-      "label": "Report name",
-      "type": "text",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 #REPORT #1",
-      "agg": "last",
-      "metric": true,
-      "category": "Capture context"
-    },
-    {
-      "col": 2,
-      "code": "#report.report_id",
-      "label": "Report ID",
-      "type": "text",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 #REPORT #2",
-      "agg": "last",
-      "metric": true,
-      "category": "Capture context"
-    },
-    {
-      "col": 3,
-      "code": "#report.report_tags",
-      "label": "Report tags",
-      "type": "text",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 #REPORT #3",
+      "proof": "NFF 2.50 #REPORT Parameters #1",
       "agg": "last",
       "metric": true,
       "category": "Capture context"

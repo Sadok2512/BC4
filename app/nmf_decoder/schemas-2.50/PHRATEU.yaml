@@ -5,56 +5,21 @@
   "systems": [
     7
   ],
-  "system_col": null,
+  "system_col": 4,
   "cell_scoped": true,
   "min_format": "2.50",
   "unknown_tail": "keep",
   "header": [
     {
-      "col": 1,
+      "col": 4,
       "code": "phrateu.measured_system",
       "label": "Measured system",
+      "section": "Parameters",
       "type": "int",
       "unit": null,
       "range": null,
-      "proof": "NFF 2.50 PHRATEU #1",
-      "agg": "mean",
-      "metric": true,
-      "category": "Throughput per layer"
-    },
-    {
-      "col": 3,
-      "code": "phrateu.cell_type",
-      "label": "Cell type",
-      "type": "int",
-      "unit": "bit/s",
-      "range": null,
-      "proof": "NFF 2.50 PHRATEU #3",
-      "agg": "sum",
-      "metric": true,
-      "category": "Throughput per layer"
-    },
-    {
-      "col": 4,
-      "code": "phrateu.pusch_sch_bitrate",
-      "label": "PUSCH sch bitrate",
-      "type": "int",
-      "unit": "bit/s",
-      "range": null,
-      "proof": "NFF 2.50 PHRATEU #4",
-      "agg": "sum",
-      "metric": true,
-      "category": "Throughput per layer"
-    },
-    {
-      "col": 5,
-      "code": "phrateu.ul_type",
-      "label": "UL type",
-      "type": "int",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 PHRATEU #5",
-      "agg": "mean",
+      "proof": "NFF 2.50 PHRATEU Parameters #1",
+      "agg": "last",
       "metric": true,
       "category": "Throughput per layer"
     }

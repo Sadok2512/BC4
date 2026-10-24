@@ -11,25 +11,27 @@
   "unknown_tail": "keep",
   "header": [
     {
-      "col": 1,
+      "col": 4,
       "code": "#product.product_name",
       "label": "Product name",
+      "section": "Parameters",
       "type": "text",
       "unit": null,
       "range": null,
-      "proof": "NFF 2.50 #PRODUCT #1",
+      "proof": "NFF 2.50 #PRODUCT Parameters #1",
       "agg": "last",
       "metric": true,
       "category": "Capture context"
     },
     {
-      "col": 2,
+      "col": 5,
       "code": "#product.product_version",
       "label": "Product version",
+      "section": "Parameters",
       "type": "text",
       "unit": null,
       "range": null,
-      "proof": "NFF 2.50 #PRODUCT #2",
+      "proof": "NFF 2.50 #PRODUCT Parameters #2",
       "agg": "last",
       "metric": true,
       "category": "Capture context"

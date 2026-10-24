@@ -11,13 +11,14 @@
   "unknown_tail": "keep",
   "header": [
     {
-      "col": 1,
+      "col": 4,
       "code": "tnote.tnote",
       "label": "TNote",
+      "section": "Parameters",
       "type": "text",
       "unit": null,
       "range": null,
-      "proof": "NFF 2.50 TNOTE #1",
+      "proof": "NFF 2.50 TNOTE Parameters #1",
       "agg": "last",
       "metric": true,
       "category": "Unclassified"

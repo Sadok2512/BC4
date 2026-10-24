@@ -5,80 +5,21 @@
   "systems": [
     7
   ],
-  "system_col": null,
+  "system_col": 4,
   "cell_scoped": false,
   "min_format": "2.50",
   "unknown_tail": "keep",
   "header": [
     {
-      "col": 1,
+      "col": 4,
       "code": "snpsm.measured_system",
       "label": "Measured system",
+      "section": "Parameters",
       "type": "int",
       "unit": null,
       "range": null,
-      "proof": "NFF 2.50 SNPSM #1",
-      "agg": "mean",
-      "metric": true,
-      "category": "Unclassified"
-    },
-    {
-      "col": 1,
-      "code": "snpsm.direction",
-      "label": "Direction",
-      "type": "int",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 SNPSM #1",
-      "agg": "mean",
-      "metric": true,
-      "category": "Unclassified"
-    },
-    {
-      "col": 2,
-      "code": "snpsm.snp_msg_name",
-      "label": "SNP msg. name",
-      "type": "text",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 SNPSM #2",
+      "proof": "NFF 2.50 SNPSM Parameters #1",
       "agg": "last",
-      "metric": true,
-      "category": "Unclassified"
-    },
-    {
-      "col": 3,
-      "code": "snpsm.snp_ch_type",
-      "label": "SNP ch type",
-      "type": "text",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 SNPSM #3",
-      "agg": "last",
-      "metric": true,
-      "category": "Unclassified"
-    },
-    {
-      "col": 4,
-      "code": "snpsm.snp_layer",
-      "label": "SNP layer",
-      "type": "text",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 SNPSM #4",
-      "agg": "last",
-      "metric": true,
-      "category": "Unclassified"
-    },
-    {
-      "col": 5,
-      "code": "snpsm.protocol_subtype",
-      "label": "Protocol subtype",
-      "type": "int",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 SNPSM #5",
-      "agg": "mean",
       "metric": true,
       "category": "Unclassified"
     }

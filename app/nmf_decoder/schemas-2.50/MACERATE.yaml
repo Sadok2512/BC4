@@ -5,92 +5,21 @@
   "systems": [
     7
   ],
-  "system_col": null,
+  "system_col": 4,
   "cell_scoped": false,
   "min_format": "2.50",
   "unknown_tail": "keep",
   "header": [
     {
-      "col": 1,
+      "col": 4,
       "code": "macerate.measured_system",
       "label": "Measured system",
+      "section": "Parameters",
       "type": "int",
       "unit": null,
       "range": null,
-      "proof": "NFF 2.50 MACERATE #1",
-      "agg": "mean",
-      "metric": true,
-      "category": "Unclassified"
-    },
-    {
-      "col": 1,
-      "code": "macerate.mac_e_bitrate",
-      "label": "MAC-e bitrate",
-      "type": "int",
-      "unit": "bit/s",
-      "range": null,
-      "proof": "NFF 2.50 MACERATE #1",
-      "agg": "sum",
-      "metric": true,
-      "category": "Unclassified"
-    },
-    {
-      "col": 2,
-      "code": "macerate.mac_e_block_rate",
-      "label": "MAC-e block rate",
-      "type": "int",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 MACERATE #2",
-      "agg": "mean",
-      "metric": true,
-      "category": "Unclassified"
-    },
-    {
-      "col": 3,
-      "code": "macerate.mac_e_1st_retr",
-      "label": "MAC-e 1st retr.",
-      "type": "float",
-      "unit": "%",
-      "range": "0 – 100",
-      "proof": "NFF 2.50 MACERATE #3",
-      "agg": "mean",
-      "metric": true,
-      "category": "Unclassified"
-    },
-    {
-      "col": 4,
-      "code": "macerate.mac_e_2nd_retr",
-      "label": "MAC-e 2nd retr.",
-      "type": "float",
-      "unit": "%",
-      "range": "0 – 100",
-      "proof": "NFF 2.50 MACERATE #4",
-      "agg": "mean",
-      "metric": true,
-      "category": "Unclassified"
-    },
-    {
-      "col": 5,
-      "code": "macerate.mac_e_3rd_retr",
-      "label": "MAC-e 3rd+ retr.",
-      "type": "float",
-      "unit": "%",
-      "range": "0 – 100",
-      "proof": "NFF 2.50 MACERATE #5",
-      "agg": "mean",
-      "metric": true,
-      "category": "Unclassified"
-    },
-    {
-      "col": 6,
-      "code": "macerate.cell_type",
-      "label": "Cell type",
-      "type": "int",
-      "unit": null,
-      "range": null,
-      "proof": "NFF 2.50 MACERATE #6",
-      "agg": "mean",
+      "proof": "NFF 2.50 MACERATE Parameters #1",
+      "agg": "last",
       "metric": true,
       "category": "Unclassified"
     }
