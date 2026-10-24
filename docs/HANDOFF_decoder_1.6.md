@@ -3,7 +3,59 @@
 Fichier de passation entre sessions BC3. Une session neuve doit pouvoir
 reprendre en lisant **ce fichier seul**.
 
-Dernière mise à jour : 2026-10-24 20:35Z (session Opus 4.7 1M, 9e passe).
+Dernière mise à jour : 2026-10-24 22:10Z (session Opus 4.7 1M, 10e passe).
+
+## 10e passe — Fix post-mortem 9e + relance propre
+
+### Post-mortem 9e passe (re-decode killed à 21:52)
+- Script `redecode_corpus.py` v1 (via `ingest_upload`) supprimait stg_event
+  par capture → cascade FK ON DELETE sur param_occurrence (1.25M, pas
+  d'index support) → ~14 min par DELETE + effacement des observations BC1.
+- État post-kill : 85 captures × 1.5.1, 1 × 1.6.0, 8 × 1.4.0.
+- param_occurrence 1 236 440 vs 1 254 774 dump → −18 334 lignes.
+
+### Perte 18 334 param_occurrence localisée
+- Capture `test_1_6_26/44621571bccc` (TEST_1_6) : 0 live.
+- Projet TEST → **déclaré sans suite** (BC3 règle).
+- Autres captures corpus : param_occurrence intact.
+
+### Alembic 0051 param_occurrence_fk_index
+- `CREATE INDEX ix_param_occurrence_stg_event_id ON param_occurrence(stg_event_id)`.
+- Durée 6m22s (6min bloqué par DELETE orphelin de la 9e passe, cancellé).
+- Fin : `alembic_version=0051_param_occurrence_fk_index`.
+
+### redecode_corpus.py v2 (replay-only)
+- Diff ligne 21 : `from app.nmf_decoder.store import decode_capture`
+  (remplace `from app.ingest.nmf import ingest_upload`).
+- Diff lignes 32-44 : purge = light / light_ext / group / deep / cell_second
+  SEULEMENT. Ne touche plus stg_event, stg_event_raw, param_occurrence.
+- Appel : `decode_capture(db, pid, cap, level, force=True)` — lit source
+  via `nmf_file.source_path`, UPSERT nmf_capture (ON CONFLICT), écrit
+  Light/Group/Deep uniquement. Preuve code : `app/nmf_decoder/store.py:70-123`.
+
+### Test chronométré (1 capture)
+```
+4b7bfd50ddb6/44621571bccc  prev 1.5.1 → 1.6.0  114.9s
+test_1_6_26/44621571bccc   prev 1.6.0 → 1.6.0   92.1s  (replay)
+total 2 captures / 3m29s = ~1m45s/capture
+```
+
+### Nohup re-decode 94 captures restantes
+```
+PID (python) : 6651  (inside bc4-api-1)
+Progress     : /app/exports/redecode_progress.txt
+Main log     : /app/exports/redecode_<ts>.log
+ETA          : ~2h30
+```
+
+## Reste 10e matinale
+
+1. `docker exec bc4-api-1 tail -5 /app/exports/redecode_progress.txt` → grep DONE.
+2. Count par decoder_version :
+   `SELECT decoder_version, COUNT(*) FROM nmf_capture GROUP BY decoder_version`.
+3. Gardes complets : G20, G29 ×3, G24, G25, G28, G18b, GPS_stale.
+4. Rapport final avec sortie collée par garde.
+5. GO Phase 3 si tout vert.
 
 ## 9e passe — Preuves par contenu + G26 ZÉRO + re-decode nohup
 
