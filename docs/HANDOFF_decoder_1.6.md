@@ -3,7 +3,65 @@
 Fichier de passation entre sessions BC3. Une session neuve doit pouvoir
 reprendre en lisant **ce fichier seul**.
 
-Dernière mise à jour : 2026-10-24 21:15Z (session Opus 4.7 1M, 8e passe).
+Dernière mise à jour : 2026-10-24 20:35Z (session Opus 4.7 1M, 9e passe).
+
+## 9e passe — Preuves par contenu + G26 ZÉRO + re-decode nohup
+
+### Preuves par contenu (3 events témoins)
+Lignes brutes du fichier source confrontées aux valeurs en base Light 1.6.0 :
+- `GAA,10:33:20.980,1,13,7` : ctx=1, ctx_id=13, system=7 → base c4=7 ✓
+- `CELLMEAS,10:33:20.980,,7,0,1,11,0,...` : ctx=0, system=7 → base c3=7 ✓
+- `CI,10:33:20.980,,7,2,25.6,...` : ctx=0, system=7 → base c3=7 ✓
+
+**Convention PROUVÉE** : `raw_fields.cN` est 0-indexed depuis fields[0]=event
+(donc c0=event, c1=ts, c2=ctx_count, c3=system si ctx=0, …). YAML `system_col`
+est 1-indexed NFF (col 1=event). Donc **NFF col K ↔ raw c(K-1)**.
+
+### G26 fix (3 corrections cumulées)
+1. Convention `-1` : raw_col = system_col - 1.
+2. Compensation effective_col : raw_col += (actual_cc - expected_cc)
+   avec expected_cc = schema.get('context_count') ou max(0, system_col-4).
+3. Measured system VIDE au raw_col → verdict=0 (non-applicable, pas shift) :
+   preuve MSGA raw `12:02:53.429,1,1,,7,1,...` où field[4]="" (Measured
+   system vide) et le "7" à c5 est **Message type**, pas un système.
+
+### build_yamls.py bump — context_count carry-over
+Ajout `"context_count": context_count` dans le doc YAML généré, pour que
+le G26 lise correctement effective_cc depuis le YAML (préalablement None).
+
+### G26 VERDICT FINAL
+```
+G26 schemas_dedup=284  corpus_scope=113
+G26_VERDICT verdicts={'0': 112, '+1': 0, '-1': 0, 'no_data': 172, 'non_corpus_0': 0}
+G26 — ZÉRO DÉCALAGE sur 284 schemas testés ✓
+```
+
+### pg_dump explicite
+```
+DUMP    = /home/devmat/BC4/exports/bc4_2026-10-24_2022.dump
+sha256  = a53acbf8ab78401ec61ad034dee046a46a38f0495ca25ffe3ee84b61fdcb2d0b
+size    = 1 468 869 372 bytes (1.4 GB)
+```
+
+### Re-decode nohup — LANCÉ
+```
+PID    : 4305 (python inside bc4-api-1)
+Script : /app/scripts/catalog/redecode_corpus.py
+Log    : /app/exports/redecode_<ts>.log (dans bc4-api-1)
+Progress: /app/exports/redecode_progress.txt
+Captures: 95 (94 corpus + 1 TEST_1_6)
+Decoder: 1.6.0 (schemas-2.50 pour 98 simple corpus events)
+```
+
+## Reste 2.2a terminal (10e passe matinale)
+
+À l'arrivée du matin :
+1. Vérifier le re-decode fini : grep DONE dans progress.txt.
+2. Compter captures en 1.6.0 vs 1.5.1 :
+   `SELECT decoder_version, COUNT(*) FROM nmf_capture GROUP BY decoder_version`
+3. Lancer les gardes complets : G20, G29 ×3, G24, G25, G28, G18b, GPS_stale.
+4. Produire le rapport final avec sortie collée de chaque garde.
+5. Phase 2.2a terminée → GO Phase 3 (/metrics envelope + front catalog/decoder footer).
 
 ## 8e passe — Light 1.5.1 vs 1.6.0 + G26 par valeur
 

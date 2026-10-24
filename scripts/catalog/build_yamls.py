@@ -189,6 +189,7 @@ def main():
             "schema_version": "1.6.0",
             "systems": systems,
             "system_col": system_col,
+            "context_count": context_count,  # carry-over 1.5.1 pour effective_col
             "cell_scoped": bool(ev_cfg.get("cell_scoped", False)),
             "min_format": "2.50",
             "unknown_tail": "keep",

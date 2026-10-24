@@ -36,25 +36,42 @@ def _has_token(raw: dict, col: int) -> bool:
 def verdict_for(schema: dict, raw: dict) -> str:
     """Retourne 0 / +1 / -1 pour un couple (schema, raw_line).
 
-    Règle unifiée BC3 : si l'event déclare un `systems` (ex. [7] pour LTE),
-    on cherche cette valeur **exacte** dans raw_fields autour de system_col.
-    Si trouvée à system_col → 0. Si trouvée à system_col-1 → le schema est
-    décalé de +1 (data est 1 col avant). Si à system_col+1 → décalé de -1.
-    Si pas trouvée du tout → 0 (non-bloquant : la ligne spécifique peut
-    manquer Measured system par variante techno).
+    Convention PROUVÉE par contenu (9e passe) :
+      - YAML `system_col` : NFF 1-indexed (col 1=event, col 2=ts).
+      - raw_fields `cN` : 0-indexed depuis event. NFF col K ↔ raw c(K-1).
+      - `effective_col` compense le context_count : si context_count=X
+        (lu depuis raw.c2), effective_system_col_NFF = system_col + X.
+
+    Donc raw_pos_attendu = (system_col - 1) + context_count. On cherche
+    expected_sys à cette position d'abord.
     """
     sys_col = schema.get("system_col")
     expected_sys = schema.get("systems")
     if not isinstance(sys_col, int) or not expected_sys:
-        return "0"  # pas de system_col numérique ou pas de systems déclarés
-    v = raw.get(f"c{sys_col}")
+        return "0"
+    # context_count observé dans la ligne (raw.c2 = NFF col 3 = ctx_count)
+    cc_raw = raw.get("c2")
+    try: cc = int(str(cc_raw)) if cc_raw not in (None, "") else 0
+    except (ValueError, TypeError): cc = 0
+    # context_count attendu par le schema (effective_col logic)
+    expected_cc = schema.get("context_count")
+    if not isinstance(expected_cc, int):
+        expected_cc = max(0, sys_col - 4)
+    # Position attendue avec compensation effective_col
+    raw_col = (sys_col - 1) + (cc - expected_cc)
+    v = raw.get(f"c{raw_col}")
+    # Si Measured system est explicitement VIDE à la position attendue
+    # (variante techno sans codage système), c'est non-applicable, pas un
+    # shift. Preuve 9e passe : MSGA/MSGS field[4]="" dans ligne brute.
+    if v in (None, ""):
+        return "0"
     if _is_sys_code(v, expected_sys):
         return "0"
-    if _is_sys_code(raw.get(f"c{sys_col-1}"), expected_sys):
+    if _is_sys_code(raw.get(f"c{raw_col-1}"), expected_sys):
         return "+1"
-    if _is_sys_code(raw.get(f"c{sys_col+1}"), expected_sys):
+    if _is_sys_code(raw.get(f"c{raw_col+1}"), expected_sys):
         return "-1"
-    return "0"  # ni col ni voisins ne portent le system code → non-bloquant
+    return "0"
 
 def main():
     db = SessionLocal()
