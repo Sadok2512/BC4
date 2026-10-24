@@ -3,9 +3,35 @@
 Fichier de passation entre sessions BC3. Une session neuve doit pouvoir
 reprendre en lisant **ce fichier seul**.
 
-Dernière mise à jour : 2026-10-24 16:55Z (session Opus 4.7 1M, 2e passe).
+Dernière mise à jour : 2026-10-24 18:00Z (session Opus 4.7 1M, 3e passe).
 
-**ÉTAT 2.2a : BLOCKED sur col-mapping YAML + Keysight manquant.**
+**ÉTAT 2.2a : YAMLs 2.50 validés (85/87 LTE common events alignés). Keysight uploadé.
+Decoder refactor pas encore commité (prochaine fenêtre).**
+
+## Progrès 3e passe
+
+- B1 levé : `/home/devmat/BC4/specs/Nemo_FileFormat.zip` déposé (108 MB,
+  2 .nmfs échantillons + PDF spec).
+- B2 appliqué dans `build_yamls.py` : filtre section par systems (7/8→LTE,
+  9→NR, LTE and NR→les deux) + context_count carry-over + formula col
+  unifiée.
+- Diff validation : 85/87 LTE common events MÊMES cols vs 1.5.1. Les 2
+  outliers (CREL, HOA) ont des layouts conditionnels → 2.2b.
+- 77 events gagnent des champs nouveaux 2.50 (#BF.bts_file, #DL.device_label,
+  #HW+4, #LICENSE+5, etc.).
+
+## Reste à faire 2.2a (prochaine fenêtre)
+
+1. Decoder lit schemas-2.50/ : patcher `app/nmf_decoder/schema.py` fonction
+   `schemas()` pour charger depuis `schemas-2.50/` avec fallback sur
+   `schemas/` pour CREL/HOA + les 4 events only_in_old (#EI, #SI, HOS, SIPREGC).
+2. Projet TEST **NFF_SAMPLE** → ingest `/tmp/keysight/Nemo_FileFormat/
+   File_Format_2.50_Sample_datas/OD_921_drive_train_22Jun30 091813.{1,2}.nmfs`.
+   Note : extension `.nmfs` streaming — vérifier que source.py accepte.
+3. Projet TEST **TEST_1_6** → re-ingest capture témoin 44621571bccc depuis
+   un .nmf de son projet d'origine.
+4. Gardes sur ces 3 captures : G29 ×3 = 0 écart, G26 = 0 décalage, G28 plages.
+5. Si tous verts : pg_dump + re-decode 94+2 nohup.
 
 ## BLOCKERS DÉCOUVERTS (2.2a, 2e passe)
 
