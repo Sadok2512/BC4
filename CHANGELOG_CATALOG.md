@@ -21,4 +21,17 @@ Chaque build écrit une ligne dans `catalog_release` (sha256, counts) ;
 
 ## Versions
 
-(aucune version publiée — scaffolding Phase 0 posé 2026-10-24)
+### 2.50.1 — 2026-10-24
+- Première génération depuis `nmf_all_events_fields_2.50.csv` (282 events,
+  4 393 champs CSV).
+- 3 technologies (LTE / NR / Shared), 3 catégories (bucket initial avant
+  classification affinée Phase 1 bis), 255 events, **4 055 feuilles**,
+  338 champs exclus (structural attributes + identités + payloads).
+- decoder_min_version = 1.6.0 (dépendance Phase 2, pas encore shipped).
+- sha256 : `26d63b92a25cefc2a45095f0c4515506f6bea3198a348e592c3fa0c90fc044f3`
+- Garde GC1 : PASS (sha DB ↔ sha disque).
+- Ouvertures : (a) la classification tech / category s'appuie sur des sets
+  statiques dans `build_catalog.py` → à remplacer par un parse du
+  `nemo_file_format_2.50.txt` (hierarchy + Scope NR). (b) `n_metrics` dans
+  `catalog_release` = n_events ici ; la définition correcte pour BC3 est
+  « sous-arbre event » — à requalifier au prochain build.
