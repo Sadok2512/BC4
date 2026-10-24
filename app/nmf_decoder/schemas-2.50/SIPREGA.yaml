@@ -1,0 +1,62 @@
+{
+  "event": "SIPREGA",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": null,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 1,
+      "code": "siprega.sip_server_ip",
+      "label": "SIP server IP",
+      "type": "text",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 SIPREGA #1",
+      "agg": "last",
+      "metric": true,
+      "category": "Signalling"
+    },
+    {
+      "col": 1,
+      "code": "siprega.skype_server_username",
+      "label": "Skype server username",
+      "type": "text",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 SIPREGA #1",
+      "agg": "last",
+      "metric": true,
+      "category": "Signalling"
+    },
+    {
+      "col": 1,
+      "code": "siprega.sip_server_ip",
+      "label": "SIP server IP",
+      "type": "text",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 SIPREGA #1",
+      "agg": "last",
+      "metric": true,
+      "category": "Signalling"
+    },
+    {
+      "col": 1,
+      "code": "siprega.sip_server_ip",
+      "label": "SIP server IP",
+      "type": "text",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 SIPREGA #1",
+      "agg": "last",
+      "metric": true,
+      "category": "Signalling"
+    }
+  ]
+}

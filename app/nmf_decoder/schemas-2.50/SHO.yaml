@@ -1,0 +1,170 @@
+{
+  "event": "SHO",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": null,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 1,
+      "code": "sho.measured_system",
+      "label": "Measured system",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 SHO #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 1,
+      "code": "sho.sho_status",
+      "label": "SHO status",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 SHO #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 1,
+      "code": "sho.pilot_added",
+      "label": "#Pilot added",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 SHO #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 2,
+      "code": "sho.rrc_cause",
+      "label": "RRC cause",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 SHO #2",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 2,
+      "code": "sho.pilot_removed",
+      "label": "#Pilot removed",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 SHO #2",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 3,
+      "code": "sho.scs_added",
+      "label": "#SCs added",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 SHO #3",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 3,
+      "code": "sho.added_pn",
+      "label": "Added PN",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 SHO #3",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 4,
+      "code": "sho.scs_removed",
+      "label": "#SCs removed",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 SHO #4",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 4,
+      "code": "sho.remove_pn",
+      "label": "Remove PN",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 SHO #4",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 5,
+      "code": "sho.added_sc",
+      "label": "Added SC",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 SHO #5",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 5,
+      "code": "sho.sho_status",
+      "label": "SHO status",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 SHO #5",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 6,
+      "code": "sho.remove_sc",
+      "label": "Remove SC",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 SHO #6",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 6,
+      "code": "sho.sho_type",
+      "label": "SHO type",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 SHO #6",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    }
+  ]
+}

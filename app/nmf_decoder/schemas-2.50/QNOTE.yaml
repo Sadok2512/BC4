@@ -1,0 +1,74 @@
+{
+  "event": "QNOTE",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": null,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 1,
+      "code": "qnote.id",
+      "label": "ID",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 QNOTE #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 2,
+      "code": "qnote.parent_id",
+      "label": "Parent ID",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 QNOTE #2",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 3,
+      "code": "qnote.question",
+      "label": "Question",
+      "type": "text",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 QNOTE #3",
+      "agg": "last",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 4,
+      "code": "qnote.answer",
+      "label": "Answer",
+      "type": "text",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 QNOTE #4",
+      "agg": "last",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 5,
+      "code": "qnote.description",
+      "label": "Description",
+      "type": "text",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 QNOTE #5",
+      "agg": "last",
+      "metric": true,
+      "category": "Unclassified"
+    }
+  ]
+}

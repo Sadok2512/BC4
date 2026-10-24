@@ -1,0 +1,110 @@
+{
+  "event": "RLCRATEB",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": null,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 1,
+      "code": "rlcrateb.measured_system",
+      "label": "Measured system",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 RLCRATEB #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 2,
+      "code": "rlcrateb.mtch_throughput",
+      "label": "MTCH throughput",
+      "type": "int",
+      "unit": "bit/s",
+      "range": null,
+      "proof": "NFF 2.50 RLCRATEB #2",
+      "agg": "sum",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 3,
+      "code": "rlcrateb.mrbs",
+      "label": "#MRBs",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 RLCRATEB #3",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 4,
+      "code": "rlcrateb.params_mrb",
+      "label": "#Params/MRB",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 RLCRATEB #4",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 5,
+      "code": "rlcrateb.area_id_mrb",
+      "label": "Area ID/MRB",
+      "type": "int",
+      "unit": null,
+      "range": "0 – 255",
+      "proof": "NFF 2.50 RLCRATEB #5",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 6,
+      "code": "rlcrateb.pmch_id_mrb",
+      "label": "PMCH ID/MRB",
+      "type": "int",
+      "unit": null,
+      "range": "0 – 15",
+      "proof": "NFF 2.50 RLCRATEB #6",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 7,
+      "code": "rlcrateb.bitrate_mrb",
+      "label": "Bitrate/MRB",
+      "type": "int",
+      "unit": "bit/s",
+      "range": null,
+      "proof": "NFF 2.50 RLCRATEB #7",
+      "agg": "sum",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 8,
+      "code": "rlcrateb.block_rate_mrb",
+      "label": "Block rate/MRB",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 RLCRATEB #8",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    }
+  ]
+}

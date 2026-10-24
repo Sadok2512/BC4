@@ -1,0 +1,86 @@
+{
+  "event": "CELLLOAD",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": null,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 1,
+      "code": "cellload.measured_system",
+      "label": "Measured system",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 CELLLOAD #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 3,
+      "code": "cellload.params_cell",
+      "label": "#Params/cell",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 CELLLOAD #3",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 4,
+      "code": "cellload.band",
+      "label": "Band",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 CELLLOAD #4",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 5,
+      "code": "cellload.ch",
+      "label": "Ch",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 CELLLOAD #5",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 6,
+      "code": "cellload.pn",
+      "label": "PN",
+      "type": "int",
+      "unit": null,
+      "range": "0 – 511",
+      "proof": "NFF 2.50 CELLLOAD #6",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 7,
+      "code": "cellload.active_users",
+      "label": "Active users",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 CELLLOAD #7",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    }
+  ]
+}

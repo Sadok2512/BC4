@@ -1,0 +1,38 @@
+{
+  "event": "#UT",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": null,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 1,
+      "code": "#ut.utc_to_local",
+      "label": "UTC to local",
+      "type": "int",
+      "unit": "minute",
+      "range": null,
+      "proof": "NFF 2.50 #UT #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Capture context"
+    },
+    {
+      "col": 2,
+      "code": "#ut.utc_to_timestamp",
+      "label": "UTC to timestamp",
+      "type": "int",
+      "unit": "minute",
+      "range": null,
+      "proof": "NFF 2.50 #UT #2",
+      "agg": "mean",
+      "metric": true,
+      "category": "Capture context"
+    }
+  ]
+}

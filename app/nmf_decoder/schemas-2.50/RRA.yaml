@@ -1,0 +1,62 @@
+{
+  "event": "RRA",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": null,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 1,
+      "code": "rra.measured_system",
+      "label": "Measured system",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 RRA #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Signalling"
+    },
+    {
+      "col": 1,
+      "code": "rra.rrc_est_cause",
+      "label": "RRC est. cause",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 RRA #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Signalling"
+    },
+    {
+      "col": 1,
+      "code": "rra.est_cause",
+      "label": "Est. cause",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 RRA #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Signalling"
+    },
+    {
+      "col": 1,
+      "code": "rra.est_cause",
+      "label": "Est. cause",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 RRA #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Signalling"
+    }
+  ]
+}

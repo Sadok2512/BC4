@@ -1,0 +1,62 @@
+{
+  "event": "PPPRATE",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": null,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 1,
+      "code": "ppprate.ppp_rate_ul",
+      "label": "PPP rate UL",
+      "type": "int",
+      "unit": "bit/s",
+      "range": null,
+      "proof": "NFF 2.50 PPPRATE #1",
+      "agg": "sum",
+      "metric": true,
+      "category": "Throughput per layer"
+    },
+    {
+      "col": 2,
+      "code": "ppprate.ppp_rate_dl",
+      "label": "PPP rate DL",
+      "type": "int",
+      "unit": "bit/s",
+      "range": null,
+      "proof": "NFF 2.50 PPPRATE #2",
+      "agg": "sum",
+      "metric": true,
+      "category": "Throughput per layer"
+    },
+    {
+      "col": 3,
+      "code": "ppprate.sent_ppp_bytes",
+      "label": "Sent PPP bytes",
+      "type": "int",
+      "unit": "byte",
+      "range": null,
+      "proof": "NFF 2.50 PPPRATE #3",
+      "agg": "mean",
+      "metric": true,
+      "category": "Throughput per layer"
+    },
+    {
+      "col": 4,
+      "code": "ppprate.recv_ppp_bytes",
+      "label": "Recv. PPP bytes",
+      "type": "int",
+      "unit": "byte",
+      "range": null,
+      "proof": "NFF 2.50 PPPRATE #4",
+      "agg": "mean",
+      "metric": true,
+      "category": "Throughput per layer"
+    }
+  ]
+}

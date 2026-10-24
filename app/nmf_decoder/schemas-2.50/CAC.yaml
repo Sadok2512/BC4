@@ -1,0 +1,86 @@
+{
+  "event": "CAC",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": null,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 1,
+      "code": "cac.measured_system",
+      "label": "Measured system",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 CAC #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Carrier aggregation"
+    },
+    {
+      "col": 1,
+      "code": "cac.tsl",
+      "label": "TSL",
+      "type": "int",
+      "unit": null,
+      "range": "0 – 7",
+      "proof": "NFF 2.50 CAC #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Carrier aggregation"
+    },
+    {
+      "col": 1,
+      "code": "cac.tsl",
+      "label": "TSL",
+      "type": "int",
+      "unit": null,
+      "range": "1 – 4",
+      "proof": "NFF 2.50 CAC #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Carrier aggregation"
+    },
+    {
+      "col": 2,
+      "code": "cac.call_type",
+      "label": "Call type",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 CAC #2",
+      "agg": "mean",
+      "metric": true,
+      "category": "Carrier aggregation"
+    },
+    {
+      "col": 3,
+      "code": "cac.call_connection_status",
+      "label": "Call connection status",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 CAC #3",
+      "agg": "mean",
+      "metric": true,
+      "category": "Carrier aggregation"
+    },
+    {
+      "col": 4,
+      "code": "cac.parameters",
+      "label": "#Parameters",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 CAC #4",
+      "agg": "mean",
+      "metric": true,
+      "category": "Carrier aggregation"
+    }
+  ]
+}

@@ -1,0 +1,146 @@
+{
+  "event": "CONNECTIONC",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": null,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 1,
+      "code": "connectionc.measured_system",
+      "label": "Measured system",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 CONNECTIONC #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 1,
+      "code": "connectionc.transaction_id",
+      "label": "Transaction ID",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 CONNECTIONC #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 2,
+      "code": "connectionc.message_seq",
+      "label": "Message SEQ",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 CONNECTIONC #2",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 3,
+      "code": "connectionc.connection_result",
+      "label": "Connection result",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 CONNECTIONC #3",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 4,
+      "code": "connectionc.rec_status",
+      "label": "Rec. status",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 CONNECTIONC #4",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 5,
+      "code": "connectionc.duration",
+      "label": "Duration",
+      "type": "int",
+      "unit": "slot",
+      "range": null,
+      "proof": "NFF 2.50 CONNECTIONC #5",
+      "agg": "max",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 6,
+      "code": "connectionc.pn",
+      "label": "PN",
+      "type": "int",
+      "unit": null,
+      "range": "0 – 511",
+      "proof": "NFF 2.50 CONNECTIONC #6",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 7,
+      "code": "connectionc.sector_id",
+      "label": "Sector ID",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 CONNECTIONC #7",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 8,
+      "code": "connectionc.cc",
+      "label": "CC",
+      "type": "int",
+      "unit": null,
+      "range": "0 – 255",
+      "proof": "NFF 2.50 CONNECTIONC #8",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 9,
+      "code": "connectionc.pn_changes",
+      "label": "#PN changes",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 CONNECTIONC #9",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 10,
+      "code": "connectionc.direction",
+      "label": "Direction",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 CONNECTIONC #10",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    }
+  ]
+}

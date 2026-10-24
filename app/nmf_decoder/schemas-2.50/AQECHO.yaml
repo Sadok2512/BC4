@@ -1,0 +1,122 @@
+{
+  "event": "AQECHO",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": null,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 1,
+      "code": "aqecho.aq_echo_type",
+      "label": "AQ echo type",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 AQECHO #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 2,
+      "code": "aqecho.sample_type",
+      "label": "Sample type",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 AQECHO #2",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 3,
+      "code": "aqecho.echo_samples",
+      "label": "#Echo samples",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 AQECHO #3",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 4,
+      "code": "aqecho.params_echo_sample",
+      "label": "#Params/echo sample",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 AQECHO #4",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 5,
+      "code": "aqecho.aq_echo",
+      "label": "#AQ echo",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 AQECHO #5",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 6,
+      "code": "aqecho.erl",
+      "label": "ERL",
+      "type": "float",
+      "unit": "dB",
+      "range": "0 – 60",
+      "proof": "NFF 2.50 AQECHO #6",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 7,
+      "code": "aqecho.echo_delay",
+      "label": "Echo delay",
+      "type": "int",
+      "unit": "ms",
+      "range": "0 – 1000",
+      "proof": "NFF 2.50 AQECHO #7",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 8,
+      "code": "aqecho.echo_occurrence",
+      "label": "Echo occurrence",
+      "type": "float",
+      "unit": "%",
+      "range": "0 – 100",
+      "proof": "NFF 2.50 AQECHO #8",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 9,
+      "code": "aqecho.echo_diff_to_tol",
+      "label": "Echo diff to tol.",
+      "type": "float",
+      "unit": "dB",
+      "range": null,
+      "proof": "NFF 2.50 AQECHO #9",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    }
+  ]
+}

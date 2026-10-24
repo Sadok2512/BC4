@@ -1,0 +1,50 @@
+{
+  "event": "PBD",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": null,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 1,
+      "code": "pbd.measured_system",
+      "label": "Measured system",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 PBD #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Events ⚑"
+    },
+    {
+      "col": 1,
+      "code": "pbd.esm_cause",
+      "label": "ESM cause",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 PBD #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Events ⚑"
+    },
+    {
+      "col": 1,
+      "code": "pbd.pdu_session_identity",
+      "label": "PDU session identity",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 PBD #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Events ⚑"
+    }
+  ]
+}

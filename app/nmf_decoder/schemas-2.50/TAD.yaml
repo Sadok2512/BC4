@@ -1,0 +1,86 @@
+{
+  "event": "TAD",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": null,
+  "cell_scoped": true,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 1,
+      "code": "tad.measured_system",
+      "label": "Measured system",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 TAD #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Link quality"
+    },
+    {
+      "col": 1,
+      "code": "tad.ta",
+      "label": "TA",
+      "type": "int",
+      "unit": null,
+      "range": "0 – 63",
+      "proof": "NFF 2.50 TAD #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Link quality"
+    },
+    {
+      "col": 1,
+      "code": "tad.ta",
+      "label": "TA",
+      "type": "float",
+      "unit": "chip",
+      "range": "−16 – 240",
+      "proof": "NFF 2.50 TAD #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Link quality"
+    },
+    {
+      "col": 1,
+      "code": "tad.ta",
+      "label": "TA",
+      "type": "int",
+      "unit": null,
+      "range": "0 – 1282",
+      "proof": "NFF 2.50 TAD #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Link quality"
+    },
+    {
+      "col": 1,
+      "code": "tad.tal",
+      "label": "TAL",
+      "type": "int",
+      "unit": null,
+      "range": "0 – 30",
+      "proof": "NFF 2.50 TAD #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Link quality"
+    },
+    {
+      "col": 2,
+      "code": "tad.cell_type",
+      "label": "Cell type",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 TAD #2",
+      "agg": "mean",
+      "metric": true,
+      "category": "Link quality"
+    }
+  ]
+}

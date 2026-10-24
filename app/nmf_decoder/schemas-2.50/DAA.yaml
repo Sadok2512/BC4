@@ -1,0 +1,98 @@
+{
+  "event": "DAA",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": null,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 1,
+      "code": "daa.application_protocol",
+      "label": "Application protocol",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 DAA #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Services (tasks)"
+    },
+    {
+      "col": 2,
+      "code": "daa.ip",
+      "label": "IP",
+      "type": "text",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 DAA #2",
+      "agg": "last",
+      "metric": true,
+      "category": "Services (tasks)"
+    },
+    {
+      "col": 3,
+      "code": "daa.port",
+      "label": "Port",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 DAA #3",
+      "agg": "mean",
+      "metric": true,
+      "category": "Services (tasks)"
+    },
+    {
+      "col": 4,
+      "code": "daa.connection_timeout",
+      "label": "Connection timeout",
+      "type": "int",
+      "unit": "ms",
+      "range": null,
+      "proof": "NFF 2.50 DAA #4",
+      "agg": "mean",
+      "metric": true,
+      "category": "Services (tasks)"
+    },
+    {
+      "col": 5,
+      "code": "daa.security_protocol",
+      "label": "Security protocol",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 DAA #5",
+      "agg": "mean",
+      "metric": true,
+      "category": "Services (tasks)"
+    },
+    {
+      "col": 6,
+      "code": "daa.authentication_scheme",
+      "label": "Authentication scheme",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 DAA #6",
+      "agg": "mean",
+      "metric": true,
+      "category": "Services (tasks)"
+    },
+    {
+      "col": 7,
+      "code": "daa.transport_protocol",
+      "label": "Transport protocol",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 DAA #7",
+      "agg": "mean",
+      "metric": true,
+      "category": "Services (tasks)"
+    }
+  ]
+}

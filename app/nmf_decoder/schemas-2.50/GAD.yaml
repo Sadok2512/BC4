@@ -1,0 +1,62 @@
+{
+  "event": "GAD",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": null,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 1,
+      "code": "gad.measured_system",
+      "label": "Measured system",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 GAD #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Position"
+    },
+    {
+      "col": 2,
+      "code": "gad.detach_status",
+      "label": "Detach status",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 GAD #2",
+      "agg": "mean",
+      "metric": true,
+      "category": "Position"
+    },
+    {
+      "col": 3,
+      "code": "gad.detach_cause",
+      "label": "Detach cause",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 GAD #3",
+      "agg": "mean",
+      "metric": true,
+      "category": "Position"
+    },
+    {
+      "col": 4,
+      "code": "gad.detach_time",
+      "label": "Detach time",
+      "type": "int",
+      "unit": "ms",
+      "range": null,
+      "proof": "NFF 2.50 GAD #4",
+      "agg": "mean",
+      "metric": true,
+      "category": "Position"
+    }
+  ]
+}

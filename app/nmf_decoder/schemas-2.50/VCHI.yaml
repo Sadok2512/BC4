@@ -1,0 +1,146 @@
+{
+  "event": "VCHI",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": null,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 1,
+      "code": "vchi.measured_system",
+      "label": "Measured system",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 VCHI #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 1,
+      "code": "vchi.ptt_state",
+      "label": "PTT state",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 VCHI #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 1,
+      "code": "vchi.ptt_state",
+      "label": "PTT state",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 VCHI #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 1,
+      "code": "vchi.ptt_state",
+      "label": "PTT state",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 VCHI #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 1,
+      "code": "vchi.ptt_state",
+      "label": "PTT state",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 VCHI #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 1,
+      "code": "vchi.ptt_state",
+      "label": "PTT state",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 VCHI #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 2,
+      "code": "vchi.ptt_comm_type",
+      "label": "PTT comm. type",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 VCHI #2",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 3,
+      "code": "vchi.ptt_user_identity",
+      "label": "PTT user identity",
+      "type": "text",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 VCHI #3",
+      "agg": "last",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 4,
+      "code": "vchi.system_parameters",
+      "label": "#System parameters",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 VCHI #4",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 5,
+      "code": "vchi.call_type",
+      "label": "Call type",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 VCHI #5",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 6,
+      "code": "vchi.call_type_parameters",
+      "label": "#Call type parameters",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 VCHI #6",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    }
+  ]
+}

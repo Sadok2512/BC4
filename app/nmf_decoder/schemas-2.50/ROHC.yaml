@@ -1,0 +1,86 @@
+{
+  "event": "ROHC",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": null,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 2,
+      "code": "rohc.rohc_cr_ul",
+      "label": "ROHC CR UL",
+      "type": "float",
+      "unit": "%",
+      "range": "0 – 110",
+      "proof": "NFF 2.50 ROHC #2",
+      "agg": "mean",
+      "metric": true,
+      "category": "Capture context"
+    },
+    {
+      "col": 3,
+      "code": "rohc.rohc_cr_dl",
+      "label": "ROHC CR DL",
+      "type": "float",
+      "unit": "%",
+      "range": "0 – 110",
+      "proof": "NFF 2.50 ROHC #3",
+      "agg": "mean",
+      "metric": true,
+      "category": "Capture context"
+    },
+    {
+      "col": 4,
+      "code": "rohc.rohc_profiles",
+      "label": "#ROHC profiles",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 ROHC #4",
+      "agg": "mean",
+      "metric": true,
+      "category": "Capture context"
+    },
+    {
+      "col": 5,
+      "code": "rohc.rohc_profile",
+      "label": "ROHC profile",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 ROHC #5",
+      "agg": "mean",
+      "metric": true,
+      "category": "Capture context"
+    },
+    {
+      "col": 6,
+      "code": "rohc.rohc_cr",
+      "label": "ROHC CR",
+      "type": "float",
+      "unit": "%",
+      "range": "0 – 110",
+      "proof": "NFF 2.50 ROHC #6",
+      "agg": "mean",
+      "metric": true,
+      "category": "Capture context"
+    },
+    {
+      "col": 7,
+      "code": "rohc.rohc_cr",
+      "label": "ROHC CR",
+      "type": "float",
+      "unit": "%",
+      "range": "0 – 110",
+      "proof": "NFF 2.50 ROHC #7",
+      "agg": "mean",
+      "metric": true,
+      "category": "Capture context"
+    }
+  ]
+}

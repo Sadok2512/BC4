@@ -1,0 +1,98 @@
+{
+  "event": "PER",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": null,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 1,
+      "code": "per.application_protocol",
+      "label": "Application protocol",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 PER #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 1,
+      "code": "per.per_ul",
+      "label": "PER UL",
+      "type": "float",
+      "unit": "%",
+      "range": "0 – 100",
+      "proof": "NFF 2.50 PER #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 2,
+      "code": "per.per_dl",
+      "label": "PER DL",
+      "type": "float",
+      "unit": "%",
+      "range": "0 – 100",
+      "proof": "NFF 2.50 PER #2",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 3,
+      "code": "per.packets_ul",
+      "label": "Packets UL",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 PER #3",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 4,
+      "code": "per.packets_dl",
+      "label": "Packets DL",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 PER #4",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 5,
+      "code": "per.errors_ul",
+      "label": "Errors UL",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 PER #5",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 6,
+      "code": "per.errors_dl",
+      "label": "Errors DL",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 PER #6",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    }
+  ]
+}

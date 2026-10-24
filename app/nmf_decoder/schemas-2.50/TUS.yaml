@@ -1,0 +1,86 @@
+{
+  "event": "TUS",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": null,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 1,
+      "code": "tus.measured_system",
+      "label": "Measured system",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 TUS #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 2,
+      "code": "tus.tacs",
+      "label": "#TACs",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 TUS #2",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 3,
+      "code": "tus.params_tac",
+      "label": "#Params/TAC",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 TUS #3",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 4,
+      "code": "tus.mcc",
+      "label": "MCC",
+      "type": "int",
+      "unit": null,
+      "range": "0 – 999",
+      "proof": "NFF 2.50 TUS #4",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 5,
+      "code": "tus.mnc",
+      "label": "MNC",
+      "type": "int",
+      "unit": null,
+      "range": "0 – 999",
+      "proof": "NFF 2.50 TUS #5",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 6,
+      "code": "tus.tac",
+      "label": "TAC",
+      "type": "int",
+      "unit": null,
+      "range": "0 – 65535",
+      "proof": "NFF 2.50 TUS #6",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    }
+  ]
+}

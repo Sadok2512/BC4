@@ -1,0 +1,134 @@
+{
+  "event": "ANRI",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": null,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 1,
+      "code": "anri.measured_system",
+      "label": "Measured system",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 ANRI #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 1,
+      "code": "anri.band",
+      "label": "Band",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 ANRI #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 2,
+      "code": "anri.anr_type",
+      "label": "ANR type",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 ANRI #2",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 2,
+      "code": "anri.ch",
+      "label": "Ch",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 ANRI #2",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 3,
+      "code": "anri.params_anr_type",
+      "label": "#Params/ANR type",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 ANRI #3",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 3,
+      "code": "anri.phys_cell_id",
+      "label": "Phys. cell ID",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 ANRI #3",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 4,
+      "code": "anri.cell_id",
+      "label": "Cell ID",
+      "type": "int",
+      "unit": null,
+      "range": "0 – 268435455",
+      "proof": "NFF 2.50 ANRI #4",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 5,
+      "code": "anri.lac_tac",
+      "label": "LAC/TAC",
+      "type": "int",
+      "unit": null,
+      "range": "0 – 65535",
+      "proof": "NFF 2.50 ANRI #5",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 6,
+      "code": "anri.mcc",
+      "label": "MCC",
+      "type": "int",
+      "unit": null,
+      "range": "0 – 999",
+      "proof": "NFF 2.50 ANRI #6",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 7,
+      "code": "anri.mnc",
+      "label": "MNC",
+      "type": "int",
+      "unit": null,
+      "range": "0 – 999",
+      "proof": "NFF 2.50 ANRI #7",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    }
+  ]
+}

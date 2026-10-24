@@ -1,0 +1,146 @@
+{
+  "event": "TCPSTAT",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": null,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 1,
+      "code": "tcpstat.application_protocol",
+      "label": "Application protocol",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 TCPSTAT #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 1,
+      "code": "tcpstat.tcp_rwin",
+      "label": "TCP RWIN",
+      "type": "int",
+      "unit": "byte",
+      "range": null,
+      "proof": "NFF 2.50 TCPSTAT #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 2,
+      "code": "tcpstat.tcp_send_window_size",
+      "label": "TCP send window size",
+      "type": "int",
+      "unit": "byte",
+      "range": null,
+      "proof": "NFF 2.50 TCPSTAT #2",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 3,
+      "code": "tcpstat.tcp_rtt",
+      "label": "TCP RTT",
+      "type": "int",
+      "unit": "ms",
+      "range": null,
+      "proof": "NFF 2.50 TCPSTAT #3",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 4,
+      "code": "tcpstat.tcp_ul_bif",
+      "label": "TCP UL BIF",
+      "type": "int",
+      "unit": "byte",
+      "range": null,
+      "proof": "NFF 2.50 TCPSTAT #4",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 5,
+      "code": "tcpstat.tcp_throughput_downlink",
+      "label": "TCP throughput downlink",
+      "type": "int",
+      "unit": "bit/s",
+      "range": null,
+      "proof": "NFF 2.50 TCPSTAT #5",
+      "agg": "sum",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 6,
+      "code": "tcpstat.tcp_throughput_uplink",
+      "label": "TCP throughput uplink",
+      "type": "int",
+      "unit": "bit/s",
+      "range": null,
+      "proof": "NFF 2.50 TCPSTAT #6",
+      "agg": "sum",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 7,
+      "code": "tcpstat.tcp_ul_retr",
+      "label": "TCP UL retr.",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 TCPSTAT #7",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 8,
+      "code": "tcpstat.tcp_dup_acks",
+      "label": "TCP DUP ACKs",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 TCPSTAT #8",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 9,
+      "code": "tcpstat.tcp_ooos",
+      "label": "TCP OoOs",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 TCPSTAT #9",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 10,
+      "code": "tcpstat.tcp_rsts",
+      "label": "TCP RSTs",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 TCPSTAT #10",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    }
+  ]
+}

@@ -1,0 +1,74 @@
+{
+  "event": "TBFULE",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": null,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 1,
+      "code": "tbfule.measured_system",
+      "label": "Measured system",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 TBFULE #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 2,
+      "code": "tbfule.ul_tbf_est_cause",
+      "label": "UL TBF est. cause",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 TBFULE #2",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 3,
+      "code": "tbfule.ul_tbf_est_type",
+      "label": "UL TBF est. type",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 TBFULE #3",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 4,
+      "code": "tbfule.ul_tbf_est_status",
+      "label": "UL TBF est. status",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 TBFULE #4",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 5,
+      "code": "tbfule.ul_tbf_est_req",
+      "label": "#UL TBF est. req",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 TBFULE #5",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    }
+  ]
+}

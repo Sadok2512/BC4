@@ -1,0 +1,74 @@
+{
+  "event": "PSMR",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": null,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 1,
+      "code": "psmr.measured_system",
+      "label": "Measured system",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 PSMR #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Events ⚑"
+    },
+    {
+      "col": 1,
+      "code": "psmr.req_t3324",
+      "label": "Req. T3324",
+      "type": "int",
+      "unit": "ms",
+      "range": null,
+      "proof": "NFF 2.50 PSMR #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Events ⚑"
+    },
+    {
+      "col": 2,
+      "code": "psmr.req_t3412",
+      "label": "Req. T3412",
+      "type": "int",
+      "unit": "ms",
+      "range": null,
+      "proof": "NFF 2.50 PSMR #2",
+      "agg": "mean",
+      "metric": true,
+      "category": "Events ⚑"
+    },
+    {
+      "col": 3,
+      "code": "psmr.req_edrx_cycle",
+      "label": "Req. eDRX cycle",
+      "type": "int",
+      "unit": "ms",
+      "range": null,
+      "proof": "NFF 2.50 PSMR #3",
+      "agg": "mean",
+      "metric": true,
+      "category": "Events ⚑"
+    },
+    {
+      "col": 4,
+      "code": "psmr.req_ptw",
+      "label": "Req. PTW",
+      "type": "int",
+      "unit": "ms",
+      "range": null,
+      "proof": "NFF 2.50 PSMR #4",
+      "agg": "mean",
+      "metric": true,
+      "category": "Events ⚑"
+    }
+  ]
+}

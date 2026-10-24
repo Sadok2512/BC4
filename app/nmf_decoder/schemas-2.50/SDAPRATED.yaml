@@ -1,0 +1,38 @@
+{
+  "event": "SDAPRATED",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": null,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 1,
+      "code": "sdaprated.measured_system",
+      "label": "Measured system",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 SDAPRATED #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 2,
+      "code": "sdaprated.sdap_dl_bitrate",
+      "label": "SDAP DL bitrate",
+      "type": "int",
+      "unit": "bit/s",
+      "range": null,
+      "proof": "NFF 2.50 SDAPRATED #2",
+      "agg": "sum",
+      "metric": true,
+      "category": "Unclassified"
+    }
+  ]
+}

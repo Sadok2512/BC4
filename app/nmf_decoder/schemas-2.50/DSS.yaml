@@ -1,0 +1,134 @@
+{
+  "event": "DSS",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": null,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 1,
+      "code": "dss.application_protocol",
+      "label": "Application protocol",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 DSS #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 1,
+      "code": "dss.stream_state",
+      "label": "Stream state",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 DSS #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 2,
+      "code": "dss.stream_bandwidth",
+      "label": "Stream bandwidth",
+      "type": "int",
+      "unit": "bit/s",
+      "range": null,
+      "proof": "NFF 2.50 DSS #2",
+      "agg": "sum",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 3,
+      "code": "dss.stream_resolution",
+      "label": "Stream resolution",
+      "type": "text",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 DSS #3",
+      "agg": "last",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 4,
+      "code": "dss.stream_duration",
+      "label": "Stream duration",
+      "type": "int",
+      "unit": "ms",
+      "range": null,
+      "proof": "NFF 2.50 DSS #4",
+      "agg": "max",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 5,
+      "code": "dss.stream_position",
+      "label": "Stream position",
+      "type": "int",
+      "unit": "ms",
+      "range": null,
+      "proof": "NFF 2.50 DSS #5",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 6,
+      "code": "dss.stream_content_type",
+      "label": "Stream content type",
+      "type": "text",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 DSS #6",
+      "agg": "last",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 7,
+      "code": "dss.stream_video_codec",
+      "label": "Stream video codec",
+      "type": "text",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 DSS #7",
+      "agg": "last",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 8,
+      "code": "dss.stream_audio_codec",
+      "label": "Stream audio codec",
+      "type": "text",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 DSS #8",
+      "agg": "last",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 9,
+      "code": "dss.file_size",
+      "label": "File size",
+      "type": "int",
+      "unit": "byte",
+      "range": null,
+      "proof": "NFF 2.50 DSS #9",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    }
+  ]
+}

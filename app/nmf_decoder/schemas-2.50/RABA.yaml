@@ -1,0 +1,86 @@
+{
+  "event": "RABA",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": null,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 1,
+      "code": "raba.measured_system",
+      "label": "Measured system",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 RABA #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Events ⚑"
+    },
+    {
+      "col": 2,
+      "code": "raba.rab_type",
+      "label": "RAB type",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 RABA #2",
+      "agg": "mean",
+      "metric": true,
+      "category": "Events ⚑"
+    },
+    {
+      "col": 3,
+      "code": "raba.rab_id",
+      "label": "RAB ID",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 RABA #3",
+      "agg": "mean",
+      "metric": true,
+      "category": "Events ⚑"
+    },
+    {
+      "col": 4,
+      "code": "raba.rab_rbs",
+      "label": "#RAB RBs",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 RABA #4",
+      "agg": "mean",
+      "metric": true,
+      "category": "Events ⚑"
+    },
+    {
+      "col": 5,
+      "code": "raba.params_rab_rb",
+      "label": "#Params/RAB RB",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 RABA #5",
+      "agg": "mean",
+      "metric": true,
+      "category": "Events ⚑"
+    },
+    {
+      "col": 6,
+      "code": "raba.rab_rb_id",
+      "label": "RAB RB ID",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 RABA #6",
+      "agg": "mean",
+      "metric": true,
+      "category": "Events ⚑"
+    }
+  ]
+}

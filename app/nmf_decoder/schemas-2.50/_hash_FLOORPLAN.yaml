@@ -1,0 +1,86 @@
+{
+  "event": "#FLOORPLAN",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": null,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 1,
+      "code": "#floorplan.floorplan_file_name",
+      "label": "Floorplan file name",
+      "type": "text",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 #FLOORPLAN #1",
+      "agg": "last",
+      "metric": true,
+      "category": "Capture context"
+    },
+    {
+      "col": 2,
+      "code": "#floorplan.floorplan_coordinate",
+      "label": "Floorplan coordinate",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 #FLOORPLAN #2",
+      "agg": "mean",
+      "metric": true,
+      "category": "Capture context"
+    },
+    {
+      "col": 3,
+      "code": "#floorplan.ibwave_file_name",
+      "label": "iBwave file name",
+      "type": "text",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 #FLOORPLAN #3",
+      "agg": "last",
+      "metric": true,
+      "category": "Capture context"
+    },
+    {
+      "col": 4,
+      "code": "#floorplan.venue_name",
+      "label": "Venue name",
+      "type": "text",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 #FLOORPLAN #4",
+      "agg": "last",
+      "metric": true,
+      "category": "Capture context"
+    },
+    {
+      "col": 5,
+      "code": "#floorplan.building_name",
+      "label": "Building name",
+      "type": "text",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 #FLOORPLAN #5",
+      "agg": "last",
+      "metric": true,
+      "category": "Capture context"
+    },
+    {
+      "col": 6,
+      "code": "#floorplan.floor_name",
+      "label": "Floor name",
+      "type": "text",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 #FLOORPLAN #6",
+      "agg": "last",
+      "metric": true,
+      "category": "Capture context"
+    }
+  ]
+}

@@ -1,0 +1,50 @@
+{
+  "event": "CARE",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": null,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 1,
+      "code": "care.measured_system",
+      "label": "Measured system",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 CARE #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 1,
+      "code": "care.re_est_status",
+      "label": "Re-est status",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 CARE #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 2,
+      "code": "care.re_est_duration",
+      "label": "Re-est duration",
+      "type": "int",
+      "unit": "ms",
+      "range": null,
+      "proof": "NFF 2.50 CARE #2",
+      "agg": "max",
+      "metric": true,
+      "category": "Unclassified"
+    }
+  ]
+}

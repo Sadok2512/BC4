@@ -1,0 +1,158 @@
+{
+  "event": "PRXPC",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": null,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 1,
+      "code": "prxpc.measured_system",
+      "label": "Measured system",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 PRXPC #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 2,
+      "code": "prxpc.hs_scch_sir",
+      "label": "HS-SCCH SIR",
+      "type": "float",
+      "unit": "dB",
+      "range": "−30 – 25",
+      "proof": "NFF 2.50 PRXPC #2",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 3,
+      "code": "prxpc.hs_scch_iscp",
+      "label": "HS-SCCH ISCP",
+      "type": "float",
+      "unit": "dB",
+      "range": "−116 – −25",
+      "proof": "NFF 2.50 PRXPC #3",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 4,
+      "code": "prxpc.hs_scch_rscp",
+      "label": "HS-SCCH RSCP",
+      "type": "float",
+      "unit": "dB",
+      "range": "−116 – −25",
+      "proof": "NFF 2.50 PRXPC #4",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 5,
+      "code": "prxpc.hs_scch_c_i",
+      "label": "HS-SCCH C/I",
+      "type": "float",
+      "unit": "dB",
+      "range": "−30 – 40",
+      "proof": "NFF 2.50 PRXPC #5",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 6,
+      "code": "prxpc.hs_pdsch_sir",
+      "label": "HS-PDSCH SIR",
+      "type": "float",
+      "unit": "dB",
+      "range": "−30 – 25",
+      "proof": "NFF 2.50 PRXPC #6",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 7,
+      "code": "prxpc.timeslots",
+      "label": "#Timeslots",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 PRXPC #7",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 8,
+      "code": "prxpc.params_tsl",
+      "label": "#Params/TSL",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 PRXPC #8",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 9,
+      "code": "prxpc.tsl",
+      "label": "TSL",
+      "type": "int",
+      "unit": null,
+      "range": "0 – 6",
+      "proof": "NFF 2.50 PRXPC #9",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 10,
+      "code": "prxpc.hs_pdsch_iscp",
+      "label": "HS-PDSCH ISCP",
+      "type": "float",
+      "unit": "dB",
+      "range": "−116 – −25",
+      "proof": "NFF 2.50 PRXPC #10",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 11,
+      "code": "prxpc.hs_pdsch_rscp",
+      "label": "HS-PDSCH RSCP",
+      "type": "float",
+      "unit": "dB",
+      "range": "−116 – −25",
+      "proof": "NFF 2.50 PRXPC #11",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 12,
+      "code": "prxpc.hs_pdsch_c_i",
+      "label": "HS-PDSCH C/I",
+      "type": "float",
+      "unit": "dB",
+      "range": "−30 – 40",
+      "proof": "NFF 2.50 PRXPC #12",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    }
+  ]
+}

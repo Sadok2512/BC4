@@ -1,0 +1,98 @@
+{
+  "event": "CSI",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": null,
+  "cell_scoped": true,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 1,
+      "code": "csi.measured_system",
+      "label": "Measured system",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 CSI #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "CSI"
+    },
+    {
+      "col": 3,
+      "code": "csi.cell_type",
+      "label": "Cell type",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 CSI #3",
+      "agg": "mean",
+      "metric": true,
+      "category": "CSI"
+    },
+    {
+      "col": 4,
+      "code": "csi.rsrp_results",
+      "label": "#RSRP results",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 CSI #4",
+      "agg": "mean",
+      "metric": true,
+      "category": "CSI"
+    },
+    {
+      "col": 5,
+      "code": "csi.params_rsrp_result",
+      "label": "#Params/RSRP result",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 CSI #5",
+      "agg": "mean",
+      "metric": true,
+      "category": "CSI"
+    },
+    {
+      "col": 6,
+      "code": "csi.resource",
+      "label": "Resource",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 CSI #6",
+      "agg": "mean",
+      "metric": true,
+      "category": "CSI"
+    },
+    {
+      "col": 7,
+      "code": "csi.index",
+      "label": "Index",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 CSI #7",
+      "agg": "mean",
+      "metric": true,
+      "category": "CSI"
+    },
+    {
+      "col": 8,
+      "code": "csi.l1_rsrp",
+      "label": "L1-RSRP",
+      "type": "float",
+      "unit": "dBm",
+      "range": "−160 – 0",
+      "proof": "NFF 2.50 CSI #8",
+      "agg": "mean",
+      "metric": true,
+      "category": "CSI"
+    }
+  ]
+}

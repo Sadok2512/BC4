@@ -1,0 +1,50 @@
+{
+  "event": "WLANRATE",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": null,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 1,
+      "code": "wlanrate.measured_system",
+      "label": "Measured system",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 WLANRATE #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 2,
+      "code": "wlanrate.wlan_rate_ul",
+      "label": "WLAN rate UL",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 WLANRATE #2",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 3,
+      "code": "wlanrate.wlan_rate_dl",
+      "label": "WLAN rate DL",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 WLANRATE #3",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    }
+  ]
+}

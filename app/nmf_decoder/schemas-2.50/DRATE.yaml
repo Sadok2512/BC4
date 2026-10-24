@@ -1,0 +1,74 @@
+{
+  "event": "DRATE",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": null,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 1,
+      "code": "drate.application_protocol",
+      "label": "Application protocol",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 DRATE #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Throughput per layer"
+    },
+    {
+      "col": 1,
+      "code": "drate.app_rate_ul",
+      "label": "App. rate UL",
+      "type": "int",
+      "unit": "bit/s",
+      "range": null,
+      "proof": "NFF 2.50 DRATE #1",
+      "agg": "sum",
+      "metric": true,
+      "category": "Throughput per layer"
+    },
+    {
+      "col": 2,
+      "code": "drate.app_rate_dl",
+      "label": "App. rate DL",
+      "type": "int",
+      "unit": "bit/s",
+      "range": null,
+      "proof": "NFF 2.50 DRATE #2",
+      "agg": "sum",
+      "metric": true,
+      "category": "Throughput per layer"
+    },
+    {
+      "col": 3,
+      "code": "drate.bytes_ul",
+      "label": "Bytes UL",
+      "type": "int",
+      "unit": "byte",
+      "range": null,
+      "proof": "NFF 2.50 DRATE #3",
+      "agg": "mean",
+      "metric": true,
+      "category": "Throughput per layer"
+    },
+    {
+      "col": 4,
+      "code": "drate.bytes_dl",
+      "label": "Bytes DL",
+      "type": "int",
+      "unit": "byte",
+      "range": null,
+      "proof": "NFF 2.50 DRATE #4",
+      "agg": "mean",
+      "metric": true,
+      "category": "Throughput per layer"
+    }
+  ]
+}

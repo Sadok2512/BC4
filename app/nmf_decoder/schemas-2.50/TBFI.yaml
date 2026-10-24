@@ -1,0 +1,122 @@
+{
+  "event": "TBFI",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": null,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 1,
+      "code": "tbfi.measured_system",
+      "label": "Measured system",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 TBFI #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 3,
+      "code": "tbfi.tlli",
+      "label": "TLLI",
+      "type": "text",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 TBFI #3",
+      "agg": "last",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 4,
+      "code": "tbfi.params_tbf",
+      "label": "#Params/TBF",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 TBFI #4",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 5,
+      "code": "tbfi.ul_tbfs",
+      "label": "#UL TBFs",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 TBFI #5",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 6,
+      "code": "tbfi.tfi",
+      "label": "TFI",
+      "type": "int",
+      "unit": null,
+      "range": "0 – 31",
+      "proof": "NFF 2.50 TBFI #6",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 7,
+      "code": "tbfi.rlc_win",
+      "label": "RLC win.",
+      "type": "int",
+      "unit": null,
+      "range": "64 – 1024",
+      "proof": "NFF 2.50 TBFI #7",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 8,
+      "code": "tbfi.dl_tbfs",
+      "label": "#DL TBFs",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 TBFI #8",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 9,
+      "code": "tbfi.tfi",
+      "label": "TFI",
+      "type": "int",
+      "unit": null,
+      "range": "0 – 31",
+      "proof": "NFF 2.50 TBFI #9",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 10,
+      "code": "tbfi.rlc_win",
+      "label": "RLC win.",
+      "type": "int",
+      "unit": null,
+      "range": "64 – 1024",
+      "proof": "NFF 2.50 TBFI #10",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    }
+  ]
+}

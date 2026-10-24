@@ -1,0 +1,74 @@
+{
+  "event": "MARKOVMUX",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": null,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 1,
+      "code": "markovmux.measured_system",
+      "label": "Measured system",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 MARKOVMUX #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 2,
+      "code": "markovmux.frames",
+      "label": "#Frames",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 MARKOVMUX #2",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 3,
+      "code": "markovmux.params_frame",
+      "label": "Params/frame",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 MARKOVMUX #3",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 4,
+      "code": "markovmux.m_expecteted_mux",
+      "label": "M expecteted mux",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 MARKOVMUX #4",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 5,
+      "code": "markovmux.m_actual_mux",
+      "label": "M actual mux",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 MARKOVMUX #5",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    }
+  ]
+}

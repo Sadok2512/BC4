@@ -1,0 +1,62 @@
+{
+  "event": "RTPSM",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": null,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 1,
+      "code": "rtpsm.measured_system",
+      "label": "Measured system",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 RTPSM #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Voice"
+    },
+    {
+      "col": 2,
+      "code": "rtpsm.direction",
+      "label": "Direction",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 RTPSM #2",
+      "agg": "mean",
+      "metric": true,
+      "category": "Voice"
+    },
+    {
+      "col": 3,
+      "code": "rtpsm.rtp_message",
+      "label": "RTP message",
+      "type": "text",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 RTPSM #3",
+      "agg": "last",
+      "metric": true,
+      "category": "Voice"
+    },
+    {
+      "col": 4,
+      "code": "rtpsm.rtp_seq_n",
+      "label": "RTP SEQ N",
+      "type": "int",
+      "unit": null,
+      "range": "0 – 65535",
+      "proof": "NFF 2.50 RTPSM #4",
+      "agg": "mean",
+      "metric": true,
+      "category": "Voice"
+    }
+  ]
+}

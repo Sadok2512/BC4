@@ -1,0 +1,110 @@
+{
+  "event": "CAA",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": null,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 1,
+      "code": "caa.measured_system",
+      "label": "Measured system",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 CAA #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Carrier aggregation"
+    },
+    {
+      "col": 2,
+      "code": "caa.call_type",
+      "label": "Call type",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 CAA #2",
+      "agg": "mean",
+      "metric": true,
+      "category": "Carrier aggregation"
+    },
+    {
+      "col": 3,
+      "code": "caa.call_direction",
+      "label": "Call direction",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 CAA #3",
+      "agg": "mean",
+      "metric": true,
+      "category": "Carrier aggregation"
+    },
+    {
+      "col": 4,
+      "code": "caa.phone_number",
+      "label": "Phone number",
+      "type": "text",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 CAA #4",
+      "agg": "last",
+      "metric": true,
+      "category": "Carrier aggregation"
+    },
+    {
+      "col": 5,
+      "code": "caa.own_phone_number",
+      "label": "Own phone number",
+      "type": "text",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 CAA #5",
+      "agg": "last",
+      "metric": true,
+      "category": "Carrier aggregation"
+    },
+    {
+      "col": 6,
+      "code": "caa.call_timeout",
+      "label": "Call timeout",
+      "type": "int",
+      "unit": "ms",
+      "range": null,
+      "proof": "NFF 2.50 CAA #6",
+      "agg": "mean",
+      "metric": true,
+      "category": "Carrier aggregation"
+    },
+    {
+      "col": 7,
+      "code": "caa.unique_id",
+      "label": "Unique ID",
+      "type": "text",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 CAA #7",
+      "agg": "last",
+      "metric": true,
+      "category": "Carrier aggregation"
+    },
+    {
+      "col": 8,
+      "code": "caa.caa_time_correction",
+      "label": "CAA time correction",
+      "type": "int",
+      "unit": "ms",
+      "range": null,
+      "proof": "NFF 2.50 CAA #8",
+      "agg": "mean",
+      "metric": true,
+      "category": "Carrier aggregation"
+    }
+  ]
+}

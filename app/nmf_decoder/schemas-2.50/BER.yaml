@@ -1,0 +1,62 @@
+{
+  "event": "BER",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": null,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 1,
+      "code": "ber.measured_system",
+      "label": "Measured system",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 BER #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 1,
+      "code": "ber.ber",
+      "label": "BER",
+      "type": "float",
+      "unit": "%",
+      "range": "0 – 100",
+      "proof": "NFF 2.50 BER #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 1,
+      "code": "ber.pilot_ber",
+      "label": "Pilot BER",
+      "type": "float",
+      "unit": "%",
+      "range": "0 – 100",
+      "proof": "NFF 2.50 BER #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 2,
+      "code": "ber.tfci_ber",
+      "label": "TFCI BER",
+      "type": "float",
+      "unit": "%",
+      "range": "0 – 100",
+      "proof": "NFF 2.50 BER #2",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    }
+  ]
+}

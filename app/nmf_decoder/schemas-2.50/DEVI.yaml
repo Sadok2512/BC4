@@ -1,0 +1,122 @@
+{
+  "event": "DEVI",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": null,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 1,
+      "code": "devi.battery_temp",
+      "label": "Battery temp.",
+      "type": "float",
+      "unit": "C",
+      "range": null,
+      "proof": "NFF 2.50 DEVI #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Events ⚑"
+    },
+    {
+      "col": 2,
+      "code": "devi.battery_charge",
+      "label": "Battery charge",
+      "type": "float",
+      "unit": "%",
+      "range": "0 – 100",
+      "proof": "NFF 2.50 DEVI #2",
+      "agg": "mean",
+      "metric": true,
+      "category": "Events ⚑"
+    },
+    {
+      "col": 3,
+      "code": "devi.battery_status",
+      "label": "Battery status",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 DEVI #3",
+      "agg": "mean",
+      "metric": true,
+      "category": "Events ⚑"
+    },
+    {
+      "col": 4,
+      "code": "devi.device_status",
+      "label": "Device status",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 DEVI #4",
+      "agg": "mean",
+      "metric": true,
+      "category": "Events ⚑"
+    },
+    {
+      "col": 5,
+      "code": "devi.device_battery_current",
+      "label": "Device battery current",
+      "type": "float",
+      "unit": "A",
+      "range": null,
+      "proof": "NFF 2.50 DEVI #5",
+      "agg": "mean",
+      "metric": true,
+      "category": "Events ⚑"
+    },
+    {
+      "col": 6,
+      "code": "devi.device_cpu",
+      "label": "Device CPU",
+      "type": "float",
+      "unit": "%",
+      "range": "0 – 100",
+      "proof": "NFF 2.50 DEVI #6",
+      "agg": "mean",
+      "metric": true,
+      "category": "Events ⚑"
+    },
+    {
+      "col": 7,
+      "code": "devi.device_cpu_temp",
+      "label": "Device CPU temp.",
+      "type": "float",
+      "unit": "C",
+      "range": null,
+      "proof": "NFF 2.50 DEVI #7",
+      "agg": "mean",
+      "metric": true,
+      "category": "Events ⚑"
+    },
+    {
+      "col": 8,
+      "code": "devi.battery_health",
+      "label": "Battery health",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 DEVI #8",
+      "agg": "mean",
+      "metric": true,
+      "category": "Events ⚑"
+    },
+    {
+      "col": 9,
+      "code": "devi.device_battery_voltage",
+      "label": "Device battery voltage",
+      "type": "float",
+      "unit": "V",
+      "range": null,
+      "proof": "NFF 2.50 DEVI #9",
+      "agg": "mean",
+      "metric": true,
+      "category": "Events ⚑"
+    }
+  ]
+}

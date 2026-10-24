@@ -1,0 +1,110 @@
+{
+  "event": "RTPBUFFER",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": null,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 1,
+      "code": "rtpbuffer.rtp_buffer_type",
+      "label": "RTP buffer type",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 RTPBUFFER #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 1,
+      "code": "rtpbuffer.talk_rate",
+      "label": "Talk rate",
+      "type": "float",
+      "unit": null,
+      "range": "0 – 100",
+      "proof": "NFF 2.50 RTPBUFFER #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 2,
+      "code": "rtpbuffer.dequeue_underflow",
+      "label": "Dequeue underflow",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 RTPBUFFER #2",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 3,
+      "code": "rtpbuffer.consecutive_dequeue",
+      "label": "Consecutive dequeue",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 RTPBUFFER #3",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 4,
+      "code": "rtpbuffer.q_size",
+      "label": "Q size",
+      "type": "int",
+      "unit": "ms",
+      "range": null,
+      "proof": "NFF 2.50 RTPBUFFER #4",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 5,
+      "code": "rtpbuffer.q_size_silence",
+      "label": "Q size (silence)",
+      "type": "int",
+      "unit": "ms",
+      "range": null,
+      "proof": "NFF 2.50 RTPBUFFER #5",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 6,
+      "code": "rtpbuffer.frame_delay",
+      "label": "Frame delay",
+      "type": "int",
+      "unit": "ms",
+      "range": null,
+      "proof": "NFF 2.50 RTPBUFFER #6",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 7,
+      "code": "rtpbuffer.frame_delay_silence",
+      "label": "Frame delay (silence)",
+      "type": "int",
+      "unit": "ms",
+      "range": null,
+      "proof": "NFF 2.50 RTPBUFFER #7",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    }
+  ]
+}

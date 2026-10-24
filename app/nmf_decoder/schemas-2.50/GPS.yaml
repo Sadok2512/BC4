@@ -1,0 +1,158 @@
+{
+  "event": "GPS",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": null,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 1,
+      "code": "gps.lon",
+      "label": "Lon.",
+      "type": "float",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 GPS #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Position"
+    },
+    {
+      "col": 2,
+      "code": "gps.lat",
+      "label": "Lat.",
+      "type": "float",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 GPS #2",
+      "agg": "mean",
+      "metric": true,
+      "category": "Position"
+    },
+    {
+      "col": 3,
+      "code": "gps.height",
+      "label": "Height",
+      "type": "int",
+      "unit": "m",
+      "range": null,
+      "proof": "NFF 2.50 GPS #3",
+      "agg": "mean",
+      "metric": true,
+      "category": "Position"
+    },
+    {
+      "col": 4,
+      "code": "gps.distance",
+      "label": "Distance",
+      "type": "int",
+      "unit": "m",
+      "range": null,
+      "proof": "NFF 2.50 GPS #4",
+      "agg": "mean",
+      "metric": true,
+      "category": "Position"
+    },
+    {
+      "col": 5,
+      "code": "gps.quality",
+      "label": "Quality",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 GPS #5",
+      "agg": "mean",
+      "metric": true,
+      "category": "Position"
+    },
+    {
+      "col": 6,
+      "code": "gps.satellites",
+      "label": "Satellites",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 GPS #6",
+      "agg": "mean",
+      "metric": true,
+      "category": "Position"
+    },
+    {
+      "col": 7,
+      "code": "gps.velocity",
+      "label": "Velocity",
+      "type": "int",
+      "unit": "km/h",
+      "range": null,
+      "proof": "NFF 2.50 GPS #7",
+      "agg": "mean",
+      "metric": true,
+      "category": "Position"
+    },
+    {
+      "col": 8,
+      "code": "gps.pdop",
+      "label": "PDOP",
+      "type": "float",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 GPS #8",
+      "agg": "mean",
+      "metric": true,
+      "category": "Position"
+    },
+    {
+      "col": 9,
+      "code": "gps.hdop",
+      "label": "HDOP",
+      "type": "float",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 GPS #9",
+      "agg": "mean",
+      "metric": true,
+      "category": "Position"
+    },
+    {
+      "col": 10,
+      "code": "gps.vdop",
+      "label": "VDOP",
+      "type": "float",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 GPS #10",
+      "agg": "mean",
+      "metric": true,
+      "category": "Position"
+    },
+    {
+      "col": 11,
+      "code": "gps.status",
+      "label": "Status",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 GPS #11",
+      "agg": "mean",
+      "metric": true,
+      "category": "Position"
+    },
+    {
+      "col": 12,
+      "code": "gps.ba_alt",
+      "label": "Ba alt.",
+      "type": "float",
+      "unit": "m",
+      "range": null,
+      "proof": "NFF 2.50 GPS #12",
+      "agg": "mean",
+      "metric": true,
+      "category": "Position"
+    }
+  ]
+}

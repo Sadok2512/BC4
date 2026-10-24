@@ -1,0 +1,98 @@
+{
+  "event": "AGRANT",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": null,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 1,
+      "code": "agrant.measured_system",
+      "label": "Measured system",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 AGRANT #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 1,
+      "code": "agrant.agch_index",
+      "label": "AGCH index",
+      "type": "int",
+      "unit": null,
+      "range": "0 – 31",
+      "proof": "NFF 2.50 AGRANT #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 2,
+      "code": "agrant.agch_grant",
+      "label": "AGCH grant",
+      "type": "float",
+      "unit": "dB",
+      "range": "−10 – 35",
+      "proof": "NFF 2.50 AGRANT #2",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 3,
+      "code": "agrant.agch_scope",
+      "label": "AGCH scope",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 AGRANT #3",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 4,
+      "code": "agrant.agch_selector",
+      "label": "AGCH selector",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 AGRANT #4",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 5,
+      "code": "agrant.e_rnti_selector",
+      "label": "E-RNTI selector",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 AGRANT #5",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 6,
+      "code": "agrant.cell_type",
+      "label": "Cell type",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 AGRANT #6",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    }
+  ]
+}

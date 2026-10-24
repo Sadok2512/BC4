@@ -1,0 +1,86 @@
+{
+  "event": "#LICENSEREGION",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": null,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 1,
+      "code": "#licenseregion.countries",
+      "label": "#Countries",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 #LICENSEREGION #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Capture context"
+    },
+    {
+      "col": 2,
+      "code": "#licenseregion.params_country",
+      "label": "#Params/country",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 #LICENSEREGION #2",
+      "agg": "mean",
+      "metric": true,
+      "category": "Capture context"
+    },
+    {
+      "col": 3,
+      "code": "#licenseregion.mcc",
+      "label": "MCC",
+      "type": "int",
+      "unit": null,
+      "range": "0 – 999",
+      "proof": "NFF 2.50 #LICENSEREGION #3",
+      "agg": "mean",
+      "metric": true,
+      "category": "Capture context"
+    },
+    {
+      "col": 4,
+      "code": "#licenseregion.operators",
+      "label": "#Operators",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 #LICENSEREGION #4",
+      "agg": "mean",
+      "metric": true,
+      "category": "Capture context"
+    },
+    {
+      "col": 5,
+      "code": "#licenseregion.params_operator",
+      "label": "#Params/operator",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 #LICENSEREGION #5",
+      "agg": "mean",
+      "metric": true,
+      "category": "Capture context"
+    },
+    {
+      "col": 6,
+      "code": "#licenseregion.mnc_sid",
+      "label": "MNC/SID",
+      "type": "int",
+      "unit": null,
+      "range": "0 – 32767",
+      "proof": "NFF 2.50 #LICENSEREGION #6",
+      "agg": "mean",
+      "metric": true,
+      "category": "Capture context"
+    }
+  ]
+}

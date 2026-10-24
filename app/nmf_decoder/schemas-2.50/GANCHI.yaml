@@ -1,0 +1,110 @@
+{
+  "event": "GANCHI",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": null,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 1,
+      "code": "ganchi.measured_system",
+      "label": "Measured system",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 GANCHI #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 2,
+      "code": "ganchi.gan_state",
+      "label": "GAN state",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 GANCHI #2",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 3,
+      "code": "ganchi.gan_channel",
+      "label": "GAN channel",
+      "type": "int",
+      "unit": null,
+      "range": "0 – 1023",
+      "proof": "NFF 2.50 GANCHI #3",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 4,
+      "code": "ganchi.gan_bsic",
+      "label": "GAN BSIC",
+      "type": "int",
+      "unit": null,
+      "range": "0 – 63",
+      "proof": "NFF 2.50 GANCHI #4",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 5,
+      "code": "ganchi.gan_ci",
+      "label": "GAN CI",
+      "type": "int",
+      "unit": null,
+      "range": "0 – 65535",
+      "proof": "NFF 2.50 GANCHI #5",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 6,
+      "code": "ganchi.gan_lac",
+      "label": "GAN LAC",
+      "type": "int",
+      "unit": null,
+      "range": "0 – 65535",
+      "proof": "NFF 2.50 GANCHI #6",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 7,
+      "code": "ganchi.ganc_ip",
+      "label": "GANC IP",
+      "type": "text",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 GANCHI #7",
+      "agg": "last",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 8,
+      "code": "ganchi.segw_ip",
+      "label": "SEGW IP",
+      "type": "text",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 GANCHI #8",
+      "agg": "last",
+      "metric": true,
+      "category": "Unclassified"
+    }
+  ]
+}

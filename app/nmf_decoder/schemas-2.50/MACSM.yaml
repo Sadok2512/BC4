@@ -1,0 +1,122 @@
+{
+  "event": "MACSM",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": null,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 1,
+      "code": "macsm.measured_system",
+      "label": "Measured system",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 MACSM #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 1,
+      "code": "macsm.direction",
+      "label": "Direction",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 MACSM #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 1,
+      "code": "macsm.direction",
+      "label": "Direction",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 MACSM #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 2,
+      "code": "macsm.rlc_mac_msg",
+      "label": "RLC/MAC msg",
+      "type": "text",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 MACSM #2",
+      "agg": "last",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 2,
+      "code": "macsm.mac_msg",
+      "label": "MAC msg.",
+      "type": "text",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 MACSM #2",
+      "agg": "last",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 3,
+      "code": "macsm.subchannel",
+      "label": "Subchannel",
+      "type": "text",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 MACSM #3",
+      "agg": "last",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 3,
+      "code": "macsm.frame_number",
+      "label": "Frame number",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 MACSM #3",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 4,
+      "code": "macsm.type",
+      "label": "Type",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 MACSM #4",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 4,
+      "code": "macsm.mac_ver",
+      "label": "MAC ver",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 MACSM #4",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    }
+  ]
+}

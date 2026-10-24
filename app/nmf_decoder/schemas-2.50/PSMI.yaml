@@ -1,0 +1,74 @@
+{
+  "event": "PSMI",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": null,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 1,
+      "code": "psmi.measured_system",
+      "label": "Measured system",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 PSMI #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Events ⚑"
+    },
+    {
+      "col": 1,
+      "code": "psmi.t3324",
+      "label": "T3324",
+      "type": "int",
+      "unit": "ms",
+      "range": null,
+      "proof": "NFF 2.50 PSMI #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Events ⚑"
+    },
+    {
+      "col": 2,
+      "code": "psmi.t3412",
+      "label": "T3412",
+      "type": "int",
+      "unit": "ms",
+      "range": null,
+      "proof": "NFF 2.50 PSMI #2",
+      "agg": "mean",
+      "metric": true,
+      "category": "Events ⚑"
+    },
+    {
+      "col": 3,
+      "code": "psmi.edrx_cycle",
+      "label": "eDRX cycle",
+      "type": "int",
+      "unit": "ms",
+      "range": null,
+      "proof": "NFF 2.50 PSMI #3",
+      "agg": "mean",
+      "metric": true,
+      "category": "Events ⚑"
+    },
+    {
+      "col": 4,
+      "code": "psmi.ptw",
+      "label": "PTW",
+      "type": "int",
+      "unit": "ms",
+      "range": null,
+      "proof": "NFF 2.50 PSMI #4",
+      "agg": "mean",
+      "metric": true,
+      "category": "Events ⚑"
+    }
+  ]
+}

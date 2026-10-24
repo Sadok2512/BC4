@@ -1,0 +1,86 @@
+{
+  "event": "APPLIST",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": null,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 1,
+      "code": "applist.apps",
+      "label": "#Apps",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 APPLIST #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Throughput per layer"
+    },
+    {
+      "col": 2,
+      "code": "applist.params_app",
+      "label": "#Params/app",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 APPLIST #2",
+      "agg": "mean",
+      "metric": true,
+      "category": "Throughput per layer"
+    },
+    {
+      "col": 3,
+      "code": "applist.app_name",
+      "label": "App name",
+      "type": "text",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 APPLIST #3",
+      "agg": "last",
+      "metric": true,
+      "category": "Throughput per layer"
+    },
+    {
+      "col": 4,
+      "code": "applist.app_component",
+      "label": "App component",
+      "type": "text",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 APPLIST #4",
+      "agg": "last",
+      "metric": true,
+      "category": "Throughput per layer"
+    },
+    {
+      "col": 5,
+      "code": "applist.app_version",
+      "label": "App version",
+      "type": "text",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 APPLIST #5",
+      "agg": "last",
+      "metric": true,
+      "category": "Throughput per layer"
+    },
+    {
+      "col": 6,
+      "code": "applist.app_state",
+      "label": "App state",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 APPLIST #6",
+      "agg": "mean",
+      "metric": true,
+      "category": "Throughput per layer"
+    }
+  ]
+}

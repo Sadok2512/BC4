@@ -1,0 +1,182 @@
+{
+  "event": "EDCHI",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": null,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 1,
+      "code": "edchi.measured_system",
+      "label": "Measured system",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 EDCHI #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 2,
+      "code": "edchi.ns_acks",
+      "label": "NS ACKs %",
+      "type": "float",
+      "unit": "%",
+      "range": "0 – 100",
+      "proof": "NFF 2.50 EDCHI #2",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 3,
+      "code": "edchi.ns_grant_down",
+      "label": "NS grant down %",
+      "type": "float",
+      "unit": "%",
+      "range": "0 – 100",
+      "proof": "NFF 2.50 EDCHI #3",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 4,
+      "code": "edchi.cell_type",
+      "label": "Cell type",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 EDCHI #4",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 6,
+      "code": "edchi.params_cell",
+      "label": "#Params/cell",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 EDCHI #6",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 7,
+      "code": "edchi.hsupa_channel",
+      "label": "HSUPA channel",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 EDCHI #7",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 8,
+      "code": "edchi.hsupa_sc",
+      "label": "HSUPA SC",
+      "type": "int",
+      "unit": null,
+      "range": "0 – 511",
+      "proof": "NFF 2.50 EDCHI #8",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 9,
+      "code": "edchi.hsupa_rls",
+      "label": "HSUPA RLS",
+      "type": "int",
+      "unit": null,
+      "range": "0 – 5",
+      "proof": "NFF 2.50 EDCHI #9",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 10,
+      "code": "edchi.ack",
+      "label": "ACK %",
+      "type": "float",
+      "unit": "%",
+      "range": "0 – 100",
+      "proof": "NFF 2.50 EDCHI #10",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 11,
+      "code": "edchi.nack",
+      "label": "NACK %",
+      "type": "float",
+      "unit": "%",
+      "range": "0 – 100",
+      "proof": "NFF 2.50 EDCHI #11",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 12,
+      "code": "edchi.dtx",
+      "label": "DTX %",
+      "type": "float",
+      "unit": "%",
+      "range": "0 – 100",
+      "proof": "NFF 2.50 EDCHI #12",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 13,
+      "code": "edchi.grant_up",
+      "label": "Grant up %",
+      "type": "float",
+      "unit": "%",
+      "range": "0 – 100",
+      "proof": "NFF 2.50 EDCHI #13",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 14,
+      "code": "edchi.grant_hold",
+      "label": "Grant hold %",
+      "type": "float",
+      "unit": "%",
+      "range": "0 – 100",
+      "proof": "NFF 2.50 EDCHI #14",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 15,
+      "code": "edchi.grant_down",
+      "label": "Grant down %",
+      "type": "float",
+      "unit": "%",
+      "range": "0 – 100",
+      "proof": "NFF 2.50 EDCHI #15",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    }
+  ]
+}

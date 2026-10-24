@@ -1,0 +1,74 @@
+{
+  "event": "#SW",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": null,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 1,
+      "code": "#sw.device_software_version",
+      "label": "Device software version",
+      "type": "text",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 #SW #1",
+      "agg": "last",
+      "metric": true,
+      "category": "Capture context"
+    },
+    {
+      "col": 2,
+      "code": "#sw.nemo_firmware_id",
+      "label": "Nemo firmware ID",
+      "type": "text",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 #SW #2",
+      "agg": "last",
+      "metric": true,
+      "category": "Capture context"
+    },
+    {
+      "col": 3,
+      "code": "#sw.nemo_firmware_version",
+      "label": "Nemo firmware version",
+      "type": "text",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 #SW #3",
+      "agg": "last",
+      "metric": true,
+      "category": "Capture context"
+    },
+    {
+      "col": 4,
+      "code": "#sw.build_fingerprint",
+      "label": "Build fingerprint",
+      "type": "text",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 #SW #4",
+      "agg": "last",
+      "metric": true,
+      "category": "Capture context"
+    },
+    {
+      "col": 5,
+      "code": "#sw.unique_device_id",
+      "label": "Unique device ID",
+      "type": "text",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 #SW #5",
+      "agg": "last",
+      "metric": true,
+      "category": "Capture context"
+    }
+  ]
+}

@@ -1,0 +1,134 @@
+{
+  "event": "MBMSI",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": null,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 1,
+      "code": "mbmsi.measured_system",
+      "label": "Measured system",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 MBMSI #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 2,
+      "code": "mbmsi.services",
+      "label": "#Services",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 MBMSI #2",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 3,
+      "code": "mbmsi.params_service",
+      "label": "#Params/service",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 MBMSI #3",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 4,
+      "code": "mbmsi.mcc",
+      "label": "MCC",
+      "type": "int",
+      "unit": null,
+      "range": "0 – 999",
+      "proof": "NFF 2.50 MBMSI #4",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 5,
+      "code": "mbmsi.mnc",
+      "label": "MNC",
+      "type": "int",
+      "unit": null,
+      "range": "0 – 999",
+      "proof": "NFF 2.50 MBMSI #5",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 6,
+      "code": "mbmsi.service_id",
+      "label": "Service ID",
+      "type": "int",
+      "unit": null,
+      "range": "0 – 16777215",
+      "proof": "NFF 2.50 MBMSI #6",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 7,
+      "code": "mbmsi.session_id",
+      "label": "Session ID",
+      "type": "int",
+      "unit": null,
+      "range": "0 – 255",
+      "proof": "NFF 2.50 MBMSI #7",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 8,
+      "code": "mbmsi.area_id",
+      "label": "Area ID",
+      "type": "int",
+      "unit": null,
+      "range": "0 – 255",
+      "proof": "NFF 2.50 MBMSI #8",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 9,
+      "code": "mbmsi.data_mcs",
+      "label": "Data MCS",
+      "type": "int",
+      "unit": null,
+      "range": "0 – 31",
+      "proof": "NFF 2.50 MBMSI #9",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 10,
+      "code": "mbmsi.state",
+      "label": "State",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 MBMSI #10",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    }
+  ]
+}

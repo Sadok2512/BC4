@@ -1,0 +1,134 @@
+{
+  "event": "MCFLPACKETINFO",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": null,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 1,
+      "code": "mcflpacketinfo.measured_system",
+      "label": "Measured system",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 MCFLPACKETINFO #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 2,
+      "code": "mcflpacketinfo.packets",
+      "label": "#Packets",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 MCFLPACKETINFO #2",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 3,
+      "code": "mcflpacketinfo.params_packet",
+      "label": "#Params/packet",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 MCFLPACKETINFO #3",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 4,
+      "code": "mcflpacketinfo.band",
+      "label": "Band",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 MCFLPACKETINFO #4",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 5,
+      "code": "mcflpacketinfo.packet_carrier",
+      "label": "Packet carrier",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 MCFLPACKETINFO #5",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 6,
+      "code": "mcflpacketinfo.link_id",
+      "label": "Link ID",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 MCFLPACKETINFO #6",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 7,
+      "code": "mcflpacketinfo.slot_to_decode",
+      "label": "Slot to decode",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 MCFLPACKETINFO #7",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 8,
+      "code": "mcflpacketinfo.crc_status",
+      "label": "CRC status",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 MCFLPACKETINFO #8",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 9,
+      "code": "mcflpacketinfo.crc_length",
+      "label": "CRC length",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 MCFLPACKETINFO #9",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 10,
+      "code": "mcflpacketinfo.packet_type",
+      "label": "Packet type",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 MCFLPACKETINFO #10",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    }
+  ]
+}

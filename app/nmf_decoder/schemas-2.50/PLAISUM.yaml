@@ -1,0 +1,74 @@
+{
+  "event": "PLAISUM",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": null,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 1,
+      "code": "plaisum.measured_system",
+      "label": "Measured system",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 PLAISUM #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Allocation & MCS"
+    },
+    {
+      "col": 1,
+      "code": "plaisum.total_prb_usage",
+      "label": "Total PRB usage",
+      "type": "float",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 PLAISUM #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Allocation & MCS"
+    },
+    {
+      "col": 2,
+      "code": "plaisum.total_prb_utilization",
+      "label": "Total PRB utilization",
+      "type": "float",
+      "unit": "%",
+      "range": "0 – 100",
+      "proof": "NFF 2.50 PLAISUM #2",
+      "agg": "mean",
+      "metric": true,
+      "category": "Allocation & MCS"
+    },
+    {
+      "col": 3,
+      "code": "plaisum.streams",
+      "label": "#Streams",
+      "type": "float",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 PLAISUM #3",
+      "agg": "mean",
+      "metric": true,
+      "category": "Allocation & MCS"
+    },
+    {
+      "col": 4,
+      "code": "plaisum.scheduled_cells",
+      "label": "#Scheduled cells",
+      "type": "float",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 PLAISUM #4",
+      "agg": "mean",
+      "metric": true,
+      "category": "Allocation & MCS"
+    }
+  ]
+}

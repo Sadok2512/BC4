@@ -1,0 +1,170 @@
+{
+  "event": "CELLPOLLUTION",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": null,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 1,
+      "code": "cellpollution.source_band",
+      "label": "Source band",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 CELLPOLLUTION #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 1,
+      "code": "cellpollution.source_band",
+      "label": "Source band",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 CELLPOLLUTION #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 2,
+      "code": "cellpollution.source_system",
+      "label": "Source system",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 CELLPOLLUTION #2",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 2,
+      "code": "cellpollution.source_ch",
+      "label": "Source ch",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 CELLPOLLUTION #2",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 2,
+      "code": "cellpollution.source_ch",
+      "label": "Source ch",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 CELLPOLLUTION #2",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 2,
+      "code": "cellpollution.params_cell",
+      "label": "#Params/cell",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 CELLPOLLUTION #2",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 2,
+      "code": "cellpollution.params_cell",
+      "label": "#Params/cell",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 CELLPOLLUTION #2",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 3,
+      "code": "cellpollution.sc",
+      "label": "SC",
+      "type": "int",
+      "unit": null,
+      "range": "0 – 511",
+      "proof": "NFF 2.50 CELLPOLLUTION #3",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 3,
+      "code": "cellpollution.pn",
+      "label": "PN",
+      "type": "int",
+      "unit": null,
+      "range": "0 – 511",
+      "proof": "NFF 2.50 CELLPOLLUTION #3",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 4,
+      "code": "cellpollution.ec_n0",
+      "label": "Ec/N0",
+      "type": "float",
+      "unit": "dB",
+      "range": "−30 – 0",
+      "proof": "NFF 2.50 CELLPOLLUTION #4",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 4,
+      "code": "cellpollution.ec_i0",
+      "label": "Ec/I0",
+      "type": "float",
+      "unit": "dB",
+      "range": "−50 – 0",
+      "proof": "NFF 2.50 CELLPOLLUTION #4",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 5,
+      "code": "cellpollution.rscp",
+      "label": "RSCP",
+      "type": "float",
+      "unit": "dBm",
+      "range": "−150 – −20",
+      "proof": "NFF 2.50 CELLPOLLUTION #5",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 5,
+      "code": "cellpollution.rscp",
+      "label": "RSCP",
+      "type": "float",
+      "unit": "dBm",
+      "range": null,
+      "proof": "NFF 2.50 CELLPOLLUTION #5",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    }
+  ]
+}
