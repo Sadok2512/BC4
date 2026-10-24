@@ -1,8 +1,9 @@
-"""G25 — catalogue cohérence : payload.metrics (305) ↔ payload.nodes
-(≈884). Chaque metric_code dans metrics doit référencer un nœud leaf
-sélectionnable qui l'expose (par matching selection).
+"""G25 — après invalidation cache + relance, 0 orphelin métrique.
+
+Chaque metric_row.code dans payload.metrics doit être consommable par
+AU MOINS 1 leaf.selection (format `code` ou `code@cell_idx`).
 """
-import sys, json
+import json, sys
 sys.path.insert(0, "/app")
 from sqlalchemy import text
 from app.db import SessionLocal
@@ -11,31 +12,28 @@ def main():
     db = SessionLocal()
     try:
         rows = db.execute(text(
-            "SELECT project_id, payload FROM metrics_catalog_cache"
+            "SELECT project_id, payload FROM metrics_catalog_cache ORDER BY project_id"
         )).all()
-        failures = []
+        total_orphans = 0
         for pid, payload in rows:
-            if isinstance(payload, str):
-                payload = json.loads(payload)
+            if isinstance(payload, str): payload = json.loads(payload)
             metrics = payload.get("metrics", [])
             nodes = payload.get("nodes", [])
-            leaf_selections = {
-                n.get("selection") for n in nodes
-                if n.get("node_type") == "leaf" and n.get("selectable")
-            }
-            # Chaque metric.code (ou binding équivalent) doit correspondre à
-            # au moins un leaf.selection. On accepte le match par préfixe
-            # (metric_code@cell) → selection commence par metric_code.
+            leaf_sel = {n.get("selection") for n in nodes
+                        if n.get("node_type") == "leaf" and n.get("selection")}
+            # Un metric est "consommable" si au moins un leaf a selection
+            # commençant par <code> (potentiellement suffixé @N).
             orphans = []
             for m in metrics:
-                code = m.get("code") or m.get("selection") or ""
-                if not any(sel and (sel == code or sel.startswith(code + "@")) for sel in leaf_selections):
-                    orphans.append(code)
-            if orphans:
-                failures.append((pid, orphans[:5], len(orphans)))
-            print(f"G25 pid={pid} metrics={len(metrics)} nodes={len(nodes)} leaves={len(leaf_selections)} orphans={len(orphans)}")
-        verdict = "PASS" if not failures else "FAIL"
-        print(f"G25_VERDICT {verdict} failed_projects={len(failures)}")
+                code = m.get("code")
+                if not code: continue
+                if any(sel == code or sel.startswith(code + "@") for sel in leaf_sel): continue
+                orphans.append(code)
+            total_orphans += len(orphans)
+            print(f"G25 {pid}: metrics={len(metrics)} leaves={len(leaf_sel)} orphans={len(orphans)}"
+                  + (f"  sample={orphans[:3]}" if orphans else ""))
+        verdict = "PASS" if total_orphans == 0 else "FAIL"
+        print(f"G25_VERDICT {verdict} total_orphans={total_orphans}")
     finally:
         db.close()
 

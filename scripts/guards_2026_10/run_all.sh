@@ -4,7 +4,7 @@
 set -eu
 DIR="$(dirname "$0")"
 for g in G29_file_vs_db G26_offsets G27_unk G28_ranges G24_leaves G25_catalogue G18b_parity GPS_stale; do
-  echo "=== $g ==="
-  python "$DIR/$g.py" 2>&1 | tail -5
+  echo "===================== $g ====================="
+  python "$DIR/$g.py" 2>&1
   echo ""
 done

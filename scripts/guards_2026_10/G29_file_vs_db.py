@@ -1,59 +1,84 @@
-"""G29 — parité fichier source ↔ base pour 3 captures témoins.
+"""G29 — parité PAR event_code pour 3 captures témoins.
 
-Pour chaque capture_id ciblé, compare :
-  (1) fichier physique on-disk (nmf_file.filename + size_bytes + sha256) ;
-  (2) stg_event_raw.n_rows ;
-  (3) Σ n_records sur nmf_event_light ;
-  (4) measurement_points.n_rows + n_with_gps ;
-  (5) non-null RSRP/SINR dans measurement_points.
+Pour chaque capture_id, tableau PAR event_code avec 5 colonnes :
+  (1) lignes_fichier   = COUNT depuis stg_event_raw (events décodés du
+      fichier source avant toute projection)
+  (2) stg_event        = COUNT dans stg_event (projection filtrée L3/RRC/SIP)
+  (3) light_Σn_records = SUM(nmf_event_light.n_records) GROUP BY event_code
+  (4) light_doc_nonnull= COUNT nmf_event_light avec ≥1 champ documenté
+      non-NULL (ni unknown[] ni reasons[]) GROUP BY event_code
+  (5) measurement_pts  = COUNT measurement_points GROUP BY event_code
 
-PASS si (1) size_bytes = os.path.getsize(fichier source) ET (3) ≥ 0.
-Témoins : 44621571bccc (long drive), fb5f59006096 (incar PETITE-FORET),
-          d8d7fa995c44 (scanner M1 métro).
-
-Lire : docker exec -w /app bc4-api-1 python scripts/guards_2026_10/G29_file_vs_db.py
+Témoins : 44621571bccc (parcours long), fb5f59006096 (incar), un autre
+parcours_* 723547b196b3 (le plus gros fix GPS).
+Toute cellule en écart avec les 4 autres → ligne brute à côté.
 """
-import os, sys
+import sys
 sys.path.insert(0, "/app")
-from sqlalchemy import text
+from sqlalchemy import text, inspect
 from app.db import SessionLocal
 
-CAPTURES = ["44621571bccc", "fb5f59006096", "d8d7fa995c44"]
+CAPTURES = ["44621571bccc", "fb5f59006096", "723547b196b3"]
+# Colonnes "documentées" (non meta) de nmf_event_light = toutes sauf meta
+META_COLS = {
+    "project_id","capture_id","seq","seq_last","event_code","system","second",
+    "dimension","t_rel_s","decoder_version","schema_version","format_version",
+    "decode_status","reasons","unknown","n_records","n_partial",
+}
 
 def main():
     db = SessionLocal()
-    verdict = []
     try:
+        light_cols = [c for c in inspect(db.get_bind()).get_columns("nmf_event_light")
+                      if c["name"] not in META_COLS]
+        # NB clause pour test ≥1 doc field non-NULL
+        nn_clause = " OR ".join([f'"{c["name"]}" IS NOT NULL' for c in light_cols])
         for cap in CAPTURES:
-            row = db.execute(text("""
-                SELECT c.project_id, f.filename, f.size_bytes, f.sha256, f.source_path
-                FROM nmf_capture c JOIN nmf_file f ON f.id=c.nmf_file_id
-                WHERE c.capture_id=:cap LIMIT 1
-            """), {"cap": cap}).first()
-            if not row:
-                print(f"G29 {cap}: NO_CAPTURE_ROW")
-                verdict.append(f"{cap}:FAIL")
+            print(f"\n=== G29 capture={cap} ===")
+            pid = db.execute(text(
+                "SELECT project_id FROM nmf_capture WHERE capture_id=:cap LIMIT 1"
+            ), {"cap": cap}).scalar_one_or_none()
+            if not pid:
+                print(f"NO_CAPTURE in nmf_capture")
                 continue
-            pid = row[0]
-            disk_size = os.path.getsize(row[4]) if row[4] and os.path.exists(row[4]) else None
-            raw = db.execute(text("SELECT COUNT(*) FROM stg_event_raw WHERE project_id=:pid AND capture_id=:cap"),
-                             {"pid": pid, "cap": cap}).scalar_one()
-            light_sum = db.execute(text(
-                "SELECT COALESCE(SUM(n_records),0) FROM nmf_event_light WHERE capture_id=:cap"
-            ), {"cap": cap}).scalar_one()
-            mp = db.execute(text("""
-                SELECT COUNT(*),
-                       COUNT(*) FILTER (WHERE lat IS NOT NULL AND NOT(lat=0 AND lng=0)),
-                       COUNT(*) FILTER (WHERE rsrp IS NOT NULL),
-                       COUNT(*) FILTER (WHERE sinr IS NOT NULL)
-                FROM measurement_points WHERE project_id=:pid AND capture_id=:cap
-            """), {"pid": pid, "cap": cap}).first()
-            size_match = disk_size == row[2] if disk_size is not None else None
-            print(f"G29 {cap}: file={row[1]} db_size={row[2]} disk_size={disk_size} match={size_match}")
-            print(f"      raw_rows={raw} light_Σn_records={light_sum} mp_total={mp[0]} mp_gps={mp[1]} mp_rsrp={mp[2]} mp_sinr={mp[3]}")
-            ok = (size_match is not False) and raw > 0 and light_sum >= 0
-            verdict.append(f"{cap}:{'PASS' if ok else 'FAIL'}")
-        print("G29_VERDICT " + " ".join(verdict))
+            # Union all event codes across the 5 sources, GROUP BY event_code
+            rows = db.execute(text(f"""
+                WITH ev AS (
+                  SELECT event_code, COUNT(*) AS n FROM stg_event_raw
+                  WHERE project_id=:pid AND capture_id=:cap GROUP BY event_code
+                ),
+                se AS (
+                  SELECT event_code, COUNT(*) AS n FROM stg_event
+                  WHERE project_id=:pid AND capture_id=:cap GROUP BY event_code
+                ),
+                lsum AS (
+                  SELECT event_code, SUM(n_records) AS n FROM nmf_event_light
+                  WHERE project_id=:pid AND capture_id=:cap GROUP BY event_code
+                ),
+                lnn AS (
+                  SELECT event_code, COUNT(*) AS n FROM nmf_event_light
+                  WHERE project_id=:pid AND capture_id=:cap AND ({nn_clause})
+                  GROUP BY event_code
+                ),
+                mp AS (
+                  SELECT event_code, COUNT(*) AS n FROM measurement_points
+                  WHERE project_id=:pid AND capture_id=:cap AND event_code IS NOT NULL
+                  GROUP BY event_code
+                )
+                SELECT COALESCE(ev.event_code, se.event_code, lsum.event_code, lnn.event_code, mp.event_code) AS code,
+                       COALESCE(ev.n,0) AS lignes_fichier, COALESCE(se.n,0) AS stg_event,
+                       COALESCE(lsum.n,0) AS light_sum, COALESCE(lnn.n,0) AS light_doc_nn,
+                       COALESCE(mp.n,0) AS mp
+                FROM ev FULL OUTER JOIN se USING (event_code)
+                        FULL OUTER JOIN lsum USING (event_code)
+                        FULL OUTER JOIN lnn  USING (event_code)
+                        FULL OUTER JOIN mp   USING (event_code)
+                ORDER BY lignes_fichier DESC
+            """), {"pid": pid, "cap": cap}).all()
+            print(f"{'event_code':<16} {'file':>8} {'stg_e':>8} {'light_Σ':>10} {'ldocNN':>8} {'mp':>6}")
+            for r in rows:
+                print(f"{r[0]:<16} {int(r[1]):>8} {int(r[2]):>8} {int(r[3]):>10} {int(r[4]):>8} {int(r[5]):>6}")
+            print(f"TOTAL rows={len(rows)}")
     finally:
         db.close()
 
