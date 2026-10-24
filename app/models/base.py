@@ -693,3 +693,26 @@ class Skill(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=datetime.utcnow
     )
+
+
+class CatalogRelease(Base):
+    """Versioned catalog artefact — one row per build of catalog_<v>.json.
+
+    Produced by scripts/catalog/build_catalog.py from the NFF spec CSV.
+    Exactly one row with is_current=TRUE at a time (partial unique index).
+    """
+
+    __tablename__ = "catalog_release"
+
+    version: Mapped[str] = mapped_column(String, primary_key=True)
+    spec_version: Mapped[str] = mapped_column(String, nullable=False)
+    decoder_min_version: Mapped[str] = mapped_column(String, nullable=False)
+    sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    n_categories: Mapped[int] = mapped_column(Integer, nullable=False)
+    n_metrics: Mapped[int] = mapped_column(Integer, nullable=False)
+    n_leaves: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=datetime.utcnow
+    )
+    changelog: Mapped[str | None] = mapped_column(Text, nullable=True)
+    is_current: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
