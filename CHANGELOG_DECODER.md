@@ -1,5 +1,63 @@
 # CHANGELOG_DECODER
 
+## 1.7.0 (minor) — 2026-10-25 — Phase 2.51.0 1b : dispatch NR + sentinelles (Agent BC3)
+
+Objet : lever le hack 2.62 `txpc_cell_type()` qui clampait 0-4 et rendait
+NR invisible (cell_type observés 101, 108, 117, 199 sur 723547b196b3),
+activer le dispatch LTE/NR pour les events partagés, instrumenter les
+violations de plage.
+
+- `DECODER_VERSION` 1.6.0 → 1.7.0.
+- `app/nmf_decoder/schema.py` :
+  - Nouveau helper `schema_for(event, system)` : les YAMLs à suffixe
+    `_NR` (CELLMEAS_NR, MIMOMEAS_NR, TAD_NR, TXPC_NR, PHRATE_NR) sont
+    chargés sous `_variants[9]` du schema de base et sélectionnés quand
+    `system==9`. Les YAMLs LTE restent la base pour `system==7`.
+  - `fields()` collecte header + groups des variants NR.
+- `app/nmf_decoder/light.py` : `txpc_cell_type()` RESTRICTE à LTE
+  (`r.system==7`) — pour NR, cell_type est lu via header `txpc.cell_type`
+  (`dimension: true` dans TXPC_NR.yaml) ; le clamp 0-4 reste pour LTE
+  (compat 2.59/2.62 content-proven). `dimensions()` et `Light.add()`
+  lisent le schema via `schema_for(code, r.system)` pour propager
+  `cell_type` depuis les headers marqués `dimension: true`
+  (TAD/TXPC/PHRATE/PLAID — LTE **et** NR).
+- `app/nmf_decoder/cells.py` : la projection `cell_rows()` lève la
+  restriction `cell_index ∈ range(5)` et accepte les codes NR bruts
+  (101, 108, 117, 199) comme `cell_index` pour `system=9` — pas de
+  mapping inventé, chaque code expose sa feuille distincte dans le
+  catalog 2.51.0 (gris + raison si jamais observé).
+- `app/nmf_decoder/decoder.py` :
+  - Compteur global `RANGE_VIOLATIONS: dict[field_code → int]` incrémenté
+    quand une valeur viole `range` ou `enum` (déjà → NULL + partial, désormais
+    aussi compté). `reset_range_violations()` au début de chaque run.
+  - Dispatch NR : après résolution de `r.system`, bascule sur la variante
+    `_variants[9]` si elle existe (ex: TXPC_NR.yaml).
+- `app/nmf_decoder/schemas/PHRATE_NR.yaml` CRÉÉ : 4 fields (hdr_n, scope,
+  cell_type `dimension:true`, pdsch_sch_bitrate). Spec NFF 2.50 §PHRATE
+  Parameters for NR.
+- `app/nmf_decoder/schemas/{CELLMEAS,MIMOMEAS}_NR.yaml` corrigés :
+  `start.header_col`, `count_code`, `params_code` ajoutés pour que
+  `decoder.decode()` lise correctement le count/width du group cells.
+- Alembic 0053_decoder_1_7_0_nr_cols :
+  - `nmf_event_light` + `nmf_event_deep` : 19 colonnes headers NR
+    (cellmeas_scope, mimomeas_hdr_n, mimomeas_params_per_measurement,
+    phrate_{cell_type,hdr_n,pdsch_sch_bitrate,scope}, tad_scope,
+    txpc_{cell_type,f_il,g_il,n_pusch_tpc,pucch_pl,pusch_ph,pusch_pl,
+    scope,srs_tx_power,tx_power,ul_type}).
+  - `nmf_event_light_group` + `nmf_event_group` : 14 colonnes cells NR
+    (cell_bi, cell_extra_{1,2}, cell_meas_type, cell_port,
+    cell_{rsrp,rsrq,sinr}_fil, cell_{rsrp,rsrq,sinr,rssi}_p, cell_sinr,
+    cell_to).
+  - Tous en `double precision`, nullable, `ADD COLUMN IF NOT EXISTS`.
+
+Sentinelles connues (à dumper post-redécode dans
+`exports/decoder_1_7_0_sentinels.log`) :
+- CELLMEAS NR cell.band = 99999, cell.pci = 99999 (observation audit 1a).
+
+Les colonnes nommées `extra_N` et `*_fil` sortent avec
+`selectable=false` + `reason="FF 2.62 non documenté 2.50 — nommage par
+contenu BC3 2026-10-25"` dans le catalog 2.51.0.
+
 ## 1.6.0 — 2026-10-24 — Phase 2.2a (Agent BC3)
 
 - `DECODER_VERSION` bumped 1.5.1 → 1.6.0.

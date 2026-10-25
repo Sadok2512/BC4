@@ -1,3 +1,29 @@
+## 0.81.0 (minor) — BC4 2026-10-25 — Decoder 1.7.0 NR dispatch + catalog 2.51.0 7 feuilles @cell_type (Agent BC3)
+
+Phase 2.51.0 lot 1b. Lève le blocage NR invisible identifié par audit 1a
+(cell_type NR 101/108/117/199 clampés 0-4 par le hack `txpc_cell_type`).
+
+- **Decoder 1.7.0** : voir CHANGELOG_DECODER.md 1.7.0.
+  - `schema_for(event, system)` → dispatch LTE/NR par suffixe `_NR`.
+  - `txpc_cell_type()` SUPPRIMÉE (clamp FAUX pour NR).
+  - `RANGE_VIOLATIONS` counter global + dump sentinelles.
+  - PHRATE_NR.yaml créé.
+  - Alembic 0053 : +19 cols headers NR, +14 cols cells NR (nmf_event_light,
+    _group, nmf_event_deep, nmf_event_group).
+- **Catalog 2.51.0** : voir CHANGELOG_CATALOG.md 2.51.0.
+  - 7 feuilles @cell_type par métrique cellule (PCell, SCell 1-4, PSCell,
+    SCell NR 100+).
+  - selectable=false + raison si cell_type jamais observé en base.
+- **API 0.81.0** : rebuild obligatoire pour prendre `DECODER_VERSION=1.7.0`,
+  les colonnes DB 0053 et le dispatch `_variants[9]`. `/health` → 0.81.0.
+
+Guards manuels post-rebuild :
+- G25 (orphans + dup) : 0 attendu après catalog 2.51.0 posé.
+- G18b (parité multiset catalog ↔ cache) : PASS attendu.
+- G24 (recount LIVE) sur 134af70a06eb et 723547b196b3 : values ≠ 0 attendues.
+- G28 (plages physiques) auto en fin de redécode : FAIL = stop + rapport.
+- G29 (fichier vs DB) sur 134af70a06eb et 723547b196b3 : 0 écart attendu.
+
 ## 0.80.1 (patch) — BC4 2026-10-25 — /metrics response_model literals relâchés (Agent BC3)
 
 Fix critique post 0.80.0 : `MetricInfo.proof`, `MetricInfo.tech`, `MetricCatalogNode.proof`, `MetricCatalogNode.node_type` étaient `Literal[...]` fermés sur les valeurs BC2 (`"documented"`, `"content"`, `"open"`, `"LTE"`, `"NR"`, `"BOTH"`, `"category"`, `"group"`, `"metric"`, `"leaf"`). Le catalog 2.50.5 utilise `"documented-2.50"`, `"Shared"`, `"Other"`, `"tech"`, `"event"` → le response_model Pydantic rejetait TOUS les builds v4 avec `ValidationError: Input should be ...`. `/metrics` retournait 500 au front.

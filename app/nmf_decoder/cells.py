@@ -6,7 +6,19 @@ Activity means a strictly positive observed PDSCH throughput in this second, not
 configured-carrier state or an interpolation across missing seconds.
 """
 from collections import defaultdict
-from .schema import schemas,fields,column
+from .schema import schemas,schema_for,fields,column
+
+# 1.7.0 — Mapping LTE SCell : proof MIMOMEAS/CELLMEAS content.
+# Codes NR observés (101, 108, 117, 199) sont utilisés comme cell_index
+# brut : pas de mapping inventé, chaque code expose sa feuille distincte
+# dans le catalog 2.51.0 (gris + raison si jamais observé).
+CELL_MAP_LTE={0:0,10:1,11:2,12:3,13:4}
+
+
+def _cell_index_for(cell_type,system):
+    if system==7:return CELL_MAP_LTE.get(cell_type)
+    if system==9 and isinstance(cell_type,int):return cell_type
+    return None
 
 
 def cell_rows(light):
@@ -17,14 +29,13 @@ def cell_rows(light):
         # SCell1..4 by the MIMOMEAS/content proof; neighbour/type-1 and the
         # observed 14/15 codes deliberately remain outside this projection.
         if b['event_code']=='CELLMEAS' and b['second']>=0:
-            cell_map={0:0,10:1,11:2,12:3,13:4}
             observed=defaultdict(list)
             for group in b.get('groupstats',{}).values():
                 if group['group_name']!='cells':continue
                 stats=group['stats']
                 discriminator=stats.get('cell_type')
                 cell_type=discriminator.value() if discriminator else None
-                cell=cell_map.get(cell_type)
+                cell=_cell_index_for(cell_type,b.get('system'))
                 if cell is None:continue
                 for code,stat in stats.items():
                     if code=='cell_type' or stat.value() is None:continue
@@ -43,13 +54,24 @@ def cell_rows(light):
                 yield dict(second=b['second'],event_code='CELLMEAS',metric_code=code,cell_index=-1,
                            seq_first=b['seq_last'],seq_last=b['seq_last'],value=value,weight=None,
                            reason='missing_neighbor_or_serving_value' if value is None else None)
-        schema=schemas().get(b['event_code'],{})
+        schema=schema_for(b['event_code'],b.get('system'))
         if not schema.get('cell_scoped') or b['second']<0:continue
         indices=([b['cell_type']] if b['event_code']=='TXPC' and b.get('cell_type') is not None else
-                 [b['stats'][column(f['code'])].value() for f in schema['header']
+                 [b['stats'][column(f['code'])].value() for f in schema.get('header',[])
                   if f['code'].endswith('.cell_type') and column(f['code']) in b['stats']])
-        if len(indices)!=1 or indices[0] not in range(5):continue
-        cell=int(indices[0])
+        if len(indices)!=1 or indices[0] is None:continue
+        # 1.7.0 — LTE serving cells (PCell/SCell 1-4) sont 0..4 (sources
+        # PHRATE/PLAID/PUSCH + hack content-proven TXPC) ; NR expose les
+        # cell_type bruts (101, 108, 117, 199) comme cell_index, scope
+        # catalog 2.51.0 PSCell/SCell NR 100+.
+        raw=int(indices[0])
+        if b.get('system')==7:
+            if raw not in range(5):continue
+            cell=raw
+        elif b.get('system')==9:
+            cell=raw
+        else:
+            continue
         for code,stat in b['stats'].items():
             f=fields().get(code,{})
             if f.get('dimension') or code=='phrate_ph_ch_type' or code.endswith('_cell_type') or stat.value() is None:continue

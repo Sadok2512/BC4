@@ -1,15 +1,17 @@
 """The same ordered aggregation for streamed decode and replayed Deep records."""
 import math
 from collections import defaultdict
-from .schema import fields,schemas,column
+from .schema import fields,schemas,schema_for,column
 from .decoder import effective_col
 
 def txpc_cell_type(r):
-    """Return the content-proven LTE TXPC cell discriminator.
+    """1.7.0 — Content-proven LTE TXPC cell discriminator (SYSTEM 7 ONLY).
 
     NMF 2.59 appends it as the last token.  NMF 2.62 adds one more
-    undocumented value after it.  System 9 records are deliberately left
-    unbound until the P4 NR proof is closed.
+    undocumented value after it.  System 9 (NR) is read via the
+    `txpc.cell_type` header field (`dimension: true` in TXPC_NR.yaml) —
+    the LTE clamp 0..4 is FALSE for NR (observed 101, 108, 117, 199 on
+    723547b196b3 audit 1a).
     """
     if r.event_code!='TXPC' or r.system!=7 or not r.tokens:return None
     index=-2 if r.format_version=='2.62' else -1
@@ -31,7 +33,7 @@ class Stat:
             'dominant':lambda:min(self.freq,key=lambda v:(-self.freq[v],v))}[self.agg]()
 
 def dimensions(r):
-    s=schemas().get(r.event_code,{})
+    s=schema_for(r.event_code,r.system)
     keys=[]
     if s.get('context_dimension'):keys.append('context_ids='+','.join(map(str,r.context_ids or [])))
     if s.get('parameter_dimension_col'):
@@ -57,11 +59,14 @@ class Light:
         if b is None:
             b=self.buckets[key]=dict(event_code=r.event_code,system=r.system,second=second,dimension=key[3],seq=r.seq,seq_last=r.seq,
                 t_rel_s=r.t_rel_s,n_records=0,n_partial=0,reasons=set(),unknown=set(),stats={},groupstats={},format_version=r.format_version)
-        if r.event_code=='TXPC':b['cell_type']=txpc_cell_type(r)
+        if r.event_code=='TXPC' and r.system==7:b['cell_type']=txpc_cell_type(r)
         b['seq_last']=r.seq;b['n_records']+=1;b['n_partial']+=r.decode_status=='partial';b['reasons'].update(r.reasons)
         b['context_id']=r.context_id;b['context_ids']=r.context_ids or []
         if r.event_code=='CELLMEAS':b.pop('neighbors',None)
-        if r.event_code=='CELLMEAS' and r.values.get('cellmeas_n_cells') is not None:
+        # 1.7.0 — neighbors agrégation est spécifique LTE 1.5.1
+        # (cell_type==2 = neighbour, cell_type==0 = serving). NR expose
+        # d'autres codes (101, 108, 117, 199) : scope lot ultérieur.
+        if r.event_code=='CELLMEAS' and r.system==7 and r.values.get('cellmeas_n_cells') is not None:
             cells=[g['values'] for g in r.groups if g['group_name']=='cells']
             neighbors=[c for c in cells if c.get('cell_type')==2]
             serving=[c for c in cells if c.get('cell_type')==0]
@@ -79,12 +84,13 @@ class Light:
         for code,value in r.values.items():
             weight_code=fields().get(code,{}).get('weight_code')
             add(code,value,r.values.get(column(weight_code)) if weight_code else 1)
-        if schemas().get(r.event_code,{}).get('groups_last'):
+        active_schema=schema_for(r.event_code,r.system)
+        if active_schema.get('groups_last'):
             b['groupstats']={}
             for code in list(b['stats']):
                 if fields().get(code,{}).get('group') is not None:del b['stats'][code]
         for g in r.groups:
-            definition=next(x for x in schemas()[r.event_code]['groups'] if x['name']==g['group_name'])
+            definition=next(x for x in active_schema['groups'] if x['name']==g['group_name'])
             identity=str(g['set_index'])+'|'+ '|'.join(f'{k}={v}' for k,v in sorted(g['values'].items()) if v is not None and k.endswith(('_pci','_ch','_port','_band')))
             target=b['groupstats'].setdefault((g['group_name'],identity),dict(group_name=g['group_name'],identity=identity,set_index=g['set_index'],n_records=0,stats={}))
             target['n_records']+=1

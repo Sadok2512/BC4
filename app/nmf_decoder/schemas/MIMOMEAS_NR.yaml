@@ -40,7 +40,10 @@
   "groups": [
     {
       "name": "measurements",
-      "start": 8,
+      "start": {"header_col": 6},
+      "count_code": "mimomeas.n_measurements",
+      "params_code": "mimomeas.params_per_measurement",
+      "proof": "NFF 2.50 MIMOMEAS NR #measurements count / params",
       "fields": [
         {"code": "cell.type", "label": "Cell type (NR)", "type": "int", "unit": "enum", "agg": "dominant", "proof": "NFF 2.50 MIMOMEAS NR #3", "category": "mimo", "dimension": true},
         {"code": "cell.port", "label": "Port", "type": "int", "unit": "id", "agg": "dominant", "proof": "NFF 2.50 MIMOMEAS NR #4", "category": "mimo"},

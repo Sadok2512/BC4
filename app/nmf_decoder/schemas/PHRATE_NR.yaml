@@ -1,0 +1,57 @@
+{
+  "event": "PHRATE",
+  "systems": [9],
+  "system_col": 4,
+  "min_format": "2.50",
+  "schema_version": "2.50.0-NR",
+  "unknown_tail": "keep",
+  "cell_scoped": true,
+  "context_count": 0,
+  "header": [
+    {
+      "col": 5,
+      "code": "phrate.hdr_n",
+      "label": "#Header params",
+      "type": "int",
+      "unit": "n",
+      "proof": "NFF 2.50 PHRATE Parameters for NR #1",
+      "agg": "last",
+      "metric": false,
+      "category": "terminal_cell"
+    },
+    {
+      "col": 6,
+      "code": "phrate.scope",
+      "label": "Scope (NR)",
+      "type": "int",
+      "unit": "enum",
+      "proof": "NFF 2.50 PHRATE Parameters for NR #2",
+      "agg": "last",
+      "metric": false,
+      "category": "terminal_cell"
+    },
+    {
+      "col": 7,
+      "code": "phrate.cell_type",
+      "label": "Cell type (NR)",
+      "type": "int",
+      "unit": "enum",
+      "proof": "NFF 2.50 PHRATE Parameters for NR #3",
+      "agg": "dominant",
+      "dimension": true,
+      "category": "terminal_cell"
+    },
+    {
+      "col": 8,
+      "code": "phrate.pdsch_sch_bitrate",
+      "label": "PDSCH scheduled throughput (NR)",
+      "type": "int",
+      "unit": "bit/s",
+      "range": [0, null],
+      "proof": "NFF 2.50 PHRATE Parameters for NR #4",
+      "agg": "mean",
+      "category": "throughput_layers"
+    }
+  ],
+  "groups": []
+}
