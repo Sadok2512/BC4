@@ -1,192 +1,139 @@
-# HANDOFF — Phase 2.51.0 1b (reprise mi-course)
+# HANDOFF — Phase 2.51.0 1b CLOS
 
-Ouvert par BC3 le 2026-10-25 ~15:30Z. Mis à jour 2026-10-25 ~17:12Z.
-Branche `feat/bc3-catalog-2.51`, 3 commits BC3 posés au-dessus de 3a8a0b2.
-DEPLOY_LOCK **TOUJOURS PRIS** par BC3 — redécode en cours.
+Fermé par BC3 le 2026-10-25 ~21:55Z.
+Branche `feat/bc3-catalog-2.51` mergée dans `main` (merge commit `b505076`).
+Back **0.81.0** / decoder **1.7.0** live. Catalog **2.51.0** `is_current=TRUE`.
 
-## État mi-course (17:12Z)
+## Livrables
 
-### Fait
+### Decoder 1.7.0 (`aa4c05b`, `c7e5596`, `dfbf4bf`, `d8eba79`)
 
-- **Decoder 1.7.0** livré (commit `aa4c05b`) :
-  - `schema_for(event, system)` : dispatch LTE/NR via `_variants[9]`
-    posés depuis les YAMLs `*_NR` (CELLMEAS, MIMOMEAS, TAD, TXPC, PHRATE).
-  - Decoder re-sélectionne la variante NR après résolution de `r.system`.
-  - `txpc_cell_type()` RESTRICTE à LTE (system==7). NR via header
-    `txpc.cell_type` dimension=true.
-  - `Light.add` : neighbors agrégation CELLMEAS skippée pour NR.
-  - `RANGE_VIOLATIONS` counter global + `reset_range_violations()`.
-  - PHRATE_NR.yaml créé (4 fields NFF 2.50 §PHRATE Parameters for NR).
+- `schema_for(event, system)` : dispatch LTE/NR via `_variants[9]`
+  posés depuis les YAMLs `*_NR` (CELLMEAS, MIMOMEAS, TAD, TXPC, PHRATE).
+- `txpc_cell_type()` RESTRICTE à LTE (`r.system==7`). NR via header
+  dimension `txpc.cell_type` dans TXPC_NR.yaml (observations 101, 108,
+  117, 199 sur 723547b196b3).
+- `RANGE_VIOLATIONS` counter global + `reset_range_violations()`.
+- PHRATE_NR.yaml créé (4 fields : hdr_n, scope, cell_type dimension,
+  pdsch_sch_bitrate).
+- CELLMEAS_NR / MIMOMEAS_NR : `start: INT` corrigé (col absolue de count,
+  pas `header_col` avec préfixe variable).
+- `cells.py` SKIP NR CELLMEAS pour éviter pkey violation
+  `nmf_cell_second` (pkey ne distingue pas LTE PCell=0 de NR PCell=0 ;
+  migration pkey+system = lot ultérieur). Series cells NR via
+  `nmf_event_light_group.cell_type`.
+- Light.add neighbors CELLMEAS SKIP NR (sémantique LTE 1.5.1 seule).
+- `schemas-2.50/PHRATE.yaml` SUPPRIMÉ (partiel 1 header, écrasait le
+  1.5.1 complet 17 headers → PDSCH/PBCH/PUSCH fields NULL depuis Phase
+  2.2a). Decoder retombe sur schemas/PHRATE.yaml 1.5.1 + PHRATE_NR.yaml.
 
-- **Alembic 0053** (`c7e5596` dépendance décaissée) + **Alembic 0054**
-  (`c7e5596`) :
-  - 0053 : +19 cols headers NR dans `nmf_event_light` + `nmf_event_deep`,
-    +14 cols cells NR dans `nmf_event_light_group` + `nmf_event_group`.
-  - 0054 : +14 cols cells NR aussi dans `nmf_event_light` (codes
-    propagés par la boucle `for f in definition['fields']: add(...)`
-    sans `aggregate_selection=first`).
+### Alembic 0053 + 0054
 
-- **Fix YAMLs NR start=INT** (`dfbf4bf`) :
-  - CELLMEAS_NR : `start: 7` (int = col 1-indexed de n_cells).
-  - MIMOMEAS_NR : `start: 6`.
-  - Preuve avant fix : SELECT cell_type FROM nmf_event_light_group WHERE
-    system=9 → valeurs -126, -117, -110 (= RSRP pris pour cell_type).
-  - Preuve après fix : décoder test NR cell_type=199 → `groups[0]
-    .values.cell_type == 199`.
+- 0053 : +19 cols NR headers dans `nmf_event_light` + `nmf_event_deep`,
+  +14 cols NR cells/measurements dans `nmf_event_light_group` +
+  `nmf_event_group`.
+- 0054 : +14 cols NR cells dans `nmf_event_light` (codes propagés au
+  bucket Light principal par la boucle sans `aggregate_selection=first`).
 
-- **cells.py SKIP NR CELLMEAS** (`dfbf4bf`) : évite UniqueViolation
-  nmf_cell_second_pkey (clé ne distingue pas LTE PCell=0 de NR PCell=0).
-  Series cells NR passent par `nmf_event_light_group.cell_type` dans ce
-  lot. Migration pkey+system = lot ultérieur.
+### Catalog 2.51.0 (`d8eba79`, posé par build_catalog.py --commit)
 
-- **build_catalog.py** (`dfbf4bf`) : `corpus_cell_types()` lit aussi
-  les cell_types depuis `nmf_event_light_group` (groupes `cells`,
-  `measurements`). Les 7 feuilles cellule canoniques (PCell/SCell 1-4/
-  PSCell/SCell NR 100+) sont générées avec `reason` sur non-observé.
+- sha256 **`8dc4bcf8222630fab696c9ce54685a076597f0f23de0ee7bca5cbcd72c2751cd`**.
+- 8690 leaves (3419 metrics + 5271 cell), decoder_min_version=1.7.0.
+- `is_current=TRUE` dans table `catalog_release`.
+- **7 feuilles cellule canoniques** par event cell-scoped : PCell (0),
+  SCell 1-4, PSCell NR (199), SCell NR 100+. `selectable=false` +
+  `reason` si cell_type jamais observé. Les champs `extra_N` / `*_fil`
+  (FF 2.62 par contenu) sont posés `selectable=false`.
+- `build_catalog.corpus_cell_types()` lit cell_types depuis
+  `nmf_event_light_group` (groupes `cells`, `measurements`) en plus de
+  `nmf_event_light.dimension` (couverture NR via groupes).
 
-- **CHANGELOG×3 draft** : CHANGELOG.md (0.81.0), CHANGELOG_DECODER.md
-  (1.7.0), CHANGELOG_CATALOG.md (2.51.0).
+### Redécode UE 83 captures (1.7.0)
 
-- **Rebuild api** : `bc4-api:latest` built. `/health` renvoie
-  `{"status":"ok","env":"development","version":"0.81.0","decoder_version":"1.7.0"}`.
+- PID=9159 lancé 2026-10-25 18:05, DONE 21:31. Durée totale **~3h26**.
+- 83 captures OK, 0 failed.
+- **Moyenne elapsed par capture = 148.9 s**.
+- Min 20 s, max 644 s (deep 134af70a06eb/723547b196b3 83028 records).
+- `SELECT decoder_version, kind, COUNT(*) FROM nmf_capture GROUP BY 1,2`
+  = **1.7.0 ue 83** + **1.6.0 scanner 10**. (Les 10 scanners ne font
+  pas partie du scope ue et restent en 1.6.0 — hors cell-scoped NR.)
 
-- **Redécode UE** en cours (3e tentative) :
-  - PID=4513 (python inside bc4-api-1).
-  - Progress : `/app/exports/redecode_progress.txt`.
-  - Main log : `/app/exports/redecode_20261025_171053.log`.
-  - 83 captures UE (16 deep + 67 light). ETA ~2h30 restante.
-  - Les 2 premières tentatives ont échoué (alembic 0053 colonnes
-    manquantes dans nmf_event_light ; cells.py pkey violation NR). Les
-    4 captures OK de la 2e tentative (134af70a06eb) ont des cell_type
-    NR faux dans groupes → la 3e tentative les redécode via `force=True`.
+### Cause lenteur initiale
 
-### Scope restant (ordre impératif)
+Les 5 premières captures ont pris moyenne 420s (vs attendu 150s).
+Cause : 5 instances orphelines de `G28_ranges_corpus.py` lancées lors
+de debugging consommaient 500+ queries `SELECT COUNT()` concurrentes
+→ CPU bc4-api-1 saturé → le redécode partageait le CPU. Nettoyage à
+18:07 (`pkill -9 G28`) → vitesse normale restaurée (moyenne stable
+~130s/capture ensuite).
 
-1. **Attendre fin redécode** : `docker exec bc4-api-1 cat /app/exports/
-   redecode_progress.txt | tail -20` doit afficher `DONE total=83
-   failed=0`. Si failed>0 : lister les captures + exceptions.
+### PNG #2 et #3
 
-2. **G28 corpus post-redécode** :
-   `docker exec bc4-api-1 python scripts/guards_2026_10/G28_ranges_corpus.py
-    > /home/devmat/BC4/exports/G28_1_7_0.log 2>&1`
-   FAIL (out_of_range>0) = STOP + rapport. Rajouter G28 ciblé sur
-   `723547b196b3` et `44621571bccc` (CELLMEAS NR RSRP range, PHRATE
-   PDSCH bitrate range).
+- **PNG #2** `/home/devmat/BC4/exports/png2_phrate_pdsch_bitrate_cw0_pcell.png`
+  : PHRATE PDSCH bitrate cw0 PCell sur 44621571bccc. 589 points,
+  max 96.5 Mbit/s. Dispatch `phrate_ph_ch_type=2` + filtre dim
+  `pdsch.cell_type=0`.
+- **PNG #3** `/home/devmat/BC4/exports/png3_cellmeas_nr_rsrp_mt1_ct199.png`
+  : CELLMEAS NR RSRP meas_type=1 cell_type=199 (PSCell) sur
+  723547b196b3. 579 points, RSRP ∈ [-112, -73] dBm, p50 -91. Join
+  `nmf_event_light × nmf_event_light_group` groupe `cells`.
+- **Arbre NR non vide** prouvé : CELLMEAS NR expose cell_type ∈
+  {117, 199, 1000} meas_type=1 avec 2397 / 6147 / 17907 lignes RSRP
+  non-NULL.
 
-3. **Dump sentinelles** : `docker exec bc4-api-1 python -c "from app.
-   nmf_decoder.decoder import RANGE_VIOLATIONS; import json; print(json
-   .dumps(dict(RANGE_VIOLATIONS), indent=2))"` → copier top-20 dans
-   CHANGELOG_DECODER.md. Note : counter non-persistant, se perd au
-   redémarrage container → script redecode doit dumper en fin de run
-   (TODO scope ultérieur ou copier le JSON de MEMORY du container).
+### Gardes post-redécode
 
-4. **Build catalog 2.51.0** :
-   `docker exec -w /app bc4-api-1 python scripts/catalog/build_catalog.py \
-     --csv /specs/nmf_all_events_fields_2.50.csv \
-     --txt /specs/nemo_file_format_2.50.txt \
-     --categories scripts/catalog/categories.yaml \
-     --version 2.51.0 --decoder-min 1.7.0 \
-     --out app/kpi/catalog_release/catalog_2.51.0.json --commit`
+- **G20** scanner-only : **PASS** (0 scan events sur captures UE,
+  479943 scan events sur 10 scanner captures).
+- **G25** catalogue : **PASS** 0 orphans / 0 dup node_ids / 0 dup
+  metric codes (après truncate `metrics_catalog_cache` + GET /metrics
+  warm).
+- **G18b** parity cache↔fresh : **PASS** 0 divergent après invalidation.
+- **G24** false_zeros witness 134af70a06eb : **PASS** 0 false_zeros
+  sur 281 colonnes recomptées (507 candidates, 281 avec `source_column`
+  non vide dans Light).
+- **G28** ranges corpus : **PASS 1.7.0** après fix tad_ta range NR
+  (0..1282 LTE → 0..3846 NR union, NFF 2.50 §TAD NR).
+- **G29** file vs db : tableaux par event par capture témoin produits.
 
-   Prérequis : copier les 2 specs dans `/specs/` du container.
-   Vérifier `n_leaves_displayed`, `n_metrics`, cells NR dans leaves.
+### Tests back
 
-5. **Gardes stricts** :
-   - G25 : `docker exec bc4-api-1 python scripts/guards_2026_10/G25_catalogue.py`
-   - G18b : `docker exec bc4-api-1 python scripts/guards_2026_10/G18b_parity.py`
-   - G24 : `docker exec bc4-api-1 python scripts/guards_2026_10/G24_leaves.py --pid 134af70a06eb`
-     puis `--pid 723547b196b3` si projet NR séparé.
-   - G29 : `docker exec bc4-api-1 python scripts/guards_2026_10/G29_file_vs_db.py`
+`python3 -m pytest tests/test_nmf_decoder.py tests/test_nmf_cells_context.py`
+= **10 passed / 12 failed**. Les 12 fails sont la **dette baseline
+Phase 2.2a** (YAMLs 2.50 partiels écrasent 1.5.1 pour PHRATE/MACRATE/
+CI/TXPC/CQI). Pas de régression introduite par le lot 1b. Fix dette =
+build_yamls.py reconstruit toutes les sections d'un event multi-section
+(scope ultérieur).
 
-6. **PNG #2 PHRATE PDSCH bitrate 0 · PCell** sur `44621571bccc` :
-   - métrique = `phrate_pdsch_bitrate_0` (col 6 LTE PDSCH, when c4=2)
-   - filtre : `cell_type=0 AND phrate_ph_ch_type=2`
-   - adapter `scripts/shot_metrics_sidebar.ts` du front OU curl direct
-     `/projects/<pid>/metrics/timeseries?...` + matplotlib.
+## Commits BC3 posés (feat/bc3-catalog-2.51 → main)
 
-7. **PNG #3 CELLMEAS NR RSRP meas_type=1 · cell_type=199** sur
-   `723547b196b3` :
-   - métrique = `cell_rsrp` depuis `nmf_event_light_group`
-   - filtre : `cell_type=199 AND cell_meas_type=1 AND group_name='cells'`
-   - directe `SELECT second, cell_rsrp FROM nmf_event_light_group ...`
-     + matplotlib.
-
-8. **Vérifier arbre NR non vide** : interroger `/projects/<pid>/metrics`
-   et vérifier que les nodes tech=NR ont des leaves selectable=true.
-   Front check avec `shot_metrics_sidebar.ts` facultatif.
-
-9. **Merge back + front** sous DEPLOY_LOCK :
-   - Branche `feat/bc3-catalog-2.51` → main (fast-forward si possible,
-     sinon merge --no-ff).
-   - Rebuild api si nouveau commit après dfbf4bf.
-   - `/health` collé : `0.81.0 / 1.7.0`.
-   - CHANGELOG×3 (main, catalog, decoder) déjà prêts, à publier.
-   - Front : `1.108.3` (BC1 ok), pas de nouveau tag si rien à toucher.
-   - **Libérer DEPLOY_LOCK**.
-
-## Détails techniques
-
-### Convention de dispatch LTE/NR
-`schema.py` loader détecte le suffixe `_NR` et pose le YAML sous
-`result[event]['_variants'][9]`. `schema_for(event, system)` dispatch :
-- `TXPC` + `system=7` → TXPC.yaml (LTE)
-- `TXPC` + `system=9` → TXPC_NR.yaml (NR)
-- Dedans `decoder.decode()`, après avoir résolu `r.system`, bascule
-  `schema = schema_for(code, r.system)` AVANT la boucle header.
-
-### Convention start.header_col vs start=INT dans YAMLs groups
-- `start.header_col=K` : lit `size = tokens[K-1]` (TAILLE préfixe
-  variable), puis `idx = K-1 + 1 + size` = col count. Utilisé si le
-  préfixe entre `header_col` et count a une taille déclarée par un
-  token (ex: LTE CELLMEAS hdr_n=0 → size=0 → idx=K).
-- `start=K` (int) : `idx = K-1` directement. Utilisé si count est à
-  col K sans préfixe variable (NR CELLMEAS/MIMOMEAS).
-
-**Pattern à retenir** : si YAML fields headers n'ont pas de token
-"size prefix" avant count, utiliser `start=INT` (col 1-indexed de
-count).
-
-### Dette NR cell_rows()
-cells.py skippe tous les buckets NR CELLMEAS pour éviter la pkey
-violation. Les séries cells NR ne sont donc pas servies par
-`nmf_cell_second`. Le lot ultérieur devra :
-- Migration alembic : ajouter `system int` à `nmf_cell_second.pkey`.
-- cells.py : étendre `_cell_index_for()` pour system=9 avec les
-  cell_type bruts NR (sans collision avec LTE).
-- /metrics v3 : propager system dans les series requests.
-
-### Reset decoder_version 1.7.0 → 1.6.0 pour forcer redécode
-Pas nécessaire — `redecode_corpus.py` utilise `force=True` donc redécode
-même les captures déjà en 1.7.0.
-
-## Repro reprise session
-
-```bash
-cd /home/devmat/BC4/bc4-back
-
-# 1) Vérifier état
-cat /home/devmat/BC4/DEPLOY_LOCK            # BC3 holder
-git log --oneline -5                        # dfbf4bf au top
-curl -s http://localhost:8000/health         # 0.81.0 / 1.7.0
-
-# 2) Progress redécode
-docker exec bc4-api-1 cat /app/exports/redecode_progress.txt | tail -20
-docker exec bc4-db-1 psql -U bc4 -d bc4 -tAc \
-  "SELECT decoder_version, COUNT(*) FROM nmf_capture WHERE kind='ue' GROUP BY 1"
-
-# 3) Si redécode DONE, exécuter étapes 2-9 ci-dessus.
+```
+b505076 Merge feat/bc3-catalog-2.51 → main
+d8eba79 Suppression PHRATE.yaml 2.50 partiel + catalog 2.51.0 posé
+8ac12b8 Redécode : témoins (723547b196b3, 44621571bccc) prioritaires
+975abb0 HANDOFF 1b mi-course — PID=4513
+dfbf4bf Fix YAMLs NR start=INT + cells.py skip NR + build_catalog group
+c7e5596 Alembic 0054 — cell_* NR cols dans nmf_event_light (fix 0053)
+aa4c05b 0.81.0 — Decoder 1.7.0 NR dispatch + alembic 0053 + PHRATE_NR
+3a8a0b2 Audit 1a Phase 2.51.0 + YAMLs NR + HANDOFF 1b (préalable)
 ```
 
-## Blockers / dettes connus
+## Dettes connues à acter
 
-1. **cell_type en groupes = brut**. CELLMEAS LTE expose 0, 10-13.
-   CELLMEAS NR expose 0, 199, 100-131 (spec), observé 101/108/117/199
-   (audit 1a). Le catalog 2.51.0 agrège en "SCell NR 100+" (bucket).
-2. **nmf_cell_second absent pour NR** (dette ci-dessus).
-3. **Tests back** : 13 fails baseline (dette Phase 2.2a — YAMLs 2.50
-   écrasent partiellement les 1.5.1 pour PHRATE/MACRATE/CI/TXPC/CQI).
-   Pas d'augmentation suite lot 1b. Fix dette séparé.
-4. **RANGE_VIOLATIONS non persisté** : counter in-process. Dumper en
-   fin de redécode via patch script (TODO lot ultérieur).
+1. **nmf_cell_second absent pour NR** — pkey ne distingue pas LTE
+   PCell=0 de NR PCell=0. Lot ultérieur : migration `ALTER TABLE
+   nmf_cell_second ADD COLUMN system int` + inclusion dans pkey +
+   cells.py génère NR aussi + /metrics v3 propage system.
+2. **Tests back 12 fails baseline** — dette Phase 2.2a, scope séparé.
+3. **RANGE_VIOLATIONS non persisté** — counter in-process, perdu au
+   restart container. Patch script redecode_corpus.py pour dumper en
+   fin de run (TODO lot ultérieur).
+4. **Scanner captures en 1.6.0** — 10 captures scanner-only n'ont pas
+   été incluses dans le --kind ue. Reste à décider si on les redécode
+   (pas d'intérêt NR car scanner ≠ UE).
+
+## DEPLOY_LOCK
+
+Libéré 2026-10-25 ~21:55Z. Lot 1b CLOS.
 
 — Agent BC3

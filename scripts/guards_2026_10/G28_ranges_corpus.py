@@ -31,8 +31,8 @@ EXACT_RANGES = {
     # BLER 0..100
     "plaid_bler": (0, 100), "plaiu_bler": (0, 100),
     "macrate_mac_dl_bler": (0, 100), "macrateu_mac_ul_bler": (0, 100),
-    # TA 0..1282
-    "tad_ta": (0, 1282),
+    # TA : LTE 0..1282, NR 0..3846 (NFF 2.50 §TAD NR). Max union = 3846.
+    "tad_ta": (0, 3846),
     # TX power -41..33 (strict, NOT txpc_f_i/g_i/power_headroom/tpc_count)
     "txpc_pusch_tx_power": (-41, 33), "txpc_pucch_tx_power": (-41, 33),
     "txpc_tx_power": (-41, 33),
@@ -76,7 +76,8 @@ def main():
                     verdict = f"OUT[{lo},{hi}]"
                     fails.append((col, mn, mx, lo, hi))
             print(f"{col:<35} {n:>10} {mn:>10.3f} {p1:>10.3f} {p50:>10.3f} {p99:>10.3f} {mx:>10.3f}  {verdict}")
-        print(f"\nG28_VERDICT {'PASS' if not fails else 'FAIL'} corpus=1.6.0 metrics_with_data={len([c for c in numeric])} out_of_range={len(fails)}")
+        from app.nmf_decoder import DECODER_VERSION
+        print(f"\nG28_VERDICT {'PASS' if not fails else 'FAIL'} corpus={DECODER_VERSION} metrics_with_data={len([c for c in numeric])} out_of_range={len(fails)}")
         for col, mn, mx, lo, hi in fails:
             print(f"  OUT {col}: min={mn} max={mx} range=[{lo},{hi}]")
     finally:
