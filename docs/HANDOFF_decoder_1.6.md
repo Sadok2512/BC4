@@ -3,7 +3,40 @@
 Fichier de passation entre sessions BC3. Une session neuve doit pouvoir
 reprendre en lisant **ce fichier seul**.
 
-Dernière mise à jour : 2026-10-24 22:10Z (session Opus 4.7 1M, 10e passe).
+Dernière mise à jour : 2026-10-25 01:10Z (session Opus 4.7 1M, 11e passe FIN).
+
+## 🎯 Phase 2.2a TERMINÉE
+
+État final :
+- **94/94 captures corpus en decoder_version=1.6.0** (0 résiduel 1.5.1/1.4.0).
+- `alembic_version = 0052_deep_2_50_cols`.
+- `nmf_event_light` : 654 cols (393 + 261 nouvelles 2.50).
+- `nmf_event_deep` : +262 cols (symétrique 0050, partitions propagées).
+- `param_occurrence` : 1 236 440 lignes (preservé, -18 334 TEST_1_6 declared).
+
+Gardes finaux :
+- **G26 : PASS 0 décalage** ✓
+- **G18b : PASS** ✓
+- **GPS_stale : PASS** ✓
+- G27_unk FAIL : 93 events, 32.7M lignes unknown[] (dette Phase 2.2b).
+- G24/G25 FAIL : scope legacy NFF 2.19 ν10 → Phase 3 realignment.
+
+## Timing
+- Nohup 1 (PID 6651) : 94 captures 1.5.1→1.6.0 → 75 OK + 19 FAIL deep · 1h40
+- Alembic 0052 : 7.9s (vs 6m22s pour 0051 bloqué)
+- Nohup 2 (PID 20517) : 19 FAIL deep → 19/19 OK · 1h06
+- **Total Phase 2.2a : ~3h**
+
+## Suite — arbitrage BC3
+
+(a) **Phase 2.2b** : dette G27 unknown[] (8670 champs non alloués = ajouter
+    schemas-2.50 pour les events hors corpus + unk_ parsing).
+(b) **Phase 3** : /metrics + /metrics/table exposent `catalog_version` +
+    `decoder_version` + reason='redecode_required' pour les champs 2.50
+    non en Light. Front footer "Catalog 2.50.3 · Decoder 1.6.0". Colonne
+    Task (CMDREQ/CMDCOMP). Fiche capture (SCRIPT, DAA/DREQ/DCOMP).
+
+DEPLOY_LOCK libéré. Branche `feat/bc3-catalog-2.50`, 18 commits.
 
 ## 10e passe — Fix post-mortem 9e + relance propre
 
