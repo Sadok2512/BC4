@@ -202,28 +202,58 @@ def main():
             kept_fields.append(row)
         if cell_scoped:
             cells_seen = sorted(cell_coverage.get(ev, set()))
-            if not cells_seen:
-                cells_seen = []  # pas vu dans le corpus → leaves créées mais displayed=false
-            # Pour chaque cell_type présent dans le corpus, générer les feuilles ;
-            # les autres (déclarés par le spec) sont ajoutés avec displayed=false.
-            spec_cells = []
-            if tech == "LTE":
-                spec_cells = ([0] + list(range(1, 32)) + [1, 2, 3, 4])  # mesure + SCell
-            elif tech == "NR":
-                spec_cells = [0, 199] + list(range(1, 32)) + list(range(100, 132)) + [1000, 1001, 1002]
-            for ct in sorted(set(spec_cells)):
-                displayed = ct in cells_seen
+            # 2.51.0 — 7 feuilles cellule canoniques (PCell, SCell 1-4, PSCell,
+            # SCell NR 100+). Chaque feuille porte `cell_type` filtre dimension ;
+            # selectable=false + reason si cell_type jamais observé en base.
+            # Dédoublonnage des 32 feuilles spec par event : BC3 2026-10-25.
+            SEVEN = [
+                (0, "PCell", "PCell (0)", 7),
+                (1, "SCell 1", "SCell 1 (1)", 7),
+                (2, "SCell 2", "SCell 2 (2)", 7),
+                (3, "SCell 3", "SCell 3 (3)", 7),
+                (4, "SCell 4", "SCell 4 (4)", 7),
+                (199, "PSCell", "PSCell NR (199)", 9),
+                (100, "SCell NR 100+", "SCell NR 100+ (bucket cell_type≥100 hors PSCell)", 9),
+            ]
+            scell_nr_observed = any(c >= 100 and c != 199 for c in cells_seen)
+            for ct, label_short, label_long, tech_cell in SEVEN:
+                if ct == 100:
+                    observed = scell_nr_observed
+                else:
+                    observed = ct in cells_seen
+                # Évince PSCell + SCell NR 100+ pour un event LTE-only
+                # (tech=LTE) et SCell 1..4 pour un event NR-only (tech=NR).
+                applicable = (
+                    tech == "Shared"
+                    or (tech == "LTE" and tech_cell == 7)
+                    or (tech == "NR" and tech_cell == 9)
+                )
+                reason = None
+                selectable = observed
+                if not applicable:
+                    selectable = False
+                    reason = f"N/A — event {tech}-only (cell_type {ct} n'existe que côté {'NR' if tech_cell==9 else 'LTE'})"
+                elif not observed:
+                    reason = "cell_type jamais observé en base (BC3 2026-10-25)"
                 for row in kept_fields:
+                    name = row["name"]
+                    # Les champs *_fil et extra_N : FF 2.62 non documenté 2.50.
+                    extras_reason = None
+                    extras_selectable = selectable
+                    if any(suffix in name.lower() for suffix in ("extra_", "_fil")):
+                        extras_selectable = False
+                        extras_reason = "FF 2.62 non documenté 2.50 — nommage par contenu BC3 2026-10-25"
                     leaves_cell.append({
-                        "node_type": "leaf", "event": ev, "label": row["name"],
+                        "node_type": "leaf", "event": ev, "label": f"{row['name']} @ {label_short}",
                         "metric_id": f"{ev.lower()}_{slugify(row['name'])}@{ct}",
-                        "cell_type": ct, "parent_id": ev_nid,
+                        "cell_type": ct, "cell_label": label_long, "parent_id": ev_nid,
                         "node_id": f"lf_{slugify(ev)}_{slugify(row['name'])}_c{ct}",
                         "field_no": row.get("field_no"), "type": row.get("type"),
                         "unit": row.get("unit") or None, "range": row.get("range") or None,
                         "description": row.get("description") or None,
-                        "proof": "documented-2.50", "selectable": True,
-                        "displayed": displayed, "n": 0,
+                        "proof": "documented-2.50",
+                        "selectable": bool(extras_selectable), "displayed": True,
+                        "reason": extras_reason or reason, "n": 0,
                     })
         else:
             for row in kept_fields:
