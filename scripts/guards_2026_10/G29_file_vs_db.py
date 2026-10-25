@@ -36,8 +36,8 @@ def main():
         for cap in CAPTURES:
             print(f"\n=== G29 capture={cap} ===")
             pid = db.execute(text(
-                "SELECT project_id FROM nmf_capture WHERE capture_id=:cap LIMIT 1"
-            ), {"cap": cap}).scalar_one_or_none()
+                "SELECT project_id FROM nmf_capture WHERE capture_id=:cap ORDER BY project_id LIMIT 1"
+            ), {"cap": cap}).scalar()
             if not pid:
                 print(f"NO_CAPTURE in nmf_capture")
                 continue

@@ -29,6 +29,24 @@ Chaque build écrit une ligne dans `catalog_release` (sha256, counts) ;
 
 ## Versions
 
+### 2.50.4 — 2026-10-25 — metric_id aligné sur colonnes Light (Phase 3 préambule)
+
+Convention `metric_id` modifiée : `<event_lower>_<field_slug>[@<cell_type>]`
+au lieu de `<event>.<field_slug>...` → correspond exactement aux noms de
+colonnes `nmf_event_light` (ex. `cellmeas_rsrp`, `ci_rs_snr`, `dci_dci_count`).
+
+Compte :
+- 4 tech, 19 categories, 280 events_kept
+- n_metrics_bare = 3419 ; n_leaves_total = 28 415
+- **n_leaves_displayed = 5 115** (vs 5 710 en 2.50.3 — ajustement
+  cell_type coverage corpus post re-decode 1.6.0 : 4 events seulement
+  avec `cell_type:N` dimension nommée vs 6 avant)
+- sha256 : `cc6c89e4c503e225a5eb5105debb4100162cd696b7077068a20b789b613faa91`
+
+Dette ouverte : `/metrics` endpoint sert toujours le catalogue legacy
+(catalog_v3 + catalogue_v6). G25 restera FAIL tant que `/metrics` n'est
+pas refactoré pour servir ce JSON 2.50.4.
+
 ### 2.50.3 — 2026-10-24 — BC3 Phase 2 feedback
 
 - (a) `Capture context` dédoublonné : toujours `tech=Shared` (plus de

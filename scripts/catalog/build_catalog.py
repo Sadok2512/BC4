@@ -216,7 +216,7 @@ def main():
                 for row in kept_fields:
                     leaves_cell.append({
                         "node_type": "leaf", "event": ev, "label": row["name"],
-                        "metric_id": f"{ev}.{slugify(row['name'])}@{ct}",
+                        "metric_id": f"{ev.lower()}_{slugify(row['name'])}@{ct}",
                         "cell_type": ct, "parent_id": ev_nid,
                         "node_id": f"lf_{slugify(ev)}_{slugify(row['name'])}_c{ct}",
                         "field_no": row.get("field_no"), "type": row.get("type"),
@@ -229,7 +229,7 @@ def main():
             for row in kept_fields:
                 leaves_bare.append({
                     "node_type": "leaf", "event": ev, "label": row["name"],
-                    "metric_id": f"{ev}.{slugify(row['name'])}", "parent_id": ev_nid,
+                    "metric_id": f"{ev.lower()}_{slugify(row['name'])}", "parent_id": ev_nid,
                     "node_id": f"lf_{slugify(ev)}_{slugify(row['name'])}",
                     "field_no": row.get("field_no"), "type": row.get("type"),
                     "unit": row.get("unit") or None, "range": row.get("range") or None,
