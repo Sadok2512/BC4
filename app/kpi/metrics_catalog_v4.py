@@ -170,7 +170,13 @@ def build_catalog_v4(
     counts = _n_per_column(db, project_id, candidate_cols)
 
     # 2) Prune nodes to displayed-leaves + ancestors (coherent tree).
-    keep_ids: set[str] = set()
+    #    Phase 3b : on garde AUSSI tous les `tech` nodes même s'ils n'ont
+    #    aucune feuille affichée (ex. NR en 2.50.5 : 0 leaf displayed, mais
+    #    la racine Technology doit rester visible pour signaler la dette
+    #    2.2b et préserver la cohérence de l'arbre côté front).
+    keep_ids: set[str] = {
+        n["node_id"] for n in nodes_in if n.get("node_type") == "tech"
+    }
     for lf in displayed_leaves:
         keep_ids |= _ancestors(nodes_by_id, lf["node_id"])
 

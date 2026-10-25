@@ -1,23 +1,31 @@
-"""G18b — parité feuilles /metrics API vs catalogue régénéré en direct.
+"""G18b — parité `/metrics` cache vs catalogue régénéré en direct (sans set()).
 
-Phase 3a adaptation (BC3, 2026-10-25) : avec `catalog_release.is_current`
-posé, le `/metrics` endpoint prend le chemin `build_catalog_v4` (Phase 3a) ;
-on compare donc le cache contre un rebuild v4 fraîchement généré.
+Phase 3b préalable (BC3, 2026-10-25) — on compare les LISTES (pas des
+`set()`) de `node_id` leaf : un doublon dans l'une des deux listes =
+FAIL, car le contrat 2.50.5 impose 5115 ids uniques pour 5115 feuilles.
 
-- Côté A : feuilles dans metrics_catalog_cache.payload.nodes (filtré leaf).
-- Côté B : feuilles produites par `build_catalog_v4(db, pid, current)` ré-généré.
+- Côté A : feuilles dans metrics_catalog_cache.payload.nodes (filtré leaf),
+  ORDRE préservé.
+- Côté B : feuilles produites par `build_catalog_v4(db, pid, current)`,
+  ORDRE préservé.
 
-Toute divergence (feuilles côté A manquantes côté B ou l'inverse) = dérive
-de cache / catalogue partiellement périmé.
-
-Si `catalog_release` est vide (bootstrap frais), on retombe sur le chemin
-legacy catalogue_v6 (identique à l'ancien G18b < 0.80.0).
+Divergences détectées :
+  - longueur(A) ≠ longueur(B)                     → divergent
+  - doublon dans A ou B                           → divergent
+  - éléments présents dans A pas dans B           → divergent (only_cache)
+  - éléments présents dans B pas dans A           → divergent (only_fresh)
 """
 import sys
+from collections import Counter
 sys.path.insert(0, "/app")
 from sqlalchemy import text
 from app.db import SessionLocal
 from app.kpi.catalog_release.registry import current_catalog
+
+
+def _leaves_list(nodes):
+    """Return list (ordre préservé) de node_id pour chaque leaf."""
+    return [n.get("node_id") for n in nodes if n.get("node_type") == "leaf"]
 
 
 def main():
@@ -33,8 +41,7 @@ def main():
             from app.kpi.metrics_catalogue_v6 import catalogue as catalogue_v6
             def fresh_fn(pid):
                 metric_rows = catalog_v3(db, pid)
-                p = catalogue_v6(db, pid, metric_rows)
-                return {"nodes": p.get("nodes", [])}
+                return {"nodes": catalogue_v6(db, pid, metric_rows).get("nodes", [])}
             mode = "legacy (no catalog_release)"
         print(f"G18b mode: {mode}")
 
@@ -42,23 +49,43 @@ def main():
             "SELECT project_id FROM metrics_catalog_cache ORDER BY project_id"
         )).all()]
         divergent = 0
+        print(f"{'project_id':<20} {'cached':>7} {'fresh':>7} {'dup_cache':>10} "
+              f"{'dup_fresh':>10} {'only_cache':>11} {'only_fresh':>11}")
         for pid in pids:
             cached_nodes = db.execute(text(
                 "SELECT payload->'nodes' FROM metrics_catalog_cache WHERE project_id=:pid"
             ), {"pid": pid}).scalar_one() or []
-            cached_leaves = {n.get("node_id") for n in cached_nodes if n.get("node_type") == "leaf"}
-            fresh = fresh_fn(pid)
-            fresh_leaves = {n.get("node_id") for n in fresh.get("nodes", []) if n.get("node_type") == "leaf"}
-            only_cache = cached_leaves - fresh_leaves
-            only_fresh = fresh_leaves - cached_leaves
-            print(f"G18b {pid}: cached={len(cached_leaves)} fresh={len(fresh_leaves)} "
-                  f"only_cache={len(only_cache)} only_fresh={len(only_fresh)}")
-            if only_cache or only_fresh:
+            cached_list = _leaves_list(cached_nodes)
+            fresh_list = _leaves_list(fresh_fn(pid).get("nodes", []))
+
+            cached_counts = Counter(cached_list)
+            fresh_counts = Counter(fresh_list)
+            dup_cache = sum(v - 1 for v in cached_counts.values() if v > 1)
+            dup_fresh = sum(v - 1 for v in fresh_counts.values() if v > 1)
+
+            # Multiset difference : combien dans A manquent dans B et vice-versa
+            only_cache = (cached_counts - fresh_counts)
+            only_fresh = (fresh_counts - cached_counts)
+
+            print(f"{pid:<20} {len(cached_list):>7} {len(fresh_list):>7} "
+                  f"{dup_cache:>10} {dup_fresh:>10} "
+                  f"{sum(only_cache.values()):>11} {sum(only_fresh.values()):>11}")
+
+            is_div = (
+                len(cached_list) != len(fresh_list)
+                or dup_cache > 0 or dup_fresh > 0
+                or len(only_cache) > 0 or len(only_fresh) > 0
+            )
+            if is_div:
                 divergent += 1
-                for n in list(only_cache)[:3]: print(f"    only_cache {n}")
-                for n in list(only_fresh)[:3]: print(f"    only_fresh {n}")
+                if only_cache:
+                    print(f"    only_cache[:3]={list(only_cache.keys())[:3]}")
+                if only_fresh:
+                    print(f"    only_fresh[:3]={list(only_fresh.keys())[:3]}")
+
         verdict = "PASS" if divergent == 0 else "FAIL"
-        print(f"G18b_VERDICT {verdict} projects={len(pids)} divergent={divergent}  mode={mode}")
+        print(f"G18b_VERDICT {verdict} projects={len(pids)} divergent={divergent}  "
+              f"mode={mode}")
     finally:
         db.close()
 

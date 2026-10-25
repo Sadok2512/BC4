@@ -23,7 +23,9 @@ class MetricInfo(BaseModel):
     source_table: str
     source_tables: list[str]
     source_column: str
-    tech: Literal['LTE','NR','BOTH']
+    # 0.80.1 — tech en str libre : catalog 2.50.5 inclut "Shared"/"Other"
+    # (categories.yaml) en plus de LTE/NR/BOTH.
+    tech: str
     kind: Literal['numeric','categorical','event']
     n_in_project: int
     decoder_version: str
@@ -33,7 +35,10 @@ class MetricInfo(BaseModel):
     cells: list[int]
     cell_options: list[dict]
     attributes: list[dict]
-    proof: Literal['documented','content','none']
+    # 0.80.1 — proof en str libre : catalog 2.50.5 utilise "documented-2.50"
+    # (voir build_catalog.py). Pas d'enum restrictif pour permettre les
+    # bumps de catalog sans toucher au schema API.
+    proof: str
     available: bool
     reason: str | None = None
     alias_of: str | None = None
@@ -50,7 +55,9 @@ class MetricCatalogNode(BaseModel):
     label: str
     note: str | None = None
     source: str | None = None
-    node_type: Literal['category','group','metric','leaf']
+    # 0.80.1 — ajout "tech"/"event" pour catalog 2.50.5 (4 niveaux
+    # Technology → Catégorie → Métrique → Feuilles cellule).
+    node_type: Literal['tech','category','group','metric','event','leaf']
     metric_id: str | None = None
     selection: str | None = None
     event: str | None = None
@@ -59,7 +66,8 @@ class MetricCatalogNode(BaseModel):
     unit: str = ''
     cell: str | None = None
     n: int = 0
-    proof: Literal['documented','content','open']
+    # 0.80.1 — proof en str libre (idem MetricInfo).
+    proof: str
     selectable: bool = False
     reason: str | None = None
 class CatalogReleaseInfo(BaseModel):

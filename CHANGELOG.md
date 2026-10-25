@@ -1,3 +1,11 @@
+## 0.80.1 (patch) — BC4 2026-10-25 — /metrics response_model literals relâchés (Agent BC3)
+
+Fix critique post 0.80.0 : `MetricInfo.proof`, `MetricInfo.tech`, `MetricCatalogNode.proof`, `MetricCatalogNode.node_type` étaient `Literal[...]` fermés sur les valeurs BC2 (`"documented"`, `"content"`, `"open"`, `"LTE"`, `"NR"`, `"BOTH"`, `"category"`, `"group"`, `"metric"`, `"leaf"`). Le catalog 2.50.5 utilise `"documented-2.50"`, `"Shared"`, `"Other"`, `"tech"`, `"event"` → le response_model Pydantic rejetait TOUS les builds v4 avec `ValidationError: Input should be ...`. `/metrics` retournait 500 au front.
+
+Changement : `proof` et `tech` en `str` libre ; `node_type` enum étendu à `tech`/`category`/`group`/`metric`/`event`/`leaf`. Aucun changement de la shape JSON — juste la validation Pydantic qui bloquait.
+
+Pas de bump catalog_release (contenu inchangé).
+
 ## 0.80.0 (minor) — BC4 2026-10-25 — /metrics envelope + catalog 2.50.4 serving (Agent BC3)
 
 Phase 3a (back) sur `feat/bc3-metrics-v3` — bascule le GET `/projects/{pid}/metrics` sur le catalogue NFF 2.50.4 posé en 0.79.0 (via `catalog_release.is_current`).
