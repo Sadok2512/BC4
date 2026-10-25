@@ -20,6 +20,18 @@ Livré :
 - G27 FAIL 93 events / 32.7M unknown[] : dette 2.2b (events hors corpus + unk_ 2.6x).
 - Catalogue 2.50.4 **n'est pas encore servi par `/metrics`** — explicite, non caché.
 
+**Dette ouverte « replay-chain alembic sur base vide » (propriétaire : BC1)** :
+
+Chaîne logique OK : `alembic history` montre 0046_seed_pkeys → 0047_nmf_string_columns → 0048_catalog_release → … → 0052_deep_2_50_cols (head). Preuve = commit `65212ab` (restauration de 0047 reconstruit depuis `\d nmf_capture` live après perte du fichier au rebuild api image).
+
+Mais `alembic upgrade head` **sur base vide** (`docker run --rm postgis:16-3.4`) échoue sur **deux bugs pré-existants, indépendants** :
+
+1. **0044_nmf_string_columns.py** (auteur BC2, commit cc27039) — `pg_get_viewdef` élague les casts redondants au parse-time : les colonnes nativement `double precision` (ex. `aqdl_mos`, `ci_rs_snr`) perdent leur `::double precision`, et après `ALTER COLUMN TYPE text` sur `bf_bts_file`/`caa_phone_number`/… le `CREATE VIEW nmf_metric_value` recrée un `VALUES` tuple avec types mixtes → `psycopg.errors.DatatypeMismatch: VALUES types double precision and text cannot be matched`. La vue live fonctionne parce qu'elle a été ré-écrite plus tard avec `::text` uniforme sur toutes les valeurs (patch manuel historique, non traçable en git). **Patch proposé disponible** : `docs/replay_chain_0044.patch` (regex sur la viewdef capturée pour normaliser `::double precision` → `::text` et ajouter `::text` sur les tuples sans cast, scopé aux tuples `('xxx'::text, d.yyy …)` uniquement — n'altère ni SELECT list ni JOIN).
+
+2. **0045_settings_singleton_primary_keys.py + 0046_seed_primary_keys.py** (auteur BC1, commit 8e297d9 et suite) — tentent `op.create_primary_key(f"{t}_pkey", t, ["id"])` sur `settings_ai`, `settings_appearance`, `settings_llm`, `settings_organization`, `settings_password_policy`, `settings_permissions`, puis `users`, `projects`, `kpi_catalog`, `dict_messages`, `dict_params`, `conversion_rule`, `assistant_exec_steps`, `geo_references`, `kpi_catalog_groups`, `kpi_rrc_summary` — mais **ces tables ont déjà `primary_key=True` sur `id`** dans `0001_initial.py` (lignes 158+ pour `settings_*`, idem pour les autres). Sur base vide : `psycopg.errors.InvalidTableDefinition: multiple primary keys for table "settings_ai" are not allowed`. Le besoin de 0045/0046 vient d'un incident sur la **DB live BC4** (import de schéma qui avait perdu les PKs) — ces migrations sont correctes pour cet environnement spécifique mais non idempotentes pour un replay empty-DB. Fix propre = wrapping conditionnel `IF NOT EXISTS` sur la contrainte (via `pg_constraint` lookup).
+
+**Mode de restauration BC4 ≠ replay** : la stratégie officielle de reconstruction d'une instance BC4 est **restore depuis dump `exports/` + cron `pg_dump`**, PAS `alembic upgrade head` sur base vide. Le replay-chain reste utile pour un dev onboarding ou un test d'intégration CI — pas pour la DR. Owner `BC1` ouvre ou pas un lot dédié selon ses priorités ; cette dette est documentée, pas urgente.
+
 ## 0.78.4 (patch) — BC4 2026-10-23 — Fast KPI catalogue loading (Agent BC1)
 
 - Read transfer availability from `task_run` / `task_sample`, populated by the canonical `(capture_id, seq)` task pipeline; KPI computations and formulas are unchanged.

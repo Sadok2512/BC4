@@ -1,0 +1,84 @@
+# docs/replay_chain_0044.patch — proposition de fix pour 0044_nmf_string_columns.py
+#
+# Auteur : BC3 (2026-10-25), proposé pour reprise par BC1 (owner replay-chain).
+# NON APPLIQUÉ sur main. Testé contre postgis:16-3.4 vide : débloque 0044,
+# mais la chaîne reste bloquée ensuite par 0045 (duplicate PK) — ce patch
+# traite UNIQUEMENT la cause 0044.
+#
+# Contexte : voir CHANGELOG.md 0.79.0 > « Dette replay-chain » > cause 1.
+# Résumé : pg_get_viewdef élague les casts redondants ; après ALTER COLUMN
+# TYPE text sur bf_bts_file/caa_phone_number/…, le CREATE VIEW échoue avec
+# `VALUES types double precision and text cannot be matched`.
+#
+# Approche : après capture de la viewdef, on NORMALISE tous les tuples
+# VALUES vers `::text` uniformément (ce que présente d'ailleurs la vue
+# live BC4 cf. `pg_get_viewdef('nmf_metric_value')`). Regex scopé aux
+# tuples `('xxx'::text, d.yyy …)` — n'altère ni SELECT list ni JOIN clause.
+#
+# Pour appliquer : `git apply docs/replay_chain_0044.patch` depuis bc4-back/.
+
+diff --git a/alembic/versions/0044_nmf_string_columns.py b/alembic/versions/0044_nmf_string_columns.py
+index <hash_before>..<hash_after> 100644
+--- a/alembic/versions/0044_nmf_string_columns.py
++++ b/alembic/versions/0044_nmf_string_columns.py
+@@ -1,4 +1,20 @@
+-"""Use text storage for NMF documented string fields."""
++"""Use text storage for NMF documented string fields.
++
++0044 capture-and-restore de la vue `nmf_metric_value` est cassée sur une
++base vide parce que `pg_get_viewdef` élague les casts redondants au
++parse-time : les colonnes nativement `double precision` perdent leur
++`::double precision`, et après ALTER COLUMN TYPE text certaines colonnes
++du même VALUES deviennent `text` → mismatch `types double precision and
++text cannot be matched` au recreate.
++
++Fix (2026-10-25, BC3 → BC1) : après capture, on force uniformément tous
++les casts vers `::text` (ce que présente d'ailleurs la vue live en
++production, cf. `pg_get_viewdef('nmf_metric_value')` du projet BC4).
++Cette normalisation est idempotente sur la DB live (déjà en 0052) et
++débloque le replay `alembic upgrade head` sur base vide pour la cause 1
++de la dette replay-chain (cause 2 = 0045/0046 duplicate PK, hors scope).
++"""
++import re
+ from alembic import op
+ revision='0044_nmf_string_columns'
+ down_revision='0043_kind'
+@@ -5,6 +21,27 @@
+ depends_on=None
+ COLS = 'bf_bts_file dl_device_label dn_device_name ei_device_identity ff_file_format_version hv_handler_version hw_hardware_version hw_manufacturer hw_model id_measurement_id mf_map_file product_product_name product_product_version si_subscriber_identity sp_subscriber_phone_number start_date stop_date sw_device_software_version ts_test_script_file caa_phone_number caa_own_phone_number caa_unique_id daa_host_address pac_ip rrcsm_rrc_msg rrcsm_subchannel rrcsm_rrc_data rtpsm_rtp_message rtpsm_rtp_data sipsm_sip_name sipsm_sip_data'.split()
++
++
++def _normalize_values_to_text(view: str) -> str:
++    """Force VALUES tuples `('<code>'::text, d.<col>[::<type>])` to use ::text.
++
++    Scope restreint aux tuples VALUES de la vue (`('xxx'::text, d.yyy ...)`).
++    N'altère PAS la SELECT list (`d.project_id, d.capture_id, …`) ni les
++    jointures (`c.decoder_version`), car ces positions n'utilisent pas la
++    syntaxe tuple `('…'::text, …)`.
++    """
++    # ('x'::text, d.y::double precision) → ('x'::text, d.y::text)
++    view = re.sub(
++        r"('[a-z0-9_]+'::text,\s*d\.[a-z_0-9]+)::double precision",
++        r"\1::text",
++        view,
++    )
++    # ('x'::text, d.y)  → ('x'::text, d.y::text)   (missing cast → add one)
++    view = re.sub(
++        r"('[a-z0-9_]+'::text,\s*d\.[a-z_0-9]+)(\s*[,)])",
++        r"\1::text\2",
++        view,
++    )
++    return view
++
++
+ def upgrade():
+     bind = op.get_bind()
+     view = bind.exec_driver_sql("SELECT pg_get_viewdef('nmf_metric_value'::regclass, true)").scalar()
+@@ -13,6 +50,6 @@
+         for col in COLS:
+             op.execute(f'ALTER TABLE {table} ALTER COLUMN {col} TYPE text USING {col}::text')
+     if view:
+-        op.execute('CREATE VIEW nmf_metric_value AS ' + view)
++        op.execute('CREATE VIEW nmf_metric_value AS ' + _normalize_values_to_text(view))
+ def downgrade():
+     pass
