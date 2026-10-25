@@ -1,0 +1,16 @@
+assistant_exec_steps	{id}
+conversion_rule	{param_id}
+dict_messages	{msg_id}
+dict_params	{param_id}
+geo_references	{id}
+kpi_catalog	{code}
+kpi_catalog_groups	{name}
+kpi_rrc_summary	{id}
+projects	{id}
+settings_ai	{id}
+settings_appearance	{id}
+settings_llm	{id}
+settings_organization	{id}
+settings_password_policy	{id}
+settings_permissions	{id}
+users	{id}

@@ -1,0 +1,11 @@
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running downgrade 0052_deep_2_50_cols -> 0051_param_occurrence_fk_index, Add 261 NFF 2.50 non-structural columns to nmf_event_deep (symmetric 0050).
+INFO  [alembic.runtime.migration] Running downgrade 0051_param_occurrence_fk_index -> 0050_light_2_50_cols, Index on param_occurrence.stg_event_id — accelerate ON DELETE CASCADE.
+INFO  [alembic.runtime.migration] Running downgrade 0050_light_2_50_cols -> 0049_nmf_event_light_ext, Add non-structural NFF 2.50 columns to nmf_event_light for the 98 simple
+corpus events (261 columns).
+INFO  [alembic.runtime.migration] Running downgrade 0049_nmf_event_light_ext -> 0048_catalog_release, nmf_event_light_ext — narrow extension table for NFF 2.50 fields not
+mapped to a dedicated column in nmf_event_light.
+INFO  [alembic.runtime.migration] Running downgrade 0048_catalog_release -> 0047_nmf_string_columns, catalog_release table — versionned catalog artefact tracking.
+INFO  [alembic.runtime.migration] Running downgrade 0047_nmf_string_columns -> 0046_seed_pkeys, Reconstructed from DB state after container rebuild erased the original file.
+INFO  [alembic.runtime.migration] Running downgrade 0046_seed_pkeys -> 0045_settings_pkeys, Restore primary keys required by idempotent application seeds.

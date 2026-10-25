@@ -1,0 +1,7 @@
+nmf_event_deep	bf_bts_file	text
+nmf_event_deep	rrcsm_rrc_msg	text
+nmf_event_deep	sipsm_sip_data	text
+nmf_event_light	bf_bts_file	text
+nmf_event_light	rrcsm_rrc_msg	text
+nmf_event_light	sipsm_sip_data	text
+nmf_metric_value	value	double precision
