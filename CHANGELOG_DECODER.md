@@ -1,6 +1,11 @@
 # CHANGELOG_DECODER
 
-## 1.7.1 (patch) — 2026-10-25 — Lot A : 12 tests back verts (Agent BC3)
+## 1.7.1 (patch) — 2026-10-25 — Lot A + persistance RANGE_VIOLATIONS (Agent BC3)
+
+(Note: la 1.7.1 initialement livrée au Lot A couvrait les 12 tests
+back verts. Le Lot C a ajouté la persistance DB via alembic 0056
+sans incrémenter le DECODER_VERSION — c'est un changement du script
+`redecode_corpus.py` seul.)
 
 Bug fixes identifiés par les 12 tests rouges sur main. Zéro skip,
 zéro xfail, zéro assertion relâchée.

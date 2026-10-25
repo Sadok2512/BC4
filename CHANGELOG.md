@@ -1,3 +1,29 @@
+## 0.82.1 (patch) — BC4 2026-10-25 — Lot C nuit : scanner redecode + RANGE_VIOLATIONS persisté (Agent BC3)
+
+Session autonome de nuit, étape 3/3.
+
+- **Alembic 0056** `range_violations` table créée :
+  `(id, project_id, capture_id, decoder_version, field_code, n, run_at)`.
+  Index : run_at DESC, (project_id, capture_id), field_code.
+- `scripts/catalog/redecode_corpus.py` persiste `RANGE_VIOLATIONS` dans
+  la table 0056 à la fin de chaque capture (DELETE+INSERT par capture).
+  Log de progression inclut `n_range_viol=` par capture.
+- Redécode nohup des **10 captures scanner** en 1.7.1 : PID=105,
+  10/10 OK, 0 failed, moyenne 25s/capture.
+- G20 scanner_only : PASS, 0 leaks sur 479943 scan events.
+- Distribution finale `nmf_capture` :
+  - 83 UE en 1.7.0 (lot 1b)
+  - 10 scanner en 1.7.1 (lot C)
+  Les 83 UE 1.7.0 ne sont PAS re-redécodés en 1.7.1 (budget nuit) :
+  les bugfixes 1.7.1 sont dans decoder.py et affectent le dispatch
+  LTE/NR (déjà bons en 1.7.0) et les events hors corpus UE
+  (CAD/HOA/HOI/CREL/CAA/SEI — fail-closed privacy). Pas de régression
+  sur Light.
+
+Dette : les 83 UE 1.7.0 pourraient être redécodées en 1.7.1 pour
+uniformité `decoder_version=1.7.1` globale. Scope ultérieur (ETA ~3h
+redécode) — pas de blocant fonctionnel.
+
 ## 0.82.0 (minor) — BC4 2026-10-25 — Lot B nuit : fiche capture + endpoint /tasks (Agent BC3)
 
 Session autonome de nuit, étape 2/3.

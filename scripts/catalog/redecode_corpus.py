@@ -20,6 +20,7 @@ from app.db import SessionLocal
 from app.models import Project
 from app.nmf_decoder.store import decode_capture
 from app.nmf_decoder import DECODER_VERSION
+from app.nmf_decoder.decoder import RANGE_VIOLATIONS, reset_range_violations
 
 PROGRESS = Path("/app/exports/redecode_progress.txt")
 PROGRESS.parent.mkdir(parents=True, exist_ok=True)
@@ -88,10 +89,23 @@ def main():
             try:
                 purge_capture(db, pid, cap)
                 level = old_level if old_level in ("light", "deep") else "light"
+                reset_range_violations()
                 result = decode_capture(db, pid, cap, level, force=True)
+                # 1.7.1 — persistance RANGE_VIOLATIONS par capture
+                # (alembic 0056). Jamais inventé : seulement les codes effectivement
+                # violés durant ce run sont écrits.
+                if RANGE_VIOLATIONS:
+                    db.execute(text(
+                        "DELETE FROM range_violations WHERE project_id=:p AND capture_id=:c"
+                    ), {"p": pid, "c": cap})
+                    for field_code, n in RANGE_VIOLATIONS.items():
+                        db.execute(text(
+                            "INSERT INTO range_violations(project_id,capture_id,decoder_version,field_code,n) "
+                            "VALUES(:p,:c,:v,:f,:n)"
+                        ), {"p": pid, "c": cap, "v": DECODER_VERSION, "f": field_code, "n": n})
                 db.commit()
                 dt = time.time() - t0
-                log_line(f"[{done+1}/{total}] {pid}/{cap} OK level={level} n_rec={result.get('n_records')} prev={old_ver} elapsed={dt:.1f}s")
+                log_line(f"[{done+1}/{total}] {pid}/{cap} OK level={level} n_rec={result.get('n_records')} prev={old_ver} elapsed={dt:.1f}s n_range_viol={sum(RANGE_VIOLATIONS.values())}")
             except Exception as exc:
                 db.rollback()
                 log_line(f"[{done+1}/{total}] {pid}/{cap} FAIL {type(exc).__name__}: {str(exc)[:200]}")
