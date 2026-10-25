@@ -1,3 +1,53 @@
+## 0.82.0 (minor) — BC4 2026-10-25 — Lot B nuit : fiche capture + endpoint /tasks (Agent BC3)
+
+Session autonome de nuit, étape 2/3.
+
+Nouveaux endpoints :
+- `GET /projects/{pid}/captures/{cap}/sheet` : fiche capture. Metadata
+  nmf_file (filename, size_bytes, sha256, uploaded_at), decode info
+  (level, versions, kind, n_records, n_partial, elapsed_s), SCRIPT
+  (file + version + cmd_1/2/3 depuis l'event SCRIPT col 4-16), DEVI
+  agrégé (batt/temp/voltage min..max, par CAP seul), traffic DAA/DREQ/
+  DCOMP (count + seq range), identity (bloquée privacy policy).
+  Pas d'identifiant abonné (#EI, #SI, CAA, SEI, numéros masqués).
+  Valeurs absentes → `null` + entrée `missing_fields[]` avec `reason`.
+- `GET /projects/{pid}/captures/{cap}/tasks` : timeline des tâches
+  reconstruites par CMDREQ → CMDCOMP sur `(capture_id, seq)` canonique.
+  Chaque tâche : seq_req, seq_comp, ts_req, ts_comp, action,
+  cmd_index, complete, result (CMDCOMP c4 = result code). Jamais
+  inventé : si pas de CMDCOMP, `complete=false` et `seq_comp=null`.
+
+Preuves (44621571bccc) :
+- sheet : filename `M1_FREE_DL-7Go_Max-10_W30_26Jun23_103320.4.nmf`,
+  size 8.2 MB, SCRIPT = `7Go-DL_10_30.hsfx` v5.50.2963, DEVI n=1006
+  batt 40.8..45.1%, DAA n=27, DREQ n=24, DCOMP n=24.
+- tasks : 109 tâches reconstruites, 1er `StartScript` seq 297→298,
+  bursts HTTP StartHTTPTransfer→StopHTTPTransfer avec cmd_index 0 et 1
+  en rotation.
+
+PNG :
+- `exports/png_lot_b_sheet.png` : fiche capture rendue table matplotlib
+  avec sections (nmf_file, decode, SCRIPT, DEVI, Traffic, identity)
+  et valeurs absentes grisées.
+- `exports/png_lot_b_table_task.png` : table phrate_pdsch_bitrate_cw0
+  PCell sur 44621571bccc enrichie avec colonne Task via jointure
+  client-side (bisect sur seq_last ↔ seq_req ≤ seq_last < seq_comp).
+  37/40 lignes ont Task non-null.
+
+Dette ouverte (hors scope MVP cette nuit) :
+- Intégration directe colonne `task_name` + `task_index` dans
+  `TableRow` de `/metrics/table` (actuellement jointure client-side
+  depuis `/tasks`). Scope : modifier `Dataset.response()` dans
+  `app/kpi/metrics_v3.py` pour joindre une fois par capture.
+- Front UI : la vraie fiche capture rendue dans l'app Metrics (modal,
+  side panel ou page dédiée). PNG matplotlib = preuve de contrat
+  API, pas rendu final.
+
+Front : CHANGELOG + bump SemVer minor à 1.109.0 (dette UI reportée).
+
+Alembic 0055 non nécessaire : `nmf_file.size_bytes` existe déjà
+(bigint NOT NULL depuis migration historique).
+
 ## 0.81.1 (patch) — BC4 2026-10-25 — Lot A nuit : 12 tests back verts (Agent BC3)
 
 Dette tests Phase 2.2a liquidée. Lot A session autonome de nuit, étape 1/3.

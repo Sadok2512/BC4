@@ -29,7 +29,7 @@ from app.routes import (
 logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(name)s:%(message)s")
 logging.getLogger("app").setLevel(logging.INFO)
 
-app = FastAPI(title="bc4-back", version="0.81.1")
+app = FastAPI(title="bc4-back", version="0.82.0")
 
 # CORS (B2 / P1-1) : origines PILOTÉES par `BC4_CORS_ORIGINS` (jamais en
 # dur), méthodes/en-têtes explicites pour les uploads multipart
@@ -53,7 +53,7 @@ def health() -> dict[str, str]:
     with engine.connect() as conn:
         conn.execute(text("SELECT 1"))
     from app.nmf_decoder import DECODER_VERSION
-    return {"status": "ok", "env": settings.env, "version": "0.81.1", "decoder_version": DECODER_VERSION}
+    return {"status": "ok", "env": settings.env, "version": "0.82.0", "decoder_version": DECODER_VERSION}
 
 
 # 0.74.3 (C) — Warm /kpi/catalog cache au démarrage. Au lieu de laisser le
@@ -89,10 +89,11 @@ def _startup_warm():
 
 app.include_router(auth.router)
 app.include_router(projects.router)
-from app.routes import tasks, metrics, metrics_v3
+from app.routes import tasks, metrics, metrics_v3, capture_sheet
 app.include_router(tasks.router)
 app.include_router(metrics.router)
 app.include_router(metrics_v3.router)
+app.include_router(capture_sheet.router)
 app.include_router(project_kpi.router)
 app.include_router(kpi.router)
 app.include_router(dictionary.router)
