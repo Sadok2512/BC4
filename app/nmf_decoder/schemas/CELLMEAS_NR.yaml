@@ -1,0 +1,74 @@
+{
+  "event": "CELLMEAS",
+  "systems": [9],
+  "system_col": 4,
+  "min_format": "2.50",
+  "schema_version": "2.50.0-NR",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 5,
+      "code": "cellmeas.hdr_n",
+      "label": "#Header params",
+      "type": "int",
+      "unit": "n",
+      "proof": "NFF 2.50 CELLMEAS Parameters for NR #1",
+      "agg": "last",
+      "metric": false,
+      "category": "terminal_cell"
+    },
+    {
+      "col": 6,
+      "code": "cellmeas.scope",
+      "label": "Scope",
+      "type": "int",
+      "unit": "enum",
+      "proof": "NFF 2.50 CELLMEAS Parameters for NR #2",
+      "agg": "last",
+      "metric": false,
+      "category": "terminal_cell"
+    },
+    {
+      "col": 7,
+      "code": "cellmeas.n_cells",
+      "label": "#Cells",
+      "type": "int",
+      "unit": "n",
+      "proof": "NFF 2.50 CELLMEAS Parameters for NR #3",
+      "agg": "last",
+      "metric": false
+    },
+    {
+      "col": 8,
+      "code": "cellmeas.params_cells",
+      "label": "#Params/cell",
+      "type": "int",
+      "unit": "n",
+      "proof": "NFF 2.50 CELLMEAS Parameters for NR #4",
+      "agg": "last",
+      "metric": false
+    }
+  ],
+  "groups": [
+    {
+      "name": "cells",
+      "start": 9,
+      "fields": [
+        {"code": "cell.type", "label": "Cell type (NR)", "type": "int", "unit": "enum", "agg": "dominant", "proof": "NFF 2.50 CELLMEAS NR cell #5", "category": "neighbours", "dimension": true},
+        {"code": "cell.meas_type", "label": "Measurement type (1=SS, 2=CSI)", "type": "int", "unit": "enum", "agg": "dominant", "proof": "NFF 2.50 CELLMEAS NR cell #6", "category": "neighbours", "dimension": true},
+        {"code": "cell.band", "label": "Band (code Nemo)", "type": "int", "unit": "code", "agg": "dominant", "proof": "NFF 2.50 CELLMEAS NR cell #7", "category": "neighbours"},
+        {"code": "cell.ch", "label": "NR-ARFCN", "type": "int", "unit": "arfcn", "agg": "dominant", "range": [0, 3279165], "proof": "NFF 2.50 CELLMEAS NR cell #8", "category": "neighbours"},
+        {"code": "cell.pci", "label": "PCI (NR)", "type": "int", "unit": "id", "agg": "dominant", "range": [0, 1007], "proof": "NFF 2.50 CELLMEAS NR cell #9", "category": "neighbours"},
+        {"code": "cell.bi", "label": "Beam Index", "type": "int", "unit": "id", "agg": "dominant", "range": [0, 191], "proof": "NFF 2.50 CELLMEAS NR cell #10", "category": "neighbours"},
+        {"code": "cell.to", "label": "Timing Offset", "type": "int", "unit": "ns", "agg": "last", "proof": "NFF 2.50 CELLMEAS NR cell #11", "category": "neighbours"},
+        {"code": "cell.rsrp", "label": "RSRP (NR)", "type": "float", "unit": "dBm", "agg": "mean", "range": [-160, 0], "proof": "NFF 2.50 CELLMEAS NR cell #12", "category": "radio_serving"},
+        {"code": "cell.rsrq", "label": "RSRQ (NR)", "type": "float", "unit": "dB", "agg": "mean", "range": [-50, 20], "proof": "NFF 2.50 CELLMEAS NR cell #13", "category": "radio_serving"},
+        {"code": "cell.sinr", "label": "SINR (NR)", "type": "float", "unit": "dB", "agg": "mean", "range": [-30, 50], "proof": "NFF 2.50 CELLMEAS NR cell #14", "category": "radio_serving"},
+        {"code": "cell.rssi", "label": "RSSI (NR)", "type": "float", "unit": "dBm", "agg": "mean", "range": [-160, 0], "proof": "NFF 2.50 CELLMEAS NR cell #15", "category": "radio_serving"},
+        {"code": "cell.rsrp_fil", "label": "RSRP filtered", "type": "float", "unit": "dBm", "agg": "mean", "range": [-160, 0], "proof": "NFF 2.50 CELLMEAS NR cell #16 (contenu)", "category": "radio_serving"},
+        {"code": "cell.rsrq_fil", "label": "RSRQ filtered", "type": "float", "unit": "dB", "agg": "mean", "range": [-50, 20], "proof": "NFF 2.50 CELLMEAS NR cell #17 (contenu)", "category": "radio_serving"},
+        {"code": "cell.sinr_fil", "label": "SINR filtered", "type": "float", "unit": "dB", "agg": "mean", "range": [-30, 50], "proof": "NFF 2.50 CELLMEAS NR cell #18 (contenu)", "category": "radio_serving"}
+      ]
+    }
+  ]
+}
