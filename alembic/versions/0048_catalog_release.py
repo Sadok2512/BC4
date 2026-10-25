@@ -6,12 +6,12 @@ le CSV — aucune édition à la main. Chaque build écrit une ligne dans
 catalog_release ; un seul `is_current=TRUE` à la fois.
 
 Revision ID: 0048_catalog_release
-Revises: 0046_seed_pkeys
+Revises: 0047_nmf_string_columns
 """
 from alembic import op
 
 revision = "0048_catalog_release"
-down_revision = "0046_seed_pkeys"
+down_revision = "0047_nmf_string_columns"
 branch_labels = None
 depends_on = None
 
