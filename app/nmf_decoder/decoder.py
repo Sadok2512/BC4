@@ -5,8 +5,16 @@ import math
 import re
 from dataclasses import dataclass,field
 from decimal import Decimal,InvalidOperation
+from collections import defaultdict
 from . import DECODER_VERSION
-from .schema import schemas,column
+from .schema import schemas,schema_for,column
+
+# 1.7.0 — compteur global des violations de plage sentinelle (ValueError('range')).
+# Reset par le CLI de redecode avant chaque run ; dumpé en fin de run.
+RANGE_VIOLATIONS: dict = defaultdict(int)
+
+def reset_range_violations():
+    RANGE_VIOLATIONS.clear()
 
 NUMBER=re.compile(r'^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$')
 TIME=re.compile(r'^\d{2}:\d{2}:\d{2}(?:\.\d+)?$')
@@ -125,6 +133,12 @@ def decode(line,system=None,format_version='unknown',*,capture_id='',seq=0,line_
     try:r.system=numeric(tokens[system_col-1],'int') if system_col and len(tokens)>=system_col else None
     except (ValueError,InvalidOperation):r.system=None
     if r.system is None and schema and system_col is not None:r.partial('system_missing')
+    # 1.7.0 — après avoir résolu system, basculer sur une variante _NR
+    # (ex: TXPC_NR.yaml, CELLMEAS_NR.yaml) si elle existe pour ce system.
+    if schema and r.system is not None:
+        variant=schema_for(code, r.system)
+        if variant and variant is not schema:schema=variant
+        r.schema_version=schema.get('schema_version',DECODER_VERSION) if schema else r.schema_version
     try:
         count=numeric(tokens[2],'int') or 0
         if count<0 or count>len(tokens)-3:raise ValueError()
@@ -183,7 +197,9 @@ def decode(line,system=None,format_version='unknown',*,capture_id='',seq=0,line_
                 if (lo is not None and value<lo) or (hi is not None and value>hi) or ('enum' in f and value not in f['enum']):raise ValueError('range')
             dest[name]=value
         except (ValueError,InvalidOperation) as exc:
-            dest[name]=None;r.partial(f'field_{str(exc) if str(exc) in ("range","type") else "type"}:{f["code"]}')
+            tag=str(exc) if str(exc) in ('range','type') else 'type'
+            if tag=='range':RANGE_VIOLATIONS[f['code']]+=1
+            dest[name]=None;r.partial(f'field_{tag}:{f["code"]}')
             if tokens[idx] and not NUMBER.fullmatch(tokens[idx]):
                 r.tokens[idx]=hashed(tokens[idx]);r.unk_string[idx]=True
     if active:

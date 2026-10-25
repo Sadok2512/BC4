@@ -1,0 +1,43 @@
+{
+  "event": "TAD",
+  "systems": [9],
+  "system_col": 4,
+  "min_format": "2.50",
+  "schema_version": "2.50.0-NR",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 5,
+      "code": "tad.scope",
+      "label": "Scope (NR)",
+      "type": "int",
+      "unit": "enum",
+      "proof": "NFF 2.62 TAD NR observé c4 (section NR absente spec 2.50, inféré FF 2.62 par contenu)",
+      "agg": "last",
+      "category": "radio_serving"
+    },
+    {
+      "col": 6,
+      "code": "tad.cell_type",
+      "label": "Cell type (NR)",
+      "type": "int",
+      "unit": "enum",
+      "proof": "NFF 2.62 TAD NR observé c5 — motif Scope / Cell type / TA (BC3 2026-10-25)",
+      "agg": "dominant",
+      "category": "radio_serving",
+      "dimension": true
+    },
+    {
+      "col": 7,
+      "code": "tad.ta",
+      "label": "TA (NR)",
+      "type": "int",
+      "unit": "",
+      "range": [0, 3846],
+      "proof": "NFF 2.62 TAD NR observé c6 (section NR absente spec 2.50, inféré FF 2.62 par contenu — valeurs 288..1472 sur 723547b196b3 ∈ 0..3846)",
+      "agg": "last",
+      "category": "radio_serving"
+    }
+  ],
+  "groups": []
+}

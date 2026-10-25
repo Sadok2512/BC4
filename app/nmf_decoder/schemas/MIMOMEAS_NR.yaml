@@ -1,0 +1,64 @@
+{
+  "event": "MIMOMEAS",
+  "systems": [9],
+  "system_col": 4,
+  "min_format": "2.50",
+  "schema_version": "2.50.0-NR",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 5,
+      "code": "mimomeas.hdr_n",
+      "label": "#Header params",
+      "type": "int",
+      "unit": "n",
+      "proof": "NFF 2.50 MIMOMEAS Parameters for NR #1",
+      "agg": "last",
+      "metric": false
+    },
+    {
+      "col": 6,
+      "code": "mimomeas.n_measurements",
+      "label": "#Measurements",
+      "type": "int",
+      "unit": "n",
+      "proof": "NFF 2.50 MIMOMEAS Parameters for NR #2",
+      "agg": "last",
+      "metric": false
+    },
+    {
+      "col": 7,
+      "code": "mimomeas.params_per_measurement",
+      "label": "#Params/measurement (undoc spec 2.50, observé 13 — FF 2.62)",
+      "type": "int",
+      "unit": "n",
+      "proof": "NFF 2.62 par contenu MIMOMEAS NR c6 — colonne EN PLUS vs spec 2.50 (BC3 2026-10-25 : nommer les cols en plus)",
+      "agg": "last",
+      "metric": false
+    }
+  ],
+  "groups": [
+    {
+      "name": "measurements",
+      "start": 6,
+      "count_code": "mimomeas.n_measurements",
+      "params_code": "mimomeas.params_per_measurement",
+      "proof": "NFF 2.50 MIMOMEAS NR #measurements count / params (col 6 = n_measurements 1-indexed)",
+      "fields": [
+        {"code": "cell.type", "label": "Cell type (NR)", "type": "int", "unit": "enum", "agg": "dominant", "proof": "NFF 2.50 MIMOMEAS NR #3", "category": "mimo", "dimension": true},
+        {"code": "cell.port", "label": "Port", "type": "int", "unit": "id", "agg": "dominant", "proof": "NFF 2.50 MIMOMEAS NR #4", "category": "mimo"},
+        {"code": "cell.meas_type", "label": "Measurement type (1=SS, 2=CSI)", "type": "int", "unit": "enum", "agg": "dominant", "proof": "NFF 2.50 MIMOMEAS NR #5", "category": "mimo"},
+        {"code": "cell.band", "label": "Band", "type": "int", "unit": "code", "agg": "dominant", "proof": "NFF 2.50 MIMOMEAS NR #6", "category": "mimo"},
+        {"code": "cell.ch", "label": "NR-ARFCN", "type": "int", "unit": "arfcn", "agg": "dominant", "range": [0, 3279165], "proof": "NFF 2.50 MIMOMEAS NR #7", "category": "mimo"},
+        {"code": "cell.pci", "label": "PCI (NR)", "type": "int", "unit": "id", "agg": "dominant", "range": [0, 1007], "proof": "NFF 2.50 MIMOMEAS NR #8", "category": "mimo"},
+        {"code": "cell.bi", "label": "Beam Index", "type": "int", "unit": "id", "agg": "dominant", "range": [0, 191], "proof": "NFF 2.50 MIMOMEAS NR #9", "category": "mimo"},
+        {"code": "cell.rsrp_p", "label": "RSRP per port", "type": "float", "unit": "dBm", "agg": "mean", "range": [-160, 0], "proof": "NFF 2.50 MIMOMEAS NR #10", "category": "mimo"},
+        {"code": "cell.rsrq_p", "label": "RSRQ per port", "type": "float", "unit": "dB", "agg": "mean", "range": [-50, 20], "proof": "NFF 2.50 MIMOMEAS NR #11", "category": "mimo"},
+        {"code": "cell.sinr_p", "label": "SINR per port", "type": "float", "unit": "dB", "agg": "mean", "range": [-30, 50], "proof": "NFF 2.50 MIMOMEAS NR #12", "category": "mimo"},
+        {"code": "cell.rssi_p", "label": "RSSI per port", "type": "float", "unit": "dBm", "agg": "mean", "range": [-160, 0], "proof": "NFF 2.50 MIMOMEAS NR #13", "category": "mimo"},
+        {"code": "cell.extra_1", "label": "Extra 1 (undoc spec 2.50, FF 2.62)", "type": "int", "unit": "", "agg": "last", "proof": "NFF 2.62 par contenu c18 — col EN PLUS 1 (observé 0 sur 723547b196b3)", "category": "mimo"},
+        {"code": "cell.extra_2", "label": "Extra 2 (undoc spec 2.50, FF 2.62)", "type": "int", "unit": "", "agg": "last", "proof": "NFF 2.62 par contenu c19 — col EN PLUS 2 (observé null/vide sur 723547b196b3)", "category": "mimo"}
+      ]
+    }
+  ]
+}

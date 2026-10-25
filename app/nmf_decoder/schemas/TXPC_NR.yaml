@@ -1,0 +1,26 @@
+{
+  "event": "TXPC",
+  "systems": [9],
+  "system_col": 4,
+  "min_format": "2.50",
+  "schema_version": "2.50.0-NR",
+  "unknown_tail": "keep",
+  "header": [
+    {"col": 5, "code": "txpc.scope", "label": "Scope", "type": "int", "unit": "enum", "proof": "NFF 2.50 TXPC Parameters for NR #1", "agg": "last", "category": "ul_power"},
+    {"col": 6, "code": "txpc.cell_type", "label": "Cell type (NR)", "type": "int", "unit": "enum", "proof": "NFF 2.50 TXPC Parameters for NR #2", "agg": "dominant", "category": "ul_power", "dimension": true},
+    {"col": 7, "code": "txpc.tx_power", "label": "TX power (NR)", "type": "float", "unit": "dBm", "range": [-50, 40], "proof": "NFF 2.50 TXPC Parameters for NR #3", "agg": "mean", "category": "ul_power"},
+    {"col": 8, "code": "txpc.pusch_tx_power", "label": "PUSCH TX power (NR)", "type": "float", "unit": "dBm", "range": [-50, 40], "proof": "NFF 2.50 TXPC Parameters for NR #4", "agg": "mean", "category": "ul_power"},
+    {"col": 9, "code": "txpc.pucch_tx_power", "label": "PUCCH TX power (NR)", "type": "float", "unit": "dBm", "range": [-50, 40], "proof": "NFF 2.50 TXPC Parameters for NR #5", "agg": "mean", "category": "ul_power"},
+    {"col": 10, "code": "txpc.srs_tx_power", "label": "SRS TX power (NR)", "type": "float", "unit": "", "range": [-50, 40], "proof": "NFF 2.50 TXPC Parameters for NR #6", "agg": "mean", "category": "ul_power"},
+    {"col": 11, "code": "txpc.pusch_pl", "label": "PUSCH PL (NR)", "type": "float", "unit": "dB", "range": [0, 170], "proof": "NFF 2.50 TXPC Parameters for NR #7", "agg": "mean", "category": "ul_power"},
+    {"col": 12, "code": "txpc.pucch_pl", "label": "PUCCH PL (NR)", "type": "float", "unit": "dB", "range": [0, 170], "proof": "NFF 2.50 TXPC Parameters for NR #8", "agg": "mean", "category": "ul_power"},
+    {"col": 13, "code": "txpc.pusch_ph", "label": "PUSCH PH (NR)", "type": "float", "unit": "dB", "range": [-40, 100], "proof": "NFF 2.50 TXPC Parameters for NR #9", "agg": "mean", "category": "ul_power"},
+    {"col": 14, "code": "txpc.ul_type", "label": "UL type (NR)", "type": "int", "unit": "enum", "proof": "NFF 2.50 TXPC Parameters for NR #10", "agg": "last", "category": "ul_power"},
+    {"col": 15, "code": "txpc.f_il", "label": "f(i,l) (NR)", "type": "float", "unit": "dB", "proof": "NFF 2.50 TXPC Parameters for NR #11", "agg": "mean", "category": "ul_power"},
+    {"col": 16, "code": "txpc.g_il", "label": "g(i,l) (NR)", "type": "float", "unit": "dBm", "proof": "NFF 2.50 TXPC Parameters for NR #12", "agg": "mean", "category": "ul_power"},
+    {"col": 17, "code": "txpc.n_pusch_tpcs", "label": "#PUSCH TPCs", "type": "int", "unit": "n", "proof": "NFF 2.50 TXPC Parameters for NR #13", "agg": "last", "category": "ul_power"},
+    {"col": 18, "code": "txpc.n_pusch_tpc", "label": "#PUSCH TPC", "type": "int", "unit": "n", "proof": "NFF 2.50 TXPC Parameters for NR #14", "agg": "last", "category": "ul_power"},
+    {"col": 19, "code": "txpc.pusch_tpc", "label": "PUSCH TPC (NR)", "type": "float", "unit": "dB", "range": [-4, 4], "proof": "NFF 2.50 TXPC Parameters for NR #15", "agg": "mean", "category": "ul_power"}
+  ],
+  "groups": []
+}

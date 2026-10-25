@@ -55,22 +55,31 @@ def main():
     re-remplies ; nmf_capture est UPSERT."""
     args = sys.argv[1:]
     only_cap = None
+    kind_filter = None
     if args and args[0] == "--one":
         only_cap = args[1] if len(args) > 1 else None
+    elif args and args[0] == "--kind":
+        kind_filter = args[1] if len(args) > 1 else None
     db = SessionLocal()
     try:
-        log_line(f"START decoder={DECODER_VERSION} replay-only (no stg_* touch)")
+        log_line(f"START decoder={DECODER_VERSION} replay-only (no stg_* touch) kind_filter={kind_filter}")
         rows = db.execute(text("""
-            SELECT c.project_id, c.capture_id, c.decoder_version, c.decode_level, f.source_path
+            SELECT c.project_id, c.capture_id, c.decoder_version, c.decode_level, f.source_path, c.kind
             FROM nmf_capture c JOIN nmf_file f ON f.id=c.nmf_file_id
             ORDER BY c.project_id, c.capture_id
         """)).all()
         if only_cap:
             rows = [r for r in rows if r[1] == only_cap]
+        if kind_filter:
+            rows = [r for r in rows if r[5] == kind_filter]
+        # 1.7.0 — Priorité aux témoins (PNG + gardes) : 723547b196b3 NR,
+        # 44621571bccc LTE. Le reste du corpus suit en nohup.
+        PRIORITY = ['723547b196b3', '44621571bccc']
+        rows = sorted(rows, key=lambda r: (PRIORITY.index(r[1]) if r[1] in PRIORITY else 1000, r[0], r[1]))
         total = len(rows)
         log_line(f"captures to redecode: {total}")
         done = 0; failed = []
-        for pid, cap, old_ver, old_level, source_path in rows:
+        for pid, cap, old_ver, old_level, source_path, kind in rows:
             t0 = time.time()
             if not source_path or not Path(source_path).exists():
                 log_line(f"[{done+1}/{total}] {pid}/{cap} SKIP source_missing={source_path}")

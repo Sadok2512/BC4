@@ -29,6 +29,28 @@ Chaque build écrit une ligne dans `catalog_release` (sha256, counts) ;
 
 ## Versions
 
+## 2.51.0 — 2026-10-25 — 7 feuilles cellule canoniques @cell_type (Agent BC3)
+
+Phase 2.51.0 lot 1b. Build après redécode des 83 captures UE sous
+decoder 1.7.0.
+
+- **7 feuilles cellule canoniques** par event cell-scoped (au lieu
+  de 32+ auparavant) : PCell (0), SCell 1 (1), SCell 2 (2), SCell 3 (3),
+  SCell 4 (4), PSCell NR (199), SCell NR 100+ (bucket cell_type≥100 hors
+  PSCell).
+- Chaque feuille porte `cell_type` dimension + colonne. `selectable=false`
+  + `reason` si cell_type jamais observé en base (gris côté front).
+- Les champs `extra_N` et `*_fil` (MIMOMEAS/CELLMEAS NR) sont posés
+  avec `selectable=false` + `reason="FF 2.62 non documenté 2.50 —
+  nommage par contenu BC3 2026-10-25"`.
+- `decoder_min_version` passé à `1.7.0`.
+- Enveloppe `metric_id` étendue avec `cell_label` pour l'affichage front.
+
+Hypothèse enum NR : SCG PSCell=199 (spec NFF 2.50 §Cell type). Les
+cell_type NR observés 101/108/117/199 sur 723547b196b3 sont tous dans
+le bucket PSCell/SCell NR 100+.
+
+
 ### 2.50.5 — 2026-10-25 — node_id unique par position (préalable Phase 3b)
 
 Correction du contrat `node_id` : 2.50.4 avait 5115 feuilles `displayed=true`
