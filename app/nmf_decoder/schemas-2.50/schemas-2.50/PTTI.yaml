@@ -1,0 +1,40 @@
+{
+  "event": "PTTI",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": 4,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 4,
+      "code": "ptti.measured_system",
+      "label": "Measured system",
+      "section": "Parameters",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 PTTI Parameters #1",
+      "agg": "last",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 5,
+      "code": "ptti.ptt_tech",
+      "label": "PTT tech.",
+      "section": "Parameters",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 PTTI Parameters #2",
+      "agg": "last",
+      "metric": true,
+      "category": "Unclassified"
+    }
+  ]
+}

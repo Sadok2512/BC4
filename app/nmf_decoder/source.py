@@ -12,7 +12,21 @@ def records(path,capture_id,expected_sha=None):
             for chunk in iter(lambda:stream.read(1024*1024),b''):digest.update(chunk)
         if digest.hexdigest()!=expected_sha:raise ValueError('source_sha_mismatch')
     seq=0;origin=None;previous=None;version='unknown'
+    # Phase 2.2a — NMFS streaming (Keysight) : skip binary header until the
+    # first ASCII event line. Les .nmf standards commencent déjà à `#...`
+    # donc le skip ne fait rien dessus.
+    with open(path, 'rb') as rawbin:
+        head = rawbin.read(4096)
+    header_bytes = 0
+    if head.startswith(b'NMFS'):
+        # find first '#' at start of a line (CRLF or LF)
+        for sep in (b'\r\n#', b'\n#'):
+            idx = head.find(sep)
+            if idx >= 0:
+                header_bytes = idx + len(sep) - 1  # position of '#'
+                break
     with open(path,encoding='latin-1') as stream:
+        if header_bytes: stream.seek(header_bytes)
         for line_no,line in enumerate(stream,1):
             if not line.strip():continue
             if line.startswith('#'):

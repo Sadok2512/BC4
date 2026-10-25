@@ -1,0 +1,50 @@
+{
+  "event": "APP",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": null,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 4,
+      "code": "app.ext_app_state",
+      "label": "Ext. app. state",
+      "section": "Parameters",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.50 APP Parameters #1",
+      "agg": "last",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 6,
+      "code": "app.ext_app_name",
+      "label": "Ext. app. name",
+      "section": "Parameters",
+      "type": "text",
+      "unit": null,
+      "proof": "NFF 2.50 APP Parameters #3",
+      "agg": "last",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 7,
+      "code": "app.ext_app_params",
+      "label": "Ext. app. params",
+      "section": "Parameters",
+      "type": "text",
+      "unit": null,
+      "proof": "NFF 2.50 APP Parameters #4",
+      "agg": "last",
+      "metric": true,
+      "category": "Unclassified"
+    }
+  ]
+}

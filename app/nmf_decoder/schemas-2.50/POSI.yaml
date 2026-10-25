@@ -1,0 +1,86 @@
+{
+  "event": "POSI",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": 4,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 5,
+      "code": "posi.position_report_type",
+      "label": "Position report type",
+      "section": "Parameters",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.50 POSI Parameters #2",
+      "agg": "last",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 6,
+      "code": "posi.result",
+      "label": "Result",
+      "section": "Parameters",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.50 POSI Parameters #3",
+      "agg": "last",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 7,
+      "code": "posi.lon",
+      "label": "Lon.",
+      "section": "Parameters",
+      "type": "float",
+      "unit": null,
+      "proof": "NFF 2.50 POSI Parameters #4",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 8,
+      "code": "posi.lat",
+      "label": "Lat.",
+      "section": "Parameters",
+      "type": "float",
+      "unit": null,
+      "proof": "NFF 2.50 POSI Parameters #5",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 9,
+      "code": "posi.height",
+      "label": "Height",
+      "section": "Parameters",
+      "type": "int",
+      "unit": "m",
+      "proof": "NFF 2.50 POSI Parameters #6",
+      "agg": "last",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 10,
+      "code": "posi.confidence",
+      "label": "Confidence",
+      "section": "Parameters",
+      "type": "float",
+      "unit": "%",
+      "proof": "NFF 2.50 POSI Parameters #7",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    }
+  ]
+}

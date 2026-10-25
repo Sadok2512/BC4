@@ -1,0 +1,40 @@
+{
+  "event": "MSGS",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": 4,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 4,
+      "code": "msgs.measured_system",
+      "label": "Measured system",
+      "section": "Parameters",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 MSGS Parameters #1",
+      "agg": "last",
+      "metric": true,
+      "category": "Signalling"
+    },
+    {
+      "col": 5,
+      "code": "msgs.message_type",
+      "label": "Message type",
+      "section": "Parameters",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 MSGS Parameters #2",
+      "agg": "last",
+      "metric": true,
+      "category": "Signalling"
+    }
+  ]
+}

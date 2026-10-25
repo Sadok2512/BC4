@@ -1,0 +1,134 @@
+{
+  "event": "TXPC",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": 4,
+  "cell_scoped": true,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 5,
+      "code": "txpc.pusch_tx_power",
+      "label": "PUSCH TX power",
+      "section": "Parameters for LTE",
+      "type": "float",
+      "unit": "dBm",
+      "proof": "NFF 2.50 TXPC Parameters for LTE #1",
+      "agg": "mean",
+      "metric": true,
+      "category": "UL power"
+    },
+    {
+      "col": 6,
+      "code": "txpc.pucch_tx_power",
+      "label": "PUCCH TX power",
+      "section": "Parameters for LTE",
+      "type": "float",
+      "unit": "dBm",
+      "proof": "NFF 2.50 TXPC Parameters for LTE #2",
+      "agg": "mean",
+      "metric": true,
+      "category": "UL power"
+    },
+    {
+      "col": 7,
+      "code": "txpc.ph",
+      "label": "PH",
+      "section": "Parameters for LTE",
+      "type": "float",
+      "unit": "dB",
+      "proof": "NFF 2.50 TXPC Parameters for LTE #3",
+      "agg": "mean",
+      "metric": true,
+      "category": "UL power"
+    },
+    {
+      "col": 8,
+      "code": "txpc.f_i",
+      "label": "f(i)",
+      "section": "Parameters for LTE",
+      "type": "float",
+      "unit": "dB",
+      "proof": "NFF 2.50 TXPC Parameters for LTE #4",
+      "agg": "mean",
+      "metric": true,
+      "category": "UL power"
+    },
+    {
+      "col": 9,
+      "code": "txpc.g_i",
+      "label": "g(i)",
+      "section": "Parameters for LTE",
+      "type": "float",
+      "unit": "dB",
+      "proof": "NFF 2.50 TXPC Parameters for LTE #5",
+      "agg": "mean",
+      "metric": true,
+      "category": "UL power"
+    },
+    {
+      "col": 12,
+      "code": "txpc.pusch_tpc",
+      "label": "PUSCH TPC",
+      "section": "Parameters for LTE",
+      "type": "float",
+      "unit": "dB",
+      "proof": "NFF 2.50 TXPC Parameters for LTE #8",
+      "agg": "mean",
+      "metric": true,
+      "category": "UL power"
+    },
+    {
+      "col": 15,
+      "code": "txpc.pucch_tpc",
+      "label": "PUCCH TPC",
+      "section": "Parameters for LTE",
+      "type": "float",
+      "unit": "dB",
+      "proof": "NFF 2.50 TXPC Parameters for LTE #11",
+      "agg": "mean",
+      "metric": true,
+      "category": "UL power"
+    },
+    {
+      "col": 16,
+      "code": "txpc.srs_tx_power",
+      "label": "SRS TX power",
+      "section": "Parameters for LTE",
+      "type": "float",
+      "unit": null,
+      "proof": "NFF 2.50 TXPC Parameters for LTE #12",
+      "agg": "mean",
+      "metric": true,
+      "category": "UL power"
+    },
+    {
+      "col": 17,
+      "code": "txpc.m_srs",
+      "label": "M_SRS",
+      "section": "Parameters for LTE",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.50 TXPC Parameters for LTE #13",
+      "agg": "last",
+      "metric": true,
+      "category": "UL power"
+    },
+    {
+      "col": 18,
+      "code": "txpc.cell_type",
+      "label": "Cell type",
+      "section": "Parameters for LTE",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.50 TXPC Parameters for LTE #14",
+      "agg": "last",
+      "metric": true,
+      "category": "UL power"
+    }
+  ]
+}

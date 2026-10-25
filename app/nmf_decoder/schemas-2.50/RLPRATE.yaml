@@ -1,0 +1,86 @@
+{
+  "event": "RLPRATE",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": 4,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 5,
+      "code": "rlprate.rlp_rev_rate",
+      "label": "RLP rev. rate",
+      "section": "Parameters",
+      "type": "int",
+      "unit": "bit/s",
+      "proof": "NFF 2.50 RLPRATE Parameters #2",
+      "agg": "last",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 6,
+      "code": "rlprate.rlp_for_rate",
+      "label": "RLP for. rate",
+      "section": "Parameters",
+      "type": "int",
+      "unit": "bit/s",
+      "proof": "NFF 2.50 RLPRATE Parameters #3",
+      "agg": "last",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 7,
+      "code": "rlprate.rlp_rev_retr_rate",
+      "label": "RLP rev. retr. rate",
+      "section": "Parameters",
+      "type": "float",
+      "unit": "%",
+      "proof": "NFF 2.50 RLPRATE Parameters #4",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 8,
+      "code": "rlprate.rlp_fwd_retr_rate",
+      "label": "RLP fwd. retr. rate",
+      "section": "Parameters",
+      "type": "float",
+      "unit": "%",
+      "proof": "NFF 2.50 RLPRATE Parameters #5",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 9,
+      "code": "rlprate.rlp_err_ul",
+      "label": "RLP err. UL",
+      "section": "Parameters",
+      "type": "float",
+      "unit": "%",
+      "proof": "NFF 2.50 RLPRATE Parameters #6",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 10,
+      "code": "rlprate.rlp_err_dl",
+      "label": "RLP err. DL",
+      "section": "Parameters",
+      "type": "float",
+      "unit": "%",
+      "proof": "NFF 2.50 RLPRATE Parameters #7",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    }
+  ]
+}

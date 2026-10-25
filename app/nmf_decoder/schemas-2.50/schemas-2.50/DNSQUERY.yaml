@@ -1,0 +1,105 @@
+{
+  "event": "DNSQUERY",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": null,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 4,
+      "code": "dnsquery.query_address",
+      "label": "Query address",
+      "section": "Parameters",
+      "type": "text",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 DNSQUERY Parameters #1",
+      "agg": "last",
+      "metric": true,
+      "category": "Services (tasks)"
+    },
+    {
+      "col": 5,
+      "code": "dnsquery.dns_query_latency",
+      "label": "DNS query latency",
+      "section": "Parameters",
+      "type": "int",
+      "unit": "ms",
+      "range": null,
+      "proof": "NFF 2.50 DNSQUERY Parameters #2",
+      "agg": "last",
+      "metric": true,
+      "category": "Services (tasks)"
+    },
+    {
+      "col": 6,
+      "code": "dnsquery.dns_query_result",
+      "label": "DNS query result",
+      "section": "Parameters",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 DNSQUERY Parameters #3",
+      "agg": "last",
+      "metric": true,
+      "category": "Services (tasks)"
+    },
+    {
+      "col": 7,
+      "code": "dnsquery.results",
+      "label": "#Results",
+      "section": "Parameters",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 DNSQUERY Parameters #4",
+      "agg": "last",
+      "metric": true,
+      "category": "Services (tasks)"
+    },
+    {
+      "col": 8,
+      "code": "dnsquery.params_result",
+      "label": "#Params/result",
+      "section": "Parameters",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 DNSQUERY Parameters #5",
+      "agg": "last",
+      "metric": true,
+      "category": "Services (tasks)"
+    },
+    {
+      "col": 9,
+      "code": "dnsquery.resolved_ip",
+      "label": "Resolved IP",
+      "section": "Parameters",
+      "type": "text",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 DNSQUERY Parameters #6",
+      "agg": "last",
+      "metric": true,
+      "category": "Services (tasks)"
+    },
+    {
+      "col": 10,
+      "code": "dnsquery.dns_cache",
+      "label": "DNS cache",
+      "section": "Parameters",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 DNSQUERY Parameters #7",
+      "agg": "last",
+      "metric": true,
+      "category": "Services (tasks)"
+    }
+  ]
+}

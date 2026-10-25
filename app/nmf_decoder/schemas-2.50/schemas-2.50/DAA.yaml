@@ -1,0 +1,105 @@
+{
+  "event": "DAA",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": null,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 4,
+      "code": "daa.application_protocol",
+      "label": "Application protocol",
+      "section": "Parameters",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 DAA Parameters #1",
+      "agg": "last",
+      "metric": true,
+      "category": "Services (tasks)"
+    },
+    {
+      "col": 5,
+      "code": "daa.ip",
+      "label": "IP",
+      "section": "Parameters",
+      "type": "text",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 DAA Parameters #2",
+      "agg": "last",
+      "metric": true,
+      "category": "Services (tasks)"
+    },
+    {
+      "col": 6,
+      "code": "daa.port",
+      "label": "Port",
+      "section": "Parameters",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 DAA Parameters #3",
+      "agg": "last",
+      "metric": true,
+      "category": "Services (tasks)"
+    },
+    {
+      "col": 7,
+      "code": "daa.connection_timeout",
+      "label": "Connection timeout",
+      "section": "Parameters",
+      "type": "int",
+      "unit": "ms",
+      "range": null,
+      "proof": "NFF 2.50 DAA Parameters #4",
+      "agg": "last",
+      "metric": true,
+      "category": "Services (tasks)"
+    },
+    {
+      "col": 8,
+      "code": "daa.security_protocol",
+      "label": "Security protocol",
+      "section": "Parameters",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 DAA Parameters #5",
+      "agg": "last",
+      "metric": true,
+      "category": "Services (tasks)"
+    },
+    {
+      "col": 9,
+      "code": "daa.authentication_scheme",
+      "label": "Authentication scheme",
+      "section": "Parameters",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 DAA Parameters #6",
+      "agg": "last",
+      "metric": true,
+      "category": "Services (tasks)"
+    },
+    {
+      "col": 10,
+      "code": "daa.transport_protocol",
+      "label": "Transport protocol",
+      "section": "Parameters",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 DAA Parameters #7",
+      "agg": "last",
+      "metric": true,
+      "category": "Services (tasks)"
+    }
+  ]
+}

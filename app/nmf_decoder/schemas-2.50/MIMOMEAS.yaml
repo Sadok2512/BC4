@@ -1,0 +1,122 @@
+{
+  "event": "MIMOMEAS",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": 4,
+  "cell_scoped": true,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 7,
+      "code": "mimomeas.band",
+      "label": "Band",
+      "section": "Parameters for LTE",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.50 MIMOMEAS Parameters for LTE #3",
+      "agg": "last",
+      "metric": true,
+      "category": "MIMO per port"
+    },
+    {
+      "col": 8,
+      "code": "mimomeas.ch",
+      "label": "Ch",
+      "section": "Parameters for LTE",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.50 MIMOMEAS Parameters for LTE #4",
+      "agg": "last",
+      "metric": true,
+      "category": "MIMO per port"
+    },
+    {
+      "col": 9,
+      "code": "mimomeas.pci",
+      "label": "PCI",
+      "section": "Parameters for LTE",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.50 MIMOMEAS Parameters for LTE #5",
+      "agg": "last",
+      "metric": true,
+      "category": "MIMO per port"
+    },
+    {
+      "col": 10,
+      "code": "mimomeas.port",
+      "label": "Port",
+      "section": "Parameters for LTE",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.50 MIMOMEAS Parameters for LTE #6",
+      "agg": "last",
+      "metric": true,
+      "category": "MIMO per port"
+    },
+    {
+      "col": 11,
+      "code": "mimomeas.cell_type",
+      "label": "Cell type",
+      "section": "Parameters for LTE",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.50 MIMOMEAS Parameters for LTE #7",
+      "agg": "last",
+      "metric": true,
+      "category": "MIMO per port"
+    },
+    {
+      "col": 12,
+      "code": "mimomeas.rssi_p",
+      "label": "RSSI/P",
+      "section": "Parameters for LTE",
+      "type": "float",
+      "unit": "dBm",
+      "proof": "NFF 2.50 MIMOMEAS Parameters for LTE #8",
+      "agg": "mean",
+      "metric": true,
+      "category": "MIMO per port"
+    },
+    {
+      "col": 13,
+      "code": "mimomeas.rsrq_p",
+      "label": "RSRQ/P",
+      "section": "Parameters for LTE",
+      "type": "float",
+      "unit": "dB",
+      "proof": "NFF 2.50 MIMOMEAS Parameters for LTE #9",
+      "agg": "mean",
+      "metric": true,
+      "category": "MIMO per port"
+    },
+    {
+      "col": 14,
+      "code": "mimomeas.rsrp_p",
+      "label": "RSRP/P",
+      "section": "Parameters for LTE",
+      "type": "float",
+      "unit": "dBm",
+      "proof": "NFF 2.50 MIMOMEAS Parameters for LTE #10",
+      "agg": "mean",
+      "metric": true,
+      "category": "MIMO per port"
+    },
+    {
+      "col": 15,
+      "code": "mimomeas.timing_p",
+      "label": "Timing/P",
+      "section": "Parameters for LTE",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.50 MIMOMEAS Parameters for LTE #11",
+      "agg": "last",
+      "metric": true,
+      "category": "MIMO per port"
+    }
+  ]
+}

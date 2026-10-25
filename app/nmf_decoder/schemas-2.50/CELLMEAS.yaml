@@ -1,0 +1,146 @@
+{
+  "event": "CELLMEAS",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": 4,
+  "cell_scoped": true,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 8,
+      "code": "cellmeas.cell_type",
+      "label": "Cell type",
+      "section": "Parameters for LTE",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.50 CELLMEAS Parameters for LTE #4",
+      "agg": "last",
+      "metric": true,
+      "category": "Serving radio"
+    },
+    {
+      "col": 9,
+      "code": "cellmeas.band",
+      "label": "Band",
+      "section": "Parameters for LTE",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.50 CELLMEAS Parameters for LTE #5",
+      "agg": "last",
+      "metric": true,
+      "category": "Serving radio"
+    },
+    {
+      "col": 10,
+      "code": "cellmeas.ch",
+      "label": "Ch",
+      "section": "Parameters for LTE",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.50 CELLMEAS Parameters for LTE #6",
+      "agg": "last",
+      "metric": true,
+      "category": "Serving radio"
+    },
+    {
+      "col": 11,
+      "code": "cellmeas.pci",
+      "label": "PCI",
+      "section": "Parameters for LTE",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.50 CELLMEAS Parameters for LTE #7",
+      "agg": "last",
+      "metric": true,
+      "category": "Serving radio"
+    },
+    {
+      "col": 12,
+      "code": "cellmeas.rssi",
+      "label": "RSSI",
+      "section": "Parameters for LTE",
+      "type": "float",
+      "unit": "dBm",
+      "proof": "NFF 2.50 CELLMEAS Parameters for LTE #8",
+      "agg": "mean",
+      "metric": true,
+      "category": "Serving radio"
+    },
+    {
+      "col": 13,
+      "code": "cellmeas.rsrp",
+      "label": "RSRP",
+      "section": "Parameters for LTE",
+      "type": "float",
+      "unit": "dBm",
+      "proof": "NFF 2.50 CELLMEAS Parameters for LTE #9",
+      "agg": "mean",
+      "metric": true,
+      "category": "Serving radio"
+    },
+    {
+      "col": 14,
+      "code": "cellmeas.rsrq",
+      "label": "RSRQ",
+      "section": "Parameters for LTE",
+      "type": "float",
+      "unit": "dB",
+      "proof": "NFF 2.50 CELLMEAS Parameters for LTE #10",
+      "agg": "mean",
+      "metric": true,
+      "category": "Serving radio"
+    },
+    {
+      "col": 15,
+      "code": "cellmeas.timing",
+      "label": "Timing",
+      "section": "Parameters for LTE",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.50 CELLMEAS Parameters for LTE #11",
+      "agg": "last",
+      "metric": true,
+      "category": "Serving radio"
+    },
+    {
+      "col": 16,
+      "code": "cellmeas.pathloss",
+      "label": "Pathloss",
+      "section": "Parameters for LTE",
+      "type": "float",
+      "unit": "dB",
+      "proof": "NFF 2.50 CELLMEAS Parameters for LTE #12",
+      "agg": "mean",
+      "metric": true,
+      "category": "Serving radio"
+    },
+    {
+      "col": 17,
+      "code": "cellmeas.srxlev",
+      "label": "Srxlev",
+      "section": "Parameters for LTE",
+      "type": "float",
+      "unit": "dB",
+      "proof": "NFF 2.50 CELLMEAS Parameters for LTE #13",
+      "agg": "mean",
+      "metric": true,
+      "category": "Serving radio"
+    },
+    {
+      "col": 18,
+      "code": "cellmeas.sinr",
+      "label": "SINR",
+      "section": "Parameters for LTE",
+      "type": "float",
+      "unit": "dB",
+      "proof": "NFF 2.50 CELLMEAS Parameters for LTE #14",
+      "agg": "mean",
+      "metric": true,
+      "category": "Serving radio"
+    }
+  ]
+}

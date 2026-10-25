@@ -1,0 +1,182 @@
+{
+  "event": "DLALLOCSCAN",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": 4,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 6,
+      "code": "dlallocscan.band",
+      "label": "Band",
+      "section": "Parameters for LTE",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.50 DLALLOCSCAN Parameters for LTE #2",
+      "agg": "last",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 7,
+      "code": "dlallocscan.ch",
+      "label": "Ch",
+      "section": "Parameters for LTE",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.50 DLALLOCSCAN Parameters for LTE #3",
+      "agg": "last",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 8,
+      "code": "dlallocscan.dl_bw",
+      "label": "DL BW",
+      "section": "Parameters for LTE",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.50 DLALLOCSCAN Parameters for LTE #4",
+      "agg": "last",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 11,
+      "code": "dlallocscan.pci",
+      "label": "PCI",
+      "section": "Parameters for LTE",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.50 DLALLOCSCAN Parameters for LTE #7",
+      "agg": "last",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 12,
+      "code": "dlallocscan.cell_id",
+      "label": "Cell ID",
+      "section": "Parameters for LTE",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.50 DLALLOCSCAN Parameters for LTE #8",
+      "agg": "last",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 13,
+      "code": "dlallocscan.dl_prb_c",
+      "label": "DL PRB %/C",
+      "section": "Parameters for LTE",
+      "type": "float",
+      "unit": "%",
+      "proof": "NFF 2.50 DLALLOCSCAN Parameters for LTE #9",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 14,
+      "code": "dlallocscan.scheduled_rate_c",
+      "label": "Scheduled rate/C",
+      "section": "Parameters for LTE",
+      "type": "int",
+      "unit": "bit/s",
+      "proof": "NFF 2.50 DLALLOCSCAN Parameters for LTE #10",
+      "agg": "last",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 15,
+      "code": "dlallocscan.min_scheduled",
+      "label": "Min scheduled",
+      "section": "Parameters for LTE",
+      "type": "int",
+      "unit": "bit/s",
+      "proof": "NFF 2.50 DLALLOCSCAN Parameters for LTE #11",
+      "agg": "last",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 16,
+      "code": "dlallocscan.max_scheduled",
+      "label": "Max scheduled",
+      "section": "Parameters for LTE",
+      "type": "int",
+      "unit": "bit/s",
+      "proof": "NFF 2.50 DLALLOCSCAN Parameters for LTE #12",
+      "agg": "last",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 17,
+      "code": "dlallocscan.users_cell",
+      "label": "Users/cell",
+      "section": "Parameters for LTE",
+      "type": "int",
+      "unit": "bit/s",
+      "proof": "NFF 2.50 DLALLOCSCAN Parameters for LTE #13",
+      "agg": "last",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 23,
+      "code": "dlallocscan.c_rnti",
+      "label": "C-RNTI",
+      "section": "Parameters for LTE",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.50 DLALLOCSCAN Parameters for LTE #19",
+      "agg": "last",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 24,
+      "code": "dlallocscan.dl_prb_u",
+      "label": "DL PRB %/U",
+      "section": "Parameters for LTE",
+      "type": "float",
+      "unit": "%",
+      "proof": "NFF 2.50 DLALLOCSCAN Parameters for LTE #20",
+      "agg": "mean",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 25,
+      "code": "dlallocscan.scheduled_rate_u",
+      "label": "Scheduled rate/U",
+      "section": "Parameters for LTE",
+      "type": "int",
+      "unit": "bit/s",
+      "proof": "NFF 2.50 DLALLOCSCAN Parameters for LTE #21",
+      "agg": "last",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 26,
+      "code": "dlallocscan.mcs_u",
+      "label": "MCS/U",
+      "section": "Parameters for LTE",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.50 DLALLOCSCAN Parameters for LTE #22",
+      "agg": "last",
+      "metric": true,
+      "category": "Unclassified"
+    }
+  ]
+}

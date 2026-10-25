@@ -1,3 +1,25 @@
+## 0.79.0 (minor) — BC4 2026-10-25 — Decoder 1.6.0 + Catalog NFF 2.50.4 (Agent BC3)
+
+Merge `feat/bc3-catalog-2.50` → main. 23 commits BC3 (Phase 0 → Phase 2.2a cleanup).
+
+Livré :
+- **Decoder 1.6.0** : lit YAMLs 2.50 pour 98 SIMPLE corpus events (fallback 1.5.1 pour 12 COMPLEX avec groups + autres). `app/nmf_decoder/__init__.py:DECODER_VERSION='1.6.0'`.
+- **Catalog NFF 2.50.4** généré depuis `nmf_all_events_fields_2.50.csv` (282 events, 4393 champs) via `scripts/catalog/build_catalog.py`. 5 115 feuilles affichées (`n_leaves_displayed`), 28 415 total. metric_id convention = `<event_lower>_<field_slug>[@<cell_type>]` (match colonnes Light).
+- **Alembic 0048–0052** :
+  - 0048 `catalog_release` : table versionnée (version PK, sha256, is_current partial unique)
+  - 0049 `nmf_event_light_ext` : table narrow jsonb pour events hors corpus (préparation 2.2b)
+  - 0050 : 261 ADD COLUMN nmf_event_light pour 98 SIMPLE corpus events (NFF 2.50 champs non-structurels)
+  - 0051 : index `param_occurrence(stg_event_id)` — accélère FK cascade (14 min → <1s)
+  - 0052 : 262 ADD COLUMN nmf_event_deep (symétrique 0050), propagation partitions vérifiée
+- **94/94 captures corpus re-decoded en 1.6.0** (0 résiduel 1.5.1/1.4.0). Preuve : `exports/redecode_progress.txt` + `exports/redecode_fails_progress.txt` (19 FAIL deep rattrapées post 0052).
+- **Gardes** : G20 PASS (0 fuite scanner), G26 PASS (0 décalage), G28 PASS (567 métriques, 0 hors range strict), G18b PASS, GPS_stale PASS. G29 ×3 tableaux par event livrés.
+
+**Dette ouverte explicite (Phase 3 lot séparé `feat/bc3-metrics-v3`)** :
+- G25 FAIL 1238 orphans : `/metrics` endpoint sert encore legacy `catalog_v3`+`catalogue_v6` (BC2 convention `event.field`). Nécessite refactor pour lire `catalog_release.is_current → catalog_2.50.4.json`.
+- G24 FAIL : scope `leaves_total=885` est NFF 2.19 ν10 (BC2 catalog), à aligner sur `n_leaves_displayed=5115` du 2.50.4 après refactor /metrics.
+- G27 FAIL 93 events / 32.7M unknown[] : dette 2.2b (events hors corpus + unk_ 2.6x).
+- Catalogue 2.50.4 **n'est pas encore servi par `/metrics`** — explicite, non caché.
+
 ## 0.78.4 (patch) — BC4 2026-10-23 — Fast KPI catalogue loading (Agent BC1)
 
 - Read transfer availability from `task_run` / `task_sample`, populated by the canonical `(capture_id, seq)` task pipeline; KPI computations and formulas are unchanged.

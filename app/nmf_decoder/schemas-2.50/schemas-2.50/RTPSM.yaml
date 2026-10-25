@@ -1,0 +1,66 @@
+{
+  "event": "RTPSM",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": 4,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 4,
+      "code": "rtpsm.measured_system",
+      "label": "Measured system",
+      "section": "Parameters",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 RTPSM Parameters #1",
+      "agg": "last",
+      "metric": true,
+      "category": "Voice"
+    },
+    {
+      "col": 5,
+      "code": "rtpsm.direction",
+      "label": "Direction",
+      "section": "Parameters",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 RTPSM Parameters #2",
+      "agg": "last",
+      "metric": true,
+      "category": "Voice"
+    },
+    {
+      "col": 6,
+      "code": "rtpsm.rtp_message",
+      "label": "RTP message",
+      "section": "Parameters",
+      "type": "text",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 RTPSM Parameters #3",
+      "agg": "last",
+      "metric": true,
+      "category": "Voice"
+    },
+    {
+      "col": 7,
+      "code": "rtpsm.rtp_seq_n",
+      "label": "RTP SEQ N",
+      "section": "Parameters",
+      "type": "int",
+      "unit": null,
+      "range": "0 – 65535",
+      "proof": "NFF 2.50 RTPSM Parameters #4",
+      "agg": "last",
+      "metric": true,
+      "category": "Voice"
+    }
+  ]
+}

@@ -1,0 +1,50 @@
+{
+  "event": "TBFI",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": 4,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 6,
+      "code": "tbfi.tlli",
+      "label": "TLLI",
+      "section": "Parameters",
+      "type": "text",
+      "unit": null,
+      "proof": "NFF 2.50 TBFI Parameters #3",
+      "agg": "last",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 9,
+      "code": "tbfi.tfi",
+      "label": "TFI",
+      "section": "Parameters",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.50 TBFI Parameters #6",
+      "agg": "last",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 10,
+      "code": "tbfi.rlc_win",
+      "label": "RLC win.",
+      "section": "Parameters",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.50 TBFI Parameters #7",
+      "agg": "last",
+      "metric": true,
+      "category": "Unclassified"
+    }
+  ]
+}

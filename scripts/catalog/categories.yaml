@@ -1,0 +1,214 @@
+# categories.yaml — règle de classification event → (technology, category)
+#
+# Phase 1 bis BC3 : 3 technologies × 17 catégories, mapping explicite depuis
+# NFF 2.50. Toute entrée CSV NON classée tombe dans "Unclassified" (visible,
+# comptée, jamais perdue — règle BC3).
+#
+# Format :
+#   events:
+#     <EVENT_CODE>:
+#       tech: LTE | NR | Shared
+#       category: <une des 17 catégories>
+#       cell_scoped: true | false            # a-t-il un champ `Cell type` ?
+#       scope_field: Cell type | Scope       # discriminateur si cell_scoped
+#
+# Catégories autorisées :
+#   Serving radio · Neighbours · Carrier aggregation · Throughput per layer ·
+#   Link quality · Allocation & MCS · CSI · UL power · MIMO per port ·
+#   Beams NR · Voice · Services (tasks) · Position · Events ⚑ · Signalling ·
+#   Capture context · Scanner · Unclassified
+
+events:
+  # ===== Capture context (NFF header events: #xxx) =====
+  "#ID": {tech: Shared, category: "Capture context", cell_scoped: false}
+  "#TS": {tech: Shared, category: "Capture context", cell_scoped: false}
+  "#DT": {tech: Shared, category: "Capture context", cell_scoped: false}
+  "#UT": {tech: Shared, category: "Capture context", cell_scoped: false}
+  "#START": {tech: Shared, category: "Capture context", cell_scoped: false}
+  "#END": {tech: Shared, category: "Capture context", cell_scoped: false}
+  "#FF": {tech: Shared, category: "Capture context", cell_scoped: false}
+  "#MM": {tech: Shared, category: "Capture context", cell_scoped: false}
+  "#MF": {tech: Shared, category: "Capture context", cell_scoped: false}
+  "#ML": {tech: Shared, category: "Capture context", cell_scoped: false}
+  "#DL": {tech: Shared, category: "Capture context", cell_scoped: false}
+  "#DN": {tech: Shared, category: "Capture context", cell_scoped: false}
+  "#DS": {tech: Shared, category: "Capture context", cell_scoped: false}
+  "#DC": {tech: Shared, category: "Capture context", cell_scoped: false}
+  "#NN": {tech: Shared, category: "Capture context", cell_scoped: false}
+  "#OS": {tech: Shared, category: "Capture context", cell_scoped: false}
+  "#PC": {tech: Shared, category: "Capture context", cell_scoped: false}
+  "#CI": {tech: Shared, category: "Capture context", cell_scoped: false}
+  "#CL": {tech: Shared, category: "Capture context", cell_scoped: false}
+  "#AG": {tech: Shared, category: "Capture context", cell_scoped: false}
+  "#BF": {tech: Shared, category: "Capture context", cell_scoped: false}
+  "#HV": {tech: Shared, category: "Capture context", cell_scoped: false}
+  "#HW": {tech: Shared, category: "Capture context", cell_scoped: false}
+  "#SW": {tech: Shared, category: "Capture context", cell_scoped: false}
+  "#VN": {tech: Shared, category: "Capture context", cell_scoped: false}
+  "#VV": {tech: Shared, category: "Capture context", cell_scoped: false}
+  "#COMPVER": {tech: Shared, category: "Capture context", cell_scoped: false}
+  "#NMR": {tech: Shared, category: "Capture context", cell_scoped: false}
+  "#SR": {tech: Shared, category: "Capture context", cell_scoped: false}
+  "#TC": {tech: Shared, category: "Capture context", cell_scoped: false}
+  "#HASH": {tech: Shared, category: "Capture context", cell_scoped: false}
+  "#LICENSE": {tech: Shared, category: "Capture context", cell_scoped: false}
+  "#LICENSEREGION": {tech: Shared, category: "Capture context", cell_scoped: false}
+  "#FLOORPLAN": {tech: Shared, category: "Capture context", cell_scoped: false}
+  "#BTSTEMPLATE": {tech: Shared, category: "Capture context", cell_scoped: false}
+  "#CELLWHITELIST": {tech: Shared, category: "Capture context", cell_scoped: false}
+  "#KODIAK": {tech: Shared, category: "Capture context", cell_scoped: false}
+  "#EVRC": {tech: Shared, category: "Capture context", cell_scoped: false}
+  # IDs à masquer (règle identité) — events écartés (listés dans excluded)
+  "#EI": {tech: Shared, category: "Capture context", cell_scoped: false, exclude: identity}
+  "#SI": {tech: Shared, category: "Capture context", cell_scoped: false, exclude: identity}
+
+  # ===== Serving radio (LTE) =====
+  CELLMEAS:        {tech: LTE, category: "Serving radio", cell_scoped: true}
+  CI:              {tech: LTE, category: "Serving radio", cell_scoped: true}
+  SCELL:           {tech: LTE, category: "Serving radio", cell_scoped: true}
+  SCELLMOD:        {tech: LTE, category: "Serving radio", cell_scoped: true}
+
+  # ===== Neighbours =====
+  NLIST:           {tech: LTE, category: "Neighbours", cell_scoped: false}
+  SCANCONFIG:      {tech: LTE, category: "Neighbours", cell_scoped: false}
+
+  # ===== Carrier aggregation =====
+  CAA:             {tech: LTE, category: "Carrier aggregation", cell_scoped: false}
+  CAC:             {tech: LTE, category: "Carrier aggregation", cell_scoped: false}
+  CAD:             {tech: LTE, category: "Carrier aggregation", cell_scoped: false}
+
+  # ===== Throughput per layer =====
+  APPLIST:         {tech: Shared, category: "Throughput per layer", cell_scoped: false}
+  PHRATE:          {tech: LTE, category: "Throughput per layer", cell_scoped: true}
+  PHRATEU:         {tech: LTE, category: "Throughput per layer", cell_scoped: true}
+  MACRATE:         {tech: LTE, category: "Throughput per layer", cell_scoped: true}
+  MACRATEU:        {tech: LTE, category: "Throughput per layer", cell_scoped: true}
+  RLCRATE:         {tech: LTE, category: "Throughput per layer", cell_scoped: false}
+  RLCRATEU:        {tech: LTE, category: "Throughput per layer", cell_scoped: false}
+  PDCPRATED:       {tech: LTE, category: "Throughput per layer", cell_scoped: false}
+  PDCPRATEU:       {tech: LTE, category: "Throughput per layer", cell_scoped: false}
+  DRATE:           {tech: LTE, category: "Throughput per layer", cell_scoped: false}
+  PPPRATE:         {tech: Shared, category: "Throughput per layer", cell_scoped: false}
+
+  # ===== Link quality =====
+  CQI:             {tech: LTE, category: "Link quality", cell_scoped: true}
+  PLAID:           {tech: LTE, category: "Allocation & MCS", cell_scoped: true}
+  PLAIU:           {tech: LTE, category: "Allocation & MCS", cell_scoped: true}
+  PLAISUM:         {tech: LTE, category: "Allocation & MCS", cell_scoped: false}
+  DCI:             {tech: LTE, category: "Allocation & MCS", cell_scoped: true}
+  TAD:             {tech: LTE, category: "Link quality", cell_scoped: true}
+  FER:             {tech: LTE, category: "Link quality", cell_scoped: false}
+  BSR:             {tech: LTE, category: "Allocation & MCS", cell_scoped: false}
+
+  # ===== CSI =====
+  CSI:             {tech: NR,  category: "CSI", cell_scoped: true}
+  PMI:             {tech: NR,  category: "CSI", cell_scoped: true}
+
+  # ===== UL power =====
+  TXPC:            {tech: LTE, category: "UL power", cell_scoped: true}
+
+  # ===== MIMO per port =====
+  MIMOMEAS:        {tech: LTE, category: "MIMO per port", cell_scoped: true}
+
+  # ===== Beams NR =====
+  # (ajouter quand corpus NR, non présent dans ce dump)
+
+  # ===== Voice =====
+  AMRS:            {tech: Shared, category: "Voice", cell_scoped: false}
+  AQDL:            {tech: Shared, category: "Voice", cell_scoped: false}
+  AQI:             {tech: Shared, category: "Voice", cell_scoped: false}
+  AQRX:            {tech: Shared, category: "Voice", cell_scoped: false}
+  RTPSM:           {tech: Shared, category: "Voice", cell_scoped: false}
+  RTPJITTER:       {tech: Shared, category: "Voice", cell_scoped: false}
+  QOSFLOW:         {tech: Shared, category: "Voice", cell_scoped: false}
+
+  # ===== Services (tasks) =====
+  SCRIPT:          {tech: Shared, category: "Services (tasks)", cell_scoped: false}
+  CMDREQ:          {tech: Shared, category: "Services (tasks)", cell_scoped: false, mask: cmd_index}
+  CMDCOMP:         {tech: Shared, category: "Services (tasks)", cell_scoped: false, mask: cmd_index}
+  DAA:             {tech: Shared, category: "Services (tasks)", cell_scoped: false, mask: action_index}
+  DAC:             {tech: Shared, category: "Services (tasks)", cell_scoped: false, mask: action_index}
+  DAD:             {tech: Shared, category: "Services (tasks)", cell_scoped: false, mask: action_index}
+  DAF:             {tech: Shared, category: "Services (tasks)", cell_scoped: false, mask: action_index}
+  DREQ:            {tech: Shared, category: "Services (tasks)", cell_scoped: false, mask: req_index}
+  DCOMP:           {tech: Shared, category: "Services (tasks)", cell_scoped: false, mask: req_index}
+  DNSQUERY:        {tech: Shared, category: "Services (tasks)", cell_scoped: false}
+  DSUMMARY:        {tech: Shared, category: "Services (tasks)", cell_scoped: false}
+  CHI:             {tech: Shared, category: "Services (tasks)", cell_scoped: false}
+  PCHI:            {tech: Shared, category: "Services (tasks)", cell_scoped: false}
+  RBI:             {tech: Shared, category: "Services (tasks)", cell_scoped: false}
+
+  # ===== Position =====
+  GPS:             {tech: Shared, category: "Position", cell_scoped: false}
+  MARK:            {tech: Shared, category: "Position", cell_scoped: false}
+  GAA:             {tech: Shared, category: "Position", cell_scoped: false}
+  GAC:             {tech: Shared, category: "Position", cell_scoped: false}
+  GAD:             {tech: Shared, category: "Position", cell_scoped: false}
+
+  # ===== Events ⚑ =====
+  PSM:             {tech: Shared, category: "Events ⚑", cell_scoped: false}
+  PSMI:            {tech: Shared, category: "Events ⚑", cell_scoped: false}
+  PSMR:            {tech: Shared, category: "Events ⚑", cell_scoped: false}
+  LOCK:            {tech: Shared, category: "Events ⚑", cell_scoped: false}
+  ROAM:            {tech: Shared, category: "Events ⚑", cell_scoped: false}
+  DEVI:            {tech: Shared, category: "Events ⚑", cell_scoped: false}
+  LUA:             {tech: Shared, category: "Events ⚑", cell_scoped: false}
+  LUS:             {tech: Shared, category: "Events ⚑", cell_scoped: false}
+  SEI:             {tech: Shared, category: "Events ⚑", cell_scoped: false}
+  MEI:             {tech: Shared, category: "Events ⚑", cell_scoped: false}
+  PAA:             {tech: Shared, category: "Events ⚑", cell_scoped: false}
+  PAC:             {tech: Shared, category: "Events ⚑", cell_scoped: false}
+  PAD:             {tech: Shared, category: "Events ⚑", cell_scoped: false}
+  PBA:             {tech: Shared, category: "Events ⚑", cell_scoped: false}
+  PBC:             {tech: Shared, category: "Events ⚑", cell_scoped: false}
+  PBD:             {tech: Shared, category: "Events ⚑", cell_scoped: false}
+  RABA:            {tech: Shared, category: "Events ⚑", cell_scoped: false}
+  RABC:            {tech: Shared, category: "Events ⚑", cell_scoped: false}
+  RABD:            {tech: Shared, category: "Events ⚑", cell_scoped: false}
+
+  # ===== Signalling =====
+  RRC:             {tech: LTE, category: "Signalling", cell_scoped: false}
+  RRCSM:           {tech: LTE, category: "Signalling", cell_scoped: false}
+  RRA:             {tech: LTE, category: "Signalling", cell_scoped: false}
+  RRD:             {tech: LTE, category: "Signalling", cell_scoped: false}
+  RRF:             {tech: LTE, category: "Signalling", cell_scoped: false}
+  L3SM:            {tech: LTE, category: "Signalling", cell_scoped: false}
+  SIPSM:           {tech: Shared, category: "Signalling", cell_scoped: false}
+  SIPREGA:         {tech: Shared, category: "Signalling", cell_scoped: false}
+  SIPREGC:         {tech: Shared, category: "Signalling", cell_scoped: false}
+  SIPREGD:         {tech: Shared, category: "Signalling", cell_scoped: false}
+  HOA:             {tech: LTE, category: "Signalling", cell_scoped: false}
+  HOI:             {tech: LTE, category: "Signalling", cell_scoped: false}
+  HOS:             {tech: LTE, category: "Signalling", cell_scoped: false}
+  HOF:             {tech: LTE, category: "Signalling", cell_scoped: false}
+  RACHI:           {tech: LTE, category: "Signalling", cell_scoped: false}
+  RACHSM:          {tech: LTE, category: "Signalling", cell_scoped: false}
+  CREL:            {tech: LTE, category: "Signalling", cell_scoped: false}
+  MACI:            {tech: LTE, category: "Signalling", cell_scoped: false}
+  MSGA:            {tech: LTE, category: "Signalling", cell_scoped: false}
+  MSGS:            {tech: LTE, category: "Signalling", cell_scoped: false}
+
+  # ===== Scanner =====
+  OFDMSCAN:        {tech: LTE, category: "Scanner", cell_scoped: false}
+  STARTSCAN:       {tech: LTE, category: "Scanner", cell_scoped: false}
+  CELLSCAN:        {tech: LTE, category: "Scanner", cell_scoped: false}
+
+  # ===== Shared / dette BC2 =====
+  ROHC:            {tech: Shared, category: "Capture context", cell_scoped: false}
+
+  # ===== Capture context : completion (BC3 Phase 2 feedback) =====
+  "#PRODUCT": {tech: Shared, category: "Capture context", cell_scoped: false}
+  "#PROJECT": {tech: Shared, category: "Capture context", cell_scoped: false}
+  "#REPORT": {tech: Shared, category: "Capture context", cell_scoped: false}
+  "#SERVER": {tech: Shared, category: "Capture context", cell_scoped: false}
+  "#SERVERHW": {tech: Shared, category: "Capture context", cell_scoped: false}
+  "#SP": {tech: Shared, category: "Capture context", cell_scoped: false}
+  "#STOP": {tech: Shared, category: "Capture context", cell_scoped: false}
+  "#UNITID": {tech: Shared, category: "Capture context", cell_scoped: false}
+  "#VQ": {tech: Shared, category: "Capture context", cell_scoped: false}
+
+# Technology "Other (out of scope)" : UMTS/HSPA/CDMA/GSM/DVB/WLAN/GAN legacy.
+# Catégorie "Legacy UMTS/CDMA/DVB" ; repliée côté UI, comptée, jamais perdue.
+# Fallback dans build_catalog.py pour tout event non listé ci-dessus.
+default_tech: "Other"
+default_category: "Legacy UMTS/CDMA/DVB"

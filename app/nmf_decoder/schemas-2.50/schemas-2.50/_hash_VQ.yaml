@@ -1,0 +1,66 @@
+{
+  "event": "#VQ",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": null,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 4,
+      "code": "#vq.vq_type",
+      "label": "VQ type",
+      "section": "Parameters",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 #VQ Parameters #1",
+      "agg": "last",
+      "metric": true,
+      "category": "Capture context"
+    },
+    {
+      "col": 5,
+      "code": "#vq.vq_version",
+      "label": "VQ version",
+      "section": "Parameters",
+      "type": "text",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 #VQ Parameters #2",
+      "agg": "last",
+      "metric": true,
+      "category": "Capture context"
+    },
+    {
+      "col": 6,
+      "code": "#vq.vq_device",
+      "label": "VQ device",
+      "section": "Parameters",
+      "type": "text",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 #VQ Parameters #3",
+      "agg": "last",
+      "metric": true,
+      "category": "Capture context"
+    },
+    {
+      "col": 7,
+      "code": "#vq.vq_polqa_version",
+      "label": "VQ POLQA version",
+      "section": "Parameters",
+      "type": "text",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 #VQ Parameters #4",
+      "agg": "last",
+      "metric": true,
+      "category": "Capture context"
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "event": "#ID",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": null,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 4,
+      "code": "#id.measurement_id",
+      "label": "Measurement ID",
+      "section": "Parameters",
+      "type": "text",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 #ID Parameters #1",
+      "agg": "last",
+      "metric": true,
+      "category": "Capture context"
+    }
+  ]
+}

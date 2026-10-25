@@ -1,0 +1,74 @@
+{
+  "event": "RLCRATEB",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": 4,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 6,
+      "code": "rlcrateb.mtch_throughput",
+      "label": "MTCH throughput",
+      "section": "Parameters for LTE",
+      "type": "int",
+      "unit": "bit/s",
+      "proof": "NFF 2.50 RLCRATEB Parameters for LTE #2",
+      "agg": "last",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 9,
+      "code": "rlcrateb.area_id_mrb",
+      "label": "Area ID/MRB",
+      "section": "Parameters for LTE",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.50 RLCRATEB Parameters for LTE #5",
+      "agg": "last",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 10,
+      "code": "rlcrateb.pmch_id_mrb",
+      "label": "PMCH ID/MRB",
+      "section": "Parameters for LTE",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.50 RLCRATEB Parameters for LTE #6",
+      "agg": "last",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 11,
+      "code": "rlcrateb.bitrate_mrb",
+      "label": "Bitrate/MRB",
+      "section": "Parameters for LTE",
+      "type": "int",
+      "unit": "bit/s",
+      "proof": "NFF 2.50 RLCRATEB Parameters for LTE #7",
+      "agg": "last",
+      "metric": true,
+      "category": "Unclassified"
+    },
+    {
+      "col": 12,
+      "code": "rlcrateb.block_rate_mrb",
+      "label": "Block rate/MRB",
+      "section": "Parameters for LTE",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.50 RLCRATEB Parameters for LTE #8",
+      "agg": "last",
+      "metric": true,
+      "category": "Unclassified"
+    }
+  ]
+}

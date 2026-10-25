@@ -1,0 +1,122 @@
+{
+  "event": "MACRATE",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": 4,
+  "cell_scoped": true,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 5,
+      "code": "macrate.mac_dl_bitrate",
+      "label": "MAC DL bitrate",
+      "section": "Parameters for LTE",
+      "type": "int",
+      "unit": "bit/s",
+      "proof": "NFF 2.50 MACRATE Parameters for LTE #1",
+      "agg": "last",
+      "metric": true,
+      "category": "Throughput per layer"
+    },
+    {
+      "col": 6,
+      "code": "macrate.mac_dl_block_rate",
+      "label": "MAC DL block rate",
+      "section": "Parameters for LTE",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.50 MACRATE Parameters for LTE #2",
+      "agg": "last",
+      "metric": true,
+      "category": "Throughput per layer"
+    },
+    {
+      "col": 7,
+      "code": "macrate.mac_dl_bler",
+      "label": "MAC DL BLER",
+      "section": "Parameters for LTE",
+      "type": "float",
+      "unit": "%",
+      "proof": "NFF 2.50 MACRATE Parameters for LTE #3",
+      "agg": "mean",
+      "metric": true,
+      "category": "Throughput per layer"
+    },
+    {
+      "col": 8,
+      "code": "macrate.mac_dl_bler_1st",
+      "label": "MAC DL BLER 1st",
+      "section": "Parameters for LTE",
+      "type": "float",
+      "unit": "%",
+      "proof": "NFF 2.50 MACRATE Parameters for LTE #4",
+      "agg": "mean",
+      "metric": true,
+      "category": "Throughput per layer"
+    },
+    {
+      "col": 9,
+      "code": "macrate.mac_dl_bler_2nd",
+      "label": "MAC DL BLER 2nd",
+      "section": "Parameters for LTE",
+      "type": "float",
+      "unit": "%",
+      "proof": "NFF 2.50 MACRATE Parameters for LTE #5",
+      "agg": "mean",
+      "metric": true,
+      "category": "Throughput per layer"
+    },
+    {
+      "col": 10,
+      "code": "macrate.mac_dl_bler_3rd",
+      "label": "MAC DL BLER 3rd+",
+      "section": "Parameters for LTE",
+      "type": "float",
+      "unit": "%",
+      "proof": "NFF 2.50 MACRATE Parameters for LTE #6",
+      "agg": "mean",
+      "metric": true,
+      "category": "Throughput per layer"
+    },
+    {
+      "col": 11,
+      "code": "macrate.mac_dl_new",
+      "label": "MAC DL new",
+      "section": "Parameters for LTE",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.50 MACRATE Parameters for LTE #7",
+      "agg": "last",
+      "metric": true,
+      "category": "Throughput per layer"
+    },
+    {
+      "col": 12,
+      "code": "macrate.mac_dl_redundant",
+      "label": "MAC DL redundant",
+      "section": "Parameters for LTE",
+      "type": "float",
+      "unit": "%",
+      "proof": "NFF 2.50 MACRATE Parameters for LTE #8",
+      "agg": "mean",
+      "metric": true,
+      "category": "Throughput per layer"
+    },
+    {
+      "col": 13,
+      "code": "macrate.cell_type",
+      "label": "Cell type",
+      "section": "Parameters for LTE",
+      "type": "int",
+      "unit": null,
+      "proof": "NFF 2.50 MACRATE Parameters for LTE #9",
+      "agg": "last",
+      "metric": true,
+      "category": "Throughput per layer"
+    }
+  ]
+}

@@ -1,0 +1,92 @@
+{
+  "event": "RRCSM",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": 4,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 4,
+      "code": "rrcsm.measured_system",
+      "label": "Measured system",
+      "section": "Parameters",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 RRCSM Parameters #1",
+      "agg": "last",
+      "metric": true,
+      "category": "Signalling"
+    },
+    {
+      "col": 5,
+      "code": "rrcsm.direction",
+      "label": "Direction",
+      "section": "Parameters for LTE",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 RRCSM Parameters for LTE #1",
+      "agg": "last",
+      "metric": true,
+      "category": "Signalling"
+    },
+    {
+      "col": 6,
+      "code": "rrcsm.rrc_msg",
+      "label": "RRC msg",
+      "section": "Parameters for LTE",
+      "type": "text",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 RRCSM Parameters for LTE #2",
+      "agg": "last",
+      "metric": true,
+      "category": "Signalling"
+    },
+    {
+      "col": 7,
+      "code": "rrcsm.subchannel",
+      "label": "Subchannel",
+      "section": "Parameters for LTE",
+      "type": "text",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 RRCSM Parameters for LTE #3",
+      "agg": "last",
+      "metric": true,
+      "category": "Signalling"
+    },
+    {
+      "col": 8,
+      "code": "rrcsm.earfcn",
+      "label": "EARFCN",
+      "section": "Parameters for LTE",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 RRCSM Parameters for LTE #4",
+      "agg": "last",
+      "metric": true,
+      "category": "Signalling"
+    },
+    {
+      "col": 9,
+      "code": "rrcsm.pci",
+      "label": "PCI",
+      "section": "Parameters for LTE",
+      "type": "int",
+      "unit": null,
+      "range": "0 – 503",
+      "proof": "NFF 2.50 RRCSM Parameters for LTE #5",
+      "agg": "last",
+      "metric": true,
+      "category": "Signalling"
+    }
+  ]
+}

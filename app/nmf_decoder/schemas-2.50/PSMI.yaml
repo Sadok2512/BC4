@@ -1,0 +1,62 @@
+{
+  "event": "PSMI",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": 4,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 5,
+      "code": "psmi.t3324",
+      "label": "T3324",
+      "section": "Parameters for LTE",
+      "type": "int",
+      "unit": "ms",
+      "proof": "NFF 2.50 PSMI Parameters for LTE #1",
+      "agg": "last",
+      "metric": true,
+      "category": "Events ⚑"
+    },
+    {
+      "col": 6,
+      "code": "psmi.t3412",
+      "label": "T3412",
+      "section": "Parameters for LTE",
+      "type": "int",
+      "unit": "ms",
+      "proof": "NFF 2.50 PSMI Parameters for LTE #2",
+      "agg": "last",
+      "metric": true,
+      "category": "Events ⚑"
+    },
+    {
+      "col": 7,
+      "code": "psmi.edrx_cycle",
+      "label": "eDRX cycle",
+      "section": "Parameters for LTE",
+      "type": "int",
+      "unit": "ms",
+      "proof": "NFF 2.50 PSMI Parameters for LTE #3",
+      "agg": "last",
+      "metric": true,
+      "category": "Events ⚑"
+    },
+    {
+      "col": 8,
+      "code": "psmi.ptw",
+      "label": "PTW",
+      "section": "Parameters for LTE",
+      "type": "int",
+      "unit": "ms",
+      "proof": "NFF 2.50 PSMI Parameters for LTE #4",
+      "agg": "last",
+      "metric": true,
+      "category": "Events ⚑"
+    }
+  ]
+}

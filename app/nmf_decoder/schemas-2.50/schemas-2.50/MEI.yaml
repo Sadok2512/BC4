@@ -1,0 +1,53 @@
+{
+  "event": "MEI",
+  "spec_version": "2.50",
+  "schema_version": "1.6.0",
+  "systems": [
+    7
+  ],
+  "system_col": 4,
+  "cell_scoped": false,
+  "min_format": "2.50",
+  "unknown_tail": "keep",
+  "header": [
+    {
+      "col": 4,
+      "code": "mei.measured_system",
+      "label": "Measured system",
+      "section": "Parameters",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 MEI Parameters #1",
+      "agg": "last",
+      "metric": true,
+      "category": "Events ⚑"
+    },
+    {
+      "col": 5,
+      "code": "mei.measurement_event",
+      "label": "Measurement event",
+      "section": "Parameters for LTE",
+      "type": "int",
+      "unit": null,
+      "range": null,
+      "proof": "NFF 2.50 MEI Parameters for LTE #1",
+      "agg": "last",
+      "metric": true,
+      "category": "Events ⚑"
+    },
+    {
+      "col": 6,
+      "code": "mei.measurement_id",
+      "label": "Measurement ID",
+      "section": "Parameters for LTE",
+      "type": "int",
+      "unit": null,
+      "range": "1 – 64",
+      "proof": "NFF 2.50 MEI Parameters for LTE #2",
+      "agg": "last",
+      "metric": true,
+      "category": "Events ⚑"
+    }
+  ]
+}

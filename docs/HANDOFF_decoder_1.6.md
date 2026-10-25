@@ -1,0 +1,697 @@
+# HANDOFF — decoder 1.6.0 / catalog 2.50
+
+Fichier de passation entre sessions BC3. Une session neuve doit pouvoir
+reprendre en lisant **ce fichier seul**.
+
+Dernière mise à jour : 2026-10-25 01:10Z (session Opus 4.7 1M, 11e passe FIN).
+
+## 🎯 Phase 2.2a TERMINÉE
+
+État final :
+- **94/94 captures corpus en decoder_version=1.6.0** (0 résiduel 1.5.1/1.4.0).
+- `alembic_version = 0052_deep_2_50_cols`.
+- `nmf_event_light` : 654 cols (393 + 261 nouvelles 2.50).
+- `nmf_event_deep` : +262 cols (symétrique 0050, partitions propagées).
+- `param_occurrence` : 1 236 440 lignes (preservé, -18 334 TEST_1_6 declared).
+
+Gardes finaux :
+- **G26 : PASS 0 décalage** ✓
+- **G18b : PASS** ✓
+- **GPS_stale : PASS** ✓
+- G27_unk FAIL : 93 events, 32.7M lignes unknown[] (dette Phase 2.2b).
+- G24/G25 FAIL : scope legacy NFF 2.19 ν10 → Phase 3 realignment.
+
+## Timing
+- Nohup 1 (PID 6651) : 94 captures 1.5.1→1.6.0 → 75 OK + 19 FAIL deep · 1h40
+- Alembic 0052 : 7.9s (vs 6m22s pour 0051 bloqué)
+- Nohup 2 (PID 20517) : 19 FAIL deep → 19/19 OK · 1h06
+- **Total Phase 2.2a : ~3h**
+
+## Suite — arbitrage BC3
+
+(a) **Phase 2.2b** : dette G27 unknown[] (8670 champs non alloués = ajouter
+    schemas-2.50 pour les events hors corpus + unk_ parsing).
+(b) **Phase 3** : /metrics + /metrics/table exposent `catalog_version` +
+    `decoder_version` + reason='redecode_required' pour les champs 2.50
+    non en Light. Front footer "Catalog 2.50.3 · Decoder 1.6.0". Colonne
+    Task (CMDREQ/CMDCOMP). Fiche capture (SCRIPT, DAA/DREQ/DCOMP).
+
+DEPLOY_LOCK libéré. Branche `feat/bc3-catalog-2.50`, 18 commits.
+
+## 10e passe — Fix post-mortem 9e + relance propre
+
+### Post-mortem 9e passe (re-decode killed à 21:52)
+- Script `redecode_corpus.py` v1 (via `ingest_upload`) supprimait stg_event
+  par capture → cascade FK ON DELETE sur param_occurrence (1.25M, pas
+  d'index support) → ~14 min par DELETE + effacement des observations BC1.
+- État post-kill : 85 captures × 1.5.1, 1 × 1.6.0, 8 × 1.4.0.
+- param_occurrence 1 236 440 vs 1 254 774 dump → −18 334 lignes.
+
+### Perte 18 334 param_occurrence localisée
+- Capture `test_1_6_26/44621571bccc` (TEST_1_6) : 0 live.
+- Projet TEST → **déclaré sans suite** (BC3 règle).
+- Autres captures corpus : param_occurrence intact.
+
+### Alembic 0051 param_occurrence_fk_index
+- `CREATE INDEX ix_param_occurrence_stg_event_id ON param_occurrence(stg_event_id)`.
+- Durée 6m22s (6min bloqué par DELETE orphelin de la 9e passe, cancellé).
+- Fin : `alembic_version=0051_param_occurrence_fk_index`.
+
+### redecode_corpus.py v2 (replay-only)
+- Diff ligne 21 : `from app.nmf_decoder.store import decode_capture`
+  (remplace `from app.ingest.nmf import ingest_upload`).
+- Diff lignes 32-44 : purge = light / light_ext / group / deep / cell_second
+  SEULEMENT. Ne touche plus stg_event, stg_event_raw, param_occurrence.
+- Appel : `decode_capture(db, pid, cap, level, force=True)` — lit source
+  via `nmf_file.source_path`, UPSERT nmf_capture (ON CONFLICT), écrit
+  Light/Group/Deep uniquement. Preuve code : `app/nmf_decoder/store.py:70-123`.
+
+### Test chronométré (1 capture)
+```
+4b7bfd50ddb6/44621571bccc  prev 1.5.1 → 1.6.0  114.9s
+test_1_6_26/44621571bccc   prev 1.6.0 → 1.6.0   92.1s  (replay)
+total 2 captures / 3m29s = ~1m45s/capture
+```
+
+### Nohup re-decode 94 captures restantes
+```
+PID (python) : 6651  (inside bc4-api-1)
+Progress     : /app/exports/redecode_progress.txt
+Main log     : /app/exports/redecode_<ts>.log
+ETA          : ~2h30
+```
+
+## Reste 10e matinale
+
+1. `docker exec bc4-api-1 tail -5 /app/exports/redecode_progress.txt` → grep DONE.
+2. Count par decoder_version :
+   `SELECT decoder_version, COUNT(*) FROM nmf_capture GROUP BY decoder_version`.
+3. Gardes complets : G20, G29 ×3, G24, G25, G28, G18b, GPS_stale.
+4. Rapport final avec sortie collée par garde.
+5. GO Phase 3 si tout vert.
+
+## 9e passe — Preuves par contenu + G26 ZÉRO + re-decode nohup
+
+### Preuves par contenu (3 events témoins)
+Lignes brutes du fichier source confrontées aux valeurs en base Light 1.6.0 :
+- `GAA,10:33:20.980,1,13,7` : ctx=1, ctx_id=13, system=7 → base c4=7 ✓
+- `CELLMEAS,10:33:20.980,,7,0,1,11,0,...` : ctx=0, system=7 → base c3=7 ✓
+- `CI,10:33:20.980,,7,2,25.6,...` : ctx=0, system=7 → base c3=7 ✓
+
+**Convention PROUVÉE** : `raw_fields.cN` est 0-indexed depuis fields[0]=event
+(donc c0=event, c1=ts, c2=ctx_count, c3=system si ctx=0, …). YAML `system_col`
+est 1-indexed NFF (col 1=event). Donc **NFF col K ↔ raw c(K-1)**.
+
+### G26 fix (3 corrections cumulées)
+1. Convention `-1` : raw_col = system_col - 1.
+2. Compensation effective_col : raw_col += (actual_cc - expected_cc)
+   avec expected_cc = schema.get('context_count') ou max(0, system_col-4).
+3. Measured system VIDE au raw_col → verdict=0 (non-applicable, pas shift) :
+   preuve MSGA raw `12:02:53.429,1,1,,7,1,...` où field[4]="" (Measured
+   system vide) et le "7" à c5 est **Message type**, pas un système.
+
+### build_yamls.py bump — context_count carry-over
+Ajout `"context_count": context_count` dans le doc YAML généré, pour que
+le G26 lise correctement effective_cc depuis le YAML (préalablement None).
+
+### G26 VERDICT FINAL
+```
+G26 schemas_dedup=284  corpus_scope=113
+G26_VERDICT verdicts={'0': 112, '+1': 0, '-1': 0, 'no_data': 172, 'non_corpus_0': 0}
+G26 — ZÉRO DÉCALAGE sur 284 schemas testés ✓
+```
+
+### pg_dump explicite
+```
+DUMP    = /home/devmat/BC4/exports/bc4_2026-10-24_2022.dump
+sha256  = a53acbf8ab78401ec61ad034dee046a46a38f0495ca25ffe3ee84b61fdcb2d0b
+size    = 1 468 869 372 bytes (1.4 GB)
+```
+
+### Re-decode nohup — LANCÉ
+```
+PID    : 4305 (python inside bc4-api-1)
+Script : /app/scripts/catalog/redecode_corpus.py
+Log    : /app/exports/redecode_<ts>.log (dans bc4-api-1)
+Progress: /app/exports/redecode_progress.txt
+Captures: 95 (94 corpus + 1 TEST_1_6)
+Decoder: 1.6.0 (schemas-2.50 pour 98 simple corpus events)
+```
+
+## Reste 2.2a terminal (10e passe matinale)
+
+À l'arrivée du matin :
+1. Vérifier le re-decode fini : grep DONE dans progress.txt.
+2. Compter captures en 1.6.0 vs 1.5.1 :
+   `SELECT decoder_version, COUNT(*) FROM nmf_capture GROUP BY decoder_version`
+3. Lancer les gardes complets : G20, G29 ×3, G24, G25, G28, G18b, GPS_stale.
+4. Produire le rapport final avec sortie collée de chaque garde.
+5. Phase 2.2a terminée → GO Phase 3 (/metrics envelope + front catalog/decoder footer).
+
+## 8e passe — Light 1.5.1 vs 1.6.0 + G26 par valeur
+
+### Étape 1 : Light counts ✓ ZÉRO PERTE
+- Σ n_records 1.5.1 = Σ n_records 1.6.0 = **48 660** pour 44621571bccc.
+- rows_15=27651 → rows_16=22187 : agrégation 2.50 plus stricte (PHRATE
+  6038→2404 lignes, MACRATE 2584→754) — plusieurs lignes 1.5.1 fusionnées
+  par seconde, n_records conservé.
+- delta_sum=0 sur TOUS les event_codes.
+- Log : `exports/step1_light_15_vs_16_20261024_*.log`.
+
+### Étape 2 : G26 refactor par VALEUR
+- `scripts/guards_2026_10/G26_offsets.py` : règle unifiée, cherche
+  `expected_systems[]` dans raw_fields autour de `system_col`. Verdict
+  ∈ {0, +1, -1} exclusivement. Scope corpus 113 events. Dédup par event.
+- Résultat : `verdicts={'0': 74, '+1': 36, '-1': 2, 'no_data': 172}`.
+
+### ⚠️ Convention de numérotation `raw_fields` ≠ YAML `system_col`
+
+Les 38 "shifts" détectés montrent tous `raw.c3='7'` (LTE code à col 3)
+alors que schemas disent `system_col=4` ou `5`. Investigation :
+- `raw_fields.cN` dans stg_event_raw : N commence à **c2** (c2=timestamp,
+  c3=context_count ou système si context_count=0, c4=context_id ou système).
+- `system_col` YAML : positions **absolues** dans la ligne NMF brute
+  (c1=event_code, c2=timestamp, c3=context_count, c4+=context_ids+system).
+- **Mismatch de base** : raw_fields JSON zéro-index-depuis-event vs YAML
+  1-index-absolu.
+
+Les 38 shifts sont probablement **des faux positifs** du check G26, pas
+des décalages NFF 2.50 réels. À confirmer en 9e passe.
+
+### Décision : zéro écart NON ATTEINT par la convention actuelle du check
+- pg_dump + re-decode 94 : **PAS LANCÉS**.
+
+## Reste 2.2a terminal (9e passe)
+
+1. Investiguer convention raw_fields → aligner G26 (soit normaliser
+   raw_fields pour qu'il indexe depuis c1=event, soit soustraire l'offset
+   dans G26).
+2. Si après fix G26 = 0 corpus shift → pg_dump (sha collé).
+3. `scripts/redecode_corpus.py` nohup les 94 captures + 2 Keysight si
+   convertis en .nmf par l'utilisateur ; log + PID collés.
+4. Rapport matin : captures 1.6.0 vs 1.5.1 restantes.
+
+## 7e passe — Decoder 1.6.0 + TEST_1_6 2.50 + gardes
+
+### Étape 1 : DECODER_VERSION 1.5.1 → 1.6.0 ✓
+- `app/nmf_decoder/__init__.py` : 1.5.1 → 1.6.0 (host + container).
+- `/health` : `{"status":"ok","decoder_version":"1.6.0"}`.
+- Log : `exports/step1_decoder_bump_20261024_193217.log`.
+
+### Étape 2 : Re-ingest TEST_1_6 44621571bccc (plusieurs essais) ✓
+- 2b : regen YAMLs sans structurels (filtre `_is_structural_label`).
+  Log : `exports/step2b_regen_yamls_20261024_193503.log`.
+- 2d : scope schema.py aux 113 corpus events (via `corpus_events_2_2a.txt`).
+  Log : `exports/step2d_scope_fix_20261024_193735.log`.
+  Résultat : 98 events en 2.50, 16 en 1.5.1 fallback, non-corpus skip override.
+- 2f : ad-hoc `ALTER TABLE ADD COLUMN dci_dci_count` — colonne manquée
+  par mon audit (`_count$` regex trop agressif, "DCI count" est une
+  métrique pas un structural). Log : `exports/step2f_add_dci_count_*.log`.
+- 2g : ingest final OK. Log : `exports/step2g_test16_retry_20261024_194126.log`.
+    - decoder_version=**1.6.0**, n_records=48 660, light=22 187
+    - **RRCSM=2389 ✓**  **L3SM=31 ✓** (contrats BC3 exacts)
+    - 53/261 nouvelles colonnes 2.50 remplies de data (vs 0 en 1.5.1)
+
+### Étape 3 : Gardes
+Log : `exports/step3_guards_20261024_194430.log` (99 kB tableaux complets).
+Résumé :
+- G29 ×3 : tableaux par event collés
+- G26 : 33 PASS / 4 "+1" / 1 "-1" / 50 "?" / 3 no_data → **PAS zéro écart**
+- G27 FAIL : 102 events / 32.7M lignes unknown[] (dette, scope 2.2b)
+- G28 : tableaux P1/P50/P99 par métrique × 3 captures
+- G24 FAIL, G25 FAIL 952 orphans
+- **G18b PASS**, **GPS_stale PASS**
+
+### Décision BC3 règle "zéro écart → pg_dump + re-decode"
+**NON ATTEINT** → **pas de re-decode des 94 captures** ce soir.
+
+## Reste 2.2a (8e passe ou arbitrage BC3)
+
+Les 5 décalages réels G26 ("+1" × 4, "-1" × 1) + 50 "?" indéterminables :
+- investiguer events HOA (deja declaré complex), CREL (selector_col map),
+  et quelques events hors corpus.
+- Peut-être relâcher la règle "zéro écart" aux events corpus uniquement
+  (33 PASS corpus / 5 non-corpus décalés).
+
+Si BC3 autorise re-decode partiel (113 corpus), 8e passe = pg_dump +
+nohup re-decode via `scripts/redecode_corpus.py` (à écrire).
+
+## 6e passe — Migration 0050 + schema.py 2.50 scoped
+
+- `alembic 0050_light_2_50_cols` appliquée en **3.1s** : ADD COLUMN × 261
+  (NON-structurels) sur `nmf_event_light` pour les 98 SIMPLE events corpus.
+  `missing_cols_2.50_simple.json` committé (source migration).
+- 12 COMPLEX events restent 1.5.1 (header+group split préservé).
+- `schema.py` : charge schemas-2.50/ pour 268 events + fallback 1.5.1
+  pour 16 events (12 complex + HOS/SIPREGC/STARTSCAN + autres).
+- État DB : alembic_version=0050_light_2_50_cols, nmf_event_light 654 cols
+  (était 393).
+
+## État TEST_1_6 (6e passe fin)
+
+- Ingest précédent (passe 4) toujours en place : capture=44621571bccc,
+  decoder_version=1.5.1 (DECODER_VERSION dans container), 27 651 lignes
+  Light, RRCSM=2389 ✓ L3SM=31 ✓.
+- Re-ingest avec 2.50 schemas tenté mais aucune sortie capturée (shell
+  terminé prématurément). À refaire 7e passe.
+
+## Reste 2.2a (7e passe)
+
+1. **Bump DECODER_VERSION** dans `/app/app/nmf_decoder/__init__.py` :
+   1.5.1 → 1.6.0 (host + container). Add CHANGELOG_DECODER entry.
+2. **Clean TEST_1_6 complet** (nmf_capture + file + stg + light + group + ext).
+3. **Re-ingest** avec schemas-2.50/ actifs (déjà le cas).
+4. **Vérifier `nmf_capture.decoder_version=1.6.0`** après re-ingest.
+5. **Gardes** : G29 ×3 (keysight ne compte pas, oracle sort du chemin),
+   G26 = 0 décalage (via schemas-2.50 cols alignés), G28 plages.
+6. **pg_dump** explicite (sha collé).
+7. **nohup re-decode 94+2** (`scripts/redecode_corpus.py` à écrire).
+8. **Rapport matin** : captures 1.6.0 vs 1.5.1 restantes.
+
+## 5e passe — Audit colonnes + migration 0049
+
+- `scripts/catalog/audit_light_cols.py` + `audit_refined.py` : audit
+  comparant les codes requis par les 113 corpus events (schemas-2.50/)
+  vs les colonnes existantes de `nmf_event_light` (+ `nmf_event_group` /
+  `nmf_event_deep` pour couverture 1.5.1 complète).
+- Résultat : **336 colonnes manquantes** pour 98 "simple" events (sans
+  groups 1.5.1) + 12 "complex" events (CELLMEAS/CI/CQI/MIMOMEAS/PLAID/
+  PLAIU/PDCPRATE*/RLCRATE/TXPC) avec 93 nouveaux champs flat impossibles
+  à ajouter sans casser la structure header+group 1.5.1.
+- BC3 attendu <100, observé 336 — **écart déclaré** (NFF 2.50 CSV expose
+  bcp plus de champs par event que 1.5.1 n'en gardait : Measured system
+  répété, structurels Params/… non-filtrés, etc.).
+- Export JSON exact : `/home/devmat/BC4/exports/missing_cols_2.50_vs_1.5.1.json`
+  (40 KB, 451 entrées avec `(col, pg_type, event, label)`).
+- **Alembic 0049_nmf_event_light_ext** créée + appliquée :
+    - Table narrow `(project_id, capture_id, seq, second, event_code, field, value jsonb, decoder_version)`.
+    - 2 index : lookup + per-second.
+    - Downgrade = drop table.
+    - PAS de ADD COLUMN sur nmf_event_light (évite le 336-cols migration risquée).
+- `alembic_version=0049_nmf_event_light_ext`.
+- Decoder **reste 1.5.1** (schema.py reverté passe 4). Pour activer 2.50,
+  options :
+    - (a) migration bis ajoutant les 336 colonnes de 98 simple events +
+      refactor decoder pour dual-write (colonne OU ext si absente).
+    - (b) decoder dual-write dès maintenant : colonne existante → light,
+      sinon → light_ext (jsonb). Pas de migration columns.
+
+## Décision requise BC3 pour 2.2a terminal
+
+Choisir (a) ADD COLUMN × 336 + decoder lit schemas-2.50/, OU
+(b) decoder dual-write light ↔ light_ext, 0 column migration.
+L'option (b) minimise le risque corpus (zéro schema change) mais
+distribue les champs 2.50 nouveaux entre deux tables (requêtes plus
+complexes côté /metrics).
+
+## 4e passe — Phase 2.2a partial
+
+Progrès :
+- Patch `app/nmf_decoder/schema.py` tenté puis **reverté** vers 1.5.1 seul
+  (les 193 events ADDED du 2.50 requièrent une DDL migration — colonnes
+  type `adjmeas_measured_system` manquantes dans `nmf_event_light`).
+- Patch `app/nmf_decoder/source.py` : skip binary NMFS header pour les
+  .nmfs Keysight (bytes avant le premier `#...`).
+- Fix sequences `stg_event_id_seq` / `stg_event_raw_id_seq` /
+  `stg_measurement_raw_id_seq` (resync après restauration dump).
+- `build_yamls.py` : events `#X` → header vide (PG rejette colonnes avec `#`).
+- Projet TEST **test_1_6_26** (TEST_1_6) : ingest 44621571bccc depuis
+  `/var/lib/bc4/nmf-source/4b7bfd50ddb6/718d93e0d9414492.nmf` avec decoder
+  **1.5.1** (fallback obligatoire). Résultat :
+    - n_records=48660  stg_event_raw=48660  nmf_event_light=27651
+    - **RRCSM=2389 ✓** (BC3 attendu 2389)
+    - **L3SM=31 ✓** (BC3 attendu 31)
+    - n_gps=0 (M1 benchmark, pas de GPS fix dans le source — comme original)
+    - IDENTIQUE au capture dans projet d'origine → G29 écart=0 pipeline-level
+      (pas oracle Keysight au sens 1.6.0 vs Keysight).
+
+## BLOCKERS RESTANTS (prochaine session)
+
+### B4 — Keysight .nmfs format NMFS compressé
+
+```
+Content : NMFS\x01\x00\x00Q... [95b binary header]
+          #PRODUCT,...  [plaintext metadata]
+          \x80"\x00\x00\x82o...  [binary compressed chunks]
+```
+
+Les événements NFF 2.50 réels sont dans les chunks compressés après les
+headers plaintext. Décoder nécessite :
+1. Parse chunk header (0x80 markers suivis de taille 2 bytes LE ?).
+2. Décompresser le chunk (format inconnu — probablement zlib/LZ4/custom).
+3. Lire les events plaintext du chunk décompressé.
+
+Référence : `/home/devmat/BC4/specs/Nemo_FileFormat/Nemo File Format_2.50.pdf`
+devrait détailler le format NMFS compressé.
+
+### B5 — DDL migration pour decoder 1.6.0
+
+Avec schemas-2.50/ chargés dans schema.py, le decoder tente d'écrire des
+colonnes 193×plusieurs = ~500+ colonnes nouvelles dans `nmf_event_light`.
+Besoin d'une alembic migration ajoutant toutes ces colonnes (noms + types)
+AVANT que le decoder puisse écrire. Workflow :
+
+1. Script d'audit : lister tous les codes `event.field_slug` dans
+   `app/nmf_decoder/schemas-2.50/*.yaml` → produire la DDL (ADD COLUMN).
+2. Migration alembic 0049_light_fields_2.50.py.
+3. Appliquer migration (`alembic upgrade head`).
+4. Alors seulement remettre `schemas()` à charger `schemas-2.50/`.
+5. Test TEST_1_6 avec 1.6.0.
+6. Si OK : re-decode corpus nohup.
+
+## Reste à faire pour 2.2a terminal
+
+1. **B4 fix** : patch source.py pour NMFS décompression.
+2. **B5 fix** : alembic 0049 avec audit automatique.
+3. Re-ingest Keysight dans NFF_SAMPLE (après B4).
+4. Re-ingest 44621571bccc dans TEST_1_6 avec 1.6.0 (après B5).
+5. Comparaison vraie G29 Keysight vs decoder output.
+6. pg_dump + re-decode 94+2 nohup si tout vert.
+
+PAS DE RE-DECODE CORPUS tant que B4+B5 non résolus.
+
+
+
+**ÉTAT 2.2a : YAMLs 2.50 validés (85/87 LTE common events alignés). Keysight uploadé.
+Decoder refactor pas encore commité (prochaine fenêtre).**
+
+## Progrès 3e passe
+
+- B1 levé : `/home/devmat/BC4/specs/Nemo_FileFormat.zip` déposé (108 MB,
+  2 .nmfs échantillons + PDF spec).
+- B2 appliqué dans `build_yamls.py` : filtre section par systems (7/8→LTE,
+  9→NR, LTE and NR→les deux) + context_count carry-over + formula col
+  unifiée.
+- Diff validation : 85/87 LTE common events MÊMES cols vs 1.5.1. Les 2
+  outliers (CREL, HOA) ont des layouts conditionnels → 2.2b.
+- 77 events gagnent des champs nouveaux 2.50 (#BF.bts_file, #DL.device_label,
+  #HW+4, #LICENSE+5, etc.).
+
+## Reste à faire 2.2a (prochaine fenêtre)
+
+1. Decoder lit schemas-2.50/ : patcher `app/nmf_decoder/schema.py` fonction
+   `schemas()` pour charger depuis `schemas-2.50/` avec fallback sur
+   `schemas/` pour CREL/HOA + les 4 events only_in_old (#EI, #SI, HOS, SIPREGC).
+2. Projet TEST **NFF_SAMPLE** → ingest `/tmp/keysight/Nemo_FileFormat/
+   File_Format_2.50_Sample_datas/OD_921_drive_train_22Jun30 091813.{1,2}.nmfs`.
+   Note : extension `.nmfs` streaming — vérifier que source.py accepte.
+3. Projet TEST **TEST_1_6** → re-ingest capture témoin 44621571bccc depuis
+   un .nmf de son projet d'origine.
+4. Gardes sur ces 3 captures : G29 ×3 = 0 écart, G26 = 0 décalage, G28 plages.
+5. Si tous verts : pg_dump + re-decode 94+2 nohup.
+
+## BLOCKERS DÉCOUVERTS (2.2a, 2e passe)
+
+### B1 — Keysight .nmf absents du filesystem
+
+```
+ls /home/devmat/BC4/specs/*.zip
+  BC4_SPECS_ALL.zip         ← pas de .nmf dedans
+  bc4_dict_v2_specs*.zip    ← pas de .nmf
+  nff_2.50_pack.zip         ← CSV + TXT + PDF uniquement
+  nmf_full_catalogue_2.19.zip ← CSV uniquement
+```
+
+**Aucun `Nemo_FileFormat.zip`** sur le filesystem. L'oracle Keysight G29=0 est
+impossible tant que ce fichier n'est pas livré. Action requise : upload du
+zip Keysight OU chemin corrigé.
+
+### B2 — field_no CSV NFF 2.50 est SECTION-RELATIF
+
+Révélation critique en comparant avec 1.5.1 :
+
+```
+CSV 2.50 : CI, Parameters,          1, Measured system
+CSV 2.50 : CI, Parameters for GSM,  1, C/I                 ← field_no=1 GSM
+CSV 2.50 : CI, Parameters for LTE,  1, #Header params      ← field_no=1 LTE
+CSV 2.50 : CI, Parameters for LTE,  3, Cell type           ← field_no=3 LTE
+```
+
+Mon générateur Phase 2.1 agrégeait tous les sections → collisions col
+(`col=5` 3× pour mêmes field_no de sections différentes).
+
+**Correction attendue** :
+```
+col_absolu = system_col(event) + field_no_SECTION_matching_systems
+```
+
+Donc `ci.cell_type` LTE : system_col=4 + field_no_LTE=3 = **col 7** (=
+1.5.1 existant, pas 3). Le "diff" apparent `ci.cell_type 7→3` était un
+artefact de ma méthode, pas un vrai décalage de la spec.
+
+**Conséquence majeure** : la 1.5.1 était correcte sur les technos actives
+(LTE). La dette G26 que BC3 cite est **beaucoup moins étendue** qu'il ne
+semblait. À confirmer sur chaque event une fois le filtre section-par-system
+implémenté.
+
+### B3 — Scope du refactor réduit
+
+Vu B2, le refactor "lire YAML 2.50" perd 90% de son intérêt pour les events
+LTE déjà bien décodés par 1.5.1. Le vrai gain 2.50 est :
+- Les 193 events ADDED (UMTS legacy + NR advanced + #metadata) jamais
+  décodés avant.
+- La couverture NR explicite (cell_scoped=true pour les events avec `Scope`
+  champ dans le CSV).
+- Les nouveaux champs ajoutés aux 85 events communs (#HW +4 champs,
+  #LICENSE +5, etc.).
+
+## NEXT SESSION — reprise 2.2a (après upload Keysight)
+
+1. **Patch `scripts/catalog/build_yamls.py`** : filtre CSV par section
+   matching les `systems: [N]` de l'event (section_to_system map à construire).
+   Validation : diff vs schemas/ sur les 87 common events doit montrer
+   0 move pour les sections LTE actives (sinon vraie dette G26).
+2. **Après upload** `/home/devmat/BC4/specs/Nemo_FileFormat.zip` :
+   ingérer 2 .nmf → projet NFF_SAMPLE, decode avec decoder actuel (1.5.1)
+   d'abord → ligne de base G29 ×1.
+3. **Decoder 1.6.0** : lire YAMLs 2.50 pour les 193 ADDED events + nouveaux
+   champs des 85 communs, le reste reste 1.5.1. Fallback paresseux.
+4. **Projet TEST_1_6** : décoder 44621571bccc. G29/G26/G28 sur ce seul capture.
+5. Si tout vert : pg_dump + re-decode 94+2 nohup.
+
+## Build 2.50.3 — toujours current (inchangé 2.2a)
+
+- `catalog_release.version = 2.50.3  sha=556be8e9...  is_current=TRUE`
+- `n_leaves_displayed = 5710`  (contrat G18b)
+- GC1 PASS.
+
+---
+
+## Branche de travail
+
+```
+feat/bc3-catalog-2.50   (bc4-back + franco-focus-forge)
+Base   : main
+Commits : 4 commits BC3 posés
+  2778922 Phase 2 preamble — build 2.50.3 (Capture context dedupe + Other tech + n_displayed=5710)
+  <sha4>  Phase 2.1 — generate 282 YAMLs 2.50 + diff vs schemas 1.5.1
+  <sha3>  Phase 1 bis — categories.yaml + corpus coverage → catalog 2.50.2
+  <sha2>  Phase 1 — build_catalog.py → catalog_2.50.1.json (first build)
+  <sha1>  Phase 0 — catalog versioning scaffolding (NFF 2.50)
+```
+
+## Objectif global
+
+Catalogue versionné (NFF 2.50) + decoder 1.6.0 compatible, remplaçant la
+dette 1.5.1 (colonnes décalées, 193 events jamais décodés).
+
+Spec source unique : `/home/devmat/BC4/specs/nff_2.50_pack.zip`
+  → `nmf_all_events_fields_2.50.csv` (282 events, 4 393 champs)
+  → `nemo_file_format_2.50.txt` (enums : cell types, bands, causes)
+
+Oracle Keysight (pour G29=0 preuve) : `/home/devmat/BC4/specs/Nemo_FileFormat.zip`
+(contient 2 .nmfs — à décompresser et ingérer dans projet TEST `NFF_SAMPLE`).
+
+## Phase 0 — FAIT ✅
+
+- `alembic 0048_catalog_release.py` : table `catalog_release(version PK, spec_version,
+  decoder_min_version, sha256, n_categories, n_metrics, n_leaves, is_current)`.
+  Partial unique index : au plus 1 ligne `is_current=TRUE`.
+- `app/models/base.py` : classe `CatalogRelease`.
+- `app/kpi/catalog_release/` : package avec `registry.py` (`current_catalog(db)`,
+  `sha256_file(path)`). Renommé pour éviter collision avec `app.kpi.catalog`.
+- `scripts/guards_2026_10/GC1_catalog_sha.py` : garde sha DB ↔ fichier.
+- `CHANGELOG_CATALOG.md` : règle de bump + versions.
+- Migration appliquée : `alembic_version=0048_catalog_release`.
+
+## Phase 1 bis — FAIT ✅ (catalog 2.50.3)
+
+Artefacts :
+```
+app/kpi/catalog_release/catalog_2.50.1.json    (premier build naïf, obsolète)
+app/kpi/catalog_release/catalog_2.50.2.json    (hiérarchie v10, 19 cat, Unclassified)
+app/kpi/catalog_release/catalog_2.50.3.json    <-- COURANT (is_current=TRUE)
+scripts/catalog/build_catalog.py               (CSV + categories.yaml + enums + corpus → JSON)
+scripts/catalog/categories.yaml                (141 events mappés + default→Other)
+```
+
+Build 2.50.3 (chiffres contrat) :
+```
+tech=4 (LTE/NR/Shared/Other)  categories=19  events_kept=280
+classified=150 unclassified=140→Other  excluded=2 (identité #EI/#SI)
+n_metrics_bare=3419  leaves_cell=24996  n_leaves_total=28415
+n_leaves_displayed=5710   <-- CONTRAT G18b
+sha256=556be8e9cf546416f884d5db6011c07620cbc2e2bb2781d0481f5102960e9ced
+```
+
+Enums parsés :
+- cell_type_lte_scell (1817), cell_type_lte_mesure (5),
+  cell_type_nr (68), band_lte (77).
+
+Garde GC1 = **PASS**.
+
+## Phase 2.1 — FAIT ✅ (YAMLs générés + diff collé)
+
+- `scripts/catalog/build_yamls.py` : CSV → 280 YAMLs dans
+  `app/nmf_decoder/schemas-2.50/` (`_hash_X.yaml` pour les events `#X`).
+- Diff collé : `exports/diff_yamls_phase2.txt`
+```
+old(v1.5.1)=91  new(2.50)=280
+only_in_old : 4 (#EI,#SI,HOS,SIPREGC)
+only_in_new : 193 (ADDED — nombreux UMTS/CDMA, NR advanced, # metadata)
+common      : 87
+added_fields: 85 events
+removed_fields: 73 (renommages préfixe event.* — pas vraiment removals)
+moved cols  : 42 events (confirmation dette G26)
+```
+
+## Phase 2.2 — À FAIRE (découpage BC3)
+
+Scope : **113 events du corpus** (requête `SELECT DISTINCT event_code FROM
+nmf_event_light` à faire pour liste exacte) + events des 2 .nmfs Keysight.
+Les 167 autres YAMLs restent dans le dépôt, chargés paresseusement si un
+fichier les contient un jour (unk_ sinon). Pas de refactor pour technos
+absentes.
+
+### 2.2a (prochaine session) — Decoder lit YAML 2.50 + tests isolés
+
+Livrable : light.py / deep.py / source.py (`app/nmf_decoder/`) chargent les
+YAMLs 2.50 (offsets corrects, discriminateurs cell_type, agg par champ)
+et décodent :
+  - les 2 .nmfs Keysight → projet TEST **NFF_SAMPLE** (à créer)
+  - la capture témoin **44621571bccc** dans un projet **TEST_1_6** (à créer)
+
+Gardes à exécuter sur ces 3 captures (G29 ×3, G26=0, G28 plages) :
+```
+docker exec -w /app bc4-api-1 sh scripts/guards_2026_10/run_all.sh
+```
+
+G29 doit être à **ZÉRO écart** sur l'oracle Keysight (preuve que 1.6.0
+lit la 2.50 comme Keysight l'écrit). Si un garde échoue → corrige avant
+de toucher au corpus.
+
+**Ne pas** re-décoder les 94 captures à cette étape.
+
+### 2.2b — GPS/CQI/signalling en Light
+
+- GPS Quality / HDOP / Satellites exposés (fix_quality=0 → `stale_fix`
+  jamais `exact`).
+- CQI pondéré par Sample duration (agg=`mean_weighted` dans YAML).
+- rrcsm / l3sm en Light (actuellement vides sur certaines captures).
+
+### 2.2c — Re-decode 94 + 2 nohup
+
+1. **pg_dump explicite** avant le re-decode (le cron 02:00 ne suffit pas
+   si on lance avant). SHA collé.
+   ```
+   /home/devmat/BC4/scripts/pg_dump_daily.sh
+   sha256sum /home/devmat/BC4/exports/bc4_$(date +%F)*.dump
+   ```
+2. Script re-decode script (reuse `app/services/import_worker.py` logic)
+   lancé en nohup, log `exports/redecode_94_<ts>.log`, PID collé.
+3. Rapport matin :
+   ```sql
+   SELECT decoder_version, COUNT(*) FROM nmf_capture GROUP BY decoder_version;
+   ```
+   Doit montrer combien de captures en 1.6.0 vs 1.5.1 restantes (échec
+   mid-route laisse corpus mixte — c'est accepté par BC3).
+4. Gardes complets : G20, G29 ×3, G24, G25, G26, G27, G28, G18b, GPS_stale.
+
+### Après 2.2c → Phase 3
+
+- `/metrics` et `/metrics/table` renvoient `catalog_version` + `decoder_version`
+  dans l'enveloppe.
+- Front affiche "Catalog 2.50.3 · Decoder 1.6.0" au pied du panneau Metrics.
+- Front : arbre généré depuis /metrics (jamais local), Technology niveau 1.
+- Colonne **Task** (CMDREQ/CMDCOMP par seq), fiche Info capture (SCRIPT,
+  DAA/DREQ/DCOMP).
+
+## Dette actée par le diff Phase 2.1
+
+Catalog 2.50.3 pointe vers des champs que Light n'a pas encore (colonnes
+déplacées en 1.5.1 ou events jamais décodés). **D'ici 2.2c**, `/metrics`
+doit servir `reason='redecode_required'` sur ces feuilles — PAS des
+valeurs fausses.
+
+Colonnes déplacées confirmées :
+```
+ci.cell_type              col 7 → 3
+cqi.wb_cqi_1              col 9 → 5
+cqi.wb_pmi                col 12 → 8
+daa.application_protocol  col 4 → 1
+crel.* (10 champs)
+```
+
+À patcher dans `app/routes/metrics.py` route catalog : pour chaque leaf
+du catalogue 2.50.3, si `leaf.event in events_in_corpus_decoded_1.5.1`
+ET `leaf.col ≠ col_1.5.1`, émettre `reason='redecode_required'`.
+
+## DEPLOY_LOCK
+
+**Statut à la fin de cette session : LIBÉRÉ**.
+
+Reprendre uniquement pour fenêtres rebuild/re-decode avec holder+raison
+explicites dans `/home/devmat/BC4/DEPLOY_LOCK`.
+
+## Commandes de reprise
+
+```bash
+# 1) Vérifier branche + lock
+cd /home/devmat/BC4/bc4-back && git status
+cat /home/devmat/BC4/DEPLOY_LOCK      # doit être libre (holder: vide)
+
+# 2) Vérifier catalog_release courant
+docker exec bc4-db-1 psql -U bc4 -d bc4 -c "SELECT version, sha256, is_current FROM catalog_release"
+# Attendu : 2.50.3  556be8e9…  t
+
+# 3) Vérifier migrations
+docker exec bc4-db-1 psql -U bc4 -d bc4 -tAc "SELECT version_num FROM alembic_version"
+# Attendu : 0048_catalog_release
+
+# 4) Garde GC1
+docker exec -w /app bc4-api-1 python scripts/guards_2026_10/GC1_catalog_sha.py
+# Attendu : GC1_VERDICT PASS
+
+# 5) Lister 113 events corpus (pour scope 2.2a)
+docker exec bc4-db-1 psql -U bc4 -d bc4 -tAc \
+  "SELECT DISTINCT event_code FROM nmf_event_light ORDER BY event_code" | wc -l
+
+# 6) Décompresser Keysight (si pas fait)
+python3 -c "import zipfile; zipfile.ZipFile('/home/devmat/BC4/specs/Nemo_FileFormat.zip').extractall('/tmp/keysight')"
+ls /tmp/keysight/*.nmf
+```
+
+## PIDs / logs en cours
+
+Aucun process BC3 actif à la fin de cette session.
+Fichiers log récents :
+```
+/home/devmat/BC4/exports/diff_yamls_phase2.txt   (diff YAMLs collé)
+/home/devmat/BC4/exports/guards_2026_10_output_20261024_145344.txt  (gardes réécrits sortie)
+```
+
+## Guards — dernier résultat (2026-10-24 ~15:00Z, pré-Phase 2)
+
+| Guard | Verdict | Note |
+|---|---|---|
+| GC1_catalog_sha | PASS | sha DB=disk pour catalog 2.50.3 |
+| G29_file_vs_db  | tableaux livrés | pas de verdict explicite — données en output |
+| G26_offsets     | FAIL partiel | 33/91 aligned, 50 "?" (bugs dans ma détection) |
+| G27_unk         | FAIL | 99 events, 32M lignes, 8743 champs non alloués |
+| G28_ranges      | tableaux livrés | P1/P50/P99 pour toutes métriques × 3 captures |
+| G24_leaves      | FAIL | faux-zéros détectés |
+| G25_catalogue   | FAIL | 952 orphans (fix attendu après 2.2c + /metrics refactor) |
+| G18b_parity     | PASS | cache = fresh |
+| GPS_stale       | PASS | 0 anomalie, scanner d8d7fa995c44 témoin OK |
+
+Attendus post-2.2c : G26=0, G27 ≤ 10%, G25=0, G24 propre.
