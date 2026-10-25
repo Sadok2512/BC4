@@ -29,11 +29,16 @@ def effective_col(schema, field, context_count=None):
     if first is None:
         return col
     system_col = schema.get('system_col')
-    if isinstance(system_col, int):
+    # 1.7.1 — Si le schema déclare `context_count` explicitement (events
+    # 1.5.1 à préfixe fixe comme HOA, CAD, CREL), le respecter. Sinon
+    # dériver depuis system_col (comportement 2.50 par défaut).
+    declared = schema.get('context_count')
+    if isinstance(declared, int):
+        expected_context = declared
+    elif isinstance(system_col, int):
         expected_context = max(0, system_col - 4)
     else:
-        expected_context = schema.get('context_count', 0)
-        if not isinstance(expected_context, int): expected_context = 0
+        expected_context = 0
     if isinstance(system_col, int) and col == system_col:
         return col + (context_count - expected_context)
     return col + (context_count - expected_context) if col >= first else col
@@ -132,7 +137,7 @@ def decode(line,system=None,format_version='unknown',*,capture_id='',seq=0,line_
     if not layout_valid:system_col=None;r.partial('context_layout_unsupported')
     try:r.system=numeric(tokens[system_col-1],'int') if system_col and len(tokens)>=system_col else None
     except (ValueError,InvalidOperation):r.system=None
-    if r.system is None and schema and system_col is not None:r.partial('system_missing')
+    if r.system is None:r.partial('system_missing')
     # 1.7.0 — après avoir résolu system, basculer sur une variante _NR
     # (ex: TXPC_NR.yaml, CELLMEAS_NR.yaml) si elle existe pour ce system.
     if schema and r.system is not None:
@@ -150,7 +155,10 @@ def decode(line,system=None,format_version='unknown',*,capture_id='',seq=0,line_
     from .privacy import redact_tokens
     tokens,masked=redact_tokens(code,tokens,count)
     if code in {'CAA','SEI'} and count!=({'CAA':1,'SEI':0}[code]):
-        r.context_id=None;r.context_ids=[]
+        # 1.7.1 — Fail-closed privacy : si le préfixe context_count de CAA/SEI
+        # dévie du layout documenté, on ne retient aucune identité (ni system,
+        # ni context_ids). Les tokens sont masqués plus bas par redact_tokens.
+        r.context_id=None;r.context_ids=[];r.system=None;r.partial('system_missing')
     # Redact command XML using the existing canonical policy BEFORE hashing it.
     if code=='CMDREQ' and len(tokens)>5:
         from app.services.task_privacy import redact_command

@@ -1,3 +1,16 @@
+## 0.81.1 (patch) — BC4 2026-10-25 — Lot A nuit : 12 tests back verts (Agent BC3)
+
+Dette tests Phase 2.2a liquidée. Lot A session autonome de nuit, étape 1/3.
+
+- **Decoder 1.7.1** : voir CHANGELOG_DECODER.md.
+  - `effective_col()` respecte `context_count` déclaré.
+  - `system_missing` universalisé.
+  - CAA/SEI fail-closed sur `r.system`.
+  - 86 schemas-2.50/*.yaml partiels supprimés (events avec version
+    1.5.1 complète préservée).
+- **22/22 tests PASS** sur `test_nmf_decoder.py` + `test_nmf_cells_context.py`.
+  Les 12 rouges sont tous verts (nom + cause + action dans HANDOFF Lot A).
+
 ## 0.81.0 (minor) — BC4 2026-10-25 — Decoder 1.7.0 NR dispatch + catalog 2.51.0 7 feuilles @cell_type (Agent BC3)
 
 Phase 2.51.0 lot 1b. Lève le blocage NR invisible identifié par audit 1a

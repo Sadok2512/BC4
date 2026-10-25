@@ -1,5 +1,32 @@
 # CHANGELOG_DECODER
 
+## 1.7.1 (patch) — 2026-10-25 — Lot A : 12 tests back verts (Agent BC3)
+
+Bug fixes identifiés par les 12 tests rouges sur main. Zéro skip,
+zéro xfail, zéro assertion relâchée.
+
+- `effective_col()` respecte `schema.context_count` déclaré explicitement
+  (events 1.5.1 HOA, CAD, CREL) avant de dériver depuis `system_col`.
+  Preuve : HOA avec `context_count=1` + `system_col=7` → system à
+  tokens[6] (pas tokens[4]).
+- `system_missing` ajouté dès que `r.system is None` (plus seulement
+  quand schema+system_col existent). Couvre HOI (`systems: any_numeric`,
+  `system_col: null`) et les events unknown.
+- CAA/SEI fail-closed : si `context_count` dévie du layout documenté
+  (CAA attendu 1, SEI attendu 0), on supprime `r.system` en plus
+  de `r.context_id`/`r.context_ids`. Preuve : CAA count=2 → aucune
+  identité ni system retenus.
+- Suppression de **23 schemas-2.50/*.yaml** qui écrasaient leurs
+  équivalents 1.5.1 plus complets (TAD, HOA, CAD, SEI, CREL, DRATE,
+  AQDL, etc.). build_yamls.py Phase 2.1 générait des YAMLs partiels
+  sans groups ni ranges. Le decoder retombe sur les 1.5.1 complets.
+- Suppression de 63 autres schemas-2.50/*.yaml partiels (header count
+  < 1.5.1 OU groups manquants) — cf. commit du Lot 1b précédent sur
+  PHRATE, étendu à MACRATE, CI, TXPC, CQI, PLAID, PLAIU, etc.
+
+Tests : `python3 -m pytest tests/test_nmf_decoder.py tests/test_nmf_cells_context.py`
+= **22 passed, 0 failed**.
+
 ## 1.7.0 (minor) — 2026-10-25 — Phase 2.51.0 1b : dispatch NR + sentinelles (Agent BC3)
 
 Objet : lever le hack 2.62 `txpc_cell_type()` qui clampait 0-4 et rendait
