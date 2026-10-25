@@ -23,7 +23,9 @@ class MetricInfo(BaseModel):
     source_table: str
     source_tables: list[str]
     source_column: str
-    tech: Literal['LTE','NR','BOTH']
+    # 0.80.1 — tech en str libre : catalog 2.50.5 inclut "Shared"/"Other"
+    # (categories.yaml) en plus de LTE/NR/BOTH.
+    tech: str
     kind: Literal['numeric','categorical','event']
     n_in_project: int
     decoder_version: str
@@ -33,7 +35,10 @@ class MetricInfo(BaseModel):
     cells: list[int]
     cell_options: list[dict]
     attributes: list[dict]
-    proof: Literal['documented','content','none']
+    # 0.80.1 — proof en str libre : catalog 2.50.5 utilise "documented-2.50"
+    # (voir build_catalog.py). Pas d'enum restrictif pour permettre les
+    # bumps de catalog sans toucher au schema API.
+    proof: str
     available: bool
     reason: str | None = None
     alias_of: str | None = None
@@ -50,7 +55,9 @@ class MetricCatalogNode(BaseModel):
     label: str
     note: str | None = None
     source: str | None = None
-    node_type: Literal['category','group','metric','leaf']
+    # 0.80.1 — ajout "tech"/"event" pour catalog 2.50.5 (4 niveaux
+    # Technology → Catégorie → Métrique → Feuilles cellule).
+    node_type: Literal['tech','category','group','metric','event','leaf']
     metric_id: str | None = None
     selection: str | None = None
     event: str | None = None
@@ -59,15 +66,32 @@ class MetricCatalogNode(BaseModel):
     unit: str = ''
     cell: str | None = None
     n: int = 0
-    proof: Literal['documented','content','open']
+    # 0.80.1 — proof en str libre (idem MetricInfo).
+    proof: str
     selectable: bool = False
     reason: str | None = None
+class CatalogReleaseInfo(BaseModel):
+    """0.80.0 (Phase 3a) — ligne `catalog_release.is_current=TRUE` reflétée
+    au client. `None` si la table est vide (bootstrap frais) ; dans ce cas
+    la route rebascule sur l'ancien chemin legacy et `reason` l'explique."""
+    version: str
+    spec_version: str
+    decoder_min_version: str
+    sha256: str
+    n_leaves: int
+
+
 class MetricCatalogResponse(BaseModel):
     catalogue_version: str
     title: str
     header: str
     metrics: list[MetricInfo]
     nodes: list[MetricCatalogNode]
+    # 0.80.0 — enveloppe Phase 3a (contrat front : footer "Catalog <v> ·
+    # Decoder <d>" + bascule explicite release / legacy via `reason`).
+    catalog_release: CatalogReleaseInfo | None = None
+    decoder_version: str = ""
+    reason: str = ""
 class CaptureInfo(BaseModel):
     capture_id: str
     label: str
@@ -272,23 +296,43 @@ def metric_aggregate(
 
 @router.get('/projects/{project_id}/metrics', response_model=MetricCatalogResponse)
 def catalog(project_id: str, db: Session=Depends(get_db)):
+    """0.80.0 (Phase 3a) — contrat Phase 3a :
+    si `catalog_release.is_current` est posé → chemin **v4** (lit
+    `catalog_<v>.json`, servit 5115 feuilles affichées, enveloppe
+    `catalog_release` + `decoder_version` + `reason='from_catalog_release'`).
+    Sinon → fallback legacy BC2 (`catalog_v3`+`catalogue_v6`) avec
+    `reason='fallback_legacy_no_catalog_release'`, enveloppe `catalog_release`
+    forcée à `None` — jamais de default silencieux."""
     project(db,project_id)
+    from app.kpi.catalog_release.registry import current_catalog
+    cur = current_catalog(db)
     stamp=db.execute(text("""SELECT md5(coalesce(string_agg(
       capture_id || ':' || decoder_version || ':' || coalesce(decoded_at::text,''),
       ',' ORDER BY capture_id),'')) FROM nmf_capture WHERE project_id=:pid"""),
       {'pid':project_id}).scalar_one()
+    # Clé de cache inclut la version catalog_release pour qu'un bump
+    # catalog invalide automatiquement sans TRUNCATE manuel.
+    cache_stamp = f"{stamp}|cat={cur.version if cur else 'legacy'}"
     cached=db.execute(text("""SELECT payload FROM metrics_catalog_cache
       WHERE project_id=:pid AND decode_stamp=:stamp"""),
-      {'pid':project_id,'stamp':stamp}).scalar_one_or_none()
+      {'pid':project_id,'stamp':cache_stamp}).scalar_one_or_none()
     if cached is not None:return cached
-    from app.kpi.metrics_v3 import catalog as catalog_v3
-    from app.kpi.metrics_catalogue_v6 import catalogue as catalogue_v6
-    metric_rows=catalog_v3(db,project_id)
-    payload=dict(catalogue_v6(db,project_id,metric_rows),metrics=metric_rows)
+    if cur:
+        from app.kpi.metrics_catalog_v4 import build_catalog_v4
+        payload = build_catalog_v4(db, project_id, cur)
+    else:
+        from app.kpi.metrics_v3 import catalog as catalog_v3
+        from app.kpi.metrics_catalogue_v6 import catalogue as catalogue_v6
+        from app.nmf_decoder import DECODER_VERSION
+        metric_rows=catalog_v3(db,project_id)
+        payload=dict(catalogue_v6(db,project_id,metric_rows),metrics=metric_rows)
+        payload['catalog_release'] = None
+        payload['decoder_version'] = DECODER_VERSION
+        payload['reason'] = 'fallback_legacy_no_catalog_release'
     db.execute(text("""INSERT INTO metrics_catalog_cache(project_id,decode_stamp,payload)
       VALUES(:pid,:stamp,CAST(:payload AS jsonb)) ON CONFLICT(project_id) DO UPDATE SET
       decode_stamp=excluded.decode_stamp,payload=excluded.payload,updated_at=now()"""),
-      {'pid':project_id,'stamp':stamp,'payload':json.dumps(payload)})
+      {'pid':project_id,'stamp':cache_stamp,'payload':json.dumps(payload)})
     db.commit()
     return payload
 

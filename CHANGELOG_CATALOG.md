@@ -29,6 +29,37 @@ Chaque build écrit une ligne dans `catalog_release` (sha256, counts) ;
 
 ## Versions
 
+### 2.50.5 — 2026-10-25 — node_id unique par position (préalable Phase 3b)
+
+Correction du contrat `node_id` : 2.50.4 avait 5115 feuilles `displayed=true`
+mais seulement **3625 node_ids uniques** (10458 collisions sur l'ensemble des
+28718 nodes, dont le pire `lf_dreq_timeout` x28). Cause : le builder
+`scripts/catalog/build_catalog.py` dérivait `node_id` de `(event_slug,
+field_slug[, cell_type])` sans tenir compte des rangs CSV multiples (NFF 2.50
+contient plusieurs sections "Parameters" / "Parameters for LTE" / "Parameters
+for NR" avec le même `(event, name)`).
+
+Fix (`scripts/catalog/rebuild_2_50_5_uniqueids.py`, post-processeur du 2.50.4) :
+pour chaque `node_id` collisionné, suffixe `_r<i>` où `<i>` est l'ordinal
+zero-based de l'occurrence dans l'ordre d'apparition. Première occurrence =
+`_r0`, deuxième = `_r1`, etc. (préserve `lf_dreq_timeout_r0..r27`).
+L'invariant `len({n.node_id}) == len(nodes)` est VÉRIFIÉ dans le script
+(SystemExit si résiduel).
+
+Compte (inchangé vs 2.50.4 — on n'a touché QUE les ids) :
+- 4 tech, 19 categories, 280 events_kept
+- n_metrics_bare = 3419 ; n_leaves_total = 28 415
+- **n_leaves_displayed = 5 115**  (= **5115 node_ids uniques** sur ces feuilles)
+- sha256 : `87fb0d13a2cb67276e884298b7d7ba3decc1635d13521024dbaf4610e6cf44a4`
+
+Preuves (post-publication 2.50.5 is_current=TRUE + repopulation cache) :
+- G25 strict (sans set()) PASS 15/15 projets : `total_dup_node_ids=0`,
+  `total_dup_metric_codes=0`, `total_orphans=0`.
+- G18b strict (multiset) PASS 15/15 projets : `dup_cache=0`, `dup_fresh=0`,
+  cached==fresh==5115 par projet, divergent=0.
+- G24 re-count LIVE sur témoin 134af70a06eb : `candidates_recounted=271`
+  colonnes, `false_zeros=0` (plus de "mode trust").
+
 ### 2.50.4 — 2026-10-25 — metric_id aligné sur colonnes Light (Phase 3 préambule)
 
 Convention `metric_id` modifiée : `<event_lower>_<field_slug>[@<cell_type>]`

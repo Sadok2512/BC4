@@ -1,3 +1,33 @@
+## 0.80.1 (patch) — BC4 2026-10-25 — /metrics response_model literals relâchés (Agent BC3)
+
+Fix critique post 0.80.0 : `MetricInfo.proof`, `MetricInfo.tech`, `MetricCatalogNode.proof`, `MetricCatalogNode.node_type` étaient `Literal[...]` fermés sur les valeurs BC2 (`"documented"`, `"content"`, `"open"`, `"LTE"`, `"NR"`, `"BOTH"`, `"category"`, `"group"`, `"metric"`, `"leaf"`). Le catalog 2.50.5 utilise `"documented-2.50"`, `"Shared"`, `"Other"`, `"tech"`, `"event"` → le response_model Pydantic rejetait TOUS les builds v4 avec `ValidationError: Input should be ...`. `/metrics` retournait 500 au front.
+
+Changement : `proof` et `tech` en `str` libre ; `node_type` enum étendu à `tech`/`category`/`group`/`metric`/`event`/`leaf`. Aucun changement de la shape JSON — juste la validation Pydantic qui bloquait.
+
+Pas de bump catalog_release (contenu inchangé).
+
+## 0.80.0 (minor) — BC4 2026-10-25 — /metrics envelope + catalog 2.50.4 serving (Agent BC3)
+
+Phase 3a (back) sur `feat/bc3-metrics-v3` — bascule le GET `/projects/{pid}/metrics` sur le catalogue NFF 2.50.4 posé en 0.79.0 (via `catalog_release.is_current`).
+
+Livré :
+- **Enveloppe** ajoutée à `MetricCatalogResponse` : `catalog_release: {version, spec_version, decoder_min_version, sha256, n_leaves}` + `decoder_version` (runtime, 1.6.0) + `reason` (`"from_catalog_release"` quand la table est posée, `"fallback_legacy_no_catalog_release"` sinon). **Jamais de default silencieux** — si `catalog_release` est vide, `catalog_release=None` et `reason` l'explique.
+- **Chemin v4** (`app/kpi/metrics_catalog_v4.py`) : lit `catalog_release.is_current` → charge `catalog_<v>.json` → construit `metrics[]` (une entrée par feuille `displayed=true`, metric_id unique) + `nodes[]` (tree élagué aux ancêtres des 5115 feuilles affichées, pour que le payload reste navigable côté front). `source_column` tiré de `metric_id` (`#event_field[@cell]` → `event_field`) UNIQUEMENT si la colonne existe dans `nmf_event_light` (655 cols live) ; sinon `source_column=""` + `reason="Column not in decoder schema"`. `n_in_project` = `COUNT(*) WHERE col IS NOT NULL` live par UNION ALL batched.
+- **Cache invalidation automatique** : `metrics_catalog_cache.decode_stamp` inclut désormais `|cat=<version>` → bump catalog_release ou passage legacy→release flushe sans TRUNCATE manuel.
+- **Fallback legacy préservé** : si `catalog_release` est vide (bootstrap frais, DR partielle), on retombe sur `catalog_v3`+`catalogue_v6` BC2 (885 feuilles ν10 NFF 2.19) ; le payload reste conforme au contrat `MetricCatalogResponse` avec `catalog_release=None` + `reason="fallback_legacy_no_catalog_release"`.
+
+Preuves (à produire post-rebuild) :
+- `/health` : `{"status":"ok","env":"...","version":"0.80.0","decoder_version":"1.6.0"}`
+- `GET /projects/<pid>/metrics` : enveloppe présente (`catalog_release.version="2.50.4"`), `metrics[].length ≈ 5115`, `nodes[].length ≈ taille arbre élagué`.
+- G25 (orphans metric→leaf.selection) : rejoué sur cache post-rebuild — attendu `0 orphans` (metrics[] est produit DEPUIS les leaves, pas d'un source indépendant).
+- G24 (leaves à n=0 avec champ non vide) : rejoué — `leaves_total` ≈ 5115 par projet.
+- G18b (parité /metrics API vs regénération directe) : rejoué contre un `build_catalog_v4` fraîchement généré ; attendu `only_cache=0, only_fresh=0` par projet.
+
+Hors scope (dette ouverte pour 3b/3c futurs) :
+- Pas de touche front (lot 3b séparé — footer "Catalog 2.50.4 · Decoder 1.6.0" + arbre `displayed=true`).
+- Pas de pop-in Task column (lot 3c, pas dans ce lot per directive BC3).
+- G27 (unknown[]) et dette catalogues 2.2b (events hors corpus) inchangés.
+
 ## 0.79.0 (minor) — BC4 2026-10-25 — Decoder 1.6.0 + Catalog NFF 2.50.4 (Agent BC3)
 
 Merge `feat/bc3-catalog-2.50` → main. 23 commits BC3 (Phase 0 → Phase 2.2a cleanup).
