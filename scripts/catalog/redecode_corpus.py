@@ -72,6 +72,10 @@ def main():
             rows = [r for r in rows if r[1] == only_cap]
         if kind_filter:
             rows = [r for r in rows if r[5] == kind_filter]
+        # 1.7.0 — Priorité aux témoins (PNG + gardes) : 723547b196b3 NR,
+        # 44621571bccc LTE. Le reste du corpus suit en nohup.
+        PRIORITY = ['723547b196b3', '44621571bccc']
+        rows = sorted(rows, key=lambda r: (PRIORITY.index(r[1]) if r[1] in PRIORITY else 1000, r[0], r[1]))
         total = len(rows)
         log_line(f"captures to redecode: {total}")
         done = 0; failed = []
