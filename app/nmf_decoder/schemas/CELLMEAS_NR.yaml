@@ -52,10 +52,10 @@
   "groups": [
     {
       "name": "cells",
-      "start": {"header_col": 7},
+      "start": 7,
       "count_code": "cellmeas.n_cells",
       "params_code": "cellmeas.params_cells",
-      "proof": "NFF 2.50 CELLMEAS NR #cells count / params",
+      "proof": "NFF 2.50 CELLMEAS NR #cells count / params (col 7 = n_cells 1-indexed)",
       "fields": [
         {"code": "cell.type", "label": "Cell type (NR)", "type": "int", "unit": "enum", "agg": "dominant", "proof": "NFF 2.50 CELLMEAS NR cell #5", "category": "neighbours", "dimension": true},
         {"code": "cell.meas_type", "label": "Measurement type (1=SS, 2=CSI)", "type": "int", "unit": "enum", "agg": "dominant", "proof": "NFF 2.50 CELLMEAS NR cell #6", "category": "neighbours", "dimension": true},

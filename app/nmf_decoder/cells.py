@@ -28,7 +28,13 @@ def cell_rows(light):
         # The documented serving code is 0.  Codes 10..13 are bound to
         # SCell1..4 by the MIMOMEAS/content proof; neighbour/type-1 and the
         # observed 14/15 codes deliberately remain outside this projection.
-        if b['event_code']=='CELLMEAS' and b['second']>=0:
+        # 1.7.0 — SKIP CELLMEAS NR (system=9) de la projection nmf_cell_second :
+        # la clé primaire (project_id, capture_id, second, event_code,
+        # metric_code, cell_index) ne distingue pas LTE PCell=0 de NR PCell=0.
+        # Les series cells NR passent par nmf_event_light_group dans ce lot
+        # (le catalog 2.51.0 lit cell_type depuis les groupes pour ses
+        # feuilles @cell_type NR). Migration pkey+system = lot ultérieur.
+        if b['event_code']=='CELLMEAS' and b['second']>=0 and b.get('system')==7:
             observed=defaultdict(list)
             for group in b.get('groupstats',{}).values():
                 if group['group_name']!='cells':continue
@@ -49,7 +55,7 @@ def cell_rows(light):
                 yield dict(second=b['second'],event_code='CELLMEAS',metric_code=code,
                     cell_index=cell,seq_first=b['seq'],seq_last=b['seq_last'],
                     value=stat.value(),weight=stat.weight,reason=None)
-        if b['event_code']=='CELLMEAS' and b['second']>=0:
+        if b['event_code']=='CELLMEAS' and b['second']>=0 and b.get('system')==7:
             for code,value in b.get('neighbors',{}).items():
                 yield dict(second=b['second'],event_code='CELLMEAS',metric_code=code,cell_index=-1,
                            seq_first=b['seq_last'],seq_last=b['seq_last'],value=value,weight=None,

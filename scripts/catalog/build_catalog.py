@@ -89,12 +89,16 @@ def parse_enums(txt_path: Path) -> dict:
     return dict(enums)
 
 def corpus_cell_types(db) -> dict[str, set[int]]:
-    """GROUP BY event, cell_type sur nmf_event_light / stg_event_raw.
+    """GROUP BY event, cell_type sur nmf_event_light / nmf_event_light_group.
     Retourne {event_code: {cell_type_int, ...}}. Les events sans discriminator
     cellule renvoient set() (feuille bare).
+
+    1.7.0 — Les cell_type NR (CELLMEAS, MIMOMEAS) sont dans les groupes
+    `cells`/`measurements` (nmf_event_light_group.cell_type), pas dans
+    `dimension` du bucket Light. On agrège les 2 sources.
     """
     out: dict[str, set[int]] = defaultdict(set)
-    # Dans Light, le discriminateur est `dimension` (text) p.ex. 'cell_type:0'.
+    # (1) dimension header (TAD/TXPC/PHRATE/PLAID + variants LTE).
     rows = db.execute(text("""
         SELECT event_code, dimension FROM nmf_event_light
         WHERE dimension IS NOT NULL AND dimension ~ '\\.cell_type=[0-9]+'
@@ -105,6 +109,17 @@ def corpus_cell_types(db) -> dict[str, set[int]]:
         m = pat.search(dim or "")
         if m:
             out[ev].add(int(m.group(1)))
+    # (2) group cell_type (CELLMEAS LTE+NR, MIMOMEAS LTE+NR via mimo_cell_type).
+    rows2 = db.execute(text("""
+        SELECT l.event_code, g.cell_type FROM nmf_event_light_group g
+        JOIN nmf_event_light l ON l.project_id=g.project_id AND l.capture_id=g.capture_id AND l.seq=g.seq
+        WHERE g.cell_type IS NOT NULL AND g.group_name IN ('cells','measurements')
+        GROUP BY l.event_code, g.cell_type
+    """)).all()
+    for ev, ct in rows2:
+        if ct is not None:
+            try: out[ev].add(int(ct))
+            except (TypeError, ValueError): pass
     return dict(out)
 
 def main():
