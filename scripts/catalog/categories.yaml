@@ -1,66 +1,167 @@
 # categories.yaml — règle de classification event → (technology, category)
 #
-# Phase 1 bis BC3 : 3 technologies × 17 catégories, mapping explicite depuis
-# NFF 2.50. Toute entrée CSV NON classée tombe dans "Unclassified" (visible,
-# comptée, jamais perdue — règle BC3).
+# 2.52.0 BC3 — Nouvelle racine CAPTURE (hors tech) + Technology au-dessus
+# des catégories + dédoublonnage des noms Shared qui entrent en collision
+# avec un nom de catégorie LTE/NR.
 #
-# Format :
+# Hiérarchie finale rendue par build_catalog.py :
+#   CAPTURE (root sans tech)
+#     ├─ File  / Script / Task / Device / Identity   (5 groupes, 27 leaves)
+#   tech_LTE / tech_NR / tech_Shared / tech_Other
+#     └─ category
+#         └─ event (ou group pour CAPTURE)
+#             └─ leaf
+#
+# Format events: (inchangé) :
 #   events:
 #     <EVENT_CODE>:
 #       tech: LTE | NR | Shared
-#       category: <une des 17 catégories>
+#       category: <une des catégories autorisées>
 #       cell_scoped: true | false            # a-t-il un champ `Cell type` ?
 #       scope_field: Cell type | Scope       # discriminateur si cell_scoped
+#       exclude: identity | moved_to_capture # retire l'event du pipeline événements
 #
-# Catégories autorisées :
+# Catégories autorisées (hors "Capture context" supprimée en 2.52.0) :
 #   Serving radio · Neighbours · Carrier aggregation · Throughput per layer ·
 #   Link quality · Allocation & MCS · CSI · UL power · MIMO per port ·
-#   Beams NR · Voice · Services (tasks) · Position · Events ⚑ · Signalling ·
-#   Capture context · Scanner · Unclassified
+#   Beams NR · Voice · Application throughput · Application signalling ·
+#   Services (tasks) · Position · Events ⚑ · Signalling · Scanner ·
+#   Unclassified
+#
+# D3 BC3 2026-10-26 — Règle de nommage (jamais 2 catégories homonymes
+# cross-tech sans que le niveau Technology soit visible) :
+#   - "Throughput per layer"  = LTE/NR uniquement (events avec section
+#     "Parameters for LTE" / "Parameters for NR")
+#   - "Application throughput" = Shared (APPLIST, PPPRATE : pas de section
+#     par système dans NFF 2.50)
+#   - "Signalling"             = LTE/NR uniquement (RRC, HO*, RACH*, ...)
+#   - "Application signalling" = Shared (SIP*, protocoles app)
+#   - HANDOFF table complet dans docs/HANDOFF_shared_destination_2.52.0.md
+#
+# ===== CAPTURE (racine hors tech) =====
+# 5 groupes × 27 feuilles. Chaque feuille porte :
+#   - kind: CONST (valeur capture, répétée par ligne)
+#         | SERIES (jointure (capture_id, seq))
+#         | MASKED (gris, non-selectable, tooltip privacy)
+#   - source: event:<EV>/<field_no> | db:<col> | derived:<rule> | series:<rule>
+#   - unit, type (depuis NFF 2.50 ; vide si dérivé)
+#   - description: Nemo 2.50 field description (déf ⓘ)
+# Les 27 feuilles sont construites par build_catalog.py à partir de la
+# section `capture:` ci-dessous ; les events source listés ici sont
+# marqués `exclude: moved_to_capture` dans events: pour ne pas apparaître
+# en double sous tech_Shared.
+capture:
+  category_label: "CAPTURE"
+  category_id: "cat_CAPTURE"
+  groups:
+    - group_id: "grp_capture_file"
+      label: "File"
+      kind: CONST
+      leaves:
+        - {label: "Log file name",         source: "db:nmf_file.name",             type: String,  unit: null, description: "Name of the Nemo log file (.nmf) on disk."}
+        - {label: "File size",             source: "derived:nmf_file_size_mb",     type: Float,   unit: "MB", description: ".nmf file size on disk, megabytes."}
+        - {label: "File format version",   source: "event:#FF/1",                  type: String,  unit: null, description: "Nemo file format version string."}
+        - {label: "Measurement ID",        source: "event:#ID/1",                  type: String,  unit: null, description: "Unique measurement identifier."}
+        - {label: "Unit ID",               source: "event:#UNITID/1",              type: String,  unit: null, description: "Nemo unit identifier."}
+        - {label: "Project ID",            source: "event:#PROJECT/1",             type: String,  unit: null, description: "Project identifier."}
+        - {label: "Session ID",            source: "event:#PROJECT/2",             type: String,  unit: null, description: "Session identifier (Nemo 2.50 field #2 of #PROJECT)."}
+        - {label: "Device name",           source: "event:#DN/1",                  type: String,  unit: null, description: "Measurement device name."}
+        - {label: "Measurement start",     source: "event:#START/1+#UT",           type: String,  unit: null, description: "Measurement start date (#START) with UTC offset (#UT)."}
+        - {label: "Decoder version",       source: "db:nmf_capture.decoder_version", type: String, unit: null, description: "Version of the BC4 NMF decoder used to decode this capture."}
+        - {label: "Decode level",          source: "db:nmf_capture.level",         type: String,  unit: null, description: "Decode level of the capture (header, light, full)."}
+    - group_id: "grp_capture_script"
+      label: "Script"
+      kind: CONST
+      leaves:
+        - {label: "Test script file",             source: "event:#TS/1",      type: String,  unit: null, description: "Test script file (#TS field 1, equivalent SCRIPT field 2)."}
+        - {label: "Test script version",          source: "event:SCRIPT/3",   type: String,  unit: null, description: "Test script version."}
+        - {label: "Test script repeats",          source: "event:SCRIPT/4",   type: Integer, unit: null, description: "Number of repeats of the test script."}
+        - {label: "Number of commands in test script", source: "event:SCRIPT/6", type: Integer, unit: null, description: "Number of commands (#Test script lines) in the test script."}
+    - group_id: "grp_capture_task"
+      label: "Task"
+      kind: SERIES
+      leaves:
+        - {label: "Test script command name",      source: "series:CMDREQ.2@seq_last_until_CMDCOMP", type: String,  unit: null, description: "Current test script command name (CMDREQ field 2 Cmd). Last CMDREQ with seq ≤ row until the matching CMDCOMP ; NULL outside a command window."}
+        - {label: "Test script command index",     source: "series:CMDREQ.1@seq_last_until_CMDCOMP", type: Integer, unit: null, description: "Current test script command index (CMDREQ field 1 Cmd index). Displayed as [n]."}
+        - {label: "Test script command arguments", source: "series:CMDREQ.3@seq_last_until_CMDCOMP_masked", type: String, unit: null, description: "Current test script command arguments (CMDREQ field 3 Cmd arguments). Numeric values masked for privacy."}
+        - {label: "Test script command result",    source: "series:CMDCOMP.2@seq", type: Integer, unit: null, description: "Result of the last completed test script command (CMDCOMP field 2 Cmd result)."}
+        - {label: "Command duration",              source: "series:derived:CMDCOMP.ts-CMDREQ.ts@same_cmd_index", type: Float, unit: "s", description: "Duration between CMDREQ and matching CMDCOMP for the same command index, within one capture."}
+    - group_id: "grp_capture_device"
+      label: "Device"
+      kind: SERIES
+      source_event: "DEVI"
+      leaves:
+        - {label: "Battery temperature",       source: "series:DEVI.1@seq", type: Float,   unit: "°C", description: "Battery temperature (DEVI field 1 Battery temp.)."}
+        - {label: "Device CPU temperature",    source: "series:DEVI.7@seq", type: Float,   unit: "°C", description: "Device CPU temperature (DEVI field 7 Device CPU temp.)."}
+        - {label: "Battery charge",            source: "series:DEVI.2@seq", type: Float,   unit: "%",  description: "Battery charge level (DEVI field 2 Battery charge)."}
+        - {label: "Battery status",            source: "series:DEVI.3@seq", type: Integer, unit: null, description: "Battery status (DEVI field 3 Battery status)."}
+        - {label: "Device battery voltage",    source: "series:DEVI.9@seq", type: Float,   unit: "V",  description: "Device battery voltage (DEVI field 9 Device battery voltage)."}
+        - {label: "Device battery current",    source: "series:DEVI.5@seq", type: Float,   unit: "A",  description: "Device battery current (DEVI field 5 Device battery current)."}
+    - group_id: "grp_capture_identity"
+      label: "Identity"
+      kind: MASKED
+      leaves:
+        - {label: "Subscriber identity", source: "masked:#EI,#SI,phone_numbers", type: String, unit: null, description: "Subscriber-identifying fields (IMSI, IMEI, TMSI, GUTI, MSISDN, SUPI, SUCI). Not exposed by BC4 — privacy by design."}
 
 events:
-  # ===== Capture context (NFF header events: #xxx) =====
-  "#ID": {tech: Shared, category: "Capture context", cell_scoped: false}
-  "#TS": {tech: Shared, category: "Capture context", cell_scoped: false}
-  "#DT": {tech: Shared, category: "Capture context", cell_scoped: false}
-  "#UT": {tech: Shared, category: "Capture context", cell_scoped: false}
-  "#START": {tech: Shared, category: "Capture context", cell_scoped: false}
-  "#END": {tech: Shared, category: "Capture context", cell_scoped: false}
-  "#FF": {tech: Shared, category: "Capture context", cell_scoped: false}
-  "#MM": {tech: Shared, category: "Capture context", cell_scoped: false}
-  "#MF": {tech: Shared, category: "Capture context", cell_scoped: false}
-  "#ML": {tech: Shared, category: "Capture context", cell_scoped: false}
-  "#DL": {tech: Shared, category: "Capture context", cell_scoped: false}
-  "#DN": {tech: Shared, category: "Capture context", cell_scoped: false}
-  "#DS": {tech: Shared, category: "Capture context", cell_scoped: false}
-  "#DC": {tech: Shared, category: "Capture context", cell_scoped: false}
-  "#NN": {tech: Shared, category: "Capture context", cell_scoped: false}
-  "#OS": {tech: Shared, category: "Capture context", cell_scoped: false}
-  "#PC": {tech: Shared, category: "Capture context", cell_scoped: false}
-  "#CI": {tech: Shared, category: "Capture context", cell_scoped: false}
-  "#CL": {tech: Shared, category: "Capture context", cell_scoped: false}
-  "#AG": {tech: Shared, category: "Capture context", cell_scoped: false}
-  "#BF": {tech: Shared, category: "Capture context", cell_scoped: false}
-  "#HV": {tech: Shared, category: "Capture context", cell_scoped: false}
-  "#HW": {tech: Shared, category: "Capture context", cell_scoped: false}
-  "#SW": {tech: Shared, category: "Capture context", cell_scoped: false}
-  "#VN": {tech: Shared, category: "Capture context", cell_scoped: false}
-  "#VV": {tech: Shared, category: "Capture context", cell_scoped: false}
-  "#COMPVER": {tech: Shared, category: "Capture context", cell_scoped: false}
-  "#NMR": {tech: Shared, category: "Capture context", cell_scoped: false}
-  "#SR": {tech: Shared, category: "Capture context", cell_scoped: false}
-  "#TC": {tech: Shared, category: "Capture context", cell_scoped: false}
-  "#HASH": {tech: Shared, category: "Capture context", cell_scoped: false}
-  "#LICENSE": {tech: Shared, category: "Capture context", cell_scoped: false}
-  "#LICENSEREGION": {tech: Shared, category: "Capture context", cell_scoped: false}
-  "#FLOORPLAN": {tech: Shared, category: "Capture context", cell_scoped: false}
-  "#BTSTEMPLATE": {tech: Shared, category: "Capture context", cell_scoped: false}
-  "#CELLWHITELIST": {tech: Shared, category: "Capture context", cell_scoped: false}
-  "#KODIAK": {tech: Shared, category: "Capture context", cell_scoped: false}
-  "#EVRC": {tech: Shared, category: "Capture context", cell_scoped: false}
-  # IDs à masquer (règle identité) — events écartés (listés dans excluded)
-  "#EI": {tech: Shared, category: "Capture context", cell_scoped: false, exclude: identity}
-  "#SI": {tech: Shared, category: "Capture context", cell_scoped: false, exclude: identity}
+  # ===== CAPTURE source events — déplacés dans la racine CAPTURE =====
+  # Chaque event qui contribue à une leaf CAPTURE est écarté du pipeline
+  # événement classique pour éviter un doublon sous tech_Shared/Capture
+  # context (catégorie supprimée en 2.52.0).
+  "#ID":            {tech: Shared, category: "Unclassified", cell_scoped: false, exclude: moved_to_capture}
+  "#TS":            {tech: Shared, category: "Unclassified", cell_scoped: false, exclude: moved_to_capture}
+  "#DT":            {tech: Shared, category: "Unclassified", cell_scoped: false, exclude: moved_to_capture}
+  "#UT":            {tech: Shared, category: "Unclassified", cell_scoped: false, exclude: moved_to_capture}
+  "#START":         {tech: Shared, category: "Unclassified", cell_scoped: false, exclude: moved_to_capture}
+  "#END":           {tech: Shared, category: "Unclassified", cell_scoped: false, exclude: moved_to_capture}
+  "#FF":            {tech: Shared, category: "Unclassified", cell_scoped: false, exclude: moved_to_capture}
+  "#MM":            {tech: Shared, category: "Unclassified", cell_scoped: false, exclude: moved_to_capture}
+  "#MF":            {tech: Shared, category: "Unclassified", cell_scoped: false, exclude: moved_to_capture}
+  "#ML":            {tech: Shared, category: "Unclassified", cell_scoped: false, exclude: moved_to_capture}
+  "#DL":            {tech: Shared, category: "Unclassified", cell_scoped: false, exclude: moved_to_capture}
+  "#DN":            {tech: Shared, category: "Unclassified", cell_scoped: false, exclude: moved_to_capture}
+  "#DS":            {tech: Shared, category: "Unclassified", cell_scoped: false, exclude: moved_to_capture}
+  "#DC":            {tech: Shared, category: "Unclassified", cell_scoped: false, exclude: moved_to_capture}
+  "#NN":            {tech: Shared, category: "Unclassified", cell_scoped: false, exclude: moved_to_capture}
+  "#OS":            {tech: Shared, category: "Unclassified", cell_scoped: false, exclude: moved_to_capture}
+  "#PC":            {tech: Shared, category: "Unclassified", cell_scoped: false, exclude: moved_to_capture}
+  "#CI":            {tech: Shared, category: "Unclassified", cell_scoped: false, exclude: moved_to_capture}
+  "#CL":            {tech: Shared, category: "Unclassified", cell_scoped: false, exclude: moved_to_capture}
+  "#AG":            {tech: Shared, category: "Unclassified", cell_scoped: false, exclude: moved_to_capture}
+  "#BF":            {tech: Shared, category: "Unclassified", cell_scoped: false, exclude: moved_to_capture}
+  "#HV":            {tech: Shared, category: "Unclassified", cell_scoped: false, exclude: moved_to_capture}
+  "#HW":            {tech: Shared, category: "Unclassified", cell_scoped: false, exclude: moved_to_capture}
+  "#SW":            {tech: Shared, category: "Unclassified", cell_scoped: false, exclude: moved_to_capture}
+  "#VN":            {tech: Shared, category: "Unclassified", cell_scoped: false, exclude: moved_to_capture}
+  "#VV":            {tech: Shared, category: "Unclassified", cell_scoped: false, exclude: moved_to_capture}
+  "#COMPVER":       {tech: Shared, category: "Unclassified", cell_scoped: false, exclude: moved_to_capture}
+  "#NMR":           {tech: Shared, category: "Unclassified", cell_scoped: false, exclude: moved_to_capture}
+  "#SR":            {tech: Shared, category: "Unclassified", cell_scoped: false, exclude: moved_to_capture}
+  "#TC":            {tech: Shared, category: "Unclassified", cell_scoped: false, exclude: moved_to_capture}
+  "#HASH":          {tech: Shared, category: "Unclassified", cell_scoped: false, exclude: moved_to_capture}
+  "#LICENSE":       {tech: Shared, category: "Unclassified", cell_scoped: false, exclude: moved_to_capture}
+  "#LICENSEREGION": {tech: Shared, category: "Unclassified", cell_scoped: false, exclude: moved_to_capture}
+  "#FLOORPLAN":     {tech: Shared, category: "Unclassified", cell_scoped: false, exclude: moved_to_capture}
+  "#BTSTEMPLATE":   {tech: Shared, category: "Unclassified", cell_scoped: false, exclude: moved_to_capture}
+  "#CELLWHITELIST": {tech: Shared, category: "Unclassified", cell_scoped: false, exclude: moved_to_capture}
+  "#KODIAK":        {tech: Shared, category: "Unclassified", cell_scoped: false, exclude: moved_to_capture}
+  "#EVRC":          {tech: Shared, category: "Unclassified", cell_scoped: false, exclude: moved_to_capture}
+  "#PRODUCT":       {tech: Shared, category: "Unclassified", cell_scoped: false, exclude: moved_to_capture}
+  "#PROJECT":       {tech: Shared, category: "Unclassified", cell_scoped: false, exclude: moved_to_capture}
+  "#REPORT":        {tech: Shared, category: "Unclassified", cell_scoped: false, exclude: moved_to_capture}
+  "#SERVER":        {tech: Shared, category: "Unclassified", cell_scoped: false, exclude: moved_to_capture}
+  "#SERVERHW":      {tech: Shared, category: "Unclassified", cell_scoped: false, exclude: moved_to_capture}
+  "#SP":            {tech: Shared, category: "Unclassified", cell_scoped: false, exclude: moved_to_capture}
+  "#STOP":          {tech: Shared, category: "Unclassified", cell_scoped: false, exclude: moved_to_capture}
+  "#UNITID":        {tech: Shared, category: "Unclassified", cell_scoped: false, exclude: moved_to_capture}
+  "#VQ":            {tech: Shared, category: "Unclassified", cell_scoped: false, exclude: moved_to_capture}
+  "ROHC":           {tech: Shared, category: "Unclassified", cell_scoped: false, exclude: moved_to_capture}
+  # SCRIPT reste listé events: pour conserver ses autres fields, mais marqué moved_to_capture.
+  # DEVI/CMDREQ/CMDCOMP participent à CAPTURE SERIES et sont également exposés
+  # sous leur catégorie respective (Events ⚑ / Services (tasks)) : voir plus bas.
+  # Identité : exclude: identity (règle vie privée) — pas de leaf tech.
+  "#EI": {tech: Shared, category: "Unclassified", cell_scoped: false, exclude: identity}
+  "#SI": {tech: Shared, category: "Unclassified", cell_scoped: false, exclude: identity}
 
   # ===== Serving radio (LTE) =====
   CELLMEAS:        {tech: LTE, category: "Serving radio", cell_scoped: true}
@@ -77,8 +178,12 @@ events:
   CAC:             {tech: LTE, category: "Carrier aggregation", cell_scoped: false}
   CAD:             {tech: LTE, category: "Carrier aggregation", cell_scoped: false}
 
-  # ===== Throughput per layer =====
-  APPLIST:         {tech: Shared, category: "Throughput per layer", cell_scoped: false}
+  # ===== Throughput per layer (LTE/NR) =====
+  # D3 2026-10-26 : "Throughput per layer" strictement LTE/NR (events avec
+  # section "Parameters for LTE"/"Parameters for NR" en NFF 2.50). Les
+  # events app-level restent Shared mais sous "Application throughput".
+  # TODO 2.53 — split DRATE/RLCRATE/PDCPRATE/PHRATE/MACRATE par tech selon
+  # sections NFF 2.50 (HANDOFF Shared→destination collé dans ce lot).
   PHRATE:          {tech: LTE, category: "Throughput per layer", cell_scoped: true}
   PHRATEU:         {tech: LTE, category: "Throughput per layer", cell_scoped: true}
   MACRATE:         {tech: LTE, category: "Throughput per layer", cell_scoped: true}
@@ -88,7 +193,10 @@ events:
   PDCPRATED:       {tech: LTE, category: "Throughput per layer", cell_scoped: false}
   PDCPRATEU:       {tech: LTE, category: "Throughput per layer", cell_scoped: false}
   DRATE:           {tech: LTE, category: "Throughput per layer", cell_scoped: false}
-  PPPRATE:         {tech: Shared, category: "Throughput per layer", cell_scoped: false}
+  # ===== Application throughput (Shared) =====
+  # Pas de section par système dans NFF 2.50 — ces events sont app-level.
+  APPLIST:         {tech: Shared, category: "Application throughput", cell_scoped: false}
+  PPPRATE:         {tech: Shared, category: "Application throughput", cell_scoped: false}
 
   # ===== Link quality =====
   CQI:             {tech: LTE, category: "Link quality", cell_scoped: true}
@@ -166,17 +274,14 @@ events:
   RABC:            {tech: Shared, category: "Events ⚑", cell_scoped: false}
   RABD:            {tech: Shared, category: "Events ⚑", cell_scoped: false}
 
-  # ===== Signalling =====
+  # ===== Signalling (LTE/NR RAN) =====
+  # D3 2026-10-26 : "Signalling" strictement LTE/NR. SIP* → Application signalling.
   RRC:             {tech: LTE, category: "Signalling", cell_scoped: false}
   RRCSM:           {tech: LTE, category: "Signalling", cell_scoped: false}
   RRA:             {tech: LTE, category: "Signalling", cell_scoped: false}
   RRD:             {tech: LTE, category: "Signalling", cell_scoped: false}
   RRF:             {tech: LTE, category: "Signalling", cell_scoped: false}
   L3SM:            {tech: LTE, category: "Signalling", cell_scoped: false}
-  SIPSM:           {tech: Shared, category: "Signalling", cell_scoped: false}
-  SIPREGA:         {tech: Shared, category: "Signalling", cell_scoped: false}
-  SIPREGC:         {tech: Shared, category: "Signalling", cell_scoped: false}
-  SIPREGD:         {tech: Shared, category: "Signalling", cell_scoped: false}
   HOA:             {tech: LTE, category: "Signalling", cell_scoped: false}
   HOI:             {tech: LTE, category: "Signalling", cell_scoped: false}
   HOS:             {tech: LTE, category: "Signalling", cell_scoped: false}
@@ -187,25 +292,17 @@ events:
   MACI:            {tech: LTE, category: "Signalling", cell_scoped: false}
   MSGA:            {tech: LTE, category: "Signalling", cell_scoped: false}
   MSGS:            {tech: LTE, category: "Signalling", cell_scoped: false}
+  # ===== Application signalling (Shared) =====
+  # SIP* : signalisation applicative (VoIP), hors RAN.
+  SIPSM:           {tech: Shared, category: "Application signalling", cell_scoped: false}
+  SIPREGA:         {tech: Shared, category: "Application signalling", cell_scoped: false}
+  SIPREGC:         {tech: Shared, category: "Application signalling", cell_scoped: false}
+  SIPREGD:         {tech: Shared, category: "Application signalling", cell_scoped: false}
 
   # ===== Scanner =====
   OFDMSCAN:        {tech: LTE, category: "Scanner", cell_scoped: false}
   STARTSCAN:       {tech: LTE, category: "Scanner", cell_scoped: false}
   CELLSCAN:        {tech: LTE, category: "Scanner", cell_scoped: false}
-
-  # ===== Shared / dette BC2 =====
-  ROHC:            {tech: Shared, category: "Capture context", cell_scoped: false}
-
-  # ===== Capture context : completion (BC3 Phase 2 feedback) =====
-  "#PRODUCT": {tech: Shared, category: "Capture context", cell_scoped: false}
-  "#PROJECT": {tech: Shared, category: "Capture context", cell_scoped: false}
-  "#REPORT": {tech: Shared, category: "Capture context", cell_scoped: false}
-  "#SERVER": {tech: Shared, category: "Capture context", cell_scoped: false}
-  "#SERVERHW": {tech: Shared, category: "Capture context", cell_scoped: false}
-  "#SP": {tech: Shared, category: "Capture context", cell_scoped: false}
-  "#STOP": {tech: Shared, category: "Capture context", cell_scoped: false}
-  "#UNITID": {tech: Shared, category: "Capture context", cell_scoped: false}
-  "#VQ": {tech: Shared, category: "Capture context", cell_scoped: false}
 
 # Technology "Other (out of scope)" : UMTS/HSPA/CDMA/GSM/DVB/WLAN/GAN legacy.
 # Catégorie "Legacy UMTS/CDMA/DVB" ; repliée côté UI, comptée, jamais perdue.

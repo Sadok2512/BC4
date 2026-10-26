@@ -355,12 +355,20 @@ def build_catalog_v4(
                 proof=n.get("proof") or "open",
                 selectable=selectable_flag,
                 reason=(
-                    None
-                    if (not is_leaf or (has_col and n_val > 0))
+                    # 2.52.0 — CAPTURE leaves portent déjà un reason explicite
+                    # ("CAPTURE binding WIP" / "Privacy by design"). Respecter
+                    # ce reason plutôt que d'écraser avec "Column not in decoder
+                    # schema" (qui serait trompeur).
+                    n.get("reason")
+                    if is_leaf and n.get("reason")
                     else (
-                        "Column not in decoder schema"
-                        if not has_col
-                        else "No observations in project"
+                        None
+                        if (not is_leaf or (has_col and n_val > 0))
+                        else (
+                            "Column not in decoder schema"
+                            if not has_col
+                            else "No observations in project"
+                        )
                     )
                 ),
             )

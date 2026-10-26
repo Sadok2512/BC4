@@ -1,3 +1,69 @@
+## 0.83.0 (minor) — BC4 2026-10-26 — Catalogue 2.52.0 : racine CAPTURE (5 groupes, 27 feuilles) + Technology au-dessus + dédoublonnage Shared (Agent BC3)
+
+Lot CAPTURE phase 1 : la nouvelle racine `CAPTURE` entre en tête du
+Metrics catalogue, hors tech, avec 5 groupes × 27 feuilles. Les
+catégories Shared qui portaient un nom identique à une catégorie
+LTE/NR sont renommées (D3 BC3). Le niveau Technology (LTE / NR /
+Shared / Other) reste au-DESSUS des catégories ; chaque catégorie
+n'apparaît que sous le tech où elle a du sens.
+
+Phase 2 (CAPTURE binding `/metrics/table`) : lot suivant.
+Les 27 feuilles sont **visibles** dans l'arbre mais **non-selectable**
+en 2.52.0, avec `reason="CAPTURE binding WIP — Phase 2 /metrics/table
+(BC3 2.52.0)"`. L'Identity (MASKED) porte `reason="Privacy by design
+— identity fields never exposed by BC4"`.
+
+### Catalogue 2.52.0
+- `app/kpi/catalog_release/catalog_2.52.0.json` COMMITÉ (sha
+  `4f862955247fc6a8f2e532d4da29b6c6847accbad3f161176eca432ec7f8da4f`,
+  déterministe sur 3 builds consécutifs).
+- `scripts/catalog/categories.yaml` : nouvelle section top-level
+  `capture:` (5 groupes File/Script/Task/Device/Identity + 27 feuilles
+  explicitement spec'd avec `source`, `type`, `unit`, `description`
+  dérivés de NFF 2.50). Les events sources (#FF, #ID, #PROJECT, #DN,
+  #START, #UT, #UNITID, #TS, SCRIPT, CMDREQ, CMDCOMP, DEVI, #EI, #SI)
+  sont marqués `exclude: moved_to_capture` dans la section `events:`
+  pour éviter un doublon sous tech_Shared.
+- `scripts/catalog/build_catalog.py` : tech root `CAPTURE` ajouté
+  (sort_order=0, parent_id=null), 5 groupes `node_type="group"` sous
+  `cat_CAPTURE`, 27 leaves `node_type="leaf"` portant `kind` ∈
+  {CONST, SERIES, MASKED} et `source` ∈ {db:col, event:#CODE/N,
+  series:…, derived:…, masked:…}.
+
+### Technology au-dessus / dédoublonnage Shared (D3 BC3)
+- Catégorie `Capture context` supprimée (migrée vers racine CAPTURE).
+- Catégorie `Throughput per layer` Shared supprimée → scindée :
+  - `Throughput per layer` reste pour LTE (PHRATE, MACRATE, RLCRATE,
+    PDCPRATE, DRATE…).
+  - `Application throughput` nouvelle, Shared : APPLIST, PPPRATE
+    (events app-level, sans section « Parameters for LTE/NR » en NFF
+    2.50).
+- Catégorie `Signalling` Shared supprimée → scindée :
+  - `Signalling` reste pour LTE (RRC*, HO*, RACH*, CREL, MACI,
+    MSG*…).
+  - `Application signalling` nouvelle, Shared : SIP*, SIPREG*.
+- Règle finale : aucune paire (nom de catégorie) homonyme entre deux
+  techs sans que le niveau Technology soit visible dans l'arbre.
+- HANDOFF Shared → destination event-par-event : voir
+  `docs/HANDOFF_shared_destination_2.52.0.md`.
+- Reclassification per-tech exhaustive de DRATE/RLCRATE/PDCPRATE/
+  PHRATE/MACRATE/CELLMEAS (66 events avec section « Parameters for
+  LTE » et/ou « Parameters for NR ») : **analysé** dans le HANDOFF,
+  **exécution reportée au lot 2.53** (sweep contrôlé event-par-event
+  avec guards replay et validation signaling).
+
+### metrics_catalog_v4
+- Respecte un `reason` pré-posé sur une leaf (CAPTURE WIP ou Privacy)
+  plutôt que d'écraser avec « Column not in decoder schema » (qui
+  serait trompeur pour une CAPTURE leaf).
+
+### Déterminisme et discipline
+- 3 builds consécutifs → même sha `4f862955…ec7f8da4f`. Vérifié
+  dans `bc4-api-1` conteneur avec le CSV spec 2.50 intact.
+- Rebuild attendu depuis HEAD propre, par la seule session back BC3,
+  version `0.83.0` identique entre `pyproject.toml` et l'image live
+  (règle n°5).
+
 ## 0.82.4 (patch) — BC4 2026-10-26 — Catalog versioning déterministe + GC1 /health (Agent BC3)
 
 Après les variations observées de sha (8dc4bcf8 → 5a3a75dd → b1bed98b)

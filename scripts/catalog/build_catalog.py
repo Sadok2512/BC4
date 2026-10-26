@@ -33,11 +33,16 @@ from app.db import SessionLocal  # noqa: E402
 from app.nmf_decoder.schema import schemas, column as _dec_column  # noqa: E402
 
 CATEGORIES = [
+    # 2.52.0 — "Capture context" retirée (migrée vers racine CAPTURE
+    # hors tech). "Application throughput"/"Application signalling"
+    # ajoutées pour lever les collisions de nom cross-tech (D3 BC3).
     "Serving radio", "Neighbours", "Carrier aggregation",
-    "Throughput per layer", "Link quality", "Allocation & MCS",
+    "Throughput per layer", "Application throughput",
+    "Link quality", "Allocation & MCS",
     "CSI", "UL power", "MIMO per port", "Beams NR", "Voice",
-    "Services (tasks)", "Position", "Events ⚑", "Signalling",
-    "Capture context", "Scanner", "Unclassified",
+    "Services (tasks)", "Position", "Events ⚑",
+    "Signalling", "Application signalling",
+    "Scanner", "Unclassified",
 ]
 STRUCTURAL_FIELDS = {
     "#Header params", "#Cells", "Scope", "PRB index", "RB ID",
@@ -229,10 +234,69 @@ def main():
 
     # (E) hiérarchie
     nodes = []
+    # 2.52.0 — CAPTURE racine hors tech, placée en tête (sort_order=0).
+    # LTE/NR/Shared ordonnés 1/2/3 ; Other replié par défaut (ordre 4).
+    tech_order = {"CAPTURE": 0, "LTE": 1, "NR": 2, "Shared": 3, "Other": 4}
     tech_nodes = {t: {"node_type": "tech", "node_id": f"tech_{t}", "label": t,
-                      "parent_id": None, "collapsed_default": (t == "Other")}
-                  for t in ("LTE", "NR", "Shared", "Other")}
+                      "parent_id": None, "collapsed_default": (t == "Other"),
+                      "sort_order": tech_order[t]}
+                  for t in ("CAPTURE", "LTE", "NR", "Shared", "Other")}
     nodes.extend(tech_nodes.values())
+
+    # (E.1) racine CAPTURE : 5 groupes, 27 leaves explicites depuis categories.yaml.
+    # Pas d'events sous CAPTURE : la racine contient directement des `group`
+    # nodes dont les enfants sont des leaves annotées kind=CONST/SERIES/MASKED.
+    capture_doc = cat_doc.get("capture", {}) or {}
+    capture_cat_node = None
+    capture_groups_count = 0
+    capture_leaves_count = 0
+    if capture_doc:
+        capture_cat_id = capture_doc.get("category_id") or "cat_CAPTURE"
+        capture_cat_node = {
+            "node_type": "category", "node_id": capture_cat_id,
+            "label": capture_doc.get("category_label", "CAPTURE"),
+            "parent_id": "tech_CAPTURE", "tech": "CAPTURE",
+        }
+        nodes.append(capture_cat_node)
+        for g in capture_doc.get("groups", []):
+            g_id = g["group_id"]
+            g_kind = g.get("kind", "CONST")
+            group_node = {
+                "node_type": "group", "node_id": g_id,
+                "label": g["label"], "parent_id": capture_cat_id,
+                "kind": g_kind, "tech": "CAPTURE",
+            }
+            nodes.append(group_node)
+            capture_groups_count += 1
+            for lf in g.get("leaves", []):
+                leaf_label = lf["label"]
+                if g_kind == "MASKED":
+                    reason = "Privacy by design — identity fields never exposed by BC4"
+                else:
+                    # 2.52.0 Phase 1 — CAPTURE arbre livré, data-binding
+                    # /metrics/table en Phase 2 (lot suivant). Feuilles
+                    # visibles non-selectable + raison honnête.
+                    reason = "CAPTURE binding WIP — Phase 2 /metrics/table (BC3 2.52.0)"
+                nodes.append({
+                    "node_type": "leaf",
+                    "node_id": f"lf_capture_{slugify(g['label'])}_{slugify(leaf_label)}",
+                    "parent_id": g_id, "label": leaf_label,
+                    "kind": g_kind,
+                    "source": lf.get("source"),
+                    "type": lf.get("type"),
+                    "unit": lf.get("unit"),
+                    "description": lf.get("description"),
+                    "tech": "CAPTURE",
+                    "proof": "documented-2.50",
+                    "selectable": False,  # Phase 2 pending
+                    "displayed": True,
+                    "reason": reason,
+                    "metric_id": f"capture_{slugify(g['label'])}_{slugify(leaf_label)}",
+                    "n": 0,
+                })
+                capture_leaves_count += 1
+    print(f"[build] CAPTURE: groups={capture_groups_count} leaves={capture_leaves_count}")
+
     cat_nodes = {}
     event_nodes = {}
     leaves_cell = []
@@ -256,8 +320,10 @@ def main():
         else:
             tech = cfg.get("tech", "Shared"); cat = cfg.get("category", "Unclassified")
             cell_scoped = bool(cfg.get("cell_scoped", False))
-        # Dédoublonnage "Capture context" : toujours tech=Shared (BC3 2.50.3).
-        if cat == "Capture context": tech = "Shared"
+        # 2.52.0 — "Capture context" supprimée (migrée dans racine CAPTURE).
+        # Toute entrée résiduelle est renvoyée en "Unclassified" explicite.
+        if cat == "Capture context":
+            cat = "Unclassified"
         if cat not in CATEGORIES and cat != default_category: cat = "Unclassified"
         # category node (lazy create)
         cat_key = (tech, cat)
@@ -359,10 +425,14 @@ def main():
     nodes.extend(leaves_bare)
     nodes.extend(leaves_cell)
 
-    n_metrics = len(leaves_bare)
-    n_leaves = len(leaves_bare) + len(leaves_cell)
-    n_displayed = sum(1 for lf in (leaves_bare + leaves_cell) if lf.get("displayed", True))
-    print(f"[build] tech={len(tech_nodes)} categories={len(cat_nodes)} events_kept={len(event_nodes)}")
+    n_metrics = len(leaves_bare) + capture_leaves_count
+    n_leaves = len(leaves_bare) + len(leaves_cell) + capture_leaves_count
+    n_displayed = (
+        sum(1 for lf in (leaves_bare + leaves_cell) if lf.get("displayed", True))
+        + capture_leaves_count
+    )
+    n_categories_total = len(cat_nodes) + (1 if capture_cat_node else 0)
+    print(f"[build] tech={len(tech_nodes)} categories={n_categories_total} events_kept={len(event_nodes)}")
     print(f"[build] excluded_events={len(excluded_events)} unclassified={len(unclassified_events)}")
     print(f"[build] fields_excluded_total={exclude_fields_total}")
     print(f"[build] n_metrics_bare={n_metrics} leaves_cell={len(leaves_cell)} n_leaves_total={n_leaves}")
@@ -379,11 +449,13 @@ def main():
         "spec_version": spec_v,
         "decoder_min_version": args.decoder_min,
         "n_tech": len(tech_nodes),
-        "n_categories": len(cat_nodes),
+        "n_categories": n_categories_total,
         "n_events_kept": len(event_nodes),
         "n_metrics": n_metrics,  # feuilles hors cellule
         "n_leaves": n_leaves,
         "n_leaves_displayed": n_displayed,
+        "n_capture_leaves": capture_leaves_count,
+        "n_capture_groups": capture_groups_count,
         "excluded_events": excluded_events,
         "unclassified_events": unclassified_events,
         "enums": enums,
@@ -418,8 +490,8 @@ def main():
                 "n_categories=excluded.n_categories, n_metrics=excluded.n_metrics, "
                 "n_leaves=excluded.n_leaves, is_current=TRUE"
             ), {"v": args.version, "s": spec_v, "d": args.decoder_min, "sha": sha,
-                "nc": len(cat_nodes), "nm": n_metrics, "nl": n_leaves,
-                "cl": f"gen from {Path(args.csv).name}; unclassified={len(unclassified_events)}; excluded={len(excluded_events)}"})
+                "nc": n_categories_total, "nm": n_metrics, "nl": n_leaves,
+                "cl": f"gen from {Path(args.csv).name}; unclassified={len(unclassified_events)}; excluded={len(excluded_events)}; capture_leaves={capture_leaves_count}"})
             db.commit()
             print(f"[build] catalog_release row v={args.version} is_current=TRUE")
         finally:
