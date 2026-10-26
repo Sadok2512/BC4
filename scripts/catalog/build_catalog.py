@@ -29,6 +29,8 @@ sys.path.insert(0, str(ROOT))
 import yaml  # noqa: E402
 from sqlalchemy import text  # noqa: E402
 from app.db import SessionLocal  # noqa: E402
+# 2.51.1 — source_column tirée des YAMLs du décodeur, jamais inventée.
+from app.nmf_decoder.schema import schemas, column as _dec_column  # noqa: E402
 
 CATEGORIES = [
     "Serving radio", "Neighbours", "Carrier aggregation",
@@ -47,6 +49,69 @@ PAYLOAD_FIELDS = {"Payload", "payload_b64", "Message"}
 
 def slugify(s: str) -> str:
     return (re.sub(r"[^A-Za-z0-9]+", "_", s.strip()).strip("_").lower() or "field")
+
+
+def _normalize_label(s: str | None) -> str:
+    """Normalise un label CSV pour match avec un label YAML."""
+    if not s:
+        return ""
+    s2 = s.strip().lower()
+    s2 = re.sub(r"[^a-z0-9]+", "", s2)
+    return s2
+
+
+def _build_source_column_map() -> dict[tuple[str, str], str]:
+    """Pour chaque (event, label_normalized_CSV), retourne la colonne
+    `nmf_event_light`/`_group` dérivée du YAML du décodeur.
+
+    L'index est double :
+    - label normalisé (ex "rsrp") → colonne (ex "cell_rsrp" pour CELLMEAS)
+    - code sans préfixe event (ex "cellmeas_rsrp" → "cell_rsrp")
+
+    Chaque event du décodeur a ses headers + fields de groupes. On mappe
+    les deux via `_dec_column(field.code)`. Pour un même event, un même
+    label peut apparaître dans plusieurs sections (ex CELLMEAS 'RSRP'
+    header + 'RSRP' group) ; on garde le premier avec un code non vide.
+    """
+    out: dict[tuple[str, str], str] = {}
+    for ev, s in schemas().items():
+        if not isinstance(s, dict):
+            continue
+        def _collect(schema):
+            for f in schema.get("header", []) or []:
+                col = _dec_column(f.get("code") or "")
+                if not col:
+                    continue
+                lbl = _normalize_label(f.get("label") or f.get("code"))
+                if lbl and (ev, lbl) not in out:
+                    out[(ev, lbl)] = col
+            for g in schema.get("groups", []) or []:
+                for f in g.get("fields", []) or []:
+                    col = _dec_column(f.get("code") or "")
+                    if not col:
+                        continue
+                    lbl = _normalize_label(f.get("label") or f.get("code"))
+                    if lbl and (ev, lbl) not in out:
+                        out[(ev, lbl)] = col
+        _collect(s)
+        for variant in (s.get("_variants") or {}).values():
+            _collect(variant)
+    return out
+
+
+# Index unique construit une fois (schemas() est lru_cache).
+_SOURCE_COLUMN_INDEX: dict[tuple[str, str], str] = {}
+
+
+def source_column_for(event: str, field_name: str) -> str:
+    """Retourne la colonne `nmf_event_light` ou `_light_group` pour un
+    couple (event, label CSV). Chaîne vide si aucun match YAML.
+    """
+    global _SOURCE_COLUMN_INDEX
+    if not _SOURCE_COLUMN_INDEX:
+        _SOURCE_COLUMN_INDEX = _build_source_column_map()
+    key = (event.lstrip("#"), _normalize_label(field_name))
+    return _SOURCE_COLUMN_INDEX.get(key, "")
 
 def parse_enums(txt_path: Path) -> dict:
     """Extrait les enums (Cell type SCell N, Band 70NNN, ...) du spec text.
@@ -261,6 +326,10 @@ def main():
                     leaves_cell.append({
                         "node_type": "leaf", "event": ev, "label": f"{row['name']} @ {label_short}",
                         "metric_id": f"{ev.lower()}_{slugify(row['name'])}@{ct}",
+                        # 2.51.1 — source_column tirée du YAML du décodeur, jamais
+                        # inventée depuis le label CSV. Chaîne vide si pas de
+                        # mapping YAML (événement hors corpus décodé).
+                        "source_column": source_column_for(ev, row["name"]),
                         "cell_type": ct, "cell_label": label_long, "parent_id": ev_nid,
                         "node_id": f"lf_{slugify(ev)}_{slugify(row['name'])}_c{ct}",
                         "field_no": row.get("field_no"), "type": row.get("type"),
@@ -275,6 +344,8 @@ def main():
                 leaves_bare.append({
                     "node_type": "leaf", "event": ev, "label": row["name"],
                     "metric_id": f"{ev.lower()}_{slugify(row['name'])}", "parent_id": ev_nid,
+                    # 2.51.1 — source_column YAML, pas convention nom.
+                    "source_column": source_column_for(ev, row["name"]),
                     "node_id": f"lf_{slugify(ev)}_{slugify(row['name'])}",
                     "field_no": row.get("field_no"), "type": row.get("type"),
                     "unit": row.get("unit") or None, "range": row.get("range") or None,

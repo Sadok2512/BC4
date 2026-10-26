@@ -1,0 +1,535 @@
+# Audit feuilles grises catalog 2.51.0 - Column not in decoder schema
+# total grey leaves: 7225
+# with YAML column match: 528
+# 6697 vraies absences (events hors corpus ou champs non décodés)
+
+leaf_label                                               expected                          actual                        src     n>0 (44621571bccc)
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Measured system                                          amrs_measured_system              amrs_measured_sys             light   0
+Measured system                                          anri_measured_system              anri_measured_sys             light   0
+#Params/ANR type                                         anri_params_anr_type              anri_anr_type                 light   0
+Measured system                                          caa_measured_system               caa_measured_sys              light   0
+Measured system                                          cac_measured_system               cac_measured_sys              light   0
+Measured system                                          cad_measured_system               cad_measured_sys              light   0
+ARFCN                                                    cellscan_arfcn                    cellscan_earfcn               light   0
+NR-EARFCN                                                cellscan_nr_earfcn                cellscan_earfcn               light   0
+Ch type                                                  chi_ch_type                       chi_ch                        light   0
+RLT max                                                  chi_rlt_max                       chi_tm                        light   0
+Ext. ch type                                             chi_ext_ch_type                   chi_ch                        light   0
+BCCH ch                                                  chi_bcch_ch                       chi_ch                        light   0
+BCCH band                                                chi_bcch_band                     chi_band                      light   0
+Subchannel                                               chi_subchannel                    chi_ch                        light   0
+Extended subchannel                                      chi_extended_subchannel           chi_ch                        light   0
+NR cell ID                                               chi_nr_cell_id                    chi_cell_id                   light   0
+Ch type                                                  chi_ch_type                       chi_ch                        light   0
+SEARCH_WIN_A                                             chi_search_win_a                  chi_ch                        light   0
+SEARCH_WIN_N                                             chi_search_win_n                  chi_ch                        light   0
+SEARCH_WIN_R                                             chi_search_win_r                  chi_ch                        light   0
+Bandwidth                                                chi_bandwidth                     chi_band                      light   0
+Ch type                                                  chi_ch_type                       chi_ch                        light   0
+Ch type                                                  chi_ch_type                       chi_ch                        light   0
+Dispatch paging                                          chi_dispatch_paging               chi_ch                        light   0
+Measured system                                          fer_measured_system               fer_measured_sys              light   0
+Measured system                                          gaa_measured_system               gaa_measured_sys              light   1
+Measured system                                          gac_measured_system               gac_measured_sys              light   1
+Measured system                                          gad_measured_system               gad_measured_sys              light   1
+Number of attempted                                      hoa_number_of_attempted           hoa_number_of                 light   3
+Measured system                                          l3sm_measured_system              l3sm_measured_sys             light   0
+Lock type                                                lock_lock_type                    lock_type                     light   3
+Locked channel                                           lock_locked_channel               lock_channel                  light   0
+Locked band                                              lock_locked_band                  lock_band                     light   3
+Locked channel                                           lock_locked_channel               lock_channel                  light   0
+Locked band                                              lock_locked_band                  lock_band                     light   3
+Locked system                                            lock_locked_system                lock_system                   light   3
+Cell barring state                                       lock_cell_barring_state           lock_barring                  light   0
+HO forcing band                                          lock_ho_forcing_band              lock_band                     light   3
+HO forcing band                                          lock_ho_forcing_band              lock_band                     light   3
+Locked PCI                                               lock_locked_pci                   lock_pci                      light   0
+Locked channel                                           lock_locked_channel               lock_channel                  light   0
+Locked band                                              lock_locked_band                  lock_band                     light   3
+HO forcing band                                          lock_ho_forcing_band              lock_band                     light   3
+HO forcing PCI                                           lock_ho_forcing_pci               lock_pci                      light   0
+Measured system                                          mei_measured_system               mei_measured_sys              light   3
+Source band                                              nlist_source_band                 nlist_source                  light   0
+Source ch                                                nlist_source_ch                   nlist_source                  light   0
+Source BSIC                                              nlist_source_bsic                 nlist_source                  light   0
+Source band                                              nlist_source_band                 nlist_source                  light   0
+Source ch                                                nlist_source_ch                   nlist_source                  light   0
+Source SC                                                nlist_source_sc                   nlist_source                  light   0
+Source band                                              nlist_source_band                 nlist_source                  light   0
+Source ch                                                nlist_source_ch                   nlist_source                  light   0
+Source params ID                                         nlist_source_params_id            nlist_source                  light   0
+RSSI/P                                                   ofdmscan_rssi_p                   ofdmscan_rssi                 light   0
+P-SCH PCI                                                ofdmscan_p_sch_pci                ofdmscan_ch                   light   0
+P-SCH RP                                                 ofdmscan_p_sch_rp                 ofdmscan_ch                   light   0
+P-SCH RQ                                                 ofdmscan_p_sch_rq                 ofdmscan_ch                   light   0
+S-SCH RP                                                 ofdmscan_s_sch_rp                 ofdmscan_ch                   light   0
+S-SCH RQ                                                 ofdmscan_s_sch_rq                 ofdmscan_ch                   light   0
+S-SCH CINR                                               ofdmscan_s_sch_cinr               ofdmscan_ch                   light   0
+P-SCH CINR                                               ofdmscan_p_sch_cinr               ofdmscan_ch                   light   0
+PBCH PCI                                                 ofdmscan_pbch_pci                 ofdmscan_ch                   light   0
+PBCH RP                                                  ofdmscan_pbch_rp                  ofdmscan_ch                   light   0
+PBCH RQ                                                  ofdmscan_pbch_rq                  ofdmscan_ch                   light   0
+PBCH CINR                                                ofdmscan_pbch_cinr                ofdmscan_ch                   light   0
+PMCH RP                                                  ofdmscan_pmch_rp                  ofdmscan_ch                   light   0
+PMCH RQ                                                  ofdmscan_pmch_rq                  ofdmscan_ch                   light   0
+PMCH CINR                                                ofdmscan_pmch_cinr                ofdmscan_ch                   light   0
+PMCH RSSI                                                ofdmscan_pmch_rssi                ofdmscan_ch                   light   0
+P-SCH PCI                                                ofdmscan_p_sch_pci                ofdmscan_ch                   light   0
+P-SCH RP                                                 ofdmscan_p_sch_rp                 ofdmscan_ch                   light   0
+P-SCH RQ                                                 ofdmscan_p_sch_rq                 ofdmscan_ch                   light   0
+S-SCH RP                                                 ofdmscan_s_sch_rp                 ofdmscan_ch                   light   0
+S-SCH RQ                                                 ofdmscan_s_sch_rq                 ofdmscan_ch                   light   0
+S-SCH CINR                                               ofdmscan_s_sch_cinr               ofdmscan_ch                   light   0
+P-SCH CINR                                               ofdmscan_p_sch_cinr               ofdmscan_ch                   light   0
+P-SCH RSSI                                               ofdmscan_p_sch_rssi               ofdmscan_ch                   light   0
+S-SCH RSSI                                               ofdmscan_s_sch_rssi               ofdmscan_ch                   light   0
+SC-PTM RSSI                                              ofdmscan_sc_ptm_rssi              ofdmscan_rssi                 light   0
+SS-RSSI                                                  ofdmscan_ss_rssi                  ofdmscan_rssi                 light   0
+PBCH DM-RP                                               ofdmscan_pbch_dm_rp               ofdmscan_ch                   light   0
+PBCH DM-RQ                                               ofdmscan_pbch_dm_rq               ofdmscan_ch                   light   0
+PBCH DM-SINR                                             ofdmscan_pbch_dm_sinr             ofdmscan_ch                   light   0
+SSB-RSSI                                                 ofdmscan_ssb_rssi                 ofdmscan_rssi                 light   0
+PBCH RP                                                  ofdmscan_pbch_rp                  ofdmscan_ch                   light   0
+PBCH RQ                                                  ofdmscan_pbch_rq                  ofdmscan_ch                   light   0
+PBCH SINR                                                ofdmscan_pbch_sinr                ofdmscan_ch                   light   0
+Channel                                                  ofdmscan_channel                  ofdmscan_ch                   light   0
+Preamble RSSI                                            ofdmscan_preamble_rssi            ofdmscan_rssi                 light   0
+Measured system                                          paa_measured_system               paa_measured_sys              light   0
+Measured system                                          pac_measured_system               pac_measured_sys              light   0
+Measured system                                          pad_measured_system               pad_measured_sys              light   0
+Measured system                                          pba_measured_system               pba_measured_sys              light   2
+Measured system                                          pbc_measured_system               pbc_measured_sys              light   2
+Measured system                                          pbd_measured_system               pbd_measured_sys              light   2
+Measured system                                          pchi_measured_system              pchi_measured_sys             light   0
+PDCP DL bitrate                                          pdcprated_pdcp_dl_bitrate         pdcp_dl_bitrate_rb            light   445
+PDCP DL block                                            pdcprated_pdcp_dl_block           pdcp_dl_block_rate            light   445
+PDCP DL                                                  pdcprated_pdcp_dl                 pdcp_dl_bitrate               light   445
+PDCP DL block                                            pdcprated_pdcp_dl_block           pdcp_dl_block_rate            light   445
+PDCP DL bitrate                                          pdcprated_pdcp_dl_bitrate         pdcp_dl_bitrate_rb            light   445
+PDCP DL block                                            pdcprated_pdcp_dl_block           pdcp_dl_block_rate            light   445
+PDCP DL                                                  pdcprated_pdcp_dl                 pdcp_dl_bitrate               light   445
+PDCP DL block                                            pdcprated_pdcp_dl_block           pdcp_dl_block_rate            light   445
+PDCP UL bitrate                                          pdcprateu_pdcp_ul_bitrate         pdcp_ul_bitrate_rb            light   332
+PDCP UL block                                            pdcprateu_pdcp_ul_block           pdcp_ul_block_rate            light   332
+PDCP UL                                                  pdcprateu_pdcp_ul                 pdcp_ul_bitrate               light   332
+PDCP UL block                                            pdcprateu_pdcp_ul_block           pdcp_ul_block_rate            light   332
+PDCP UL bitrate                                          pdcprateu_pdcp_ul_bitrate         pdcp_ul_bitrate_rb            light   332
+PDCP UL block                                            pdcprateu_pdcp_ul_block           pdcp_ul_block_rate            light   332
+PDCP UL                                                  pdcprateu_pdcp_ul                 pdcp_ul_bitrate               light   332
+PDCP UL block                                            pdcprateu_pdcp_ul_block           pdcp_ul_block_rate            light   332
+Measured system                                          rachi_measured_system             rachi_measured_sys            light   29
+Max preamble                                             rachi_max_preamble                rachi_max_preambles           light   0
+PCCPCH pathloss                                          rachi_pccpch_pathloss             rachi_pathloss                light   29
+Result                                                   rachi_result                      rachi_rach_result             light   29
+RLC DL bitrate                                           rlcrate_rlc_dl_bitrate            rlc_dl_bitrate_rb             light   456
+RLC DL block rate                                        rlcrate_rlc_dl_block_rate         rlc_dl_block_rate             light   456
+RLC DL BLER                                              rlcrate_rlc_dl_bler               rlc_dl_bler                   light   456
+RLC DL block                                             rlcrate_rlc_dl_block              rlc_dl_block_rate             light   456
+RLC DL BLER/RB                                           rlcrate_rlc_dl_bler_rb            rlc_dl_bler                   light   456
+RLC DL bitrate                                           rlcrate_rlc_dl_bitrate            rlc_dl_bitrate_rb             light   456
+RLC DL block rate                                        rlcrate_rlc_dl_block_rate         rlc_dl_block_rate             light   456
+RLC DL BLER                                              rlcrate_rlc_dl_bler               rlc_dl_bler                   light   456
+RLC DL block                                             rlcrate_rlc_dl_block              rlc_dl_block_rate             light   456
+RLC DL BLER/RB                                           rlcrate_rlc_dl_bler_rb            rlc_dl_bler                   light   456
+RLC UL bitrate                                           rlcrateu_rlc_ul_bitrate           rlc_ul_bitrate_rb             light   336
+RLC UL block rate                                        rlcrateu_rlc_ul_block_rate        rlc_ul_block_rate             light   336
+RLC UL retr.                                             rlcrateu_rlc_ul_retr              rlc_ul_retx                   light   336
+RLC UL block                                             rlcrateu_rlc_ul_block             rlc_ul_block_rate             light   336
+RLC UL bitrate                                           rlcrateu_rlc_ul_bitrate           rlc_ul_bitrate_rb             light   336
+RLC UL block rate                                        rlcrateu_rlc_ul_block_rate        rlc_ul_block_rate             light   336
+RLC UL retr.                                             rlcrateu_rlc_ul_retr              rlc_ul_retx                   light   336
+RLC UL block                                             rlcrateu_rlc_ul_block             rlc_ul_block_rate             light   336
+Measured system                                          roam_measured_system              roam_measured_sys             light   3
+Measured system                                          rra_measured_system               rra_measured_sys              light   26
+RRC est. cause                                           rra_rrc_est_cause                 rra_est_cause                 light   26
+Measured system                                          rrc_measured_system               rrc_measured_sys              light   25
+Measured system                                          rrcsm_measured_system             rrcsm_measured_sys            light   0
+EARFCN                                                   rrcsm_earfcn                      rrcsm_19_8_2015_earfcn        light   0
+Measured system                                          rrd_measured_system               rrd_measured_sys              light   25
+Jitter                                                   rtpjitter_jitter                  rtp_jitter_dl                 light   0
+Jitter                                                   rtpjitter_jitter                  rtp_jitter_dl                 light   0
+Jitter                                                   rtpjitter_jitter                  rtp_jitter_dl                 light   0
+Measured system                                          rtpsm_measured_system             rtpsm_measured_sys            light   0
+Measured system                                          sei_measured_system               sei_measured_sys              light   3
+MME group ID                                             sei_mme_group_id                  sei_mme_group                 light   3
+Measured system                                          sipsm_measured_system             sipsm_measured_sys            light   0
+#Params/TAC                                              tus_params_tac                    tus_tac                       light   3
+#Params/cell @ PCell                                     cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ PCell                                     cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ PCell                                     cellmeas_params_cell              cellmeas_params_cells         light   963
+Pathloss @ PCell                                         cellmeas_pathloss                 cell_pathloss                 light   961
+#Params/cell @ PCell                                     cellmeas_params_cell              cellmeas_params_cells         light   963
+Pathloss @ PCell                                         cellmeas_pathloss                 cell_pathloss                 light   961
+#Params/cell @ PCell                                     cellmeas_params_cell              cellmeas_params_cells         light   963
+PCI @ PCell                                              cellmeas_pci                      cell_pci                      light   961
+RSRP @ PCell                                             cellmeas_rsrp                     cell_rsrp                     light   958
+RSRQ @ PCell                                             cellmeas_rsrq                     cell_rsrq                     light   961
+Pathloss @ PCell                                         cellmeas_pathloss                 cell_pathloss                 light   961
+#Params/cell @ PCell                                     cellmeas_params_cell              cellmeas_params_cells         light   963
+NR-ARFCN @ PCell                                         cellmeas_nr_arfcn                 cell_ch                       light   961
+PCI @ PCell                                              cellmeas_pci                      cell_pci                      light   961
+RSRP @ PCell                                             cellmeas_rsrp                     cell_rsrp                     light   958
+RSRQ @ PCell                                             cellmeas_rsrq                     cell_rsrq                     light   961
+#Params/cell @ PCell                                     cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ PCell                                     cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ PCell                                     cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ PCell                                     cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ PCell                                     cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ PCell                                     cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ PCell                                     cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ PCell                                     cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ SCell 1                                   cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ SCell 1                                   cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ SCell 1                                   cellmeas_params_cell              cellmeas_params_cells         light   963
+Pathloss @ SCell 1                                       cellmeas_pathloss                 cell_pathloss                 light   961
+#Params/cell @ SCell 1                                   cellmeas_params_cell              cellmeas_params_cells         light   963
+Pathloss @ SCell 1                                       cellmeas_pathloss                 cell_pathloss                 light   961
+#Params/cell @ SCell 1                                   cellmeas_params_cell              cellmeas_params_cells         light   963
+PCI @ SCell 1                                            cellmeas_pci                      cell_pci                      light   961
+RSRP @ SCell 1                                           cellmeas_rsrp                     cell_rsrp                     light   958
+RSRQ @ SCell 1                                           cellmeas_rsrq                     cell_rsrq                     light   961
+Pathloss @ SCell 1                                       cellmeas_pathloss                 cell_pathloss                 light   961
+#Params/cell @ SCell 1                                   cellmeas_params_cell              cellmeas_params_cells         light   963
+NR-ARFCN @ SCell 1                                       cellmeas_nr_arfcn                 cell_ch                       light   961
+PCI @ SCell 1                                            cellmeas_pci                      cell_pci                      light   961
+RSRP @ SCell 1                                           cellmeas_rsrp                     cell_rsrp                     light   958
+RSRQ @ SCell 1                                           cellmeas_rsrq                     cell_rsrq                     light   961
+#Params/cell @ SCell 1                                   cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ SCell 1                                   cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ SCell 1                                   cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ SCell 1                                   cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ SCell 1                                   cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ SCell 1                                   cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ SCell 1                                   cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ SCell 1                                   cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ SCell 2                                   cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ SCell 2                                   cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ SCell 2                                   cellmeas_params_cell              cellmeas_params_cells         light   963
+Pathloss @ SCell 2                                       cellmeas_pathloss                 cell_pathloss                 light   961
+#Params/cell @ SCell 2                                   cellmeas_params_cell              cellmeas_params_cells         light   963
+Pathloss @ SCell 2                                       cellmeas_pathloss                 cell_pathloss                 light   961
+#Params/cell @ SCell 2                                   cellmeas_params_cell              cellmeas_params_cells         light   963
+PCI @ SCell 2                                            cellmeas_pci                      cell_pci                      light   961
+RSRP @ SCell 2                                           cellmeas_rsrp                     cell_rsrp                     light   958
+RSRQ @ SCell 2                                           cellmeas_rsrq                     cell_rsrq                     light   961
+Pathloss @ SCell 2                                       cellmeas_pathloss                 cell_pathloss                 light   961
+#Params/cell @ SCell 2                                   cellmeas_params_cell              cellmeas_params_cells         light   963
+NR-ARFCN @ SCell 2                                       cellmeas_nr_arfcn                 cell_ch                       light   961
+PCI @ SCell 2                                            cellmeas_pci                      cell_pci                      light   961
+RSRP @ SCell 2                                           cellmeas_rsrp                     cell_rsrp                     light   958
+RSRQ @ SCell 2                                           cellmeas_rsrq                     cell_rsrq                     light   961
+#Params/cell @ SCell 2                                   cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ SCell 2                                   cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ SCell 2                                   cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ SCell 2                                   cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ SCell 2                                   cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ SCell 2                                   cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ SCell 2                                   cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ SCell 2                                   cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ SCell 3                                   cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ SCell 3                                   cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ SCell 3                                   cellmeas_params_cell              cellmeas_params_cells         light   963
+Pathloss @ SCell 3                                       cellmeas_pathloss                 cell_pathloss                 light   961
+#Params/cell @ SCell 3                                   cellmeas_params_cell              cellmeas_params_cells         light   963
+Pathloss @ SCell 3                                       cellmeas_pathloss                 cell_pathloss                 light   961
+#Params/cell @ SCell 3                                   cellmeas_params_cell              cellmeas_params_cells         light   963
+PCI @ SCell 3                                            cellmeas_pci                      cell_pci                      light   961
+RSRP @ SCell 3                                           cellmeas_rsrp                     cell_rsrp                     light   958
+RSRQ @ SCell 3                                           cellmeas_rsrq                     cell_rsrq                     light   961
+Pathloss @ SCell 3                                       cellmeas_pathloss                 cell_pathloss                 light   961
+#Params/cell @ SCell 3                                   cellmeas_params_cell              cellmeas_params_cells         light   963
+NR-ARFCN @ SCell 3                                       cellmeas_nr_arfcn                 cell_ch                       light   961
+PCI @ SCell 3                                            cellmeas_pci                      cell_pci                      light   961
+RSRP @ SCell 3                                           cellmeas_rsrp                     cell_rsrp                     light   958
+RSRQ @ SCell 3                                           cellmeas_rsrq                     cell_rsrq                     light   961
+#Params/cell @ SCell 3                                   cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ SCell 3                                   cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ SCell 3                                   cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ SCell 3                                   cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ SCell 3                                   cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ SCell 3                                   cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ SCell 3                                   cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ SCell 3                                   cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ SCell 4                                   cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ SCell 4                                   cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ SCell 4                                   cellmeas_params_cell              cellmeas_params_cells         light   963
+Pathloss @ SCell 4                                       cellmeas_pathloss                 cell_pathloss                 light   961
+#Params/cell @ SCell 4                                   cellmeas_params_cell              cellmeas_params_cells         light   963
+Pathloss @ SCell 4                                       cellmeas_pathloss                 cell_pathloss                 light   961
+#Params/cell @ SCell 4                                   cellmeas_params_cell              cellmeas_params_cells         light   963
+PCI @ SCell 4                                            cellmeas_pci                      cell_pci                      light   961
+RSRP @ SCell 4                                           cellmeas_rsrp                     cell_rsrp                     light   958
+RSRQ @ SCell 4                                           cellmeas_rsrq                     cell_rsrq                     light   961
+Pathloss @ SCell 4                                       cellmeas_pathloss                 cell_pathloss                 light   961
+#Params/cell @ SCell 4                                   cellmeas_params_cell              cellmeas_params_cells         light   963
+NR-ARFCN @ SCell 4                                       cellmeas_nr_arfcn                 cell_ch                       light   961
+PCI @ SCell 4                                            cellmeas_pci                      cell_pci                      light   961
+RSRP @ SCell 4                                           cellmeas_rsrp                     cell_rsrp                     light   958
+RSRQ @ SCell 4                                           cellmeas_rsrq                     cell_rsrq                     light   961
+#Params/cell @ SCell 4                                   cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ SCell 4                                   cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ SCell 4                                   cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ SCell 4                                   cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ SCell 4                                   cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ SCell 4                                   cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ SCell 4                                   cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ SCell 4                                   cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ PSCell                                    cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ PSCell                                    cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ PSCell                                    cellmeas_params_cell              cellmeas_params_cells         light   963
+Pathloss @ PSCell                                        cellmeas_pathloss                 cell_pathloss                 light   961
+#Params/cell @ PSCell                                    cellmeas_params_cell              cellmeas_params_cells         light   963
+Pathloss @ PSCell                                        cellmeas_pathloss                 cell_pathloss                 light   961
+#Params/cell @ PSCell                                    cellmeas_params_cell              cellmeas_params_cells         light   963
+PCI @ PSCell                                             cellmeas_pci                      cell_pci                      light   961
+RSRP @ PSCell                                            cellmeas_rsrp                     cell_rsrp                     light   958
+RSRQ @ PSCell                                            cellmeas_rsrq                     cell_rsrq                     light   961
+Pathloss @ PSCell                                        cellmeas_pathloss                 cell_pathloss                 light   961
+#Params/cell @ PSCell                                    cellmeas_params_cell              cellmeas_params_cells         light   963
+NR-ARFCN @ PSCell                                        cellmeas_nr_arfcn                 cell_ch                       light   961
+PCI @ PSCell                                             cellmeas_pci                      cell_pci                      light   961
+RSRP @ PSCell                                            cellmeas_rsrp                     cell_rsrp                     light   958
+RSRQ @ PSCell                                            cellmeas_rsrq                     cell_rsrq                     light   961
+#Params/cell @ PSCell                                    cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ PSCell                                    cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ PSCell                                    cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ PSCell                                    cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ PSCell                                    cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ PSCell                                    cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ PSCell                                    cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ PSCell                                    cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ SCell NR 100+                             cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ SCell NR 100+                             cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ SCell NR 100+                             cellmeas_params_cell              cellmeas_params_cells         light   963
+Pathloss @ SCell NR 100+                                 cellmeas_pathloss                 cell_pathloss                 light   961
+#Params/cell @ SCell NR 100+                             cellmeas_params_cell              cellmeas_params_cells         light   963
+Pathloss @ SCell NR 100+                                 cellmeas_pathloss                 cell_pathloss                 light   961
+#Params/cell @ SCell NR 100+                             cellmeas_params_cell              cellmeas_params_cells         light   963
+PCI @ SCell NR 100+                                      cellmeas_pci                      cell_pci                      light   961
+RSRP @ SCell NR 100+                                     cellmeas_rsrp                     cell_rsrp                     light   958
+RSRQ @ SCell NR 100+                                     cellmeas_rsrq                     cell_rsrq                     light   961
+Pathloss @ SCell NR 100+                                 cellmeas_pathloss                 cell_pathloss                 light   961
+#Params/cell @ SCell NR 100+                             cellmeas_params_cell              cellmeas_params_cells         light   963
+NR-ARFCN @ SCell NR 100+                                 cellmeas_nr_arfcn                 cell_ch                       light   961
+PCI @ SCell NR 100+                                      cellmeas_pci                      cell_pci                      light   961
+RSRP @ SCell NR 100+                                     cellmeas_rsrp                     cell_rsrp                     light   958
+RSRQ @ SCell NR 100+                                     cellmeas_rsrq                     cell_rsrq                     light   961
+#Params/cell @ SCell NR 100+                             cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ SCell NR 100+                             cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ SCell NR 100+                             cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ SCell NR 100+                             cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ SCell NR 100+                             cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ SCell NR 100+                             cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ SCell NR 100+                             cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/cell @ SCell NR 100+                             cellmeas_params_cell              cellmeas_params_cells         light   963
+#Params/CQI value @ PCell                                cqi_params_cqi_value              cqi_n_params                  light   2527
+#Params @ PCell                                          cqi_params                        cqi_n_params                  light   2527
+#Params/CQI value @ PCell                                cqi_params_cqi_value              cqi_n_params                  light   2527
+#Params @ PCell                                          cqi_params                        cqi_n_params                  light   2527
+#Params/rank @ PCell                                     cqi_params_rank                   cqi_n_params                  light   2527
+#Params/subband @ PCell                                  cqi_params_subband                cqi_n_params                  light   2527
+#Params/variable @ PCell                                 cqi_params_variable               cqi_n_params                  light   2527
+#Params/variable @ PCell                                 cqi_params_variable               cqi_n_params                  light   2527
+#Params/CQI value @ SCell 1                              cqi_params_cqi_value              cqi_n_params                  light   2527
+#Params @ SCell 1                                        cqi_params                        cqi_n_params                  light   2527
+#Params/CQI value @ SCell 1                              cqi_params_cqi_value              cqi_n_params                  light   2527
+#Params @ SCell 1                                        cqi_params                        cqi_n_params                  light   2527
+#Params/rank @ SCell 1                                   cqi_params_rank                   cqi_n_params                  light   2527
+#Params/subband @ SCell 1                                cqi_params_subband                cqi_n_params                  light   2527
+#Params/variable @ SCell 1                               cqi_params_variable               cqi_n_params                  light   2527
+#Params/variable @ SCell 1                               cqi_params_variable               cqi_n_params                  light   2527
+#Params/CQI value @ SCell 2                              cqi_params_cqi_value              cqi_n_params                  light   2527
+#Params @ SCell 2                                        cqi_params                        cqi_n_params                  light   2527
+#Params/CQI value @ SCell 2                              cqi_params_cqi_value              cqi_n_params                  light   2527
+#Params @ SCell 2                                        cqi_params                        cqi_n_params                  light   2527
+#Params/rank @ SCell 2                                   cqi_params_rank                   cqi_n_params                  light   2527
+#Params/subband @ SCell 2                                cqi_params_subband                cqi_n_params                  light   2527
+#Params/variable @ SCell 2                               cqi_params_variable               cqi_n_params                  light   2527
+#Params/variable @ SCell 2                               cqi_params_variable               cqi_n_params                  light   2527
+#Params/CQI value @ SCell 3                              cqi_params_cqi_value              cqi_n_params                  light   2527
+#Params @ SCell 3                                        cqi_params                        cqi_n_params                  light   2527
+#Params/CQI value @ SCell 3                              cqi_params_cqi_value              cqi_n_params                  light   2527
+#Params @ SCell 3                                        cqi_params                        cqi_n_params                  light   2527
+#Params/rank @ SCell 3                                   cqi_params_rank                   cqi_n_params                  light   2527
+#Params/subband @ SCell 3                                cqi_params_subband                cqi_n_params                  light   2527
+#Params/variable @ SCell 3                               cqi_params_variable               cqi_n_params                  light   2527
+#Params/variable @ SCell 3                               cqi_params_variable               cqi_n_params                  light   2527
+#Params/CQI value @ SCell 4                              cqi_params_cqi_value              cqi_n_params                  light   2527
+#Params @ SCell 4                                        cqi_params                        cqi_n_params                  light   2527
+#Params/CQI value @ SCell 4                              cqi_params_cqi_value              cqi_n_params                  light   2527
+#Params @ SCell 4                                        cqi_params                        cqi_n_params                  light   2527
+#Params/rank @ SCell 4                                   cqi_params_rank                   cqi_n_params                  light   2527
+#Params/subband @ SCell 4                                cqi_params_subband                cqi_n_params                  light   2527
+#Params/variable @ SCell 4                               cqi_params_variable               cqi_n_params                  light   2527
+#Params/variable @ SCell 4                               cqi_params_variable               cqi_n_params                  light   2527
+#Params/CQI value @ PSCell                               cqi_params_cqi_value              cqi_n_params                  light   2527
+#Params @ PSCell                                         cqi_params                        cqi_n_params                  light   2527
+#Params/CQI value @ PSCell                               cqi_params_cqi_value              cqi_n_params                  light   2527
+#Params @ PSCell                                         cqi_params                        cqi_n_params                  light   2527
+#Params/rank @ PSCell                                    cqi_params_rank                   cqi_n_params                  light   2527
+#Params/subband @ PSCell                                 cqi_params_subband                cqi_n_params                  light   2527
+#Params/variable @ PSCell                                cqi_params_variable               cqi_n_params                  light   2527
+#Params/variable @ PSCell                                cqi_params_variable               cqi_n_params                  light   2527
+#Params/CQI value @ SCell NR 100+                        cqi_params_cqi_value              cqi_n_params                  light   2527
+#Params @ SCell NR 100+                                  cqi_params                        cqi_n_params                  light   2527
+#Params/CQI value @ SCell NR 100+                        cqi_params_cqi_value              cqi_n_params                  light   2527
+#Params @ SCell NR 100+                                  cqi_params                        cqi_n_params                  light   2527
+#Params/rank @ SCell NR 100+                             cqi_params_rank                   cqi_n_params                  light   2527
+#Params/subband @ SCell NR 100+                          cqi_params_subband                cqi_n_params                  light   2527
+#Params/variable @ SCell NR 100+                         cqi_params_variable               cqi_n_params                  light   2527
+#Params/variable @ SCell NR 100+                         cqi_params_variable               cqi_n_params                  light   2527
+#Measurements @ PCell                                    mimomeas_measurements             mimomeas_n_measurements       light   487
+Band @ PCell                                             mimomeas_band                     mimo_band                     light   465
+Cell type @ PCell                                        mimomeas_cell_type                mimo_cell_type                light   465
+#Measurements @ PCell                                    mimomeas_measurements             mimomeas_n_measurements       light   487
+Band @ PCell                                             mimomeas_band                     mimo_band                     light   465
+PCI @ PCell                                              mimomeas_pci                      mimo_pci                      light   465
+Port @ PCell                                             mimomeas_port                     cell_port                     light   0
+Cell type @ PCell                                        mimomeas_cell_type                mimo_cell_type                light   465
+#Measurements @ PCell                                    mimomeas_measurements             mimomeas_n_measurements       light   487
+Cell type @ PCell                                        mimomeas_cell_type                mimo_cell_type                light   465
+Port @ PCell                                             mimomeas_port                     cell_port                     light   0
+Band @ PCell                                             mimomeas_band                     mimo_band                     light   465
+NR-ARFCN @ PCell                                         mimomeas_nr_arfcn                 cell_ch                       light   961
+PCI @ PCell                                              mimomeas_pci                      mimo_pci                      light   465
+#Measurements @ SCell 1                                  mimomeas_measurements             mimomeas_n_measurements       light   487
+Band @ SCell 1                                           mimomeas_band                     mimo_band                     light   465
+Cell type @ SCell 1                                      mimomeas_cell_type                mimo_cell_type                light   465
+#Measurements @ SCell 1                                  mimomeas_measurements             mimomeas_n_measurements       light   487
+Band @ SCell 1                                           mimomeas_band                     mimo_band                     light   465
+PCI @ SCell 1                                            mimomeas_pci                      mimo_pci                      light   465
+Port @ SCell 1                                           mimomeas_port                     cell_port                     light   0
+Cell type @ SCell 1                                      mimomeas_cell_type                mimo_cell_type                light   465
+#Measurements @ SCell 1                                  mimomeas_measurements             mimomeas_n_measurements       light   487
+Cell type @ SCell 1                                      mimomeas_cell_type                mimo_cell_type                light   465
+Port @ SCell 1                                           mimomeas_port                     cell_port                     light   0
+Band @ SCell 1                                           mimomeas_band                     mimo_band                     light   465
+NR-ARFCN @ SCell 1                                       mimomeas_nr_arfcn                 cell_ch                       light   961
+PCI @ SCell 1                                            mimomeas_pci                      mimo_pci                      light   465
+#Measurements @ SCell 2                                  mimomeas_measurements             mimomeas_n_measurements       light   487
+Band @ SCell 2                                           mimomeas_band                     mimo_band                     light   465
+Cell type @ SCell 2                                      mimomeas_cell_type                mimo_cell_type                light   465
+#Measurements @ SCell 2                                  mimomeas_measurements             mimomeas_n_measurements       light   487
+Band @ SCell 2                                           mimomeas_band                     mimo_band                     light   465
+PCI @ SCell 2                                            mimomeas_pci                      mimo_pci                      light   465
+Port @ SCell 2                                           mimomeas_port                     cell_port                     light   0
+Cell type @ SCell 2                                      mimomeas_cell_type                mimo_cell_type                light   465
+#Measurements @ SCell 2                                  mimomeas_measurements             mimomeas_n_measurements       light   487
+Cell type @ SCell 2                                      mimomeas_cell_type                mimo_cell_type                light   465
+Port @ SCell 2                                           mimomeas_port                     cell_port                     light   0
+Band @ SCell 2                                           mimomeas_band                     mimo_band                     light   465
+NR-ARFCN @ SCell 2                                       mimomeas_nr_arfcn                 cell_ch                       light   961
+PCI @ SCell 2                                            mimomeas_pci                      mimo_pci                      light   465
+#Measurements @ SCell 3                                  mimomeas_measurements             mimomeas_n_measurements       light   487
+Band @ SCell 3                                           mimomeas_band                     mimo_band                     light   465
+Cell type @ SCell 3                                      mimomeas_cell_type                mimo_cell_type                light   465
+#Measurements @ SCell 3                                  mimomeas_measurements             mimomeas_n_measurements       light   487
+Band @ SCell 3                                           mimomeas_band                     mimo_band                     light   465
+PCI @ SCell 3                                            mimomeas_pci                      mimo_pci                      light   465
+Port @ SCell 3                                           mimomeas_port                     cell_port                     light   0
+Cell type @ SCell 3                                      mimomeas_cell_type                mimo_cell_type                light   465
+#Measurements @ SCell 3                                  mimomeas_measurements             mimomeas_n_measurements       light   487
+Cell type @ SCell 3                                      mimomeas_cell_type                mimo_cell_type                light   465
+Port @ SCell 3                                           mimomeas_port                     cell_port                     light   0
+Band @ SCell 3                                           mimomeas_band                     mimo_band                     light   465
+NR-ARFCN @ SCell 3                                       mimomeas_nr_arfcn                 cell_ch                       light   961
+PCI @ SCell 3                                            mimomeas_pci                      mimo_pci                      light   465
+#Measurements @ SCell 4                                  mimomeas_measurements             mimomeas_n_measurements       light   487
+Band @ SCell 4                                           mimomeas_band                     mimo_band                     light   465
+Cell type @ SCell 4                                      mimomeas_cell_type                mimo_cell_type                light   465
+#Measurements @ SCell 4                                  mimomeas_measurements             mimomeas_n_measurements       light   487
+Band @ SCell 4                                           mimomeas_band                     mimo_band                     light   465
+PCI @ SCell 4                                            mimomeas_pci                      mimo_pci                      light   465
+Port @ SCell 4                                           mimomeas_port                     cell_port                     light   0
+Cell type @ SCell 4                                      mimomeas_cell_type                mimo_cell_type                light   465
+#Measurements @ SCell 4                                  mimomeas_measurements             mimomeas_n_measurements       light   487
+Cell type @ SCell 4                                      mimomeas_cell_type                mimo_cell_type                light   465
+Port @ SCell 4                                           mimomeas_port                     cell_port                     light   0
+Band @ SCell 4                                           mimomeas_band                     mimo_band                     light   465
+NR-ARFCN @ SCell 4                                       mimomeas_nr_arfcn                 cell_ch                       light   961
+PCI @ SCell 4                                            mimomeas_pci                      mimo_pci                      light   465
+#Measurements @ PSCell                                   mimomeas_measurements             mimomeas_n_measurements       light   487
+Band @ PSCell                                            mimomeas_band                     mimo_band                     light   465
+Cell type @ PSCell                                       mimomeas_cell_type                mimo_cell_type                light   465
+#Measurements @ PSCell                                   mimomeas_measurements             mimomeas_n_measurements       light   487
+Band @ PSCell                                            mimomeas_band                     mimo_band                     light   465
+PCI @ PSCell                                             mimomeas_pci                      mimo_pci                      light   465
+Port @ PSCell                                            mimomeas_port                     cell_port                     light   0
+Cell type @ PSCell                                       mimomeas_cell_type                mimo_cell_type                light   465
+#Measurements @ PSCell                                   mimomeas_measurements             mimomeas_n_measurements       light   487
+Cell type @ PSCell                                       mimomeas_cell_type                mimo_cell_type                light   465
+Port @ PSCell                                            mimomeas_port                     cell_port                     light   0
+Band @ PSCell                                            mimomeas_band                     mimo_band                     light   465
+NR-ARFCN @ PSCell                                        mimomeas_nr_arfcn                 cell_ch                       light   961
+PCI @ PSCell                                             mimomeas_pci                      mimo_pci                      light   465
+#Measurements @ SCell NR 100+                            mimomeas_measurements             mimomeas_n_measurements       light   487
+Band @ SCell NR 100+                                     mimomeas_band                     mimo_band                     light   465
+Cell type @ SCell NR 100+                                mimomeas_cell_type                mimo_cell_type                light   465
+#Measurements @ SCell NR 100+                            mimomeas_measurements             mimomeas_n_measurements       light   487
+Band @ SCell NR 100+                                     mimomeas_band                     mimo_band                     light   465
+PCI @ SCell NR 100+                                      mimomeas_pci                      mimo_pci                      light   465
+Port @ SCell NR 100+                                     mimomeas_port                     cell_port                     light   0
+Cell type @ SCell NR 100+                                mimomeas_cell_type                mimo_cell_type                light   465
+#Measurements @ SCell NR 100+                            mimomeas_measurements             mimomeas_n_measurements       light   487
+Cell type @ SCell NR 100+                                mimomeas_cell_type                mimo_cell_type                light   465
+Port @ SCell NR 100+                                     mimomeas_port                     cell_port                     light   0
+Band @ SCell NR 100+                                     mimomeas_band                     mimo_band                     light   465
+NR-ARFCN @ SCell NR 100+                                 mimomeas_nr_arfcn                 cell_ch                       light   961
+PCI @ SCell NR 100+                                      mimomeas_pci                      mimo_pci                      light   465
+PBCH block rate @ PCell                                  phrate_pbch_block_rate            pbch_block_rate               light   960
+PBCH BLER @ PCell                                        phrate_pbch_bler                  pbch_bler                     light   7
+PDSCH block rate @ PCell                                 phrate_pdsch_block_rate           pdsch_block_rate              light   2086
+PDSCH BLER @ PCell                                       phrate_pdsch_bler                 pdsch_bler                    light   787
+PDSCH BLER 0 @ PCell                                     phrate_pdsch_bler_0               pdsch_bler                    light   787
+PDSCH BLER 1 @ PCell                                     phrate_pdsch_bler_1               pdsch_bler                    light   787
+PBCH block rate @ SCell 1                                phrate_pbch_block_rate            pbch_block_rate               light   960
+PBCH BLER @ SCell 1                                      phrate_pbch_bler                  pbch_bler                     light   7
+PDSCH block rate @ SCell 1                               phrate_pdsch_block_rate           pdsch_block_rate              light   2086
+PDSCH BLER @ SCell 1                                     phrate_pdsch_bler                 pdsch_bler                    light   787
+PDSCH BLER 0 @ SCell 1                                   phrate_pdsch_bler_0               pdsch_bler                    light   787
+PDSCH BLER 1 @ SCell 1                                   phrate_pdsch_bler_1               pdsch_bler                    light   787
+PBCH block rate @ SCell 2                                phrate_pbch_block_rate            pbch_block_rate               light   960
+PBCH BLER @ SCell 2                                      phrate_pbch_bler                  pbch_bler                     light   7
+PDSCH block rate @ SCell 2                               phrate_pdsch_block_rate           pdsch_block_rate              light   2086
+PDSCH BLER @ SCell 2                                     phrate_pdsch_bler                 pdsch_bler                    light   787
+PDSCH BLER 0 @ SCell 2                                   phrate_pdsch_bler_0               pdsch_bler                    light   787
+PDSCH BLER 1 @ SCell 2                                   phrate_pdsch_bler_1               pdsch_bler                    light   787
+PBCH block rate @ SCell 3                                phrate_pbch_block_rate            pbch_block_rate               light   960
+PBCH BLER @ SCell 3                                      phrate_pbch_bler                  pbch_bler                     light   7
+PDSCH block rate @ SCell 3                               phrate_pdsch_block_rate           pdsch_block_rate              light   2086
+PDSCH BLER @ SCell 3                                     phrate_pdsch_bler                 pdsch_bler                    light   787
+PDSCH BLER 0 @ SCell 3                                   phrate_pdsch_bler_0               pdsch_bler                    light   787
+PDSCH BLER 1 @ SCell 3                                   phrate_pdsch_bler_1               pdsch_bler                    light   787
+PBCH block rate @ SCell 4                                phrate_pbch_block_rate            pbch_block_rate               light   960
+PBCH BLER @ SCell 4                                      phrate_pbch_bler                  pbch_bler                     light   7
+PDSCH block rate @ SCell 4                               phrate_pdsch_block_rate           pdsch_block_rate              light   2086
+PDSCH BLER @ SCell 4                                     phrate_pdsch_bler                 pdsch_bler                    light   787
+PDSCH BLER 0 @ SCell 4                                   phrate_pdsch_bler_0               pdsch_bler                    light   787
+PDSCH BLER 1 @ SCell 4                                   phrate_pdsch_bler_1               pdsch_bler                    light   787
+PBCH block rate @ PSCell                                 phrate_pbch_block_rate            pbch_block_rate               light   960
+PBCH BLER @ PSCell                                       phrate_pbch_bler                  pbch_bler                     light   7
+PDSCH block rate @ PSCell                                phrate_pdsch_block_rate           pdsch_block_rate              light   2086
+PDSCH BLER @ PSCell                                      phrate_pdsch_bler                 pdsch_bler                    light   787
+PDSCH BLER 0 @ PSCell                                    phrate_pdsch_bler_0               pdsch_bler                    light   787
+PDSCH BLER 1 @ PSCell                                    phrate_pdsch_bler_1               pdsch_bler                    light   787
+PBCH block rate @ SCell NR 100+                          phrate_pbch_block_rate            pbch_block_rate               light   960
+PBCH BLER @ SCell NR 100+                                phrate_pbch_bler                  pbch_bler                     light   7
+PDSCH block rate @ SCell NR 100+                         phrate_pdsch_block_rate           pdsch_block_rate              light   2086
+PDSCH BLER @ SCell NR 100+                               phrate_pdsch_bler                 pdsch_bler                    light   787
+PDSCH BLER 0 @ SCell NR 100+                             phrate_pdsch_bler_0               pdsch_bler                    light   787
+PDSCH BLER 1 @ SCell NR 100+                             phrate_pdsch_bler_1               pdsch_bler                    light   787
+#PUSCH TPCs @ PCell                                      txpc_pusch_tpcs                   txpc_n_pusch_tpcs             light   1585
+#PUSCH TPCs @ PCell                                      txpc_pusch_tpcs                   txpc_n_pusch_tpcs             light   1585
+#PUSCH TPCs @ SCell 1                                    txpc_pusch_tpcs                   txpc_n_pusch_tpcs             light   1585
+#PUSCH TPCs @ SCell 1                                    txpc_pusch_tpcs                   txpc_n_pusch_tpcs             light   1585
+#PUSCH TPCs @ SCell 2                                    txpc_pusch_tpcs                   txpc_n_pusch_tpcs             light   1585
+#PUSCH TPCs @ SCell 2                                    txpc_pusch_tpcs                   txpc_n_pusch_tpcs             light   1585
+#PUSCH TPCs @ SCell 3                                    txpc_pusch_tpcs                   txpc_n_pusch_tpcs             light   1585
+#PUSCH TPCs @ SCell 3                                    txpc_pusch_tpcs                   txpc_n_pusch_tpcs             light   1585
+#PUSCH TPCs @ SCell 4                                    txpc_pusch_tpcs                   txpc_n_pusch_tpcs             light   1585
+#PUSCH TPCs @ SCell 4                                    txpc_pusch_tpcs                   txpc_n_pusch_tpcs             light   1585
+#PUSCH TPCs @ PSCell                                     txpc_pusch_tpcs                   txpc_n_pusch_tpcs             light   1585
+#PUSCH TPCs @ PSCell                                     txpc_pusch_tpcs                   txpc_n_pusch_tpcs             light   1585
+#PUSCH TPCs @ SCell NR 100+                              txpc_pusch_tpcs                   txpc_n_pusch_tpcs             light   1585
+#PUSCH TPCs @ SCell NR 100+                              txpc_pusch_tpcs                   txpc_n_pusch_tpcs             light   1585

@@ -59,16 +59,28 @@ def _kind_from_type(t: str | None) -> str:
 
 
 def _column_from_metric_id(metric_id: str) -> str | None:
-    """`[#]event_field[@cell]` → `event_field` (strip leading '#' and '@<cell>').
+    """2.51.1 — Fallback LEGACY : convention `[#]event_field[@cell]` →
+    `event_field`. Utilisée seulement quand une feuille 2.51.0 ou
+    antérieur n'a pas de clé `source_column` directe (compat ascendante).
 
-    Le `#` est présent sur 120/5115 feuilles (events dont le nom NFF
-    commence par `#`, ex. `#AG`, `#BF`, `#CI`) ; la majorité des feuilles
-    expose un `metric_id` nu `event_field`.
+    Depuis 2.51.1, les feuilles portent `source_column` tirée du YAML
+    du décodeur, source autoritaire : build_catalog.source_column_for().
     """
     if not metric_id:
         return None
     core = metric_id.lstrip("#").split("@", 1)[0]
     return core or None
+
+
+def _column_for_leaf(leaf: dict) -> str | None:
+    """Retourne la source_column autoritaire du leaf (depuis le YAML du
+    décodeur, enregistrée dans le JSON catalog par build_catalog 2.51.1+).
+    Fallback LEGACY sur la convention `_column_from_metric_id` si absente.
+    """
+    sc = leaf.get("source_column")
+    if isinstance(sc, str) and sc:
+        return sc
+    return _column_from_metric_id(leaf.get("metric_id") or "")
 
 
 def _available_light_columns(db: Session) -> set[str]:
@@ -81,6 +93,30 @@ def _available_light_columns(db: Session) -> set[str]:
     return {r[0] for r in rows}
 
 
+def _available_group_columns(db: Session) -> set[str]:
+    """2.51.1 — colonnes de `nmf_event_light_group`. Les champs de groupe
+    des YAMLs (ex `cell.rsrp` → colonne `cell_rsrp`) y sont stockés en
+    plus de leur propagation vers `nmf_event_light`.
+    """
+    rows = db.execute(
+        text(
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_name='nmf_event_light_group'"
+        )
+    ).all()
+    return {r[0] for r in rows}
+
+
+_LIGHT_COLS_CACHE: set[str] | None = None
+
+
+def _is_group_only(db: Session, col: str) -> bool:
+    global _LIGHT_COLS_CACHE
+    if _LIGHT_COLS_CACHE is None:
+        _LIGHT_COLS_CACHE = _available_light_columns(db)
+    return col not in _LIGHT_COLS_CACHE
+
+
 _N_PER_COLUMN_CHUNK = 50
 
 
@@ -89,28 +125,46 @@ def _n_per_column(
 ) -> dict[str, int]:
     """COUNT per column — rows with col IS NOT NULL.
 
-    Chunked en lots de 50 colonnes pour éviter l'overflow de la shared
-    memory Postgres (un UNION ALL de 400+ branches sur `nmf_event_light`
-    déborde `/dev/shm` à 64 Mo).
+    2.51.1 — Les colonnes sont scannées dans `nmf_event_light` ET
+    `nmf_event_light_group` (certaines colonnes de groupe comme
+    `cell_rsrp` existent dans les deux). Chaque colonne est associée au
+    MAX des 2 counts (= observations réelles).
     """
     safe = [c for c in columns if c.replace("_", "").isalnum()]
     if not safe:
         return {}
-    out: dict[str, int] = {}
-    for i in range(0, len(safe), _N_PER_COLUMN_CHUNK):
-        chunk = safe[i : i + _N_PER_COLUMN_CHUNK]
+    light_cols = _available_light_columns(db)
+    group_cols = _available_group_columns(db)
+    out: dict[str, int] = {c: 0 for c in safe}
+    # nmf_event_light
+    cols_in_light = [c for c in safe if c in light_cols]
+    for i in range(0, len(cols_in_light), _N_PER_COLUMN_CHUNK):
+        chunk = cols_in_light[i : i + _N_PER_COLUMN_CHUNK]
         expr = ", ".join(
             f'COUNT(*) FILTER (WHERE "{c}" IS NOT NULL) AS "c_{idx}"'
             for idx, c in enumerate(chunk)
         )
-        sql = (
-            f"SELECT {expr} FROM nmf_event_light WHERE project_id=:pid"
-        )
+        sql = f"SELECT {expr} FROM nmf_event_light WHERE project_id=:pid"
         row = db.execute(text(sql), {"pid": project_id}).first()
         if row is None:
             continue
         for idx, c in enumerate(chunk):
-            out[c] = int(row[idx] or 0)
+            out[c] = max(out[c], int(row[idx] or 0))
+    # nmf_event_light_group — pour les colonnes qui n'existent que là
+    # (ex cell_rsrp sur CELLMEAS LTE 1.5.1, pas propagé dans Light).
+    cols_in_group_only = [c for c in safe if c in group_cols and c not in light_cols]
+    for i in range(0, len(cols_in_group_only), _N_PER_COLUMN_CHUNK):
+        chunk = cols_in_group_only[i : i + _N_PER_COLUMN_CHUNK]
+        expr = ", ".join(
+            f'COUNT(*) FILTER (WHERE "{c}" IS NOT NULL) AS "c_{idx}"'
+            for idx, c in enumerate(chunk)
+        )
+        sql = f"SELECT {expr} FROM nmf_event_light_group WHERE project_id=:pid"
+        row = db.execute(text(sql), {"pid": project_id}).first()
+        if row is None:
+            continue
+        for idx, c in enumerate(chunk):
+            out[c] = max(out[c], int(row[idx] or 0))
     return out
 
 
@@ -160,11 +214,11 @@ def build_catalog_v4(
         if n.get("node_type") == "leaf" and n.get("displayed")
     ]
 
-    # 1) Map metric_id → candidate column; keep only columns present in DB.
-    avail_cols = _available_light_columns(db)
+    # 1) Map leaf → candidate column; keep only columns present in DB.
+    avail_cols = _available_light_columns(db) | _available_group_columns(db)
     candidate_cols: set[str] = set()
     for lf in displayed_leaves:
-        col = _column_from_metric_id(lf.get("metric_id", ""))
+        col = _column_for_leaf(lf)
         if col and col in avail_cols:
             candidate_cols.add(col)
     counts = _n_per_column(db, project_id, candidate_cols)
@@ -188,7 +242,7 @@ def build_catalog_v4(
         if not metric_id or metric_id in seen_codes:
             continue
         seen_codes.add(metric_id)
-        col = _column_from_metric_id(metric_id)
+        col = _column_for_leaf(lf)
         has_col = bool(col) and col in avail_cols
         n = counts.get(col, 0) if has_col else 0
         event = (lf.get("event") or "").lstrip("#")
@@ -245,7 +299,7 @@ def build_catalog_v4(
         siblings_counter[parent_id] = order + 1
         is_leaf = n.get("node_type") == "leaf"
         metric_id = n.get("metric_id") if is_leaf else None
-        col = _column_from_metric_id(metric_id or "") if is_leaf else None
+        col = _column_for_leaf(n) if is_leaf else None
         has_col = bool(col) and col in avail_cols
         n_val = counts.get(col, 0) if has_col else 0
         field_no = n.get("field_no")
