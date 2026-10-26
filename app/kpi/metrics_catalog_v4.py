@@ -311,11 +311,19 @@ def build_catalog_v4(
         selectable_flag = bool(
             is_leaf and n.get("selectable") and n.get("displayed") and has_col
         )
-        selection = (
-            metric_id
-            if (is_leaf and n.get("selectable") and n.get("displayed"))
-            else None
-        )
+        # 2.51.1 — `selection` est le token consommé par /metrics/table
+        # (parse_selection → definitions() → whitelist decoder). Il doit
+        # porter la VRAIE colonne (`source_column@cell`) et non la
+        # convention `event_slug@cell` du metric_id. Fallback metric_id
+        # pour compat ascendante quand source_column vide.
+        if is_leaf and n.get("selectable") and n.get("displayed"):
+            cell_suffix = f"@{n.get('cell_type')}" if n.get("cell_type") is not None else ""
+            if col:
+                selection = f"{col}{cell_suffix}"
+            else:
+                selection = metric_id
+        else:
+            selection = None
         nodes_out.append(
             dict(
                 node_id=n["node_id"],
