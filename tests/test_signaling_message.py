@@ -147,3 +147,28 @@ def test_identifier_path_defense_even_when_legacy_flag_false():
     result=service.decoded_message(db,'TEST-PROJECT','TEST-CAPTURE',0)
     assert [r.name for r in result.tree]==['logicalChannelGroup']
     assert 'TEST-PRIVATE' not in result.model_dump_json()
+
+
+def test_setup_complete_decodes_safe_rrc_leaf_but_never_nas_or_identity(monkeypatch):
+    class Pdu:
+        def from_uper(self, raw):
+            assert raw == b'\x00'
+
+        def get_val(self):
+            return {
+                'message': ('c1', ('rrcConnectionSetupComplete', {
+                    'rrc-TransactionIdentifier': 2,
+                    'criticalExtensions': ('c1', ('rrcConnectionSetupComplete-r8', {
+                        'selectedPLMN-Identity': 1,
+                        'dedicatedInfoNAS': b'TEST-PRIVATE-NAS',
+                    })),
+                })),
+            }
+
+    monkeypatch.setattr(service, 'resolve_pdu', lambda *args: Pdu())
+    db = DB(events=[event() | {'message': 'RRCConnectionSetupComplete'}], rows=[])
+    result = service.decoded_message(db, 'TEST-PROJECT', 'TEST-CAPTURE', 0)
+    assert [(item.name, item.value) for item in result.tree] == [('rrc-TransactionIdentifier', '2')]
+    assert result.hex is None and result.reason == 'identity_bearing_message'
+    assert 'selectedPLMN' not in result.model_dump_json()
+    assert 'TEST-PRIVATE' not in result.model_dump_json()

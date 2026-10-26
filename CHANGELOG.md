@@ -1,3 +1,18 @@
+## 0.82.3 (patch) — BC4 2026-10-26 — SetupComplete nettoyé + replay Alembic (Agent BC1)
+
+- `GET /projects/{id}/signaling/message` décode à la demande les feuilles
+  RRC admissibles lorsque `param_occurrence` est vide. Le décodage réutilise
+  les règles du dictionnaire, une instance PDU privée et les deux filtres
+  d'identité; les conteneurs NAS et l'hexadécimal des messages sensibles
+  restent masqués.
+- Preuve réelle Test_3, capture `1e4e8d879a83`, séquence `67` : le champ RRC
+  `rrc-TransactionIdentifier` est présent; `selectedPLMN-Identity` et
+  `dedicatedInfoNAS` ne sont pas exposés.
+- Les migrations 0044/0047 préservent les casts nécessaires aux vues lors des
+  conversions vers `text`; les réparations de clés primaires 0045/0046 sont
+  idempotentes. Replay validé auparavant sur PostgreSQL éphémère, sans DDL sur
+  la base live.
+
 ## 0.82.2 (patch) — BC4 2026-10-26 — Corrections matin : 3 points (Agent BC3)
 
 Suite au rapport "lu" du matin, 3 corrections aux lots A/B/C de la
