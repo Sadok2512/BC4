@@ -43,18 +43,29 @@ def _witnesses(db):
 
 
 def _grep_ts(source_path: str) -> str | None:
-    """Lit le header texte du .nmf (binary mix) et extrait #TS tag."""
+    """Lit le header texte NFF du .nmf et extrait #TS tag.
+
+    Format NFF 2.x : `#TS,,,"value"` (ou `#TS,fields,...`). Lit jusqu'à
+    65536 bytes (header texte toujours au début, avant les binary records).
+    """
     try:
         with open(source_path, "rb") as f:
-            head = f.read(4096)
+            head = f.read(65536)
     except OSError:
         return None
-    # NFF text headers are UTF-8/ASCII on first lines
-    text = head.decode("utf-8", errors="replace")
-    for line in text.splitlines():
-        m = re.match(r"\s*#TS\s+(.+?)\s*$", line)
-        if m:
-            return m.group(1).strip()
+    import csv as _csv
+    txt = head.decode("utf-8", errors="replace")
+    for line in txt.splitlines():
+        m = re.match(r"^#TS(?:,,,|,)(.*)$", line)
+        if not m:
+            continue
+        raw = m.group(1).lstrip(",")
+        try:
+            fields = next(_csv.reader([raw]))
+        except StopIteration:
+            return None
+        v = fields[0].strip() if fields else None
+        return v or None
     return None
 
 
@@ -105,16 +116,23 @@ def main():
             print(f"  [1] cap_file_log_file_name api={api_log!r}  fs={fname!r}  {'PASS' if ok1 else 'FAIL'}")
             all_pass = all_pass and ok1
 
-            # (2) Test script file = #TS from .nmf header
+            # (2) Test script file = #TS from .nmf header (jamais SKIP en 2.53.1).
             fs_ts = None
             if source and os.path.exists(source):
                 fs_ts = _grep_ts(source)
             api_tsf = _resolve_via_api(db, pid, cap, "cap_script_test_script_file")
             if fs_ts is None:
-                print(f"  [2] cap_script_test_script_file api={api_tsf!r}  fs_ts=<unreadable>  SKIP")
+                # Open point explicite — JAMAIS un SKIP générique. Si le .nmf
+                # n'est pas accessible ou n'a pas de #TS text header, c'est
+                # un vrai problème d'ingestion à surfacer, pas à masquer.
+                motif = (f"source_path={source!r} unreadable" if not source or not os.path.exists(source)
+                         else "no #TS text header in first 64KB of .nmf")
+                print(f"  [2] cap_script_test_script_file api={api_tsf!r}  fs_#TS=<open-point>  motif={motif}  FAIL")
+                all_pass = False
             else:
-                # NFF 2.19 writes #TS as "DL label" (same as nmf_file.dl)
-                ok2 = (str(api_tsf or '').strip() == fs_ts.strip() or (api_tsf or '') in fs_ts or fs_ts in (api_tsf or ''))
+                # Égalité stricte attendue depuis 2.53.1 (resolver lit la
+                # même source : .nmf text header `#TS,,,"value"`).
+                ok2 = (str(api_tsf or '').strip() == fs_ts.strip())
                 print(f"  [2] cap_script_test_script_file api={api_tsf!r}  fs_#TS={fs_ts!r}  {'PASS' if ok2 else 'FAIL'}")
                 all_pass = all_pass and ok2
 

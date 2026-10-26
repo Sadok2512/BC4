@@ -5,12 +5,12 @@ ici (CONST par capture, SERIES par (capture_id, seq), MASKED gris).
 
 Dispatch dans `app/kpi/metrics_v3.py::Dataset.load()` sur préfixe `cap_`.
 
-Mapping leaf → source :
-  - CONST (File) : nmf_file.* / nmf_capture.* + 4 headers synthétisés
-    depuis colonnes DB (format_version, capture_id).
-  - CONST (Script) : stg_event_raw raw_fields pour #TS, SCRIPT fields.
+Mapping leaf → source (2.53.1 — Test script file + headers depuis .nmf) :
+  - CONST (File) : nmf_file.* / nmf_capture.* + headers `#ID #FF #DN
+    #UNITID #PROJECT #START+#UT #TS` lus **tels quels** depuis le .nmf
+    source (text header NFF `#TAG,,,"value"`). Jamais redacted.
   - SERIES (Device, DEVI) : stg_event_raw raw_fields.c{col} (col = field_no+2).
-  - SERIES (Task, CMDREQ/CMDCOMP) : fenêtre open-until-CMDCOMP, same cmd_index.
+  - SERIES (Task, CMDREQ/CMDCOMP) : fenêtre open-until-CMDCOMP.
   - MASKED (Identity) : NULL + privacy reason, non-selectable (déjà bloqué
     par metrics_catalog_v4).
 
@@ -18,6 +18,8 @@ Toute valeur manquante → NULL + reason dans la row, JAMAIS inventée.
 """
 from __future__ import annotations
 
+import re
+from functools import lru_cache
 from sqlalchemy import text
 
 # Mapping cap_<group>_<slug> → spec (kind + source_hint).
@@ -25,19 +27,23 @@ from sqlalchemy import text
 # sans entrée correspondante ici, le resolver fallback à NULL+reason explicite.
 CAPTURE_SPEC: dict[str, dict] = {
     # --- File group (CONST) : 11 leaves ---
-    "cap_file_log_file_name":        {"kind": "CONST", "src": "db:nmf_file.filename",             "col": "filename",         "unit": None,  "label": "Log file name",         "python_kind": "categorical"},
+    # 2.53.1 — Headers `#ID #FF #DN #UNITID #PROJECT #START #UT #TS` lus
+    # depuis le .nmf text header (source primaire NFF). Les colonnes DB
+    # `nmf_file.*` restent utilisées pour filename, size et device_name
+    # (dérivés fiables au moment de l'ingest).
+    "cap_file_log_file_name":        {"kind": "CONST", "src": "db:nmf_file.filename",            "col": "filename",         "unit": None,  "label": "Log file name",         "python_kind": "categorical"},
     "cap_file_file_size":            {"kind": "CONST", "src": "derived:nmf_file_size_mb",         "col": "size_bytes",       "unit": "MB",  "label": "File size",             "python_kind": "numeric"},
-    "cap_file_file_format_version":  {"kind": "CONST", "src": "db:nmf_capture.format_version",    "col": "format_version",   "unit": None,  "label": "File format version",   "python_kind": "categorical"},
-    "cap_file_measurement_id":       {"kind": "CONST", "src": "db:nmf_capture.capture_id",        "col": "capture_id",       "unit": None,  "label": "Measurement ID",        "python_kind": "categorical"},
-    "cap_file_unit_id":              {"kind": "CONST", "src": "db:nmf_file.device_name",          "col": "device_name",      "unit": None,  "label": "Unit ID",               "python_kind": "categorical"},
-    "cap_file_project_id":           {"kind": "CONST", "src": "db:nmf_capture.project_id",        "col": "project_id",       "unit": None,  "label": "Project ID",            "python_kind": "categorical"},
-    "cap_file_session_id":           {"kind": "CONST", "src": "db:nmf_capture.capture_id",        "col": "capture_id",       "unit": None,  "label": "Session ID",            "python_kind": "categorical"},
-    "cap_file_device_name":          {"kind": "CONST", "src": "db:nmf_file.device_name",          "col": "device_name",      "unit": None,  "label": "Device name",           "python_kind": "categorical"},
-    "cap_file_measurement_start":    {"kind": "CONST", "src": "db:nmf_file.start_at+utc_offset",  "col": "start_at",         "unit": None,  "label": "Measurement start",     "python_kind": "categorical"},
+    "cap_file_file_format_version":  {"kind": "CONST", "src": "hdr:#FF",                          "col": None,               "unit": None,  "label": "File format version",   "python_kind": "categorical"},
+    "cap_file_measurement_id":       {"kind": "CONST", "src": "hdr:#ID",                          "col": None,               "unit": None,  "label": "Measurement ID",        "python_kind": "categorical"},
+    "cap_file_unit_id":              {"kind": "CONST", "src": "hdr:#UNITID",                      "col": None,               "unit": None,  "label": "Unit ID",               "python_kind": "categorical"},
+    "cap_file_project_id":           {"kind": "CONST", "src": "hdr:#PROJECT.0",                   "col": None,               "unit": None,  "label": "Project ID",            "python_kind": "categorical"},
+    "cap_file_session_id":           {"kind": "CONST", "src": "hdr:#PROJECT.1",                   "col": None,               "unit": None,  "label": "Session ID",            "python_kind": "categorical"},
+    "cap_file_device_name":          {"kind": "CONST", "src": "hdr:#DN",                          "col": None,               "unit": None,  "label": "Device name",           "python_kind": "categorical"},
+    "cap_file_measurement_start":    {"kind": "CONST", "src": "hdr:#START+#UT",                   "col": None,               "unit": None,  "label": "Measurement start",     "python_kind": "categorical"},
     "cap_file_decoder_version":      {"kind": "CONST", "src": "db:nmf_capture.decoder_version",   "col": "decoder_version",  "unit": None,  "label": "Decoder version",       "python_kind": "categorical"},
     "cap_file_decode_level":         {"kind": "CONST", "src": "db:nmf_capture.decode_level",      "col": "decode_level",     "unit": None,  "label": "Decode level",          "python_kind": "categorical"},
     # --- Script group (CONST) : 4 leaves ---
-    "cap_script_test_script_file":                  {"kind": "CONST", "src": "db:nmf_file.dl",                          "col": "dl",         "unit": None,  "label": "Test script file",                     "python_kind": "categorical"},
+    "cap_script_test_script_file":                  {"kind": "CONST", "src": "hdr:#TS",                           "col": None,         "unit": None,  "label": "Test script file",                     "python_kind": "categorical"},
     "cap_script_test_script_version":               {"kind": "CONST", "src": "stg:SCRIPT.c3",                           "col": None,         "unit": None,  "label": "Test script version",                  "python_kind": "categorical"},
     "cap_script_test_script_repeats":               {"kind": "CONST", "src": "stg:SCRIPT.c4",                           "col": None,         "unit": None,  "label": "Test script repeats",                  "python_kind": "numeric"},
     "cap_script_number_of_commands_in_test_script": {"kind": "CONST", "src": "stg:SCRIPT.c6",                           "col": None,         "unit": None,  "label": "Number of commands in test script",    "python_kind": "numeric"},
@@ -141,6 +147,68 @@ def load_capture(dataset, m: dict) -> list[dict]:
     return []
 
 
+def _nmf_source_path(db, pid, cap) -> str | None:
+    r = db.execute(text(
+        "SELECT nf.source_path FROM nmf_file nf JOIN nmf_capture nc "
+        "ON nc.nmf_file_id=nf.id WHERE nc.project_id=:pid AND nc.capture_id=:cap"
+    ), {"pid": pid, "cap": cap}).scalar_one_or_none()
+    return r
+
+
+_HDR_LINE_RE = re.compile(r'^#([A-Z]+)(?:,,,|,)(.*)$')
+
+
+@lru_cache(maxsize=64)
+def _parse_nmf_headers(source_path: str) -> dict[str, list[str]]:
+    """Parse les headers texte NFF `#TAG,,,"value"` (ou `#TAG,fields...`).
+
+    Lit jusqu'à 65536 bytes (le header texte est toujours au début).
+    Retourne dict `{TAG: [raw_fields_after_tag]}` — la liste comporte
+    plusieurs entrées si plusieurs occurrences du même tag.
+
+    Les valeurs sont les champs CSV bruts (avec guillemets) ; le caller
+    fait l'unquote et sélectionne le field index demandé.
+    """
+    out: dict[str, list[str]] = {}
+    try:
+        with open(source_path, "rb") as f:
+            head = f.read(65536)
+    except OSError:
+        return out
+    text_bytes = head.decode("utf-8", errors="replace")
+    for line in text_bytes.splitlines():
+        m = _HDR_LINE_RE.match(line)
+        if not m:
+            continue
+        tag = m.group(1)
+        rest = m.group(2)
+        out.setdefault(tag, []).append(rest)
+    return out
+
+
+def _hdr_value(headers: dict[str, list[str]], tag: str, field_index: int = 0) -> str | None:
+    """Retourne le `field_index`e champ CSV du 1er `#TAG` trouvé.
+    Format NFF : `#TAG,,,"value0","value1",…` (3 virgules de padding).
+    """
+    rows = headers.get(tag)
+    if not rows:
+        return None
+    raw = rows[0]
+    # strip leading commas (padding)
+    raw = raw.lstrip(",")
+    # Split CSV with quotes preserved
+    import csv as _csv
+    reader = _csv.reader([raw])
+    try:
+        fields = next(reader)
+    except StopIteration:
+        return None
+    if field_index >= len(fields):
+        return None
+    v = fields[field_index].strip()
+    return v or None
+
+
 def _resolve_const(db, pid, cap, m):
     """Résout une CONST : valeur unique capture-scoped."""
     src = m["_cap_src"]
@@ -153,20 +221,42 @@ def _resolve_const(db, pid, cap, m):
         if row is None:
             return None
         return round(float(row) / (1024 * 1024), 2)
-    if src == "db:nmf_file.start_at+utc_offset":
-        row = db.execute(text(
-            "SELECT nf.start_at, nf.utc_offset_min FROM nmf_file nf "
-            "JOIN nmf_capture nc ON nc.nmf_file_id=nf.id "
-            "WHERE nc.project_id=:pid AND nc.capture_id=:cap"
-        ), {"pid": pid, "cap": cap}).mappings().first()
-        if not row or not row["start_at"]:
+    if src.startswith("hdr:"):
+        # 2.53.1 — lecture directe depuis le .nmf text header. Formats :
+        #   `hdr:#TAG`          → premier field
+        #   `hdr:#TAG.{i}`      → field index i
+        #   `hdr:#START+#UT`    → compose "<#START.0> UTC{±offset}"
+        source_path = _nmf_source_path(db, pid, cap)
+        if not source_path:
             return None
-        off = row["utc_offset_min"]
-        if off is None:
-            return row["start_at"]
-        sign = "+" if off >= 0 else "-"
-        hh, mm = divmod(abs(off), 60)
-        return f"{row['start_at']} UTC{sign}{hh:02d}:{mm:02d}"
+        headers = _parse_nmf_headers(source_path)
+        key = src[4:]
+        if key == "#START+#UT":
+            start = _hdr_value(headers, "START", 0)  # time
+            date = _hdr_value(headers, "START", 2)   # date (field 2)
+            off_min_raw = _hdr_value(headers, "UT", 0)
+            try:
+                off_min = int(off_min_raw) if off_min_raw else None
+            except (TypeError, ValueError):
+                off_min = None
+            if not start:
+                return None
+            composed = (f"{date or ''} {start}").strip()
+            if off_min is not None:
+                sign = "+" if off_min >= 0 else "-"
+                hh, mm = divmod(abs(off_min), 60)
+                composed = f"{composed} UTC{sign}{hh:02d}:{mm:02d}"
+            return composed
+        if "." in key:
+            tag, idx_str = key.split(".", 1)
+            try:
+                idx = int(idx_str)
+            except ValueError:
+                idx = 0
+        else:
+            tag, idx = key, 0
+        tag = tag.lstrip("#")
+        return _hdr_value(headers, tag, idx)
     if src.startswith("db:nmf_file."):
         q = text(
             f"SELECT nf.{col} FROM nmf_file nf JOIN nmf_capture nc "

@@ -1,3 +1,41 @@
+## 0.84.1 (patch) — BC4 2026-10-26 — Clôture 2.53 : G30 sans SKIP, resolver headers depuis .nmf text (Agent BC3)
+
+Durcissement du resolver CAPTURE File + Script :
+- 8 headers (`#ID #FF #DN #UNITID #PROJECT #START #UT #TS`) lus depuis
+  le **.nmf text header** (`#TAG,,,"value"` format NFF 2.x) via le
+  nouveau `_parse_nmf_headers(source_path)` (lru_cache 64 captures, read
+  65 KB max). La ligne CSV est parsée pour supporter les champs quoted.
+- `cap_file_measurement_start` compose `<date> <time> UTC±HH:MM` depuis
+  `#START` (fields 2 et 0) + `#UT` (field 0 en minutes).
+- `cap_script_test_script_file` passe de `nmf_file.dl` (`S23_2 FREE`,
+  faux positif) à `hdr:#TS` (`7Go-DL_10_30.hsfx`, valeur exacte NFF).
+
+G30 (`scripts/guards_2026_10/G30_capture_values.py`) :
+- SKIP générique [2] remplacé par **FAIL + motif explicite** si le .nmf
+  est illisible ou n'a pas de #TS text header dans les 64 premiers KB.
+  Jamais de SKIP silencieux.
+- Nouvelle sortie 2026-10-26 23:30 UTC :
+  ```
+  === witness e56b56456e0c ===  [1] PASS  [2] PASS  [3] PASS
+  === witness 41c13c9b4ce0 ===  [1] PASS  [2] PASS  [3] PASS
+  === witness fb5f59006096 ===  [1] PASS  [2] PASS  [3] PASS
+  G30_VERDICT PASS
+  ```
+  3 witnesses × 3 checks = 9/9 PASS, zéro SKIP.
+
+Pytest full sur 0.84.1 : **224 passed, 44 skipped, 0 failed, 0 errors**
+en 22s (`BC4_API_BASE=http://localhost:8000`). Les 44 skipped sont déjà
+documentés dans `docs/HANDOFF_pytest_8_deleted.md` (REF Petite-Forêt
+non ingéré en dev).
+
+Audit divergence franco-focus-forge (lecture seule) : **PAS de
+divergence**. `main` et `github/main` pointent sur `26ed90f`. Les 3
+commits BC3 locaux ont été rebasés avec SHAs différents mais
+`patch-id --stable` identiques ; BC1 a ajouté `fix(signaling): frame
+map on real RSRP points` au-dessus. Aucune action git nécessaire.
+Backup `backup/bc3-pre-sync-20261026-2235` conservée sur `origin`.
+Rapport détaillé : `/tmp/bc3_divergence_audit.md`.
+
 ## 0.84.0 (minor) — BC4 2026-10-26 — Catalogue 2.53.0 : CAPTURE Phase 2 (data-binding /metrics/table) (Agent BC3)
 
 Phase 2 du lot CAPTURE : les 26 feuilles CONST/SERIES Device/SERIES
