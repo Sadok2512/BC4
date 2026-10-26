@@ -1,21 +1,33 @@
-"""G25 — chaque `metrics[].code` doit être consommable par ≥ 1 `leaf.selection`,
-ET aucun duplicat dans metrics[].code ni dans nodes[].node_id.
+"""G25 — contrat de cohérence catalog_release.
 
-Phase 3b préalable (BC3, 2026-10-25) — réécrit SANS `set()` : un seul
-doublon de `node_id` ou de `metrics[].code` dans la cache = FAIL. Le but
-n'est plus seulement de détecter des orphelins mais aussi de vérifier
-l'unicité d'identité des positions (contrat 2.50.5 : 5115 ids pour 5115
-feuilles).
+## Définition fermée (BC3 2026-10-26)
+
+`metrics[]` dans l'enveloppe `/metrics` = **feuilles selectable
+uniquement** (consommables par /metrics/table : `source_column` existe
+en base ET `n_in_project > 0`). Les feuilles grisées (reason "Column
+not in decoder schema" ou "No observations in project") restent dans
+`nodes[]` pour l'arbre navigable mais ne figurent PAS dans `metrics[]`.
+
+`code = source_column[@cell_type]`, identique au token
+`nodes[].selection`.
+
+Conséquences :
+- G25.1 orphans = codes de `metrics[]` sans `nodes[].selection`
+  correspondante. Avec la définition fermée, un code n'apparaît dans
+  `metrics[]` que s'il a été construit depuis une leaf selectable, et
+  cette même leaf porte `selection = code`. Donc **orphans == 0 par
+  construction**. S'il remonte, c'est que l'invariant du code
+  catalog_v4 est cassé.
+- G25.2 false_grey = feuilles grisées "Column not in decoder schema"
+  avec `source_column` pointant pourtant sur une colonne existante.
+  Signature claire du bug mapping label-CSV → colonne-réelle (corrigé
+  en 2.51.1 : `source_column` vient du YAML du décodeur).
 
 Verdict :
-  - orphans > 0        → FAIL
+  - orphans > 0        → FAIL (invariant catalog_v4 cassé)
   - dup node_ids > 0   → FAIL (chaque position doit être unique)
   - dup metric codes > 0 → FAIL (metrics[] est une table, pas un multiset)
-  - **G25.2 (BC3 2026-10-26)** : feuille grise avec reason="Column not
-    in decoder schema" alors qu'une colonne du même event/champ existe
-    dans `nmf_event_light` ou `nmf_event_light_group` = FAIL (le mapping
-    label-CSV → colonne-réelle doit venir du YAML du décodeur, pas d'une
-    convention de nom).
+  - false_grey > 0     → FAIL (bug mapping label-CSV revenu)
 """
 import json, sys
 from collections import Counter

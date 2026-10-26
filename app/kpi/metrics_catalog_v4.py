@@ -234,24 +234,35 @@ def build_catalog_v4(
     for lf in displayed_leaves:
         keep_ids |= _ancestors(nodes_by_id, lf["node_id"])
 
-    # 3) Build metrics[] — one entry per displayed leaf (metric_id unique).
+    # 3) Build metrics[] — DÉFINITION FERMÉE (BC3 2026-10-26) :
+    #    metrics[] = feuilles SELECTABLE uniquement (consommables par
+    #    /metrics/table). Les feuilles grisées (reason="Column not in
+    #    schema" ou "No observations in project") restent dans nodes[]
+    #    pour l'arbre navigable, mais ne figurent PAS dans metrics[].
+    #    code = source_column[@cell_type] (le même token que
+    #    nodes[].selection), donc G25.1 orphans = 0 par construction.
     metrics_out: list[dict] = []
     seen_codes: set[str] = set()
     for lf in displayed_leaves:
         metric_id = lf.get("metric_id") or ""
-        if not metric_id or metric_id in seen_codes:
-            continue
-        seen_codes.add(metric_id)
         col = _column_for_leaf(lf)
         has_col = bool(col) and col in avail_cols
         n = counts.get(col, 0) if has_col else 0
+        is_selectable = bool(lf.get("selectable")) and has_col and n > 0
+        if not is_selectable:
+            continue
+        cell_suffix = f"@{lf.get('cell_type')}" if lf.get("cell_type") is not None else ""
+        code = f"{col}{cell_suffix}"
+        if code in seen_codes:
+            continue
+        seen_codes.add(code)
         event = (lf.get("event") or "").lstrip("#")
         cat_label = (
             _category_label(nodes_by_id, lf.get("parent_id")) or "Undocumented"
         )
         metrics_out.append(
             dict(
-                code=metric_id,
+                code=code,
                 label=lf.get("label") or metric_id,
                 unit=lf.get("unit") or "",
                 source_table="nmf_event_light",
