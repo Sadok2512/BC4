@@ -16,7 +16,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.dict.category_mapping import identifier_path_rule, resolve_mapping
-from app.dict.decode import DENY, resolve_pdu
+from app.dict.decode import DENY, path_matches_deny, resolve_pdu, walk
 from app.schemas.signaling_message import SignalingMessage, SignalingParameter
 
 EVENT_SQL = """SELECT id,event_code,system,channel,direction,message,payload_hex
@@ -115,6 +115,55 @@ def render_text(tree: list[SignalingParameter]) -> str:
     return '\n'.join(lines)
 
 
+def sanitized_payload_tree(event: dict, mappings: list[dict], categories: dict[str, str]) -> list[SignalingParameter]:
+    """Decode safe RRC leaves when the persisted dictionary has no rows.
+
+    Some identity-bearing messages (notably LTE SetupComplete) are absent from
+    ``param_occurrence`` because their NAS container is deliberately excluded.
+    That must not hide unrelated RRC leaves.  Decode a private PDU instance,
+    reuse the dictionary walk/deny rules, then apply the independent path
+    identity rule before returning anything.  The payload and opaque byte
+    containers remain unavailable.
+    """
+    payload = event.get('payload_hex')
+    if event.get('event_code') != 'RRCSM' or not payload:
+        return []
+    try:
+        compact = ''.join(payload.split())
+        if not compact or len(compact) % 2 or not re.fullmatch(r'[0-9a-fA-F]+', compact):
+            return []
+        template = resolve_pdu(
+            event.get('system'), event.get('channel'), event.get('direction'), event.get('message') or '',
+        )
+        if template is None:
+            return []
+        pdu = deepcopy(template)
+        pdu.from_uper(bytes.fromhex(compact))
+        flattened: list[tuple[list[str], Any]] = []
+        walk(pdu.get_val(), [], flattened)
+    except Exception:
+        # Fail closed. Exception strings can contain decoded values.
+        return []
+
+    result: list[SignalingParameter] = []
+    for parts, value in flattened:
+        if not parts or path_matches_deny(parts):
+            continue
+        path = '/'.join(parts)
+        if sensitive_path(path):
+            continue
+        match = resolve_mapping(event.get('system'), path, None, mappings)
+        result.append(SignalingParameter(
+            path=path,
+            name=parts[-1],
+            value=None if value is None else str(value),
+            unit=None,
+            display_name=None,
+            category=categories.get(match['category_id']) if match else None,
+        ))
+    return result
+
+
 def decoded_message(db: Session, project_id: str, capture_id: str, seq: int) -> SignalingMessage:
     events = list(db.execute(text(EVENT_SQL), {'pid': project_id, 'cap': capture_id, 'seq': seq}).mappings())
     if not events:
@@ -142,6 +191,8 @@ def decoded_message(db: Session, project_id: str, capture_id: str, seq: int) -> 
             unit=row['unit_converted'], display_name=row['display_name'],
             category=categories.get(match['category_id']) if match else row['functional_group'],
         ))
+    if not tree and protocol in ('rrc_lte', 'rrc_nr'):
+        tree = sanitized_payload_tree(event, mappings, categories)
     payload, size, reason = safe_hex(event, rows, protocol)
     return SignalingMessage(
         project_id=project_id, capture_id=capture_id, seq=seq,

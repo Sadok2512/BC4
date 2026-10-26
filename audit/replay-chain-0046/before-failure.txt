@@ -1,0 +1,4 @@
+psycopg.errors.DatatypeMismatch: VALUES types double precision and text cannot be matched
+LINE 9: ..._rx_type::double precision), ('bf_bts_file'::text,d.bf_bts_f...
+                                                             ^
+

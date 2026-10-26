@@ -1,0 +1,13 @@
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade 0045_settings_pkeys -> 0046_seed_pkeys, Restore primary keys required by idempotent application seeds.
+INFO  [alembic.runtime.migration] Running upgrade 0046_seed_pkeys -> 0047_nmf_string_columns, Reconstructed from DB state after container rebuild erased the original file.
+INFO  [alembic.runtime.migration] Running upgrade 0047_nmf_string_columns -> 0048_catalog_release, catalog_release table — versionned catalog artefact tracking.
+INFO  [alembic.runtime.migration] Running upgrade 0048_catalog_release -> 0049_nmf_event_light_ext, nmf_event_light_ext — narrow extension table for NFF 2.50 fields not
+mapped to a dedicated column in nmf_event_light.
+INFO  [alembic.runtime.migration] Running upgrade 0049_nmf_event_light_ext -> 0050_light_2_50_cols, Add non-structural NFF 2.50 columns to nmf_event_light for the 98 simple
+corpus events (261 columns).
+[0050] added 261 columns
+INFO  [alembic.runtime.migration] Running upgrade 0050_light_2_50_cols -> 0051_param_occurrence_fk_index, Index on param_occurrence.stg_event_id — accelerate ON DELETE CASCADE.
+INFO  [alembic.runtime.migration] Running upgrade 0051_param_occurrence_fk_index -> 0052_deep_2_50_cols, Add 261 NFF 2.50 non-structural columns to nmf_event_deep (symmetric 0050).
+[0052] added 262 columns to nmf_event_deep (partitions propagées)

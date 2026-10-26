@@ -1,6 +1,7 @@
 """Restore primary keys required by idempotent application seeds."""
 
 from alembic import op
+import sqlalchemy as sa
 
 
 revision = "0046_seed_pkeys"
@@ -25,9 +26,12 @@ PRIMARY_KEYS = (
 
 def upgrade() -> None:
     for table, column in PRIMARY_KEYS:
-        op.create_primary_key(f"{table}_pkey", table, [column])
+        primary_key = sa.inspect(op.get_bind()).get_pk_constraint(table)
+        if not primary_key.get("constrained_columns"):
+            op.create_primary_key(f"{table}_pkey", table, [column])
 
 
 def downgrade() -> None:
-    for table, _column in reversed(PRIMARY_KEYS):
-        op.drop_constraint(f"{table}_pkey", table, type_="primary")
+    # These constraints are also created by 0001 on a fresh database.  A
+    # downgrade must not remove baseline primary keys.
+    pass

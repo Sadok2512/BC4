@@ -46,10 +46,41 @@ NMF_CAPTURE_TEXT_COLS = (
 
 
 def upgrade() -> None:
+    bind = op.get_bind()
+    columns_to_change = []
     for col in NMF_CAPTURE_TEXT_COLS:
+        data_type = bind.exec_driver_sql(
+            """
+            SELECT data_type
+              FROM information_schema.columns
+             WHERE table_schema = current_schema()
+               AND table_name = 'nmf_capture'
+               AND column_name = %s
+            """,
+            (col,),
+        ).scalar()
+        if data_type != "text":
+            columns_to_change.append(col)
+
+    if not columns_to_change:
+        return
+
+    # nmf_metric_value selects decoder_version and filters on decode_level.
+    # PostgreSQL rejects ALTER TYPE even for a binary-compatible conversion
+    # while that dependency exists, so preserve and restore the view around
+    # the actual changes only.
+    view = bind.exec_driver_sql(
+        "SELECT pg_get_viewdef('nmf_metric_value'::regclass, true)"
+    ).scalar()
+    op.execute("DROP VIEW IF EXISTS nmf_metric_value")
+
+    for col in columns_to_change:
         op.execute(
             f"ALTER TABLE nmf_capture ALTER COLUMN {col} TYPE text USING {col}::text"
         )
+
+    if view:
+        op.execute("CREATE VIEW nmf_metric_value AS " + view)
 
 
 def downgrade() -> None:
