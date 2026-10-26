@@ -15,7 +15,7 @@ en 2.52.0, avec `reason="CAPTURE binding WIP — Phase 2 /metrics/table
 
 ### Catalogue 2.52.0
 - `app/kpi/catalog_release/catalog_2.52.0.json` COMMITÉ (sha
-  `4f862955247fc6a8f2e532d4da29b6c6847accbad3f161176eca432ec7f8da4f`,
+  `a44f9191c52568982b405748e9b4881db13c0ed3ebcb3daab38dba3cd44bb260`,
   déterministe sur 3 builds consécutifs).
 - `scripts/catalog/categories.yaml` : nouvelle section top-level
   `capture:` (5 groupes File/Script/Task/Device/Identity + 27 feuilles
@@ -57,8 +57,33 @@ en 2.52.0, avec `reason="CAPTURE binding WIP — Phase 2 /metrics/table
   plutôt que d'écraser avec « Column not in decoder schema » (qui
   serait trompeur pour une CAPTURE leaf).
 
+### Dédoublonnage node_id (G25.1 PASS)
+- `build_catalog.py` dédupe maintenant deux cas :
+  - (a) même `(name, field_no)` listé dans plusieurs sections
+    per-système en NFF 2.50 (ex. AMRS "AMR mode UL" dans GSM/UMTS/LTE/
+    NR/WLAN) → sémantiquement un seul champ, premier gardé.
+  - (b) deux noms différents qui slugify en même chaîne (ex. ADJMEAS
+    "C/A -1" et "C/A +1" → `c_a_1`) → suffixe `_f{field_no}` sur les
+    collisions à partir de la 2e occurrence.
+- `n_leaves` passe de 8690 (2.51.1 avec dups) → 7231 (2.52.0 dédupé).
+  Les leaves retirées étaient des **doublons sémantiques** (contrat
+  G25 dup_node_ids=0).
+
+### Guards + pytest (2.52.0 verdicts)
+- `GC1_catalog_sha` PASS : disk_sha=db_sha=`a44f9191…cd44bb260`.
+- `G25_catalogue` PASS : orphans=0, dup_node_ids=0, dup_metric_codes=0,
+  false_grey=0 sur 5 projets testés.
+- `G24_leaves` PASS : witness `134af70a06eb`, false_zeros=0 sur 259
+  colonnes recountées.
+- `G18b_parity` PASS : 5 projets, divergent=0, mode `v4
+  (catalog_release=2.52.0)`.
+- `pytest -q` : **224 passed, 44 skipped, 0 failed, 0 errors**
+  (`BC4_API_BASE=http://localhost:8000`). Les 44 skipped sont
+  déjà documentés dans `docs/HANDOFF_pytest_8_deleted.md` (REF
+  Petite-Forêt non ingéré en dev).
+
 ### Déterminisme et discipline
-- 3 builds consécutifs → même sha `4f862955…ec7f8da4f`. Vérifié
+- 3 builds consécutifs → même sha `a44f9191…cd44bb260`. Vérifié
   dans `bc4-api-1` conteneur avec le CSV spec 2.50 intact.
 - Rebuild attendu depuis HEAD propre, par la seule session back BC3,
   version `0.83.0` identique entre `pyproject.toml` et l'image live

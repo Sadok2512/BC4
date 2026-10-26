@@ -346,6 +346,34 @@ def main():
                 exclude_fields_total += 1
                 continue
             kept_fields.append(row)
+        # 2.52.0 — Dédoublonnage des node_ids à l'intérieur d'un event.
+        # Deux cas distincts :
+        #   (a) Même nom listé dans plusieurs sections per-système
+        #       (AMRS "AMR mode UL" dans GSM/UMTS/LTE/NR/WLAN, field_no=1
+        #       dans chaque section) → sémantiquement un seul champ.
+        #       **Dédupliquer** par (name, field_no) : premier arrive, les
+        #       suivants sont ignorés.
+        #   (b) Noms différents qui slugify en même chaîne
+        #       (ADJMEAS "C/A -1" et "C/A +1" → "c_a_1") → vraie collision
+        #       de slug. **Suffixer** avec `_f{field_no}` sur les suivants.
+        name_seen: set[tuple[str, str]] = set()
+        slug_seen_counts: dict[str, int] = {}
+        deduped_fields = []
+        for row in kept_fields:
+            key = (row["name"], row.get("field_no") or "")
+            if key in name_seen:
+                exclude_fields_total += 1
+                continue
+            name_seen.add(key)
+            slug = slugify(row["name"])
+            cnt = slug_seen_counts.get(slug, 0)
+            if cnt == 0:
+                row["_slug"] = slug
+            else:
+                row["_slug"] = f"{slug}_f{row.get('field_no') or cnt}"
+            slug_seen_counts[slug] = cnt + 1
+            deduped_fields.append(row)
+        kept_fields = deduped_fields
         if cell_scoped:
             cells_seen = sorted(cell_coverage.get(ev, set()))
             # 2.51.0 — 7 feuilles cellule canoniques (PCell, SCell 1-4, PSCell,
@@ -389,15 +417,16 @@ def main():
                     if any(suffix in name.lower() for suffix in ("extra_", "_fil")):
                         extras_selectable = False
                         extras_reason = "FF 2.62 non documenté 2.50 — nommage par contenu BC3 2026-10-25"
+                    row_slug = row.get("_slug") or slugify(row["name"])
                     leaves_cell.append({
                         "node_type": "leaf", "event": ev, "label": f"{row['name']} @ {label_short}",
-                        "metric_id": f"{ev.lower()}_{slugify(row['name'])}@{ct}",
+                        "metric_id": f"{ev.lower()}_{row_slug}@{ct}",
                         # 2.51.1 — source_column tirée du YAML du décodeur, jamais
                         # inventée depuis le label CSV. Chaîne vide si pas de
                         # mapping YAML (événement hors corpus décodé).
                         "source_column": source_column_for(ev, row["name"]),
                         "cell_type": ct, "cell_label": label_long, "parent_id": ev_nid,
-                        "node_id": f"lf_{slugify(ev)}_{slugify(row['name'])}_c{ct}",
+                        "node_id": f"lf_{slugify(ev)}_{row_slug}_c{ct}",
                         "field_no": row.get("field_no"), "type": row.get("type"),
                         "unit": row.get("unit") or None, "range": row.get("range") or None,
                         "description": row.get("description") or None,
@@ -407,12 +436,13 @@ def main():
                     })
         else:
             for row in kept_fields:
+                row_slug = row.get("_slug") or slugify(row["name"])
                 leaves_bare.append({
                     "node_type": "leaf", "event": ev, "label": row["name"],
-                    "metric_id": f"{ev.lower()}_{slugify(row['name'])}", "parent_id": ev_nid,
+                    "metric_id": f"{ev.lower()}_{row_slug}", "parent_id": ev_nid,
                     # 2.51.1 — source_column YAML, pas convention nom.
                     "source_column": source_column_for(ev, row["name"]),
-                    "node_id": f"lf_{slugify(ev)}_{slugify(row['name'])}",
+                    "node_id": f"lf_{slugify(ev)}_{row_slug}",
                     "field_no": row.get("field_no"), "type": row.get("type"),
                     "unit": row.get("unit") or None, "range": row.get("range") or None,
                     "description": row.get("description") or None,
