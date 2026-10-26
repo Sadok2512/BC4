@@ -411,7 +411,7 @@ def sample(points,limit,kind):
 @router.get('/projects/{project_id}/metrics/series', response_model=SeriesResponse)
 def series(project_id: str,capture_id: str,codes: str,cell: str|None=None,attr: str|None=None,from_seq: int|None=Query(None,ge=0),to_seq: int|None=Query(None,ge=0),max_points: int=Query(5000,ge=2,le=100000),f: dict=Depends(filters),db: Session=Depends(get_db)):
     from app.kpi.metrics_v3 import definitions,parse_selection,Dataset,DERIVED
-    if cell is not None or attr is not None or any(c in DERIVED or c.startswith('evt_') or '@' in c or '~' in c for c in codes.split(',')):
+    if cell is not None or attr is not None or any(c in DERIVED or c.startswith('evt_') or c.startswith('cap_') or '@' in c or '~' in c for c in codes.split(',')):
         project(db,project_id)
         if from_seq is not None and to_seq is not None and from_seq>to_seq:raise HTTPException(422,'from_seq_after_to_seq')
         ds=Dataset(db,project_id,capture_id,f,from_seq,to_seq)

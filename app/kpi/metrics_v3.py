@@ -116,6 +116,11 @@ def definitions():
         result[code]=dict(code=code,label=event,unit='occurrence',source_table='nmf_event_deep',source_tables=['nmf_event_deep','nmf_event_light'],source_column='event_code',tech='BOTH',kind='event',event=event,event_code=event,category='signalling_states',category_label='Events',event_group=next(k for k,v in EVENT_GROUPS.items() if event in v),cell_scoped=False,cells=[],cell_options=[],attributes=attrs,proof='documented' if s and s.get('proof')!='none' else 'none',proof_ref='NFF 2.19; YAML '+event+'; occurrence only when undocumented',decoder_version=DECODER_VERSION,n_in_project=0,available=True,reason=None,alias_of=None,agg='count')
     for code,(label,unit,category,event) in DERIVED.items():
         result[code]=dict(code=code,label=label,unit=unit,source_table='nmf_cell_second',source_tables=['nmf_cell_second'],source_column=code,tech='LTE',kind='numeric',event=event,event_code=event,category=category,category_label=CATEGORIES[category],cell_scoped=False,cells=[],cell_options=[],attributes=[],proof='content',proof_ref='nmf_cell_second; observed cells only, no configured state inferred',decoder_version=DECODER_VERSION,n_in_project=0,available=True,reason=None,alias_of=None,agg='last')
+    # 2.53.0 — CAPTURE Phase 2 : inject 27 feuilles (hors MASKED filtrées
+    # côté metrics_catalog_v4). Codes `cap_{group}_{slug}` dispatchent
+    # vers metrics_v3_capture.load_capture() dans Dataset.load().
+    from app.kpi.metrics_v3_capture import capture_definitions
+    result.update(capture_definitions())
     return result
 
 
@@ -225,6 +230,23 @@ class Dataset:
 
     def load(self,m):
         code=m['source_column'];cell=m['cell'];attr=m['attr'];event=m['event'];rows=[]
+        # 2.53.0 — CAPTURE dispatcher (prefix `cap_`). Résolveurs :
+        # CONST (nmf_file/nmf_capture) · SERIES_DEVI (stg_event_raw c{col})
+        # · SERIES_TASK (CMDREQ/CMDCOMP window) · MASKED (jamais appelé).
+        if m['base_code'].startswith('cap_'):
+            from app.kpi.metrics_v3_capture import load_capture
+            raw_rows = load_capture(self, m)
+            out=[]
+            for r in raw_rows:
+                seq=r['seq']
+                if not self.admissible(seq):continue
+                t=self.times.get(seq)
+                r.update(t_rel_s=t,second=math.floor(t) if t is not None else None)
+                ctx=self.context.get(seq,{})
+                r.update(operator=ctx.get('operator'),band=ctx.get('band'),cell=cell)
+                if r['value'] is not None and m['kind']=='categorical':r['value']=str(r['value'])
+                out.append(r)
+            return out
         if m['cell_scoped'] or m['base_code'] in DERIVED:
             sql='SELECT seq_first seq,seq_last,value,reason,second FROM nmf_cell_second WHERE project_id=:pid AND capture_id=:cap AND metric_code=:metric AND cell_index=:cell ORDER BY seq_first'
             rows=[dict(r) for r in self.query(sql,{'metric':code,'cell':-1 if cell=='all' else int(cell)})]

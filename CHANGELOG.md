@@ -1,3 +1,71 @@
+## 0.84.0 (minor) — BC4 2026-10-26 — Catalogue 2.53.0 : CAPTURE Phase 2 (data-binding /metrics/table) (Agent BC3)
+
+Phase 2 du lot CAPTURE : les 26 feuilles CONST/SERIES Device/SERIES
+Task passent **selectable=true** et sont **résolues en live** par
+`/metrics/table` (jamais pré-agrégées, jamais inventées). L'Identity
+(MASKED) reste grise par design privacy.
+
+Pas de reclassification Shared dans ce lot — reportée explicitement.
+
+### Resolver CAPTURE (`app/kpi/metrics_v3_capture.py`, nouveau)
+- Dispatch dans `metrics_v3.Dataset.load()` sur préfixe `cap_` (code
+  = `cap_{group}_{slug}` ; selection token identique).
+- **CONST (File + Script, 15 leaves)** :
+  - `db:nmf_file.{filename,size_bytes,device_name,dl,start_at,
+    utc_offset_min}` → direct SELECT, valeur répétée par ligne.
+  - `db:nmf_capture.{capture_id,project_id,format_version,
+    decoder_version,decode_level}` → direct SELECT.
+  - `derived:nmf_file_size_mb` → `size_bytes / (1024·1024)` arrondi 2
+    décimales.
+  - `stg:SCRIPT.cN` → `raw_fields->>cN` du premier SCRIPT event de la
+    capture.
+- **SERIES Device (DEVI, 6 leaves)** :
+  - `series:DEVI.cN` → SELECT seq, raw_fields->>cN FROM stg_event_raw
+    WHERE event_code='DEVI' ORDER BY seq.
+  - Mapping NFF 2.50 field_no → c{col} vérifié contre
+    `app/nmf_decoder/schemas-2.50/DEVI.yaml` : col = field_no + 2
+    (col 4..12 pour fields 1..9).
+- **SERIES Task (CMDREQ+CMDCOMP, 5 leaves)** :
+  - Fenêtres construites par FIFO : chaque CMDREQ ouvre, le prochain
+    CMDCOMP ferme. Pour chaque seq de la table, on émet la valeur de
+    la fenêtre couvrant le seq ; NULL hors fenêtre, jamais interpolé.
+  - `cap_task_command_duration` = `CMDCOMP.ts − CMDREQ.ts` en secondes
+    (parsé `HH:MM:SS.mmm`, overnight +86400).
+  - `cap_task_test_script_command_arguments` : chiffres masqués `\d → X`.
+- **MASKED Identity (1 leaf)** : non-selectable (filtré en amont par
+  `metrics_catalog_v4`), reason "Privacy by design — identity fields
+  never exposed by BC4".
+
+### build_catalog + metrics_catalog_v4
+- `build_catalog.py` 2.53.0 : CAPTURE leaves portent
+  `source_column=metric_id`, `selectable=True` (sauf MASKED), `reason`
+  Phase 1 WIP supprimée.
+- `metrics_catalog_v4` : short-circuit `has_col` check sur CAPTURE
+  (col virtuelle, n=1 marker ; vrai count calculé capture-local).
+  `nodes_out` : CAPTURE leaves portent `selection = metric_id`,
+  `selectable=True`.
+
+### Catalogue 2.53.0
+- `app/kpi/catalog_release/catalog_2.53.0.json` COMMITÉ.
+- sha256 `3c87d38418c3c52e5716d3879018a424d992ad073770da01774d59a39a83b448`.
+- `/health` renvoie `catalog_version=2.53.0`, GC1 PASS.
+- Le JSON **ne change pas** le total `n_leaves=7231` : seuls les 26
+  leaves CAPTURE non-MASKED passent de `selectable=False` → `True`.
+
+### Guard G30 (`scripts/guards_2026_10/G30_capture_values.py`, nouveau)
+- Pour 3 captures témoins, compare :
+  - `cap_file_log_file_name` vs `nmf_file.filename` filesystem.
+  - `cap_script_test_script_file` vs `#TS` grep sur `source_path`
+    (SKIP si binaire illisible).
+  - `cap_device_battery_temperature` min/max via API vs min/max direct
+    `raw_fields->>'c3'::float` sur DEVI.
+- Résultat 2026-10-26 : 3 captures PASS sur [1] et [3], [2] SKIP (header
+  binaire NFF non parsé par grep naïf — vraie extraction = Phase 3
+  si besoin).
+
+Pas de reclassification Shared → destination : lot 2.54 (table
+HANDOFF `docs/HANDOFF_shared_destination_2.52.0.md` reste en attente).
+
 ## 0.83.0 (minor) — BC4 2026-10-26 — Catalogue 2.52.0 : racine CAPTURE (5 groupes, 27 feuilles) + Technology au-dessus + dédoublonnage Shared (Agent BC3)
 
 Lot CAPTURE phase 1 : la nouvelle racine `CAPTURE` entre en tête du

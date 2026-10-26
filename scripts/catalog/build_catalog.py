@@ -270,16 +270,21 @@ def main():
             capture_groups_count += 1
             for lf in g.get("leaves", []):
                 leaf_label = lf["label"]
+                # 2.53.0 Phase 2 — CAPTURE leaves selectable (except MASKED).
+                # Selection token = `cap_{group}_{slug}` consommé par
+                # `/metrics/table` → metrics_v3.Dataset._load_capture().
+                leaf_slug = slugify(leaf_label)
+                group_slug = slugify(g["label"])
+                metric_id = f"cap_{group_slug}_{leaf_slug}"
                 if g_kind == "MASKED":
                     reason = "Privacy by design — identity fields never exposed by BC4"
+                    selectable = False
                 else:
-                    # 2.52.0 Phase 1 — CAPTURE arbre livré, data-binding
-                    # /metrics/table en Phase 2 (lot suivant). Feuilles
-                    # visibles non-selectable + raison honnête.
-                    reason = "CAPTURE binding WIP — Phase 2 /metrics/table (BC3 2.52.0)"
+                    reason = None  # 2.53.0 : binding en ligne, plus WIP
+                    selectable = True
                 nodes.append({
                     "node_type": "leaf",
-                    "node_id": f"lf_capture_{slugify(g['label'])}_{slugify(leaf_label)}",
+                    "node_id": f"lf_capture_{group_slug}_{leaf_slug}",
                     "parent_id": g_id, "label": leaf_label,
                     "kind": g_kind,
                     "source": lf.get("source"),
@@ -288,10 +293,14 @@ def main():
                     "description": lf.get("description"),
                     "tech": "CAPTURE",
                     "proof": "documented-2.50",
-                    "selectable": False,  # Phase 2 pending
+                    "selectable": selectable,
                     "displayed": True,
                     "reason": reason,
-                    "metric_id": f"capture_{slugify(g['label'])}_{slugify(leaf_label)}",
+                    "metric_id": metric_id,
+                    # 2.53.0 — source_column posé = metric_id pour que
+                    # metrics_catalog_v4 produise un `selection` correct
+                    # (fallback metric_id du v4 n'est pris que si vide).
+                    "source_column": metric_id,
                     "n": 0,
                 })
                 capture_leaves_count += 1

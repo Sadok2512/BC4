@@ -245,10 +245,21 @@ def build_catalog_v4(
     seen_codes: set[str] = set()
     for lf in displayed_leaves:
         metric_id = lf.get("metric_id") or ""
-        col = _column_for_leaf(lf)
-        has_col = bool(col) and col in avail_cols
-        n = counts.get(col, 0) if has_col else 0
-        is_selectable = bool(lf.get("selectable")) and has_col and n > 0
+        # 2.53.0 — CAPTURE leaves : short-circuit col-based check. Elles
+        # résolvent via `cap_{group}_{slug}` dans metrics_v3 (Dataset
+        # dispatch sur préfixe cap_). n=1 marker pour ne pas être filtrées
+        # (le vrai count est capture-local, calculé par le resolver).
+        is_capture = lf.get("tech") == "CAPTURE"
+        if is_capture:
+            col = metric_id or _column_for_leaf(lf)
+            has_col = bool(col)
+            n = 1 if lf.get("selectable") else 0
+            is_selectable = bool(lf.get("selectable"))
+        else:
+            col = _column_for_leaf(lf)
+            has_col = bool(col) and col in avail_cols
+            n = counts.get(col, 0) if has_col else 0
+            is_selectable = bool(lf.get("selectable")) and has_col and n > 0
         if not is_selectable:
             continue
         cell_suffix = f"@{lf.get('cell_type')}" if lf.get("cell_type") is not None else ""
@@ -310,9 +321,15 @@ def build_catalog_v4(
         siblings_counter[parent_id] = order + 1
         is_leaf = n.get("node_type") == "leaf"
         metric_id = n.get("metric_id") if is_leaf else None
+        is_capture_leaf = is_leaf and n.get("tech") == "CAPTURE"
         col = _column_for_leaf(n) if is_leaf else None
-        has_col = bool(col) and col in avail_cols
-        n_val = counts.get(col, 0) if has_col else 0
+        if is_capture_leaf:
+            col = metric_id or col
+            has_col = bool(col)
+            n_val = 1 if n.get("selectable") else 0
+        else:
+            has_col = bool(col) and col in avail_cols
+            n_val = counts.get(col, 0) if has_col else 0
         field_no = n.get("field_no")
         field_idx: int | None = None
         try:
