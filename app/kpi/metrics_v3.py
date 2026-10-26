@@ -383,6 +383,37 @@ class Dataset:
                 while utc_actual>=86400:utc_actual-=86400
                 hh=int(utc_actual//3600);mm=int((utc_actual%3600)//60);ss=utc_actual%60
                 row['time_utc']=f'{hh:02d}:{mm:02d}:{ss:06.3f}'
+        # 0.82.2 — Enrichissement Task par ligne. CMDREQ → CMDCOMP par
+        # (capture_id, seq ≤). task_name = action, task_index = cmd_index
+        # (si présent dans CMDREQ), null hors tâche. Jamais inventé.
+        import bisect as _bs
+        task_rows=list(self.db.execute(text(
+            "SELECT seq, event_code, raw_fields->>'service_action' AS action, "
+            "raw_fields->>'cmd_index' AS cmd_index FROM stg_event_raw "
+            "WHERE project_id=:pid AND capture_id=:cap "
+            "AND event_code IN ('CMDREQ','CMDCOMP') ORDER BY seq"
+        ), {'pid': self.pid, 'cap': self.cap}).mappings())
+        tasks_timeline=[]
+        open_t=None
+        for tr in task_rows:
+            if tr['event_code']=='CMDREQ':
+                if open_t is not None: tasks_timeline.append(open_t)
+                open_t={'seq_req':tr['seq'],'seq_comp':None,'action':tr['action'],
+                        'cmd_index':int(tr['cmd_index']) if tr['cmd_index'] is not None else None}
+            elif tr['event_code']=='CMDCOMP' and open_t is not None:
+                open_t['seq_comp']=tr['seq'];tasks_timeline.append(open_t);open_t=None
+        if open_t is not None: tasks_timeline.append(open_t)
+        _req_seqs=[t['seq_req'] for t in tasks_timeline]
+        def _task_at(seq_last):
+            i=_bs.bisect_right(_req_seqs, seq_last)-1
+            if i<0: return (None, None)
+            t=tasks_timeline[i]
+            end=t['seq_comp'] if t['seq_comp'] is not None else 10**12
+            if seq_last < end: return (t['action'], t['cmd_index'])
+            return (None, None)
+        for row in ordered:
+            tn, ti = _task_at(row['seq_last'])
+            row['task_name']=tn; row['task_index']=ti
         # GPS enrichment par ligne — previous-or-same seq, zero fabrication.
         gps_source=self.state['decode_level']
         no_gps_reason='no_gps_in_capture' if not gps_fixes else None

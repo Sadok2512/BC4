@@ -21,6 +21,10 @@ class TableRow(BaseModel):
     gps_age_s:float|None=None
     reason:str|None=None
     values:dict[str,Scalar];counts:dict[str,int]
+    # 0.82.2 — colonne Task : CMDREQ → CMDCOMP par (capture_id, seq ≤).
+    # task_name = action (StartHTTPTransfer, Wait, StartScript, …), task_index
+    # = cmd_index si présent dans CMDREQ, null hors tâche. Jamais inventé.
+    task_name:str|None=None;task_index:int|None=None
 class Distribution(BaseModel):
     value:float|str;n:int
 class Histogram(BaseModel):
