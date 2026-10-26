@@ -64,3 +64,53 @@ def sha256_file(path: os.PathLike | str) -> str:
         for chunk in iter(lambda: f.read(1 << 16), b""):
             h.update(chunk)
     return h.hexdigest()
+
+
+def catalog_file_path(version: str) -> Path:
+    return CATALOG_DIR / f"catalog_{version}.json"
+
+
+def gc1_check(db: Session) -> dict:
+    """GC1 — vérifie au démarrage que le fichier JSON du catalog
+    `is_current` existe sur disque ET que son sha256 égale la valeur
+    enregistrée dans `catalog_release.sha256`. Jamais de régénération
+    silencieuse : un mismatch fait passer `/health` en mode degraded
+    avec reason explicite.
+
+    Retourne un dict `{status, catalog_version, disk_sha, db_sha, reason}`
+    où `status ∈ {"ok", "no_current", "missing", "sha_mismatch"}`.
+    """
+    current = current_catalog(db)
+    if current is None:
+        return {
+            "status": "no_current",
+            "catalog_version": None,
+            "disk_sha": None,
+            "db_sha": None,
+            "reason": "catalog_release table has no is_current row",
+        }
+    path = catalog_file_path(current.version)
+    if not path.exists():
+        return {
+            "status": "missing",
+            "catalog_version": current.version,
+            "disk_sha": None,
+            "db_sha": current.sha256,
+            "reason": f"catalog artefact missing on disk: {path}",
+        }
+    disk_sha = sha256_file(path)
+    if disk_sha != current.sha256:
+        return {
+            "status": "sha_mismatch",
+            "catalog_version": current.version,
+            "disk_sha": disk_sha,
+            "db_sha": current.sha256,
+            "reason": "disk sha256 differs from catalog_release.sha256",
+        }
+    return {
+        "status": "ok",
+        "catalog_version": current.version,
+        "disk_sha": disk_sha,
+        "db_sha": current.sha256,
+        "reason": None,
+    }

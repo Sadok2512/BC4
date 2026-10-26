@@ -219,13 +219,13 @@ def main():
     enums = parse_enums(Path(args.txt))
     print(f"[build] enums={ {k: len(v) for k, v in enums.items()} }")
 
-    # (D) corpus coverage
-    db = SessionLocal()
-    try:
-        cell_coverage = corpus_cell_types(db)
-    finally:
-        db.close()
-    print(f"[build] events_with_cell_type_in_corpus={len(cell_coverage)}")
+    # (D) corpus coverage — 2.51.1+ : SUPPRIMÉ du build pour garantir
+    # un sha reproductible. Les cell_types "observés" sont évalués
+    # RUNTIME dans `app/kpi/metrics_catalog_v4.py` (nmf_event_light_group).
+    # Toutes les 7 feuilles canoniques (@cell_type) sont marquées
+    # `displayed=True` dans le JSON ; le filtre selectable/grisé est
+    # produit par metrics_catalog_v4 à l'enveloppe /metrics.
+    cell_coverage: dict[str, set[int]] = {}
 
     # (E) hiérarchie
     nodes = []
@@ -368,13 +368,16 @@ def main():
     print(f"[build] n_metrics_bare={n_metrics} leaves_cell={len(leaves_cell)} n_leaves_total={n_leaves}")
     print(f"[build] n_leaves_displayed={n_displayed}  <-- contrat G18b")
 
+    # 2.51.1+ — Build déterministe : AUCUN champ non-reproductible dans
+    # le JSON (pas de `generated_at`, pas de chemin absolu `source_*`,
+    # pas de données DB). Deux builds consécutifs sur les mêmes entrées
+    # (CSV spec + categories.yaml + schemas() YAML) → sha identique.
+    # Les métadonnées variables (timestamp, chemin source) vivent dans
+    # un fichier annexe `<out>.meta.json` HORS fichier versionné.
     payload = {
         "catalog_version": args.version,
         "spec_version": spec_v,
         "decoder_min_version": args.decoder_min,
-        "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
-        "source_csv": args.csv,
-        "source_txt": args.txt,
         "n_tech": len(tech_nodes),
         "n_categories": len(cat_nodes),
         "n_events_kept": len(event_nodes),
@@ -390,7 +393,18 @@ def main():
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(payload, sort_keys=True, indent=2, ensure_ascii=False))
     sha = hashlib.sha256(out_path.read_bytes()).hexdigest()
+    # Métadonnées non-reproductibles → fichier annexe .meta.json (sidecar).
+    # Non versionné dans l'image, utile pour debug uniquement.
+    meta_path = out_path.with_suffix(out_path.suffix + ".meta.json")
+    meta_path.write_text(json.dumps({
+        "catalog_version": args.version,
+        "sha256": sha,
+        "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "source_csv": args.csv,
+        "source_txt": args.txt,
+    }, sort_keys=True, indent=2))
     print(f"[build] out={out_path} sha256={sha}")
+    print(f"[build] meta={meta_path} (sidecar, non versionné)")
 
     if args.commit:
         db = SessionLocal()

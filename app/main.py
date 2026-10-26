@@ -29,7 +29,7 @@ from app.routes import (
 logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(name)s:%(message)s")
 logging.getLogger("app").setLevel(logging.INFO)
 
-app = FastAPI(title="bc4-back", version="0.82.3")
+app = FastAPI(title="bc4-back", version="0.82.4")
 
 # CORS (B2 / P1-1) : origines PILOTÉES par `BC4_CORS_ORIGINS` (jamais en
 # dur), méthodes/en-têtes explicites pour les uploads multipart
@@ -49,11 +49,28 @@ app.add_middleware(
 
 
 @app.get("/health")
-def health() -> dict[str, str]:
+def health() -> dict:
     with engine.connect() as conn:
         conn.execute(text("SELECT 1"))
     from app.nmf_decoder import DECODER_VERSION
-    return {"status": "ok", "env": settings.env, "version": "0.82.3", "decoder_version": DECODER_VERSION}
+    # 2.52.0 — GC1 au démarrage : fichier catalog_<v>.json présent ET
+    # sha256 disque == catalog_release.sha256 en DB. Un mismatch dégrade
+    # /health avec reason explicite. Jamais de régénération silencieuse.
+    from app.db import SessionLocal
+    from app.kpi.catalog_release.registry import gc1_check
+    db = SessionLocal()
+    try:
+        gc1 = gc1_check(db)
+    finally:
+        db.close()
+    status = "ok" if gc1["status"] == "ok" else "degraded"
+    return {
+        "status": status,
+        "env": settings.env,
+        "version": "0.82.4",
+        "decoder_version": DECODER_VERSION,
+        "catalog": gc1,
+    }
 
 
 # 0.74.3 (C) — Warm /kpi/catalog cache au démarrage. Au lieu de laisser le

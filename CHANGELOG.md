@@ -1,3 +1,35 @@
+## 0.82.4 (patch) — BC4 2026-10-26 — Catalog versioning déterministe + GC1 /health (Agent BC3)
+
+Après les variations observées de sha (8dc4bcf8 → 5a3a75dd → b1bed98b)
+entre builds consécutifs sur le même décodeur, le catalog release est
+rendu DÉTERMINISTE et VERSIONNÉ.
+
+### Build déterministe
+- `scripts/catalog/build_catalog.py` : AUCUN champ non reproductible
+  dans le JSON. Supprimés : `generated_at`, `source_csv`, `source_txt`
+  (→ fichier sidecar `.meta.json` hors JSON versionné) et la lecture DB
+  `corpus_cell_types(db)` (toutes les 7 feuilles canoniques @cell_type
+  sont `displayed=True`, le filtre selectable/grisé est produit RUNTIME
+  par `metrics_catalog_v4` depuis `nmf_event_light_group.cell_type`).
+- Même entrée → même sha. Prouvé par 2 builds consécutifs identiques
+  `baaddbbc00e96075e844891350631a81e0b37eec7ec842497f1f78408b3060ec`.
+
+### JSON catalog versionné
+- `app/kpi/catalog_release/catalog_2.51.1.json` COMMITÉ dans bc4-back.
+  `COPY . /app` du Dockerfile l'embarque dans l'image. Jamais régénéré
+  au runtime.
+- `catalog_release.sha256` DB = sha du fichier commité.
+
+### GC1 au démarrage via /health
+- `app/kpi/catalog_release/registry.py:gc1_check()` : vérifie fichier
+  existe + sha256 disque == `catalog_release.sha256` en DB. Status ∈
+  {ok, no_current, missing, sha_mismatch} + reason explicite.
+- `/health` renvoie `{status: "ok"|"degraded", catalog: {...}}`. Un
+  mismatch dégrade /health AVEC reason. Jamais de régénération silencieuse.
+
+Inventaire des autres artefacts générés : voir
+`docs/HANDOFF_catalog_versioning.md`.
+
 ## 0.82.3 (patch) — BC4 2026-10-26 — SetupComplete nettoyé + replay Alembic (Agent BC1)
 
 - `GET /projects/{id}/signaling/message` décode à la demande les feuilles
