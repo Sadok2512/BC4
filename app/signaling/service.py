@@ -120,6 +120,53 @@ def _build_population(db,pid,cap, persist=True):
         cell=previous(cells,r['seq'])
         r['ecgi']=str(cell['ecgi']) if cell and cell['ecgi'] is not None else None
     procedures=reconstruct(pid,cap,rows)
+    # 0.87.1 BC3 — Source unique nmf_event_pair pour les types qui y figurent
+    # (attach, bearer, call, data_session, ho, rrc_connection). Les paires de
+    # cette table sont déjà construites avec la discipline capture-local +
+    # ordre (capture_id, seq) + outcome strict. Elles REMPLACENT la sortie de
+    # `reconstruct` qui s'appariait à tort (ex. attach GAA→GAD au lieu de
+    # GAA→GAC) ou coupait sur chaque nouveau PBA. Les types absents de
+    # `nmf_event_pair` (rrc_setup, reestablishment) restent produits par
+    # `reconstruct`. Témoin 01bfc2fc5350 : attach seq_start=2 passe de
+    # duration_ms=801107 (bug) à 0 (pair GAA→GAC same ts).
+    _PAIR_TYPES = {'attach','bearer','call','data_session','ho','rrc_connection'}
+    pair_rows = query(db,
+        """SELECT type, seq_start, seq_end, duration_nemo_ms, outcome, cause,
+                  context_id
+           FROM nmf_event_pair
+           WHERE project_id=:pid AND capture_id=:cap AND type = ANY(:types)
+           ORDER BY type, seq_start""",
+        dict(pid=pid, cap=cap, types=sorted(_PAIR_TYPES)))
+    # Index reconstruct pour hériter technology + boundary_seqs quand match.
+    _reco_idx = {(p['type'], p['seq_start']): p for p in procedures}
+    # Mapping outcome nmf_event_pair → UI procedure outcome.
+    def _norm_outcome(oc):
+        if oc in ('completed','ok'): return 'ok'
+        return oc or 'incomplete'
+    pair_procs = []
+    for pr in pair_rows:
+        kind = pr['type']
+        reco = _reco_idx.get((kind, pr['seq_start']))
+        tech = (reco or {}).get('technology') or 'LTE'
+        boundary = [pr['seq_start']] + ([pr['seq_end']] if pr['seq_end'] is not None else [])
+        # Preserve intermediate boundary_seqs du reconstruct quand disponible
+        # (ex. pour le highlighting du setup middle event). Fallback sinon.
+        if reco and reco.get('boundary_seqs'):
+            seen = set(boundary)
+            for s in reco['boundary_seqs']:
+                if s not in seen:
+                    boundary.append(s); seen.add(s)
+        pair_procs.append(dict(
+            id=sha256(f"pair:{pid}:{cap}:{kind}:{pr['seq_start']}".encode()).hexdigest()[:24],
+            project_id=pid, capture_id=cap, type=kind, technology=tech,
+            seq_start=pr['seq_start'], seq_end=pr['seq_end'],
+            duration_ms=(float(pr['duration_nemo_ms']) if pr['duration_nemo_ms'] is not None else None),
+            outcome=_norm_outcome(pr['outcome']), cause=pr['cause'],
+            boundary_seqs=sorted(boundary),
+        ))
+    # Remplacement : garde reconstruct pour les types hors _PAIR_TYPES uniquement.
+    procedures = [p for p in procedures if p['type'] not in _PAIR_TYPES] + pair_procs
+    procedures.sort(key=lambda p: (p['seq_start'], p['type']))
     if procedures and persist:
         db.execute(text('''INSERT INTO signaling_procedure(id,project_id,capture_id,type,technology,seq_start,seq_end,duration_ms,outcome,cause,boundary_seqs)
           VALUES(:id,:project_id,:capture_id,:type,:technology,:seq_start,:seq_end,:duration_ms,:outcome,:cause,:boundary_seqs)

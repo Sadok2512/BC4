@@ -1,3 +1,37 @@
+## 0.87.1 (patch) — BC4 2026-10-27 — /signaling/procedures lit nmf_event_pair (source unique) + G32 (Agent BC3)
+
+E2 Codex67 : badge « attach · 801107 ms » à t=0.000. Cause tracée au
+`app/signaling/procedures.py:15` : `RULES['attach']=(('GAA',),('GAC',),
+('GAD',))` → machine 3 étapes qui fermait attach "ok" sur GAD (detach)
+au lieu de GAC (attach complete). Témoin `01bfc2fc5350` : seq_start=2
+(GAA ts=11:00:07.483), seq_end attendu=3 (GAC same ts, duration 0ms),
+seq_end obtenu=37876 (GAD ts=11:13:28.590, duration=801107ms = ts delta).
+`nmf_event_pair` avait déjà la bonne paire (seq_start=2 seq_end=3
+duration=0ms) via la pipeline capture-local.
+
+Fix (`app/signaling/service.py::_build_population`) : après `reconstruct`,
+remplacement des procedures de types ∈ {attach, bearer, call, data_session,
+ho, rrc_connection} par les rows de `nmf_event_pair` qui les contient
+déjà, bien pairées. Les types absents de `nmf_event_pair` (`rrc_setup`,
+`reestablishment`) restent produits par `reconstruct` (inchangé).
+
+Technology et boundary_seqs sont hérités de la procedure reconstruct
+quand la clé (type, seq_start) matche, sinon fallback `LTE` /
+`[seq_start, seq_end]`. id de procedure = sha256 préfixé `pair:` pour
+distinguer les procedures sourcées pair vs reconstruct.
+
+### Garde G32 (nouveau, `scripts/guards_2026_10/G32_procedures_vs_event_pair.py`)
+Pour chaque capture témoin, compare `/signaling/procedures` (via
+`service.population`) à `nmf_event_pair`. PASS si pour chaque (type,
+seq_start) : seq_end identique + duration_ms équivalent (±1 ms tolérance
+arrondis) + outcome équivalent. FAIL si orphans_pair, orphans_proc ou
+differ > 0 sur les types _PAIR_TYPES.
+
+### Branche
+Développé sur `fix/e2-procedures-align-nmf-event-pair` (depuis
+`c3e6cb3`). AUCUN rebuild/déploiement sans GO user. Garde G32 à exécuter
+manuellement avant merge main.
+
 ## 0.87.0 (minor) — BC4 2026-10-27 — cell_ref upload accepte géo + radio + site (Agent BC3)
 
 Fix d'un bug invisible : `POST /settings/cell-ref/upload` ne persistait
