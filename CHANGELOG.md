@@ -1,3 +1,23 @@
+## 0.89.4 (patch) — BC4 2026-10-27 — Gate démo seed derrière BC4_SEED_DEMO (Agent BC3)
+
+Décision Codex67 : « zéro projet, zéro donnée inventée, un seul compte ».
+
+`app/seed/run.py::seed()` gate 3 blocs derrière `settings.seed_demo` :
+
+1. `users` (table dépréciée, 85 lignes fixtures démo) — skip par défaut.
+2. `projects` (6 démo idf-t3-2026/lille-indoor-2026/lyon-drive-2026/
+   marseille-5g-2026/national-2026/rennes-lte-2026) — skip par défaut.
+3. `measurement_points` + `rrc_observations` (générés par
+   `_generate_points`/`_generate_observations`) — skip par défaut.
+
+Restent toujours posés (classe b) : settings_* singletons, dict_messages,
+dict_params, conversion_rule, assistant_exec_steps, geo_references,
+kpi_catalog*, kpi_rrc_summary. Admin seedé via BC4_ADMIN_EMAIL/PASSWORD
+inchangé.
+
+Nouveau champ `app/config.py:settings.seed_demo` (alias `BC4_SEED_DEMO`,
+défaut False). `BC4_SEED_DEMO=1` dans `.env` pour une installation démo.
+
 ## 0.89.3 (patch) — BC4 2026-10-27 — G24 --pid obligatoire, FAIL exit≠0 (Agent BC3)
 
 Retrait du défaut hardcodé `WITNESS_PID="134af70a06eb"` dans
