@@ -1,3 +1,10 @@
+## 0.86.0 (minor) — BC4 2026-10-27 — File summary traçable (Agent BC1)
+
+- Ajoute `GET /projects/{id}/files/summary`, paginé sur le listing Projects, avec les tâches, débits applicatifs et radio LTE/NR, MOS, échecs RACH/appel/session et latence.
+- Chaque cellule expose `value`, `n`, `max`, l’événement source, la raison d’indisponibilité et un `query_id`; tous les calculs restent dans la capture et dans une fenêtre `CMDREQ` → `CMDCOMP` terminal, ordonnée par `(capture_id, seq)`.
+- Les scanners n’exposent que `Task = Scanner`; l’absence de `RTT` et `CAF` reste `null` avec une raison explicite. Aucun zéro ni split NR n’est reconstruit.
+- Ajoute l’audit reproductible et la garde G31 comparant l’API aux lignes des fichiers NMF persistés.
+
 ## 0.85.0 (minor) — BC4 2026-10-27 — Proven RSRP-to-serving-cell map links (Agent BC1)
 
 - `/projects/{id}/metrics/table?include_map=true` enrichit chaque point cartographique avec la dernière cellule servante LTE `CHI #6` précédente dans la même capture et en ordre `(capture_id, seq)`.
