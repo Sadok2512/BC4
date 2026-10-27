@@ -52,3 +52,17 @@ def test_missing_failure_source_is_unavailable_not_zero():
     assert cells["call_setup_fail"]["reason"] == "no CAF in file"
     assert cells["voice_drop"]["value"] == 1
     assert cells["voice_drop"]["n"] == 1
+
+
+def test_duplicate_persisted_rows_are_counted_once_by_capture_and_seq():
+    events = [
+        row(1, "CMDREQ", {"service_action": "VoiceCallStart"}),
+        row(1, "CMDREQ", {"service_action": "VoiceCallStart"}),
+        row(2, "CAA"), row(2, "CAA"),
+        row(3, "CAD"), row(3, "CAD"),
+        row(4, "CMDCOMP"), row(4, "CMDCOMP"),
+    ]
+    cells = summarize_file({"id": "f", "filename": "voice.nmf"}, events, {"CAA", "CAD"})["cells"]
+    assert cells["task"]["n"] == 1
+    assert cells["voice_drop"]["value"] == 1
+    assert cells["voice_drop"]["n"] == 1

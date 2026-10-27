@@ -104,7 +104,14 @@ def summarize_file(
     all_windows: dict[str, list[Window]] = {}
     task_labels: set[str] = set()
     for capture_id, rows in captures.items():
-        canonical_rows = [row for row in rows if row.get("seq") is not None]
+        # stg_event_raw can contain the same decoded source row more than once.
+        # The file contract is canonical on (capture_id, seq), so never count a
+        # duplicated persisted row twice.
+        by_seq: dict[int, dict[str, Any]] = {}
+        for row in rows:
+            if row.get("seq") is not None:
+                by_seq.setdefault(int(row["seq"]), row)
+        canonical_rows = list(by_seq.values())
         canonical_rows.sort(key=lambda row: int(row["seq"]))
         captures[capture_id] = canonical_rows
         windows, labels = _windows(canonical_rows)

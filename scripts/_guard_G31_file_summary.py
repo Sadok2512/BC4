@@ -33,35 +33,50 @@ def rows(path: str):
 
 
 def truth(path: str):
-    active_http = terminal_http = False
-    active_voice = terminal_voice = False
+    source_rows = [fields for fields in rows(path) if fields and not fields[0].startswith("#")]
+
+    def task(fields):
+        if fields[0] != "CMDREQ" or len(fields) <= 4:
+            return None
+        action = fields[4]
+        if action.startswith("StartHTTP"):
+            return "http"
+        if action in {"VoiceCallStart", "ReceiveCallStart"}:
+            return "voice"
+        if action.startswith("StartPing"):
+            return "ping"
+        return None
+
+    starts = [(index, task(fields)) for index, fields in enumerate(source_rows) if task(fields)]
+    windows: list[tuple[int, int, str]] = []
+    for position, (start, kind) in enumerate(starts):
+        boundary = starts[position + 1][0] if position + 1 < len(starts) else len(source_rows)
+        terminals = {"DCOMP", "DAF"} if kind in {"http", "ping"} else {"CAD", "CAF"}
+        terminal = next((index for index in range(start + 1, boundary)
+                         if source_rows[index][0] in terminals), None)
+        if terminal is None:
+            continue
+        end = next((index for index in range(terminal + 1, boundary)
+                    if source_rows[index][0] == "CMDCOMP"), None)
+        if end is not None:
+            windows.append((start, end, kind))
+
     drate: list[float] = []
     counts = {code: 0 for code in ("DAA", "DAF", "CAA", "CAF", "CAD")}
-    for fields in rows(path):
-        if not fields or fields[0].startswith("#"):
+    for index, fields in enumerate(source_rows):
+        matching = [kind for start, end, kind in windows if start <= index <= end]
+        if not matching:
             continue
+        kind = matching[0]
         event = fields[0]
-        action = fields[4] if event == "CMDREQ" and len(fields) > 4 else ""
-        if action.startswith("StartHTTP"):
-            active_http, terminal_http = True, False
-        elif action in {"VoiceCallStart", "ReceiveCallStart"}:
-            active_voice, terminal_voice = True, False
-        if active_http:
+        if kind in {"http", "ping"}:
             if event == "DRATE" and len(fields) > 6 and fields[6]:
                 drate.append(float(fields[6]))
             if event in {"DAA", "DAF"}:
                 counts[event] += 1
-            if event in {"DCOMP", "DAF"}:
-                terminal_http = True
-            elif event == "CMDCOMP" and terminal_http:
-                active_http = terminal_http = False
-        if active_voice:
+        if kind == "voice":
             if event in {"CAA", "CAF", "CAD"}:
                 counts[event] += 1
-            if event in {"CAF", "CAD"}:
-                terminal_voice = True
-            elif event == "CMDCOMP" and terminal_voice:
-                active_voice = terminal_voice = False
     return {"dl_total": sum(drate) / len(drate) / 1e6 if drate else None,
             "dl_n": len(drate), **counts}
 
@@ -103,4 +118,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
