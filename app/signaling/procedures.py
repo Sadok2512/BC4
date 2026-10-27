@@ -17,6 +17,20 @@ RULES = {
     'reestablishment': (('RRCConnectionReestablishmentRequest', 'RRCReestablishmentRequest'), ('RRCConnectionReestablishment', 'RRCReestablishment'), ('RRCConnectionReestablishmentComplete', 'RRCReestablishmentComplete')),
 }
 REJECTS = {'RRCConnectionReject': 'rrc_setup', 'RRCReject': 'rrc_setup', 'RRCConnectionReestablishmentReject': 'reestablishment'}
+# 0.89.1 — Chaque type RULES a une source implicite (marqueur Nemo 3-lettres
+# vs message L3 ASN.1 CamelCase). Les types « procs_only » (rrc_setup,
+# reestablishment) sont absents de nmf_event_pair car dépendent de L3 PDUs
+# décodés deep. Exposé au front pour affichage tooltip explicite.
+SOURCE_BY_TYPE = {
+    'rrc_setup':       'l3_message',
+    'reestablishment': 'l3_message',
+    'rrc_connection':  'nmf_marker',
+    'ho':              'nmf_marker',
+    'call':            'nmf_marker',
+    'data_session':    'nmf_marker',
+    'attach':          'nmf_marker',
+    'bearer':          'nmf_marker',
+}
 
 
 def reconstruct(project_id, capture_id, rows):
@@ -39,7 +53,10 @@ def reconstruct(project_id, capture_id, rows):
                            project_id=project_id, capture_id=capture_id, type=key[0],
                            technology=key[1], seq_start=start['seq'], seq_end=end['seq'] if end else None,
                            duration_ms=duration, outcome=outcome, cause=cause,
-                           boundary_seqs=attempt['seqs']))
+                           boundary_seqs=attempt['seqs'],
+                           source=SOURCE_BY_TYPE.get(key[0], 'unknown'),
+                           source_start=start.get('message_name') or start.get('event_code'),
+                           source_end=(end.get('message_name') or end.get('event_code')) if end else None))
 
     for row in sorted(rows, key=lambda r: r['seq']):
         name = row['message_name']
