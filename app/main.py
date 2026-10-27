@@ -1,6 +1,6 @@
 import logging
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
@@ -105,38 +105,40 @@ def _startup_warm():
 
 
 app.include_router(auth.router)
-app.include_router(projects.router)
+from app.deps import get_accessible_project, require_project_write
+PROJECT_ACCESS = [Depends(get_accessible_project), Depends(require_project_write)]
+app.include_router(projects.router, dependencies=PROJECT_ACCESS)
 from app.routes import tasks, metrics, metrics_v3, capture_sheet, file_summary
-app.include_router(tasks.router)
-app.include_router(file_summary.router)
-app.include_router(metrics.router)
-app.include_router(metrics_v3.router)
-app.include_router(capture_sheet.router)
-app.include_router(project_kpi.router)
+app.include_router(tasks.router, dependencies=PROJECT_ACCESS)
+app.include_router(file_summary.router, dependencies=PROJECT_ACCESS)
+app.include_router(metrics.router, dependencies=PROJECT_ACCESS)
+app.include_router(metrics_v3.router, dependencies=PROJECT_ACCESS)
+app.include_router(capture_sheet.router, dependencies=PROJECT_ACCESS)
+app.include_router(project_kpi.router, dependencies=PROJECT_ACCESS)
 app.include_router(kpi.router)
-app.include_router(dictionary.router)
-app.include_router(dict_identity.router)
-app.include_router(project_dict_v2.router)
-app.include_router(assistant.router)
+app.include_router(dictionary.router, dependencies=PROJECT_ACCESS)
+app.include_router(dict_identity.router, dependencies=PROJECT_ACCESS)
+app.include_router(project_dict_v2.router, dependencies=PROJECT_ACCESS)
+app.include_router(assistant.router, dependencies=PROJECT_ACCESS)
 app.include_router(settings_routes.router)
 app.include_router(settings_skills.router)
 app.include_router(settings_cell_ref.router)
 app.include_router(reference.router)
-app.include_router(measurements.router)
+app.include_router(measurements.router, dependencies=PROJECT_ACCESS)
 
 from app.routes import settings_dict_templates
 app.include_router(settings_dict_templates.router)
 
 from app.routes import kpi_timeseries
-app.include_router(kpi_timeseries.router)
+app.include_router(kpi_timeseries.router, dependencies=PROJECT_ACCESS)
 
 
 
 from app.routes import nmf_decode
-app.include_router(nmf_decode.router)
+app.include_router(nmf_decode.router, dependencies=PROJECT_ACCESS)
 
 from app.routes import signaling
-app.include_router(signaling.router)
+app.include_router(signaling.router, dependencies=PROJECT_ACCESS)
 
 # 0.78.2 — Site layer map (SA1) : /sites?bbox=... lazy par bbox.
 from app.routes import sites as sites_route

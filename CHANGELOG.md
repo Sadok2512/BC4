@@ -1,8 +1,15 @@
+## Unreleased — minor — Propriété et visibilité des projets L1 (Agent BC1)
+
+- Rend `projects.owner_id` et `projects.visibility` obligatoires dès la migration 0057 sur base vide, sans reprise ni données seedées.
+- Limite chaque route projet au propriétaire ou aux projets publics en lecture, réserve les mutations au propriétaire et renvoie 404 pour toute ressource inaccessible, sans exception administrateur.
+- Ajoute `scope=my|all` au listing et crée chaque projet avec le propriétaire authentifié et une visibilité explicite.
+- Retire la création de projets de démonstration du seed serveur : les projets naissent uniquement via la route authentifiée.
+
 ## Unreleased — patch (test) — G34 isolation des projets (Agent BC1)
 
 - Complète le garde manuel G34 sur PostgreSQL éphémère avec création du projet par API, upload d’un vrai NMF du corpus, import et décodage par les workers applicatifs, puis deux passes utilisateur B (`admin` et `lecteur`) sans ressource fabriquée par SQL.
 - Répare le replay sur base vide : 0052 crée aussi `nmf_event_light.dci_dci_count`, auparavant présent seulement par DDL live, afin que le vrai import G34 ne casse plus au `COPY`.
-- Ajoute le brouillon Alembic 0057, volontairement bloqué avant tout DDL tant que l’email administrateur Codex67 et l’affectation des six projets archivés ne sont pas confirmés.
+- Ajoute la base du garde Alembic 0057, remplacée dans L1 par le contrat simplifié pour base vide.
 
 ## 0.88.1 (patch) — BC4 2026-10-27 — G24 pre-filter virtual_cols + exit≠0 sur FAIL (Agent BC3)
 

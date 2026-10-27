@@ -53,6 +53,10 @@ class Project(Base):
     __tablename__ = "projects"
 
     id: Mapped[str] = mapped_column(String, primary_key=True)
+    owner_id: Mapped[str] = mapped_column(
+        ForeignKey("app_user.id", ondelete="RESTRICT"), nullable=False, index=True
+    )
+    visibility: Mapped[str] = mapped_column(String, nullable=False, index=True)
     name: Mapped[str] = mapped_column(String, nullable=False)
     geography: Mapped[str] = mapped_column(String, nullable=False)
     center_lng: Mapped[float] = mapped_column(Float, nullable=False)

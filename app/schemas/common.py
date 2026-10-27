@@ -19,6 +19,8 @@ ProjectIngestStatus = Literal["ready", "incomplete", "processing", "empty", "fai
 
 class Project(BaseModel):
     id: str
+    owner_id: str
+    visibility: Literal["private", "public"]
     name: str
     geography: str
     center: tuple[float, float]

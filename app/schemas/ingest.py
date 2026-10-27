@@ -14,11 +14,13 @@ from pydantic import BaseModel, Field
 
 
 ProjectIngestStatus = Literal["draft", "importing", "ready", "error"]
+ProjectVisibility = Literal["private", "public"]
 NmfFileStatus = Literal["pending", "decoding", "done", "error"]
 
 
 class ProjectCreate(BaseModel):
     name: str = Field(min_length=1, max_length=200)
+    visibility: ProjectVisibility
 
 
 class PerimeterView(BaseModel):
@@ -47,6 +49,8 @@ class ProjectIngestView(BaseModel):
     résumé sont nulles tant qu'aucun NMF n'a été ingéré."""
 
     id: str
+    owner_id: str
+    visibility: ProjectVisibility
     name: str
     created_at: str | None
     actor: str | None

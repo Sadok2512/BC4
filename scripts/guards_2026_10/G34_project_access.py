@@ -116,7 +116,7 @@ def prepare_real_fixture(client: TestClient, token_a: str) -> None:
     created = client.post(
         "/projects",
         headers={"Authorization": f"Bearer {token_a}"},
-        json={"name": "TEST-G34 project owned by A"},
+        json={"name": "TEST-G34 project owned by A", "visibility": "private"},
     )
     if created.status_code != 201:
         fail(f"POST /projects returned {created.status_code}: {created.text[:300]}")
@@ -256,7 +256,7 @@ def body_for(method: str, path: str) -> tuple[dict[str, Any] | None, dict[str, A
     if method != "POST":
         return None, None
     if path == "/projects":
-        return {"name": "TEST-G34 project created by B"}, None
+        return {"name": "TEST-G34 project created by B", "visibility": "private"}, None
     if path.endswith("/assistant"):
         return {"message": "TEST-G34"}, None
     if path.endswith("/decode"):
@@ -353,12 +353,20 @@ def main() -> int:
             for method, route in operations:
                 if method == "POST" and route == "/projects":
                     b = call(client, token_b, method, route)
-                    rows.append(Row(role, method, route, 0, b.status_code, "N/A_NOT_A_RESOURCE"))
+                    expected = 403 if role == "lecteur" else 201
+                    verdict = (
+                        "PASS_BLOCKED" if role == "lecteur" and b.status_code == expected
+                        else "PASS_OWN_CREATE" if role == "admin" and b.status_code == expected
+                        else "FAIL_EXPOSED"
+                    )
+                    rows.append(Row(role, method, route, expected, b.status_code, verdict))
                     continue
                 if method == "DELETE":
                     if role == "lecteur":
                         b = call(client, token_b, method, route)
-                        rows.append(Row(role, method, route, 204, b.status_code, "PASS_BLOCKED" if b.status_code == 403 else "FAIL_EXPOSED"))
+                        rows.append(Row(role, method, route, 204, b.status_code,
+                                        "PASS_BLOCKED" if b.status_code in {403, 404}
+                                        else "FAIL_EXPOSED"))
                     else:
                         # B deletes A's actual project last: this is the pre-L1 exposure.
                         b = call(client, token_b, method, route)

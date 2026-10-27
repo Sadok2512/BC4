@@ -60,6 +60,8 @@ def _project_schema(p: Project) -> ProjectSchema:
     status = _ingest_status(n_files, p.n_points, p.status_ingest)
     return ProjectSchema(
         id=p.id,
+        owner_id=p.owner_id,
+        visibility=p.visibility,
         name=p.name,
         geography=p.geography,
         center=(p.center_lng, p.center_lat),

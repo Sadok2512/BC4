@@ -48,8 +48,19 @@ router = APIRouter(
 
 
 @router.get("", response_model=list[ProjectSchema])
-def list_projects(db: Session = Depends(get_db)) -> list[ProjectSchema]:
-    return [project_to_schema(p) for p in db.query(Project).order_by(Project.imported_at.desc()).all()]
+def list_projects(
+    scope: str = Query(default="my", pattern="^(my|all)$"),
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[ProjectSchema]:
+    query = db.query(Project)
+    if scope == "my":
+        query = query.filter(Project.owner_id == current_user.id)
+    else:
+        query = query.filter(
+            (Project.owner_id == current_user.id) | (Project.visibility == "public")
+        )
+    return [project_to_schema(p) for p in query.order_by(Project.imported_at.desc()).all()]
 
 
 def _ingest_view(p: Project) -> ProjectIngestView:
@@ -62,6 +73,8 @@ def _ingest_view(p: Project) -> ProjectIngestView:
     perimeter = p.perimeter if isinstance(p.perimeter, dict) else None
     return ProjectIngestView(
         id=p.id,
+        owner_id=p.owner_id,
+        visibility=p.visibility,
         name=p.name,
         created_at=created,
         actor=p.actor,
@@ -79,6 +92,7 @@ def _ingest_view(p: Project) -> ProjectIngestView:
 def create_project(
     body: ProjectCreate,
     actor: Actor = Depends(get_actor),
+    current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> ProjectIngestView:
     """Crée un projet draft (= lot NMF vide, prêt à recevoir des uploads)."""
@@ -91,6 +105,8 @@ def create_project(
     # arrivent.
     p = Project(
         id=pid,
+        owner_id=current_user.id,
+        visibility=body.visibility,
         name=body.name,
         geography="",
         center_lng=ORIGIN_LNG,
