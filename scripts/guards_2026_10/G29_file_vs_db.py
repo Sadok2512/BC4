@@ -29,6 +29,7 @@ META_COLS = {
 def main():
     db = SessionLocal()
     global_fails: list[tuple] = []
+    examined_captures = 0
     try:
         light_cols = [c for c in inspect(db.get_bind()).get_columns("nmf_event_light")
                       if c["name"] not in META_COLS]

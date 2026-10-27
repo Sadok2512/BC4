@@ -1,3 +1,16 @@
+## 0.89.6 (patch) — BC4 2026-10-27 — Fix G29 UnboundLocalError (Agent BC3)
+
+Dans 0.89.5, `examined_captures` était incrémenté dans la boucle mais pas
+initialisé avant → `UnboundLocalError` sur le check no_witness final.
+Fix : initialisation `examined_captures = 0` au début de `main()`.
+
+Preuve :
+
+  $ python scripts/guards_2026_10/G29_file_vs_db.py; echo $?
+  G29_VERDICT FAIL no_witness examined=0 (aucune des 3 captures témoin trouvée
+    dans nmf_capture — ingérer les captures ou passer --capture)
+  1
+
 ## 0.89.5 (patch) — BC4 2026-10-27 — Garde sans témoin = FAIL exit 1 (Agent BC3)
 
 Règle Codex67 : « garde qui saute en silence = garde nul, SKIP interdit,
