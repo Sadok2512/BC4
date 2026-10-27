@@ -1,4 +1,4 @@
-## Unreleased — patch — Import NMF Light schema repair (Agent BC1)
+## 0.90.1 (patch) — 2026-10-27 — Import NMF Light schema repair (Agent BC1)
 
 - Repair databases missing `nmf_event_light.dci_dci_count`, and add a
   guarded recovery command for imports rejected by that exact schema error.
