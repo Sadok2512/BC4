@@ -13,6 +13,28 @@
   birth-time 2026-10-27 13:54:58.122536. Non restauré : Codex67 ré-uploadera
   son CSV. Protection posée en 0.88.2 (`tests/conftest.py` refuse DSN prod).
 
+## 0.88.4 (patch) — BC4 2026-10-27 — G18b/G28/G29 verdict + exit≠0 + G28 exclusion explicite (Agent BC3)
+
+- `scripts/guards_2026_10/G18b_parity.py` : `sys.exit(1)` sur FAIL. Scope
+  déjà sur TOUS projets (`SELECT project_id FROM metrics_catalog_cache`).
+- `scripts/guards_2026_10/G28_ranges.py` : accumulation globale
+  `total_fails`, VERDICT PASS/FAIL, `sys.exit(1)` sur FAIL, et liste des
+  10 premiers points hors plage en `(project_id, capture_id, seq, value,
+  [lo, hi])`. Après feedback Codex67, retrait du filtre générique
+  `EXCLUDE_SUFFIXES` → `EXCLUDE_METRICS` explicite de 5 colonnes avec la
+  ligne YAML qui prouve l'unité non-physique :
+  - `cqi_req_rate` → CQI.yaml:38 unit=bit/s range=[0,null]
+  - `cqi_requested_rank_pct` → CQI.yaml:137 unit=% range=[0,100]
+  - `cqi_sample_duration` → CQI.yaml:24 unit=ms range=[0,null]
+  - `txpc_pucch_tpc_count` → TXPC.yaml:116 unit=count range=[0,null]
+  - `txpc_pusch_tpc_count` → TXPC.yaml:80 unit=count range=[0,null]
+  `CAPTURES` passe de `list[str]` à `list[tuple(project_id, capture_id)]`
+  — remplace `WHERE capture_id=:cap LIMIT 1` par le couple canonique.
+- `scripts/guards_2026_10/G29_file_vs_db.py` : accumulation `global_fails`,
+  VERDICT FAIL si event_code présent dans fichier (stg_event_raw > 0) mais
+  totalement absent du décodage light (light_sum == 0 ET light_doc_nn == 0).
+  `sys.exit(1)` sur FAIL.
+
 ## 0.88.3 (patch) — BC4 2026-10-27 — G24b anti-fuite identité colonnes cap_* (Agent BC3)
 
 Nouveau garde `scripts/guards_2026_10/G24b_identity_leak.py`. Détecte les
