@@ -86,6 +86,8 @@ def main():
         verdict = "PASS" if divergent == 0 else "FAIL"
         print(f"G18b_VERDICT {verdict} projects={len(pids)} divergent={divergent}  "
               f"mode={mode}")
+        if verdict == "FAIL":
+            sys.exit(1)
     finally:
         db.close()
 
