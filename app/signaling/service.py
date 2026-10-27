@@ -13,7 +13,7 @@ from fastapi import HTTPException
 from app.routes.metrics import clock
 from app.routes.tasks import project
 from app.dict.decode import DENY, resolve_pdu
-from .procedures import reconstruct
+from .procedures import reconstruct, RULES
 
 PROTOCOLS = ('RRC LTE', 'RRC NR', 'NAS', 'Événements Nemo', 'MAC-RACH')
 # 0.67.0 — layer slugs added alongside the human protocol labels (dual field).
@@ -163,6 +163,12 @@ def _build_population(db,pid,cap, persist=True):
             duration_ms=(float(pr['duration_nemo_ms']) if pr['duration_nemo_ms'] is not None else None),
             outcome=_norm_outcome(pr['outcome']), cause=pr['cause'],
             boundary_seqs=sorted(boundary),
+            # 0.89.1 — Procs sourced depuis nmf_event_pair = marqueurs Nemo
+            # (RRA/HOA/CAA/DAA/GAA/PBA → stage0 des RULES). source_start/_end
+            # exposent le code Nemo du marker d'ouverture/fermeture.
+            source='nmf_marker',
+            source_start=RULES[kind][0][0] if kind in RULES else None,
+            source_end=(RULES[kind][-1][0] if (kind in RULES and pr['seq_end'] is not None) else None),
         ))
     # Remplacement : garde reconstruct pour les types hors _PAIR_TYPES uniquement.
     procedures = [p for p in procedures if p['type'] not in _PAIR_TYPES] + pair_procs
