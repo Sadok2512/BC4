@@ -1,3 +1,25 @@
+## 0.88.1 (patch) — BC4 2026-10-27 — G24 pre-filter virtual_cols + exit≠0 sur FAIL (Agent BC3)
+
+Fix FAIL silencieux G24 signalé par Codex67. Depuis commit `0046792`
+(0.84.0 CAPTURE Phase 2, 2026-10-26) le catalog contient 27 leaves
+`cap_*` dont `source_column` = code virtuel (ex. `cap_identity_
+subscriber_identity`), **pas colonne physique de `nmf_event_light`**.
+
+G24 construisait `SELECT COUNT(*) FILTER (WHERE "<col>" IS NOT NULL)
+FROM nmf_event_light` sur TOUTES les source_columns → PostgreSQL
+UndefinedColumn → exception sans ligne `G24_VERDICT`. Récaps `docker
+exec … | tail` masquaient l'exit code (pipe `$?` = tail=0).
+
+Deux corrections :
+1. **Pré-filtrage par introspection schema** `information_schema.columns`
+   → `virtual_cols` ignorés avec log explicite.
+2. **`sys.exit(1)` sur FAIL** à la fin.
+
+Rerun 0.88.1 : `virtual_cols ignored: 1 — ['cap_identity_subscriber_
+identity']` · `cols_recounted=259 false_zeros=0` · G24_VERDICT PASS.
+
+G32 déjà exit≠0 depuis 0.87.2 — pattern consigné pour futurs gardes.
+
 ## 0.88.0 (minor) — BC4 2026-10-27 — rf.events RRC_STATE/UE_STATE light-fallback + G33 (Agent BC3)
 
 E3 Codex67 : RRC State « Unknown » + UE State vide sur frise Signaling,

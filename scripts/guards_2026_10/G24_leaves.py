@@ -87,6 +87,25 @@ def main():
             if not col.replace("_", "").isalnum(): continue  # safe-guard identifier
             col_to_rows[col].append((lbl, nid))
 
+        # 0.88.1 — Pré-filtrage par introspection schema. Les source_column
+        # qui ne correspondent PAS à une colonne de nmf_event_light sont
+        # ignorés (colonnes virtuelles ex. `cap_*` du resolver CAPTURE
+        # Phase 2 : routées via metrics_v3_capture, pas via colonne SQL).
+        # Avant 0.88.1 : UndefinedColumn PostgreSQL crashait le batch SELECT
+        # → G24 exception sans ligne VERDICT → `docker exec … | tail` masquait
+        # l'exit code → récap "G24 PASS implicite" muet depuis 0.84.0 CAPTURE
+        # Phase 2 (commit 0046792, 2026-10-26).
+        physical_cols = {r[0] for r in db.execute(text(
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_name='nmf_event_light'"
+        )).all()}
+        virtual_cols = sorted(c for c in col_to_rows if c not in physical_cols)
+        for c in virtual_cols:
+            col_to_rows.pop(c, None)
+        if virtual_cols:
+            print(f"[G24 recount] virtual_cols ignored (not in nmf_event_light schema): "
+                  f"{len(virtual_cols)} — e.g. {virtual_cols[:3]}")
+
         # Batched COUNT par colonne
         cols = sorted(col_to_rows.keys())
         counts: dict[str, int] = {}
@@ -113,6 +132,9 @@ def main():
         verdict = "PASS" if not false_zeros else "FAIL"
         print(f"G24_VERDICT {verdict} witness_pid={pid} "
               f"candidates_recounted={len(cols)} false_zeros={len(false_zeros)}")
+        # 0.88.1 — exit non-zero sur FAIL (ou sur exception non-attrapée).
+        if verdict == "FAIL":
+            sys.exit(1)
     finally:
         db.close()
 
