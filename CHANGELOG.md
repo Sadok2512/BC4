@@ -1,3 +1,9 @@
+## Unreleased (patch — tests) — Schema parity guard G35 (Agent BC1)
+
+- Compare le schéma live à un replay Alembic vide via des dumps conservés et
+  les catalogues PostgreSQL (tables, colonnes, types, contraintes et index),
+  en listant séparément les partitions dynamiques et en échouant sur tout écart.
+
 ## Incidents (ajout 2026-10-27 22:30 UTC) — Base de données & API exposées en 0.0.0.0
 
 Jusqu'au 2026-10-27 22:30, trois surfaces d'attaque étaient ouvertes vers
