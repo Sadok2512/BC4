@@ -37,7 +37,7 @@ def _test2_id() -> str:
             text("SELECT id FROM projects WHERE name = 'TEST2'")
         ).scalar()
     if not pid:
-        pytest.skip("projet TEST2 absent — garde G22 skippée")
+        pytest.fail("projet TEST2 absent — garde G22 skippée")
     return pid
 
 
@@ -48,7 +48,7 @@ def _ensure_populated(pid: str) -> None:
             {"p": pid},
         ).scalar()
     if not n or n == 0:
-        pytest.skip(
+        pytest.fail(
             "param_occurrence vide pour TEST2 — "
             "lance scripts/populate_dict_for_all_projects.py d'abord"
         )
@@ -195,7 +195,7 @@ def test_tree_param_still_full_path_non_regression(client):
         if target_param:
             break
     if not target_param:
-        pytest.skip("aucune collision à re-sonder — scénario improbable")
+        pytest.fail("aucune collision à re-sonder — scénario improbable")
     # Pas de filtre `path` sur /dict/params : on sonde system+message et
     # on vérifie que ParamRow.path == target_param existe bien.
     r2 = client.get(

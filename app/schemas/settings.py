@@ -41,8 +41,12 @@ class UserCreate(BaseModel):
     login: str
     display_name: str
     role: Role
-    password: str
-    password_confirm: str
+    password: str | None = None
+    password_confirm: str | None = None
+
+
+class UserCreated(User):
+    initial_password: str | None = None
 
 
 class UserPatch(BaseModel):

@@ -179,6 +179,23 @@ def _generate_observations(project: dict, params: list[dict]) -> list[dict]:
 
 
 def seed() -> None:
+    # Ownership is mandatory from 0057 onward. Seed the configured admin first
+    # so optional demo projects can reference a real owner. With demo enabled,
+    # missing admin credentials are a hard error instead of creating ownerless
+    # projects or silently skipping the ownership contract.
+    _seed_admin_from_env()
+    demo_owner_id: str | None = None
+    if settings.seed_demo:
+        admin_email = (settings.admin_email or "").strip().lower()
+        if not admin_email:
+            raise RuntimeError("BC4_SEED_DEMO=1 requires BC4_ADMIN_EMAIL and BC4_ADMIN_PASSWORD")
+        with SessionLocal() as owner_db:
+            demo_owner_id = owner_db.execute(
+                select(AppUser.id).where(AppUser.email == admin_email)
+            ).scalar_one_or_none()
+        if demo_owner_id is None:
+            raise RuntimeError("BC4_SEED_DEMO=1 requires a successfully seeded admin owner")
+
     with SessionLocal() as db:
         # ----- Settings singletons -----
         for Row, defaults in (
@@ -269,6 +286,8 @@ def seed() -> None:
             for p in PROJECTS:
                 row = {
                     "id": p["id"],
+                    "owner_id": demo_owner_id,
+                    "visibility": "public",
                     "name": p["name"],
                     "geography": p["geography"],
                     "center_lng": p["center"][0],
@@ -334,7 +353,6 @@ def seed() -> None:
                     db.execute(RrcObservation.__table__.insert(), obs)
             db.commit()
 
-    _seed_admin_from_env()
     _seed_demo_from_env()
 
     print("[seed] done.")
@@ -402,4 +420,3 @@ def _seed_demo_from_env() -> None:
 
 if __name__ == "__main__":
     seed()
-

@@ -66,7 +66,11 @@ def test_authenticated_post_from_front_origin(client_noauth, admin_token):
     """POST authentifié depuis l'origine front = pas de blocage CORS."""
     r = client_noauth.post(
         "/projects",
-        json={"name": f"g9-{uuid.uuid4().hex[:6]}"},
+        json={
+            "name": f"g9-{uuid.uuid4().hex[:6]}", "visibility": "private",
+            "parse_decode_level": "light", "parse_binning_mode": "temporal",
+            "parse_temporal_resolution": "native", "parse_spatial_bin_m": None,
+        },
         headers={
             "Authorization": f"Bearer {admin_token}",
             "Origin": FRONT_ORIGIN,
@@ -83,11 +87,7 @@ def test_demo_seed_from_env_idempotent():
     email = os.environ.get("BC4_DEMO_EMAIL")
     pw = os.environ.get("BC4_DEMO_PASSWORD")
     if not email or not pw:
-        pytest.skip("BC4_DEMO_EMAIL/BC4_DEMO_PASSWORD manquants — skip seed démo")
-
-    with SessionLocal() as db:
-        db.execute(text("DELETE FROM app_user WHERE email = :e"), {"e": email.lower()})
-        db.commit()
+        pytest.fail("BC4_DEMO_EMAIL/BC4_DEMO_PASSWORD manquants — skip seed démo")
 
     _seed_demo_from_env()
     with SessionLocal() as db:

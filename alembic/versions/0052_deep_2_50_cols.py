@@ -32,10 +32,12 @@ def _load_cols():
 def upgrade() -> None:
     cols = _load_cols()
     assert cols, "missing_cols_2.50_simple.json not found — cannot add columns"
-    # Ad-hoc gap de la 7e passe : dci_dci_count ajouté manuellement sur
-    # light mais pas en 0050. Pareil ici : on l'inclut si absent du JSON.
+    # Ad-hoc gap de la 7e passe : dci_dci_count avait été ajouté manuellement
+    # sur la base live, mais jamais par 0050. A replayed empty database must
+    # receive it on Light as well as Deep or a real import fails at COPY.
     extra = [("dci_dci_count", "DOUBLE PRECISION")]
     all_cols = cols + [e for e in extra if e[0] not in {c[0] for c in cols}]
+    op.execute('ALTER TABLE nmf_event_light ADD COLUMN IF NOT EXISTS "dci_dci_count" DOUBLE PRECISION')
     for col, pg_type in all_cols:
         op.execute(f'ALTER TABLE nmf_event_deep ADD COLUMN IF NOT EXISTS "{col}" {pg_type}')
     print(f"[0052] added {len(all_cols)} columns to nmf_event_deep (partitions propagées)")
@@ -45,5 +47,6 @@ def downgrade() -> None:
     cols = _load_cols()
     extra = [("dci_dci_count", "DOUBLE PRECISION")]
     all_cols = cols + [e for e in extra if e[0] not in {c[0] for c in cols}]
+    op.execute('ALTER TABLE nmf_event_light DROP COLUMN IF EXISTS "dci_dci_count"')
     for col, _ in reversed(all_cols):
         op.execute(f'ALTER TABLE nmf_event_deep DROP COLUMN IF EXISTS "{col}"')

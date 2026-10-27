@@ -43,7 +43,7 @@ def admin_tok(client_noauth) -> str:
     e = os.environ.get("BC4_ADMIN_EMAIL")
     p = os.environ.get("BC4_ADMIN_PASSWORD")
     if not e or not p:
-        pytest.skip("BC4_ADMIN_EMAIL/BC4_ADMIN_PASSWORD manquants")
+        pytest.fail("BC4_ADMIN_EMAIL/BC4_ADMIN_PASSWORD manquants")
     return _login(client_noauth, e, p)
 
 
@@ -53,9 +53,9 @@ def ingenieur_tok(client_noauth) -> str:
     p = os.environ.get("BC4_DEMO_PASSWORD")
     r = os.environ.get("BC4_DEMO_ROLE", "ingenieur")
     if not e or not p:
-        pytest.skip("BC4_DEMO_EMAIL/BC4_DEMO_PASSWORD manquants")
+        pytest.fail("BC4_DEMO_EMAIL/BC4_DEMO_PASSWORD manquants")
     if r != "ingenieur":
-        pytest.skip(f"BC4_DEMO_ROLE={r} — attendu ingenieur")
+        pytest.fail(f"BC4_DEMO_ROLE={r} — attendu ingenieur")
     return _login(client_noauth, e, p)
 
 
@@ -97,7 +97,7 @@ def test_put_llm_sets_key_without_leaking(client_noauth, admin_tok):
     PAS la clé en clair ; seul `api_key_set=true` indique sa présence."""
     secret = os.environ.get("BC4_LLM_SECRET_KEY")
     if not secret:
-        pytest.skip("BC4_LLM_SECRET_KEY manquant — PUT clé ne peut pas chiffrer")
+        pytest.fail("BC4_LLM_SECRET_KEY manquant — PUT clé ne peut pas chiffrer")
 
     r = client_noauth.put(
         "/settings/llm",
@@ -139,7 +139,7 @@ def test_put_llm_clear_key(client_noauth, admin_tok):
     """`api_key: ""` vide le cipher (api_key_set repasse à false)."""
     secret = os.environ.get("BC4_LLM_SECRET_KEY")
     if not secret:
-        pytest.skip("BC4_LLM_SECRET_KEY manquant")
+        pytest.fail("BC4_LLM_SECRET_KEY manquant")
 
     # Re-pose puis vide.
     client_noauth.put(
@@ -163,7 +163,7 @@ def test_put_llm_rejects_key_without_secret(client_noauth, admin_tok, monkeypatc
     son env ici. On skip proprement si le process a bien un secret."""
     secret = os.environ.get("BC4_LLM_SECRET_KEY")
     if secret:
-        pytest.skip(
+        pytest.fail(
             "BC4_LLM_SECRET_KEY présent côté API — ce test exige l'absence"
         )
     r = client_noauth.put(

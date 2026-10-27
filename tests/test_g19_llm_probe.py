@@ -39,7 +39,7 @@ def admin_tok(client_noauth) -> str:
     e = os.environ.get("BC4_ADMIN_EMAIL")
     p = os.environ.get("BC4_ADMIN_PASSWORD")
     if not e or not p:
-        pytest.skip("BC4_ADMIN_EMAIL/BC4_ADMIN_PASSWORD manquants")
+        pytest.fail("BC4_ADMIN_EMAIL/BC4_ADMIN_PASSWORD manquants")
     r = client_noauth.post("/auth/login", json={"email": e, "password": p})
     assert r.status_code == 200, r.text
     return r.json()["token"]
@@ -50,7 +50,7 @@ def ingenieur_tok(client_noauth) -> str:
     e = os.environ.get("BC4_DEMO_EMAIL")
     p = os.environ.get("BC4_DEMO_PASSWORD")
     if not e or not p:
-        pytest.skip("BC4_DEMO_EMAIL/BC4_DEMO_PASSWORD manquants")
+        pytest.fail("BC4_DEMO_EMAIL/BC4_DEMO_PASSWORD manquants")
     r = client_noauth.post("/auth/login", json={"email": e, "password": p})
     assert r.status_code == 200
     return r.json()["token"]
@@ -87,7 +87,7 @@ def test_probe_unreachable_returns_200_no_leak(client_noauth, admin_tok):
     pas de fuite de clé."""
     secret = os.environ.get("BC4_LLM_SECRET_KEY")
     if not secret:
-        pytest.skip("BC4_LLM_SECRET_KEY manquant")
+        pytest.fail("BC4_LLM_SECRET_KEY manquant")
 
     _put_llm(
         client_noauth,

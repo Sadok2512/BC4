@@ -1,0 +1,13 @@
+        id         |         name         | actual_nmf_files
+-------------------+----------------------+------------------
+ 134af70a06eb      | TEST2                |               16
+ 4b7bfd50ddb6      | Test_3               |               58
+ ea93767bd734      | Test_outdoor         |               10
+ fa9301f2f3fe      | One_Log              |                2
+ idf-t3-2026       | Paris 2026 Q1        |                0
+ lille-indoor-2026 | Tests Indoor         |                0
+ lyon-drive-2026   | Lyon Métropole       |                0
+ marseille-5g-2026 | Marseille 5G         |                0
+ national-2026     | Benchmark National   |                0
+ rennes-lte-2026   | Rennes LTE (sans NR) |                0
+(10 rows)

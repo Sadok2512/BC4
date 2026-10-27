@@ -31,7 +31,7 @@ def admin_tok(client_noauth) -> str:
     email = os.environ.get("BC4_ADMIN_EMAIL")
     pw = os.environ.get("BC4_ADMIN_PASSWORD")
     if not email or not pw:
-        pytest.skip("BC4_ADMIN_EMAIL/BC4_ADMIN_PASSWORD manquants")
+        pytest.fail("BC4_ADMIN_EMAIL/BC4_ADMIN_PASSWORD manquants")
     return _login(client_noauth, email, pw)
 
 
@@ -41,9 +41,9 @@ def ingenieur_tok(client_noauth) -> str:
     pw = os.environ.get("BC4_DEMO_PASSWORD")
     role = os.environ.get("BC4_DEMO_ROLE", "ingenieur")
     if not email or not pw:
-        pytest.skip("BC4_DEMO_EMAIL/BC4_DEMO_PASSWORD manquants (seed démo ingenieur attendu)")
+        pytest.fail("BC4_DEMO_EMAIL/BC4_DEMO_PASSWORD manquants (seed démo ingenieur attendu)")
     if role != "ingenieur":
-        pytest.skip(f"BC4_DEMO_ROLE={role} — ce test attend ingenieur")
+        pytest.fail(f"BC4_DEMO_ROLE={role} — ce test attend ingenieur")
     return _login(client_noauth, email, pw)
 
 
@@ -70,7 +70,11 @@ def lecteur_tok(client_noauth, admin_tok) -> str:
 
 
 def test_admin_can_post_protected(client_noauth, admin_tok):
-    r = client_noauth.post("/projects", headers=_hdr(admin_tok), json={"name": f"g10-admin-{uuid.uuid4().hex[:6]}"})
+    r = client_noauth.post("/projects", headers=_hdr(admin_tok), json={
+        "name": f"g10-admin-{uuid.uuid4().hex[:6]}", "visibility": "private",
+        "parse_decode_level": "light", "parse_binning_mode": "temporal",
+        "parse_temporal_resolution": "native", "parse_spatial_bin_m": None,
+    })
     assert r.status_code in {200, 201}, r.text
 
 
@@ -78,7 +82,9 @@ def test_ingenieur_can_post_protected(client_noauth, ingenieur_tok):
     r = client_noauth.post(
         "/projects",
         headers=_hdr(ingenieur_tok),
-        json={"name": f"g10-ing-{uuid.uuid4().hex[:6]}"},
+        json={"name": f"g10-ing-{uuid.uuid4().hex[:6]}", "visibility": "private",
+              "parse_decode_level": "light", "parse_binning_mode": "temporal",
+              "parse_temporal_resolution": "native", "parse_spatial_bin_m": None},
     )
     assert r.status_code in {200, 201}, r.text
 
@@ -87,7 +93,9 @@ def test_lecteur_cannot_post_protected(client_noauth, lecteur_tok):
     r = client_noauth.post(
         "/projects",
         headers=_hdr(lecteur_tok),
-        json={"name": f"g10-lecteur-{uuid.uuid4().hex[:6]}"},
+        json={"name": f"g10-lecteur-{uuid.uuid4().hex[:6]}", "visibility": "private",
+              "parse_decode_level": "light", "parse_binning_mode": "temporal",
+              "parse_temporal_resolution": "native", "parse_spatial_bin_m": None},
     )
     assert r.status_code == 403, r.text
     assert r.json()["detail"]["code"] == "FORBIDDEN"
@@ -135,12 +143,24 @@ def test_create_user_valid_password_201(client_noauth, admin_tok):
     body = r.json()
     assert body["role"] == "editor"
     assert body["active"] is True
-    # Aucun mot de passe (en clair ou hashé) ne doit apparaître dans la réponse.
-    import json
-
-    assert "password" not in json.dumps(body).lower()
+    # Un mot de passe fourni par l'admin n'est jamais reflété.
+    assert body["initial_password"] is None
+    assert "password_hash" not in body
 
     # Le nouveau compte doit pouvoir se loger (preuve que app_user est bien créé).
+    tok = _login(client_noauth, f"{login}@bc4.local", password)
+    assert isinstance(tok, str) and len(tok) > 20
+
+
+def test_create_user_generated_password_works_once(client_noauth, admin_tok):
+    login = f"generated-{uuid.uuid4().hex[:8]}"
+    r = client_noauth.post(
+        "/settings/users", headers=_hdr(admin_tok),
+        json={"login": login, "display_name": "Compte généré", "role": "viewer"},
+    )
+    assert r.status_code == 201, r.text
+    password = r.json()["initial_password"]
+    assert isinstance(password, str) and password
     tok = _login(client_noauth, f"{login}@bc4.local", password)
     assert isinstance(tok, str) and len(tok) > 20
 

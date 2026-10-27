@@ -19,6 +19,12 @@ ProjectIngestStatus = Literal["ready", "incomplete", "processing", "empty", "fai
 
 class Project(BaseModel):
     id: str
+    owner_id: str
+    visibility: Literal["private", "public"]
+    parse_decode_level: Literal["light", "deep"]
+    parse_binning_mode: Literal["temporal", "spatial"]
+    parse_temporal_resolution: Literal["native", "1ms", "10ms", "100ms", "1s"] | None
+    parse_spatial_bin_m: Literal[10, 25, 50, 100] | None
     name: str
     geography: str
     center: tuple[float, float]

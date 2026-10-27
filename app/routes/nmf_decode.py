@@ -21,6 +21,11 @@ class DecodeJob(BaseModel):
     level:Literal['light','deep']
     capture_ids:list[str]
     decoder_version:str
+    decode_level:Literal['light','deep']
+    binning_mode:Literal['temporal','spatial']
+    temporal_resolution:Literal['native','1ms','10ms','100ms','1s']|None
+    spatial_bin_m:Literal[10,25,50,100]|None
+    aggregation_contract_version:str
     status:str
     done:int
     total:int
@@ -90,10 +95,15 @@ def enqueue(project_id:str,level:Literal['light','deep']='deep',capture_id:str|N
     if not caps:raise HTTPException(409,'project_has_no_capture')
     existing=db.execute(text("SELECT * FROM nmf_decode_job WHERE project_id=:pid AND status IN ('queued','running')"),{'pid':project_id}).mappings().first()
     if existing:
-        if existing['level']==level and existing['capture_ids']==caps:return existing
+        if existing['decode_level']==level and existing['capture_ids']==caps:return existing
         raise HTTPException(409,'decode_job_already_active')
-    row=db.execute(text('''INSERT INTO nmf_decode_job(id,project_id,level,capture_ids,decoder_version,status,total)
-        VALUES(:id,:pid,:level,:caps,:version,'queued',:total) RETURNING *'''),dict(id=str(uuid.uuid4()),pid=project_id,level=level,caps=caps,version=DECODER_VERSION,total=len(caps))).mappings().one()
+    parsing=db.execute(text('''SELECT parse_binning_mode,parse_temporal_resolution,parse_spatial_bin_m
+        FROM projects WHERE id=:pid'''),{'pid':project_id}).mappings().one()
+    row=db.execute(text('''INSERT INTO nmf_decode_job(id,project_id,level,decode_level,capture_ids,decoder_version,status,total,
+        binning_mode,temporal_resolution,spatial_bin_m,aggregation_contract_version)
+        VALUES(:id,:pid,:level,:decode_level,:caps,:version,'queued',:total,:binning_mode,:temporal_resolution,:spatial_bin_m,'query-binning-v1') RETURNING *'''),
+        dict(id=str(uuid.uuid4()),pid=project_id,level=level,decode_level=level,caps=caps,version=DECODER_VERSION,total=len(caps),
+             binning_mode=parsing['parse_binning_mode'],temporal_resolution=parsing['parse_temporal_resolution'],spatial_bin_m=parsing['parse_spatial_bin_m'])).mappings().one()
     result=dict(row);db.commit();return result
 
 @router.get('/projects/{project_id}/decode/status',response_model=DecodeStatus)

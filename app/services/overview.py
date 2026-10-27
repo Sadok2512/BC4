@@ -60,6 +60,12 @@ def _project_schema(p: Project) -> ProjectSchema:
     status = _ingest_status(n_files, p.n_points, p.status_ingest)
     return ProjectSchema(
         id=p.id,
+        owner_id=p.owner_id,
+        visibility=p.visibility,
+        parse_decode_level=p.parse_decode_level,
+        parse_binning_mode=p.parse_binning_mode,
+        parse_temporal_resolution=p.parse_temporal_resolution,
+        parse_spatial_bin_m=p.parse_spatial_bin_m,
         name=p.name,
         geography=p.geography,
         center=(p.center_lng, p.center_lat),

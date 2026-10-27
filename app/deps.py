@@ -10,14 +10,14 @@
 
 from __future__ import annotations
 
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.db import get_db
-from app.models import AppUser
+from app.models import AppUser, Project, ProjectShare
 from app.schemas.settings import Actor
 from app.services.auth import TokenError, decode_token
 
@@ -83,3 +83,58 @@ def get_actor(current: AppUser = Depends(get_current_user)) -> Actor:
 def require_role(actor: Actor, *allowed: str) -> None:
     if actor.role not in allowed:
         raise HTTPException(403, {"code": "FORBIDDEN", "message": "Permission refusée"})
+
+
+def _project_not_found() -> HTTPException:
+    return HTTPException(404, {"code": "NOT_FOUND", "message": "Projet introuvable"})
+
+
+def get_accessible_project(
+    request: Request,
+    current: AppUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Project | None:
+    """Resolve the route project and hide inaccessible private projects.
+
+    Project listing/creation have no project path parameter and are scoped by
+    their handlers.  Evidence results resolve their project through task_result.
+    There is deliberately no administrator bypass.
+    """
+    project_id = request.path_params.get("project_id")
+    if project_id is None and request.url.path.startswith("/results/"):
+        result_id = request.path_params.get("result_id")
+        project_id = db.execute(
+            text("SELECT project_id FROM task_result WHERE id=:result_id"),
+            {"result_id": result_id},
+        ).scalar_one_or_none()
+        if project_id is None:
+            raise _project_not_found()
+    if project_id is None:
+        return None
+    project = db.get(Project, project_id)
+    shared = False
+    if project is not None and project.owner_id != current.id and project.visibility != "public":
+        shared = (
+            db.query(ProjectShare)
+            .filter(ProjectShare.project_id == project.id, ProjectShare.user_id == current.id)
+            .first()
+            is not None
+        )
+    if project is None or (
+        project.owner_id != current.id and project.visibility != "public" and not shared
+    ):
+        raise _project_not_found()
+    return project
+
+
+def require_project_write(
+    request: Request,
+    project: Project | None = Depends(get_accessible_project),
+    current: AppUser = Depends(get_current_user),
+) -> Project | None:
+    """Allow project mutations to the owner only, including administrators."""
+    if request.method in {"GET", "HEAD", "OPTIONS"} or project is None:
+        return project
+    if project.owner_id != current.id:
+        raise _project_not_found()
+    return project

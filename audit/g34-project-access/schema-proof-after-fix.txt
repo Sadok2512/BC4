@@ -1,0 +1,9 @@
+  column_name  |    data_type
+---------------+------------------
+ dci_dci_count | double precision
+(1 row)
+
+      version_num
+-----------------------
+ 0056_range_violations
+(1 row)

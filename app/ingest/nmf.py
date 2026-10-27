@@ -490,7 +490,7 @@ def ingest_upload(
             # Idempotent uploads also upgrade missing Light data, without re-ingesting RRC/staging.
             from app.nmf_decoder.store import decode_capture
             caps=db.execute(text('SELECT DISTINCT capture_id FROM stg_event_raw WHERE project_id=:pid AND nmf_file_id=:fid'),{'pid':project.id,'fid':existing.id}).scalars().all()
-            for cap in caps:decode_capture(db,project.id,cap,'light')
+            for cap in caps:decode_capture(db,project.id,cap,project.parse_decode_level)
             db.commit()
             return existing
 
@@ -719,7 +719,7 @@ def ingest_upload(
 
         from app.nmf_decoder.store import decode_capture
         for cap in sorted({ev["capture_id"] for ev in result.raw_events}):
-            decode_capture(db, project.id, cap, "light")
+            decode_capture(db, project.id, cap, project.parse_decode_level)
 
         nmf.status = "done"
         nmf.n_captures = result.captures

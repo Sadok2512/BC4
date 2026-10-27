@@ -33,7 +33,7 @@ def _test2_id() -> str:
             text("SELECT id FROM projects WHERE name = 'TEST2'")
         ).scalar()
     if not pid:
-        pytest.skip("projet TEST2 absent — garde G16 skippée")
+        pytest.fail("projet TEST2 absent — garde G16 skippée")
     return pid
 
 
@@ -44,7 +44,7 @@ def _ensure_populated(pid: str) -> None:
             {"p": pid},
         ).scalar()
     if not n or n == 0:
-        pytest.skip(
+        pytest.fail(
             "param_occurrence vide pour TEST2 — "
             "lance scripts/populate_dict_for_all_projects.py d'abord"
         )
@@ -111,7 +111,7 @@ def test_value_distribution_enum_null_converted(client):
 
     enum_candidates = [p for p in params if p["path"].endswith("dl-Bandwidth")]
     if not enum_candidates:
-        pytest.skip("Aucun path dl-Bandwidth exposé sur TEST2 — enum test skippé")
+        pytest.fail("Aucun path dl-Bandwidth exposé sur TEST2 — enum test skippé")
     row = enum_candidates[0]
     assert row.get("unit_converted") is None, (
         "dl-Bandwidth est un enum — unit_converted doit être null"
@@ -192,7 +192,7 @@ def test_value_distribution_sorted_ascending_numeric(client):
         if p["path"].endswith("rsrpResult") and p["value_distribution_mode"] == "exact"
     ]
     if not rsrp_rows:
-        pytest.skip("pas de rsrpResult en mode exact — skip tri asc")
+        pytest.fail("pas de rsrpResult en mode exact — skip tri asc")
     vd = rsrp_rows[0]["value_distribution"]
     conv_floats: list[float] = []
     for v in vd:

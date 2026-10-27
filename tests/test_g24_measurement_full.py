@@ -47,7 +47,7 @@ def _db_has_project(pid: str) -> bool:
 @pytest.fixture(scope="module")
 def ref_pid() -> str:
     if not _db_has_project(REF_PID):
-        pytest.skip(f"REF_PETITE_FORET ({REF_PID}) absent — ingérer d'abord.")
+        pytest.fail(f"REF_PETITE_FORET ({REF_PID}) absent — ingérer d'abord.")
     return REF_PID
 
 
@@ -111,7 +111,7 @@ def test_c_proof_table_rsrp_rsrq_proven(ref_pid: str):
     # Si param_occurrence est peuplée (RRC décodée), RSRP/RSRQ doivent
     # sortir proven. Sinon on skip pour ne pas masquer un écart réel.
     if rsrp.n_rrc == 0:
-        pytest.skip(
+        pytest.fail(
             "param_occurrence vide pour rsrpResult — le dict RRC n'a pas tourné. "
             "La preuve ne peut pas se faire tant que populate_param_occurrence "
             "n'a pas été exécuté sur REF_PETITE_FORET."
@@ -193,7 +193,7 @@ def test_d_cross_check_rsrp_per_band(ref_pid: str):
                     f"band={r.band} delta={delta:+.2f}dB (> ±2 dB)"
                 )
     if comparable == 0:
-        pytest.skip(
+        pytest.fail(
             "Aucune bande comparable (soit mp.rsrp NULL partout, soit "
             "param_occurrence vide côté RRC)."
         )

@@ -1,0 +1,924 @@
+/usr/local/lib/python3.12/site-packages/pytest_asyncio/plugin.py:208: PytestDeprecationWarning: The configuration option "asyncio_default_fixture_loop_scope" is unset.
+The event loop scope for asynchronous fixtures will default to the fixture caching scope. Future versions of pytest-asyncio will default the loop scope for asynchronous fixtures to function scope. Set the default fixture loop scope explicitly in order to avoid unexpected behavior in the future. Valid fixture loop scopes are: "function", "class", "module", "package", "session"
+
+  warnings.warn(PytestDeprecationWarning(_DEFAULT_FIXTURE_LOOP_SCOPE_UNSET))
+........................................................................ [ 26%]
+.....FFFFFF...FFFFF....F.F...FFFFFFFFFFFFFEEEEEEEEEE..........EEEEEEEEEE [ 52%]
+........................................................................ [ 79%]
+............F............................................                [100%]
+==================================== ERRORS ====================================
+____________ ERROR at setup of test_a_measurement_points_non_empty _____________
+
+    @pytest.fixture(scope="module")
+    def ref_pid() -> str:
+        if not _db_has_project(REF_PID):
+>           pytest.fail(f"REF_PETITE_FORET ({REF_PID}) absent — ingérer d'abord.")
+E           Failed: REF_PETITE_FORET (7e656b8c6c19) absent — ingérer d'abord.
+
+tests/test_g24_measurement_full.py:50: Failed
+__________ ERROR at setup of test_b_breakdown_operator_service_phase ___________
+
+    @pytest.fixture(scope="module")
+    def ref_pid() -> str:
+        if not _db_has_project(REF_PID):
+>           pytest.fail(f"REF_PETITE_FORET ({REF_PID}) absent — ingérer d'abord.")
+E           Failed: REF_PETITE_FORET (7e656b8c6c19) absent — ingérer d'abord.
+
+tests/test_g24_measurement_full.py:50: Failed
+____________ ERROR at setup of test_c_proof_table_rsrp_rsrq_proven _____________
+
+    @pytest.fixture(scope="module")
+    def ref_pid() -> str:
+        if not _db_has_project(REF_PID):
+>           pytest.fail(f"REF_PETITE_FORET ({REF_PID}) absent — ingérer d'abord.")
+E           Failed: REF_PETITE_FORET (7e656b8c6c19) absent — ingérer d'abord.
+
+tests/test_g24_measurement_full.py:50: Failed
+_____________ ERROR at setup of test_c_sinr_cqi_rejected_declared ______________
+
+    @pytest.fixture(scope="module")
+    def ref_pid() -> str:
+        if not _db_has_project(REF_PID):
+>           pytest.fail(f"REF_PETITE_FORET ({REF_PID}) absent — ingérer d'abord.")
+E           Failed: REF_PETITE_FORET (7e656b8c6c19) absent — ingérer d'abord.
+
+tests/test_g24_measurement_full.py:50: Failed
+______________ ERROR at setup of test_d_cross_check_rsrp_per_band ______________
+
+    @pytest.fixture(scope="module")
+    def ref_pid() -> str:
+        if not _db_has_project(REF_PID):
+>           pytest.fail(f"REF_PETITE_FORET ({REF_PID}) absent — ingérer d'abord.")
+E           Failed: REF_PETITE_FORET (7e656b8c6c19) absent — ingérer d'abord.
+
+tests/test_g24_measurement_full.py:50: Failed
+_____________ ERROR at setup of test_e_operator_mismatch_declared ______________
+
+    @pytest.fixture(scope="module")
+    def ref_pid() -> str:
+        if not _db_has_project(REF_PID):
+>           pytest.fail(f"REF_PETITE_FORET ({REF_PID}) absent — ingérer d'abord.")
+E           Failed: REF_PETITE_FORET (7e656b8c6c19) absent — ingérer d'abord.
+
+tests/test_g24_measurement_full.py:50: Failed
+_______________ ERROR at setup of test_f_no_subscriber_identity ________________
+
+    @pytest.fixture(scope="module")
+    def ref_pid() -> str:
+        if not _db_has_project(REF_PID):
+>           pytest.fail(f"REF_PETITE_FORET ({REF_PID}) absent — ingérer d'abord.")
+E           Failed: REF_PETITE_FORET (7e656b8c6c19) absent — ingérer d'abord.
+
+tests/test_g24_measurement_full.py:50: Failed
+____________________ ERROR at setup of test_g_no_duplicates ____________________
+
+    @pytest.fixture(scope="module")
+    def ref_pid() -> str:
+        if not _db_has_project(REF_PID):
+>           pytest.fail(f"REF_PETITE_FORET ({REF_PID}) absent — ingérer d'abord.")
+E           Failed: REF_PETITE_FORET (7e656b8c6c19) absent — ingérer d'abord.
+
+tests/test_g24_measurement_full.py:50: Failed
+____________________ ERROR at setup of test_h_18_nmf_files _____________________
+
+    @pytest.fixture(scope="module")
+    def ref_pid() -> str:
+        if not _db_has_project(REF_PID):
+>           pytest.fail(f"REF_PETITE_FORET ({REF_PID}) absent — ingérer d'abord.")
+E           Failed: REF_PETITE_FORET (7e656b8c6c19) absent — ingérer d'abord.
+
+tests/test_g24_measurement_full.py:50: Failed
+________________ ERROR at setup of test_i_env_filled_on_all_nmf ________________
+
+    @pytest.fixture(scope="module")
+    def ref_pid() -> str:
+        if not _db_has_project(REF_PID):
+>           pytest.fail(f"REF_PETITE_FORET ({REF_PID}) absent — ingérer d'abord.")
+E           Failed: REF_PETITE_FORET (7e656b8c6c19) absent — ingérer d'abord.
+
+tests/test_g24_measurement_full.py:50: Failed
+________________ ERROR at setup of test_stg_event_raw_breakdown ________________
+
+client_noauth = <httpx.Client object at 0x7f9e6c2a6270>
+admin_token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG0tYjlhNjA0MzkzZTk4Iiwicm9sZSI6ImFkbWluIiwiaWF0IjoxNzkzMTMwODUxLCJleHAiOjE3OTMxMzQ0NTF9.wNYof-JoU7E4277Nc_nPJkNNeLSABu8YD0vt7Hzcsao'
+
+    @pytest.fixture(scope="module")
+    def ref_pid(client_noauth, admin_token) -> str:
+        pid = os.environ.get("BC4_REF_PID")
+        if pid:
+            return pid
+        r = client_noauth.get("/projects", headers=_hdr(admin_token))
+        assert r.status_code == 200, r.text
+        for p in r.json():
+            if p.get("name") == "REF_PETITE_FORET":
+                return p["id"]
+>       pytest.fail(
+            "Projet REF_PETITE_FORET introuvable — lancer "
+            "`scripts/ingest_ref_petite_foret.sh` avant G26."
+        )
+E       Failed: Projet REF_PETITE_FORET introuvable — lancer `scripts/ingest_ref_petite_foret.sh` avant G26.
+
+tests/test_g26_measurement_full.py:56: Failed
+_____________ ERROR at setup of test_stg_event_signalling_present ______________
+
+client_noauth = <httpx.Client object at 0x7f9e6c2a6270>
+admin_token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG0tYjlhNjA0MzkzZTk4Iiwicm9sZSI6ImFkbWluIiwiaWF0IjoxNzkzMTMwODUxLCJleHAiOjE3OTMxMzQ0NTF9.wNYof-JoU7E4277Nc_nPJkNNeLSABu8YD0vt7Hzcsao'
+
+    @pytest.fixture(scope="module")
+    def ref_pid(client_noauth, admin_token) -> str:
+        pid = os.environ.get("BC4_REF_PID")
+        if pid:
+            return pid
+        r = client_noauth.get("/projects", headers=_hdr(admin_token))
+        assert r.status_code == 200, r.text
+        for p in r.json():
+            if p.get("name") == "REF_PETITE_FORET":
+                return p["id"]
+>       pytest.fail(
+            "Projet REF_PETITE_FORET introuvable — lancer "
+            "`scripts/ingest_ref_petite_foret.sh` avant G26."
+        )
+E       Failed: Projet REF_PETITE_FORET introuvable — lancer `scripts/ingest_ref_petite_foret.sh` avant G26.
+
+tests/test_g26_measurement_full.py:56: Failed
+________________ ERROR at setup of test_nmf_file_meta_renseigne ________________
+
+client_noauth = <httpx.Client object at 0x7f9e6c2a6270>
+admin_token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG0tYjlhNjA0MzkzZTk4Iiwicm9sZSI6ImFkbWluIiwiaWF0IjoxNzkzMTMwODUxLCJleHAiOjE3OTMxMzQ0NTF9.wNYof-JoU7E4277Nc_nPJkNNeLSABu8YD0vt7Hzcsao'
+
+    @pytest.fixture(scope="module")
+    def ref_pid(client_noauth, admin_token) -> str:
+        pid = os.environ.get("BC4_REF_PID")
+        if pid:
+            return pid
+        r = client_noauth.get("/projects", headers=_hdr(admin_token))
+        assert r.status_code == 200, r.text
+        for p in r.json():
+            if p.get("name") == "REF_PETITE_FORET":
+                return p["id"]
+>       pytest.fail(
+            "Projet REF_PETITE_FORET introuvable — lancer "
+            "`scripts/ingest_ref_petite_foret.sh` avant G26."
+        )
+E       Failed: Projet REF_PETITE_FORET introuvable — lancer `scripts/ingest_ref_petite_foret.sh` avant G26.
+
+tests/test_g26_measurement_full.py:56: Failed
+_______________ ERROR at setup of test_nmf_source_files_on_disk ________________
+
+client_noauth = <httpx.Client object at 0x7f9e6c2a6270>
+admin_token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG0tYjlhNjA0MzkzZTk4Iiwicm9sZSI6ImFkbWluIiwiaWF0IjoxNzkzMTMwODUxLCJleHAiOjE3OTMxMzQ0NTF9.wNYof-JoU7E4277Nc_nPJkNNeLSABu8YD0vt7Hzcsao'
+
+    @pytest.fixture(scope="module")
+    def ref_pid(client_noauth, admin_token) -> str:
+        pid = os.environ.get("BC4_REF_PID")
+        if pid:
+            return pid
+        r = client_noauth.get("/projects", headers=_hdr(admin_token))
+        assert r.status_code == 200, r.text
+        for p in r.json():
+            if p.get("name") == "REF_PETITE_FORET":
+                return p["id"]
+>       pytest.fail(
+            "Projet REF_PETITE_FORET introuvable — lancer "
+            "`scripts/ingest_ref_petite_foret.sh` avant G26."
+        )
+E       Failed: Projet REF_PETITE_FORET introuvable — lancer `scripts/ingest_ref_petite_foret.sh` avant G26.
+
+tests/test_g26_measurement_full.py:56: Failed
+______________ ERROR at setup of test_measurement_points_enriched ______________
+
+client_noauth = <httpx.Client object at 0x7f9e6c2a6270>
+admin_token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG0tYjlhNjA0MzkzZTk4Iiwicm9sZSI6ImFkbWluIiwiaWF0IjoxNzkzMTMwODUxLCJleHAiOjE3OTMxMzQ0NTF9.wNYof-JoU7E4277Nc_nPJkNNeLSABu8YD0vt7Hzcsao'
+
+    @pytest.fixture(scope="module")
+    def ref_pid(client_noauth, admin_token) -> str:
+        pid = os.environ.get("BC4_REF_PID")
+        if pid:
+            return pid
+        r = client_noauth.get("/projects", headers=_hdr(admin_token))
+        assert r.status_code == 200, r.text
+        for p in r.json():
+            if p.get("name") == "REF_PETITE_FORET":
+                return p["id"]
+>       pytest.fail(
+            "Projet REF_PETITE_FORET introuvable — lancer "
+            "`scripts/ingest_ref_petite_foret.sh` avant G26."
+        )
+E       Failed: Projet REF_PETITE_FORET introuvable — lancer `scripts/ingest_ref_petite_foret.sh` avant G26.
+
+tests/test_g26_measurement_full.py:56: Failed
+___________ ERROR at setup of test_operator_from_dl_is_authoritative ___________
+
+client_noauth = <httpx.Client object at 0x7f9e6c2a6270>
+admin_token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG0tYjlhNjA0MzkzZTk4Iiwicm9sZSI6ImFkbWluIiwiaWF0IjoxNzkzMTMwODUxLCJleHAiOjE3OTMxMzQ0NTF9.wNYof-JoU7E4277Nc_nPJkNNeLSABu8YD0vt7Hzcsao'
+
+    @pytest.fixture(scope="module")
+    def ref_pid(client_noauth, admin_token) -> str:
+        pid = os.environ.get("BC4_REF_PID")
+        if pid:
+            return pid
+        r = client_noauth.get("/projects", headers=_hdr(admin_token))
+        assert r.status_code == 200, r.text
+        for p in r.json():
+            if p.get("name") == "REF_PETITE_FORET":
+                return p["id"]
+>       pytest.fail(
+            "Projet REF_PETITE_FORET introuvable — lancer "
+            "`scripts/ingest_ref_petite_foret.sh` avant G26."
+        )
+E       Failed: Projet REF_PETITE_FORET introuvable — lancer `scripts/ingest_ref_petite_foret.sh` avant G26.
+
+tests/test_g26_measurement_full.py:56: Failed
+______________ ERROR at setup of test_operator_mismatch_declared _______________
+
+client_noauth = <httpx.Client object at 0x7f9e6c2a6270>
+admin_token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG0tYjlhNjA0MzkzZTk4Iiwicm9sZSI6ImFkbWluIiwiaWF0IjoxNzkzMTMwODUxLCJleHAiOjE3OTMxMzQ0NTF9.wNYof-JoU7E4277Nc_nPJkNNeLSABu8YD0vt7Hzcsao'
+
+    @pytest.fixture(scope="module")
+    def ref_pid(client_noauth, admin_token) -> str:
+        pid = os.environ.get("BC4_REF_PID")
+        if pid:
+            return pid
+        r = client_noauth.get("/projects", headers=_hdr(admin_token))
+        assert r.status_code == 200, r.text
+        for p in r.json():
+            if p.get("name") == "REF_PETITE_FORET":
+                return p["id"]
+>       pytest.fail(
+            "Projet REF_PETITE_FORET introuvable — lancer "
+            "`scripts/ingest_ref_petite_foret.sh` avant G26."
+        )
+E       Failed: Projet REF_PETITE_FORET introuvable — lancer `scripts/ingest_ref_petite_foret.sh` avant G26.
+
+tests/test_g26_measurement_full.py:56: Failed
+_______________ ERROR at setup of test_rsrp_cross_check_declared _______________
+
+client_noauth = <httpx.Client object at 0x7f9e6c2a6270>
+admin_token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG0tYjlhNjA0MzkzZTk4Iiwicm9sZSI6ImFkbWluIiwiaWF0IjoxNzkzMTMwODUxLCJleHAiOjE3OTMxMzQ0NTF9.wNYof-JoU7E4277Nc_nPJkNNeLSABu8YD0vt7Hzcsao'
+
+    @pytest.fixture(scope="module")
+    def ref_pid(client_noauth, admin_token) -> str:
+        pid = os.environ.get("BC4_REF_PID")
+        if pid:
+            return pid
+        r = client_noauth.get("/projects", headers=_hdr(admin_token))
+        assert r.status_code == 200, r.text
+        for p in r.json():
+            if p.get("name") == "REF_PETITE_FORET":
+                return p["id"]
+>       pytest.fail(
+            "Projet REF_PETITE_FORET introuvable — lancer "
+            "`scripts/ingest_ref_petite_foret.sh` avant G26."
+        )
+E       Failed: Projet REF_PETITE_FORET introuvable — lancer `scripts/ingest_ref_petite_foret.sh` avant G26.
+
+tests/test_g26_measurement_full.py:56: Failed
+__________________ ERROR at setup of test_zero_identity_leak ___________________
+
+client_noauth = <httpx.Client object at 0x7f9e6c2a6270>
+admin_token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG0tYjlhNjA0MzkzZTk4Iiwicm9sZSI6ImFkbWluIiwiaWF0IjoxNzkzMTMwODUxLCJleHAiOjE3OTMxMzQ0NTF9.wNYof-JoU7E4277Nc_nPJkNNeLSABu8YD0vt7Hzcsao'
+
+    @pytest.fixture(scope="module")
+    def ref_pid(client_noauth, admin_token) -> str:
+        pid = os.environ.get("BC4_REF_PID")
+        if pid:
+            return pid
+        r = client_noauth.get("/projects", headers=_hdr(admin_token))
+        assert r.status_code == 200, r.text
+        for p in r.json():
+            if p.get("name") == "REF_PETITE_FORET":
+                return p["id"]
+>       pytest.fail(
+            "Projet REF_PETITE_FORET introuvable — lancer "
+            "`scripts/ingest_ref_petite_foret.sh` avant G26."
+        )
+E       Failed: Projet REF_PETITE_FORET introuvable — lancer `scripts/ingest_ref_petite_foret.sh` avant G26.
+
+tests/test_g26_measurement_full.py:56: Failed
+________________ ERROR at setup of test_canonical_order_unique _________________
+
+client_noauth = <httpx.Client object at 0x7f9e6c2a6270>
+admin_token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG0tYjlhNjA0MzkzZTk4Iiwicm9sZSI6ImFkbWluIiwiaWF0IjoxNzkzMTMwODUxLCJleHAiOjE3OTMxMzQ0NTF9.wNYof-JoU7E4277Nc_nPJkNNeLSABu8YD0vt7Hzcsao'
+
+    @pytest.fixture(scope="module")
+    def ref_pid(client_noauth, admin_token) -> str:
+        pid = os.environ.get("BC4_REF_PID")
+        if pid:
+            return pid
+        r = client_noauth.get("/projects", headers=_hdr(admin_token))
+        assert r.status_code == 200, r.text
+        for p in r.json():
+            if p.get("name") == "REF_PETITE_FORET":
+                return p["id"]
+>       pytest.fail(
+            "Projet REF_PETITE_FORET introuvable — lancer "
+            "`scripts/ingest_ref_petite_foret.sh` avant G26."
+        )
+E       Failed: Projet REF_PETITE_FORET introuvable — lancer `scripts/ingest_ref_petite_foret.sh` avant G26.
+
+tests/test_g26_measurement_full.py:56: Failed
+=================================== FAILURES ===================================
+__________________________ test_band_from_freq_lte_nr __________________________
+
+    def test_band_from_freq_lte_nr():
+>       import bc4_enrich
+E       ModuleNotFoundError: No module named 'bc4_enrich'
+
+tests/test_g12_enrich.py:57: ModuleNotFoundError
+_____________________ test_plmn_table_covers_fr_operators ______________________
+
+    def test_plmn_table_covers_fr_operators():
+>       import bc4_enrich
+E       ModuleNotFoundError: No module named 'bc4_enrich'
+
+tests/test_g12_enrich.py:73: ModuleNotFoundError
+_____________ test_detect_context_no_sib1_declares_empty_operators _____________
+
+    def test_detect_context_no_sib1_declares_empty_operators():
+>       import bc4_enrich
+E       ModuleNotFoundError: No module named 'bc4_enrich'
+
+tests/test_g12_enrich.py:81: ModuleNotFoundError
+____________________ test_detect_context_four_fr_operators _____________________
+
+    def test_detect_context_four_fr_operators():
+>       import bc4_enrich
+E       ModuleNotFoundError: No module named 'bc4_enrich'
+
+tests/test_g12_enrich.py:97: ModuleNotFoundError
+__________________ test_detect_context_unknown_plmn_declares ___________________
+
+    def test_detect_context_unknown_plmn_declares():
+        """Un PLMN non répertorié FR doit tomber dans `plmns_unknown`,
+        JAMAIS deviné comme un opérateur FR."""
+>       import bc4_enrich
+E       ModuleNotFoundError: No module named 'bc4_enrich'
+
+tests/test_g12_enrich.py:126: ModuleNotFoundError
+________________________ test_enrich_v11_exposes_cells _________________________
+
+    def test_enrich_v11_exposes_cells():
+>       import bc4_enrich
+E       ModuleNotFoundError: No module named 'bc4_enrich'
+
+tests/test_g13_perimeter.py:63: ModuleNotFoundError
+_________________ test_value_distribution_numeric_rsrp_result __________________
+
+client = <httpx.Client object at 0x7f9e6a0ecfb0>
+
+    def test_value_distribution_numeric_rsrp_result(client):
+        """Un paramètre numérique (rsrpResult) doit exposer value_distribution
+        non vide, somme = count, et formule 3GPP (idx - 141) respectée."""
+>       pid = _test2_id()
+
+tests/test_g16_value_distribution.py:56: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def _test2_id() -> str:
+        with SessionLocal() as db:
+            pid = db.execute(
+                text("SELECT id FROM projects WHERE name = 'TEST2'")
+            ).scalar()
+        if not pid:
+>           pytest.fail("projet TEST2 absent — garde G16 skippée")
+E           Failed: projet TEST2 absent — garde G16 skippée
+
+tests/test_g16_value_distribution.py:36: Failed
+_________________ test_value_distribution_enum_null_converted __________________
+
+client = <httpx.Client object at 0x7f9e6a0ecfb0>
+
+    def test_value_distribution_enum_null_converted(client):
+        """Un paramètre enum (ex. dl-Bandwidth) doit renvoyer
+        value_converted=null sur chaque entrée."""
+>       pid = _test2_id()
+
+tests/test_g16_value_distribution.py:106: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def _test2_id() -> str:
+        with SessionLocal() as db:
+            pid = db.execute(
+                text("SELECT id FROM projects WHERE name = 'TEST2'")
+            ).scalar()
+        if not pid:
+>           pytest.fail("projet TEST2 absent — garde G16 skippée")
+E           Failed: projet TEST2 absent — garde G16 skippée
+
+tests/test_g16_value_distribution.py:36: Failed
+______________ test_value_distribution_filter_operator_restricts _______________
+
+client = <httpx.Client object at 0x7f9e6a0ecfb0>
+
+    def test_value_distribution_filter_operator_restricts(client):
+        """Filtrer sur operator=Orange doit restreindre la distribution
+        (somme filtrée <= somme non filtrée) sans fabriquer d'opérateur."""
+>       pid = _test2_id()
+
+tests/test_g16_value_distribution.py:134: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def _test2_id() -> str:
+        with SessionLocal() as db:
+            pid = db.execute(
+                text("SELECT id FROM projects WHERE name = 'TEST2'")
+            ).scalar()
+        if not pid:
+>           pytest.fail("projet TEST2 absent — garde G16 skippée")
+E           Failed: projet TEST2 absent — garde G16 skippée
+
+tests/test_g16_value_distribution.py:36: Failed
+___________ test_value_distribution_preserves_operator_band_buckets ____________
+
+client = <httpx.Client object at 0x7f9e6a0ecfb0>
+
+    def test_value_distribution_preserves_operator_band_buckets(client):
+        """Non-régression : le champ `buckets` (op x band) reste présent."""
+>       pid = _test2_id()
+
+tests/test_g16_value_distribution.py:169: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def _test2_id() -> str:
+        with SessionLocal() as db:
+            pid = db.execute(
+                text("SELECT id FROM projects WHERE name = 'TEST2'")
+            ).scalar()
+        if not pid:
+>           pytest.fail("projet TEST2 absent — garde G16 skippée")
+E           Failed: projet TEST2 absent — garde G16 skippée
+
+tests/test_g16_value_distribution.py:36: Failed
+_______________ test_value_distribution_sorted_ascending_numeric _______________
+
+client = <httpx.Client object at 0x7f9e6a0ecfb0>
+
+    def test_value_distribution_sorted_ascending_numeric(client):
+        """La distribution numérique est triée par value_converted asc (float)."""
+>       pid = _test2_id()
+
+tests/test_g16_value_distribution.py:184: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def _test2_id() -> str:
+        with SessionLocal() as db:
+            pid = db.execute(
+                text("SELECT id FROM projects WHERE name = 'TEST2'")
+            ).scalar()
+        if not pid:
+>           pytest.fail("projet TEST2 absent — garde G16 skippée")
+E           Failed: projet TEST2 absent — garde G16 skippée
+
+tests/test_g16_value_distribution.py:36: Failed
+____________________ test_put_llm_sets_key_without_leaking _____________________
+
+client_noauth = <httpx.Client object at 0x7f9e6c2a6270>
+admin_tok = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG0tYjlhNjA0MzkzZTk4Iiwicm9sZSI6ImFkbWluIiwiaWF0IjoxNzkzMTMwODUyLCJleHAiOjE3OTMxMzQ0NTJ9.JccI6e1GaPgoRhcgAMOU7rjAjFGCPjJJwYyDmchmKfc'
+
+    def test_put_llm_sets_key_without_leaking(client_noauth, admin_tok):
+        """La PUT accepte provider/model/api_key. La réponse ne contient
+        PAS la clé en clair ; seul `api_key_set=true` indique sa présence."""
+        secret = os.environ.get("BC4_LLM_SECRET_KEY")
+        if not secret:
+            pytest.fail("BC4_LLM_SECRET_KEY manquant — PUT clé ne peut pas chiffrer")
+    
+        r = client_noauth.put(
+            "/settings/llm",
+            headers=_hdr(admin_tok),
+            json={
+                "provider": "openai",
+                "base_url": "https://api.openai.com/v1",
+                "model": "gpt-4o-mini",
+                "api_key": FAKE_KEY,
+                "enabled": True,
+            },
+        )
+>       assert r.status_code == 200, r.text
+E       AssertionError: {"detail":{"code":"LLM_CRYPTO","message":"BC4_LLM_SECRET_KEY manquant — impossible de chiffrer la clé LLM.","field":"api_key"}}
+E       assert 400 == 200
+E        +  where 400 = <Response [400 Bad Request]>.status_code
+
+tests/test_g17_llm_settings.py:113: AssertionError
+___________________ test_put_llm_rejects_key_without_secret ____________________
+
+client_noauth = <httpx.Client object at 0x7f9e6c2a6270>
+admin_tok = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG0tYjlhNjA0MzkzZTk4Iiwicm9sZSI6ImFkbWluIiwiaWF0IjoxNzkzMTMwODUyLCJleHAiOjE3OTMxMzQ0NTJ9.JccI6e1GaPgoRhcgAMOU7rjAjFGCPjJJwYyDmchmKfc'
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f9e69e7a1e0>
+
+    def test_put_llm_rejects_key_without_secret(client_noauth, admin_tok, monkeypatch):
+        """Si BC4_LLM_SECRET_KEY est absent, le PUT d'une clé doit échouer
+        (400 LLM_CRYPTO) plutôt que stocker un blob opaque en clair déguisé.
+        Ce test tourne contre le process API — on ne peut pas monkeypatcher
+        son env ici. On skip proprement si le process a bien un secret."""
+        secret = os.environ.get("BC4_LLM_SECRET_KEY")
+        if secret:
+>           pytest.fail(
+                "BC4_LLM_SECRET_KEY présent côté API — ce test exige l'absence"
+            )
+E           Failed: BC4_LLM_SECRET_KEY présent côté API — ce test exige l'absence
+
+tests/test_g17_llm_settings.py:166: Failed
+__________________ test_probe_unreachable_returns_200_no_leak __________________
+
+client_noauth = <httpx.Client object at 0x7f9e6c2a6270>
+admin_tok = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG0tYjlhNjA0MzkzZTk4Iiwicm9sZSI6ImFkbWluIiwiaWF0IjoxNzkzMTMwODUyLCJleHAiOjE3OTMxMzQ0NTJ9.JccI6e1GaPgoRhcgAMOU7rjAjFGCPjJJwYyDmchmKfc'
+
+    def test_probe_unreachable_returns_200_no_leak(client_noauth, admin_tok):
+        """Endpoint injoignable → ok:false avec latency_ms>0, pas de 5xx,
+        pas de fuite de clé."""
+        secret = os.environ.get("BC4_LLM_SECRET_KEY")
+        if not secret:
+            pytest.fail("BC4_LLM_SECRET_KEY manquant")
+    
+>       _put_llm(
+            client_noauth,
+            admin_tok,
+            {
+                "provider": "openai",
+                "base_url": "http://127.0.0.1:1/v1",
+                "model": "gpt-4o-mini",
+                "api_key": FAKE_KEY,
+                "enabled": True,
+            },
+        )
+
+tests/test_g19_llm_probe.py:92: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+client = <httpx.Client object at 0x7f9e6c2a6270>
+admin_tok = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG0tYjlhNjA0MzkzZTk4Iiwicm9sZSI6ImFkbWluIiwiaWF0IjoxNzkzMTMwODUyLCJleHAiOjE3OTMxMzQ0NTJ9.JccI6e1GaPgoRhcgAMOU7rjAjFGCPjJJwYyDmchmKfc'
+payload = {'api_key': 'sk-g19-03c928fc02ea405d831b9478d1824c46', 'base_url': 'http://127.0.0.1:1/v1', 'enabled': True, 'model': 'gpt-4o-mini', ...}
+
+    def _put_llm(client, admin_tok, payload: dict) -> None:
+        r = client.put("/settings/llm", headers=_hdr(admin_tok), json=payload)
+>       assert r.status_code == 200, r.text
+E       AssertionError: {"detail":{"code":"LLM_CRYPTO","message":"BC4_LLM_SECRET_KEY manquant — impossible de chiffrer la clé LLM.","field":"api_key"}}
+E       assert 400 == 200
+E        +  where 400 = <Response [400 Bad Request]>.status_code
+
+tests/test_g19_llm_probe.py:61: AssertionError
+_________________________________ test_health __________________________________
+
+client = <httpx.Client object at 0x7f9e6a0ecfb0>
+
+    def test_health(client):
+        r = client.get("/health")
+        assert r.status_code == 200, r.text
+        body = r.json()
+>       assert body["status"] == "ok"
+E       AssertionError: assert 'degraded' == 'ok'
+E         
+E         - ok
+E         + degraded
+
+tests/test_g1_boot.py:9: AssertionError
+______________ test_value_matrix_present_and_coherent_rsrp_result ______________
+
+client = <httpx.Client object at 0x7f9e6a0ecfb0>
+
+    def test_value_matrix_present_and_coherent_rsrp_result(client):
+        """Un paramètre peuplé (rsrpResult) doit exposer un `value_matrix`
+        non vide, cohérent (somme = count) et sans inversion de formule."""
+>       pid = _test2_id()
+
+tests/test_g20_value_matrix.py:62: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def _test2_id() -> str:
+        with SessionLocal() as db:
+            pid = db.execute(
+                text("SELECT id FROM projects WHERE name = 'TEST2'")
+            ).scalar()
+        if not pid:
+>           pytest.fail("projet TEST2 absent — garde G20 skippée")
+E           Failed: projet TEST2 absent — garde G20 skippée
+
+tests/test_g20_value_matrix.py:42: Failed
+______________ test_value_matrix_contains_non_attribue_somewhere _______________
+
+client = <httpx.Client object at 0x7f9e6a0ecfb0>
+
+    def test_value_matrix_contains_non_attribue_somewhere(client):
+        """TEST2 porte ~30% d'occurrences `operator=NULL` (events sans SIB1 avant
+        + sans match freq/pci). Elles doivent apparaître explicitement sous
+        `operator="non attribué"` OU `band="non attribué"` quelque part.
+    
+        Observation : sur TEST2 les NULL sont concentrés côté NR (events NR
+        sans SIB1 LTE précédent + sans match freq/pci NR catalogué). On
+        scanne donc les deux systèmes et on exige qu'au moins un paramètre
+        expose un bucket NULL — un vide total serait un bug du COALESCE.
+        """
+>       pid = _test2_id()
+
+tests/test_g20_value_matrix.py:129: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def _test2_id() -> str:
+        with SessionLocal() as db:
+            pid = db.execute(
+                text("SELECT id FROM projects WHERE name = 'TEST2'")
+            ).scalar()
+        if not pid:
+>           pytest.fail("projet TEST2 absent — garde G20 skippée")
+E           Failed: projet TEST2 absent — garde G20 skippée
+
+tests/test_g20_value_matrix.py:42: Failed
+___________________ test_value_matrix_filter_operator_strict ___________________
+
+client = <httpx.Client object at 0x7f9e6a0ecfb0>
+
+    def test_value_matrix_filter_operator_strict(client):
+        """Filtrer sur operator=Orange → value_matrix ne contient PLUS QUE des
+        cellules avec operator=='Orange'. Jamais un bucket inventé ailleurs."""
+>       pid = _test2_id()
+
+tests/test_g20_value_matrix.py:157: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def _test2_id() -> str:
+        with SessionLocal() as db:
+            pid = db.execute(
+                text("SELECT id FROM projects WHERE name = 'TEST2'")
+            ).scalar()
+        if not pid:
+>           pytest.fail("projet TEST2 absent — garde G20 skippée")
+E           Failed: projet TEST2 absent — garde G20 skippée
+
+tests/test_g20_value_matrix.py:42: Failed
+__________________ test_value_matrix_sum_matches_distribution __________________
+
+client = <httpx.Client object at 0x7f9e6a0ecfb0>
+
+    def test_value_matrix_sum_matches_distribution(client):
+        """Cohérence croisée : somme(value_matrix.count) == somme(value_distribution.count)
+        (même périmètre, agrégations différentes sur la même donnée)."""
+>       pid = _test2_id()
+
+tests/test_g20_value_matrix.py:176: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def _test2_id() -> str:
+        with SessionLocal() as db:
+            pid = db.execute(
+                text("SELECT id FROM projects WHERE name = 'TEST2'")
+            ).scalar()
+        if not pid:
+>           pytest.fail("projet TEST2 absent — garde G20 skippée")
+E           Failed: projet TEST2 absent — garde G20 skippée
+
+tests/test_g20_value_matrix.py:42: Failed
+_______________ test_value_matrix_preserves_buckets_non_breaking _______________
+
+client = <httpx.Client object at 0x7f9e6a0ecfb0>
+
+    def test_value_matrix_preserves_buckets_non_breaking(client):
+        """Non-régression : le champ `buckets` (op × band) reste exposé pour
+        les clients qui l'utilisaient avant 0.21.0."""
+>       pid = _test2_id()
+
+tests/test_g20_value_matrix.py:204: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def _test2_id() -> str:
+        with SessionLocal() as db:
+            pid = db.execute(
+                text("SELECT id FROM projects WHERE name = 'TEST2'")
+            ).scalar()
+        if not pid:
+>           pytest.fail("projet TEST2 absent — garde G20 skippée")
+E           Failed: projet TEST2 absent — garde G20 skippée
+
+tests/test_g20_value_matrix.py:42: Failed
+_______________ test_buckets_now_include_non_attribue_when_nulls _______________
+
+client = <httpx.Client object at 0x7f9e6a0ecfb0>
+
+    def test_buckets_now_include_non_attribue_when_nulls(client):
+        """0.21.0 — Les buckets (op × band) exposent maintenant un bucket
+        'non attribué' (operator et/ou band) quand des occurrences NULL
+        existent (c'était silencieusement omis avant 0.21.0).
+    
+        Scan LTE + NR (sur TEST2 les NULL sont côté NR)."""
+>       pid = _test2_id()
+
+tests/test_g20_value_matrix.py:223: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def _test2_id() -> str:
+        with SessionLocal() as db:
+            pid = db.execute(
+                text("SELECT id FROM projects WHERE name = 'TEST2'")
+            ).scalar()
+        if not pid:
+>           pytest.fail("projet TEST2 absent — garde G20 skippée")
+E           Failed: projet TEST2 absent — garde G20 skippée
+
+tests/test_g20_value_matrix.py:42: Failed
+_____________________ test_tree_params_expose_label_field ______________________
+
+client = <httpx.Client object at 0x7f9e6a0ecfb0>
+
+    def test_tree_params_expose_label_field(client):
+        """`/dict/tree` v2 doit renvoyer `label` sur chaque param (0.22.3)."""
+>       pid = _test2_id()
+
+tests/test_g22_tree_label_dedup.py:63: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def _test2_id() -> str:
+        with SessionLocal() as db:
+            pid = db.execute(
+                text("SELECT id FROM projects WHERE name = 'TEST2'")
+            ).scalar()
+        if not pid:
+>           pytest.fail("projet TEST2 absent — garde G22 skippée")
+E           Failed: projet TEST2 absent — garde G22 skippée
+
+tests/test_g22_tree_label_dedup.py:40: Failed
+____________________ test_tree_labels_unique_within_message ____________________
+
+client = <httpx.Client object at 0x7f9e6a0ecfb0>
+
+    def test_tree_labels_unique_within_message(client):
+        """Dans un même `(system, message)`, aucun doublon de `label`
+        (sauf si deux params ont le même `param`, ce qui ne se produit pas
+        grâce au GROUP BY SQL)."""
+>       pid = _test2_id()
+
+tests/test_g22_tree_label_dedup.py:88: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def _test2_id() -> str:
+        with SessionLocal() as db:
+            pid = db.execute(
+                text("SELECT id FROM projects WHERE name = 'TEST2'")
+            ).scalar()
+        if not pid:
+>           pytest.fail("projet TEST2 absent — garde G22 skippée")
+E           Failed: projet TEST2 absent — garde G22 skippée
+
+tests/test_g22_tree_label_dedup.py:40: Failed
+____________________ test_tree_labels_leaf_only_when_unique ____________________
+
+client = <httpx.Client object at 0x7f9e6a0ecfb0>
+
+    def test_tree_labels_leaf_only_when_unique(client):
+        """Un leaf unique dans son `(system, message)` ne doit PAS porter
+        de suffixe parenthésé — pas de pollution visuelle."""
+>       pid = _test2_id()
+
+tests/test_g22_tree_label_dedup.py:112: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def _test2_id() -> str:
+        with SessionLocal() as db:
+            pid = db.execute(
+                text("SELECT id FROM projects WHERE name = 'TEST2'")
+            ).scalar()
+        if not pid:
+>           pytest.fail("projet TEST2 absent — garde G22 skippée")
+E           Failed: projet TEST2 absent — garde G22 skippée
+
+tests/test_g22_tree_label_dedup.py:40: Failed
+____________________ test_tree_labels_suffixed_on_collision ____________________
+
+client = <httpx.Client object at 0x7f9e6a0ecfb0>
+
+    def test_tree_labels_suffixed_on_collision(client):
+        """Un leaf en collision (plusieurs paths distincts partageant le
+        même dernier segment dans un `(system, message)`) DOIT porter un
+        suffixe parenthésé `(…)`."""
+>       pid = _test2_id()
+
+tests/test_g22_tree_label_dedup.py:140: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def _test2_id() -> str:
+        with SessionLocal() as db:
+            pid = db.execute(
+                text("SELECT id FROM projects WHERE name = 'TEST2'")
+            ).scalar()
+        if not pid:
+>           pytest.fail("projet TEST2 absent — garde G22 skippée")
+E           Failed: projet TEST2 absent — garde G22 skippée
+
+tests/test_g22_tree_label_dedup.py:40: Failed
+________________ test_tree_param_still_full_path_non_regression ________________
+
+client = <httpx.Client object at 0x7f9e6a0ecfb0>
+
+    def test_tree_param_still_full_path_non_regression(client):
+        """`param` reste le path complet (inchangé) — c'est la clé qui
+        permet au front de faire `/dict/params?path=<param>` et de
+        retrouver la ligne. On re-sonde une path qui aurait collidé
+        (`.../rsrpResult`) et on exige que `/dict/params` la retrouve."""
+>       pid = _test2_id()
+
+tests/test_g22_tree_label_dedup.py:175: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def _test2_id() -> str:
+        with SessionLocal() as db:
+            pid = db.execute(
+                text("SELECT id FROM projects WHERE name = 'TEST2'")
+            ).scalar()
+        if not pid:
+>           pytest.fail("projet TEST2 absent — garde G22 skippée")
+E           Failed: projet TEST2 absent — garde G22 skippée
+
+tests/test_g22_tree_label_dedup.py:40: Failed
+_____________ test_parent_transaction_ends_before_long_population ______________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f9e69cd1dc0>
+
+    def test_parent_transaction_ends_before_long_population(monkeypatch):
+        """Real PostgreSQL, read-only TEST2: old code exceeds the 200ms idle limit."""
+        from sqlalchemy import event
+        from app.models import Project
+        with Session(engine) as parent:
+            def short_timeout(session, transaction, connection):
+                connection.execute(text("SET LOCAL idle_in_transaction_session_timeout = '200ms'"))
+            event.listen(parent, 'after_begin', short_timeout)
+            project = parent.get(Project, '134af70a06eb')
+            if project is None:
+>               pytest.fail('TEST2 integration project absent')
+E               Failed: TEST2 integration project absent
+
+tests/test_populate_atomic.py:54: Failed
+=============================== warnings summary ===============================
+../usr/local/lib/python3.12/site-packages/starlette/testclient.py:40
+  /usr/local/lib/python3.12/site-packages/starlette/testclient.py:40: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+    _PortalFactoryType = typing.Callable[[], typing.ContextManager[anyio.abc.BlockingPortal]]
+
+tests/test_g24_measurement_full.py:16
+  /app/tests/test_g24_measurement_full.py:16: SyntaxWarning: invalid escape sequence '\d'
+    - Zéro identité abonné : regex ``(?<!\d)\d{15}(?!\d)`` sur
+
+tests/test_task_run.py::test_axes_route_precedes_dynamic_kpi_route
+  /app/app/main.py:102: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    @app.on_event("startup")
+
+tests/test_task_run.py::test_axes_route_precedes_dynamic_kpi_route
+  /usr/local/lib/python3.12/site-packages/fastapi/applications.py:4495: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    return self.router.on_event(event_type)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+-------- generated xml file: /app/audit/project-access/pytest-full.xml ---------
+=========================== short test summary info ============================
+ERROR tests/test_g24_measurement_full.py::test_a_measurement_points_non_empty
+ERROR tests/test_g24_measurement_full.py::test_b_breakdown_operator_service_phase
+ERROR tests/test_g24_measurement_full.py::test_c_proof_table_rsrp_rsrq_proven
+ERROR tests/test_g24_measurement_full.py::test_c_sinr_cqi_rejected_declared
+ERROR tests/test_g24_measurement_full.py::test_d_cross_check_rsrp_per_band - ...
+ERROR tests/test_g24_measurement_full.py::test_e_operator_mismatch_declared
+ERROR tests/test_g24_measurement_full.py::test_f_no_subscriber_identity - Fai...
+ERROR tests/test_g24_measurement_full.py::test_g_no_duplicates - Failed: REF_...
+ERROR tests/test_g24_measurement_full.py::test_h_18_nmf_files - Failed: REF_P...
+ERROR tests/test_g24_measurement_full.py::test_i_env_filled_on_all_nmf - Fail...
+ERROR tests/test_g26_measurement_full.py::test_stg_event_raw_breakdown - Fail...
+ERROR tests/test_g26_measurement_full.py::test_stg_event_signalling_present
+ERROR tests/test_g26_measurement_full.py::test_nmf_file_meta_renseigne - Fail...
+ERROR tests/test_g26_measurement_full.py::test_nmf_source_files_on_disk - Fai...
+ERROR tests/test_g26_measurement_full.py::test_measurement_points_enriched - ...
+ERROR tests/test_g26_measurement_full.py::test_operator_from_dl_is_authoritative
+ERROR tests/test_g26_measurement_full.py::test_operator_mismatch_declared - F...
+ERROR tests/test_g26_measurement_full.py::test_rsrp_cross_check_declared - Fa...
+ERROR tests/test_g26_measurement_full.py::test_zero_identity_leak - Failed: P...
+ERROR tests/test_g26_measurement_full.py::test_canonical_order_unique - Faile...
+FAILED tests/test_g12_enrich.py::test_band_from_freq_lte_nr - ModuleNotFoundE...
+FAILED tests/test_g12_enrich.py::test_plmn_table_covers_fr_operators - Module...
+FAILED tests/test_g12_enrich.py::test_detect_context_no_sib1_declares_empty_operators
+FAILED tests/test_g12_enrich.py::test_detect_context_four_fr_operators - Modu...
+FAILED tests/test_g12_enrich.py::test_detect_context_unknown_plmn_declares - ...
+FAILED tests/test_g13_perimeter.py::test_enrich_v11_exposes_cells - ModuleNot...
+FAILED tests/test_g16_value_distribution.py::test_value_distribution_numeric_rsrp_result
+FAILED tests/test_g16_value_distribution.py::test_value_distribution_enum_null_converted
+FAILED tests/test_g16_value_distribution.py::test_value_distribution_filter_operator_restricts
+FAILED tests/test_g16_value_distribution.py::test_value_distribution_preserves_operator_band_buckets
+FAILED tests/test_g16_value_distribution.py::test_value_distribution_sorted_ascending_numeric
+FAILED tests/test_g17_llm_settings.py::test_put_llm_sets_key_without_leaking
+FAILED tests/test_g17_llm_settings.py::test_put_llm_rejects_key_without_secret
+FAILED tests/test_g19_llm_probe.py::test_probe_unreachable_returns_200_no_leak
+FAILED tests/test_g1_boot.py::test_health - AssertionError: assert 'degraded'...
+FAILED tests/test_g20_value_matrix.py::test_value_matrix_present_and_coherent_rsrp_result
+FAILED tests/test_g20_value_matrix.py::test_value_matrix_contains_non_attribue_somewhere
+FAILED tests/test_g20_value_matrix.py::test_value_matrix_filter_operator_strict
+FAILED tests/test_g20_value_matrix.py::test_value_matrix_sum_matches_distribution
+FAILED tests/test_g20_value_matrix.py::test_value_matrix_preserves_buckets_non_breaking
+FAILED tests/test_g20_value_matrix.py::test_buckets_now_include_non_attribue_when_nulls
+FAILED tests/test_g22_tree_label_dedup.py::test_tree_params_expose_label_field
+FAILED tests/test_g22_tree_label_dedup.py::test_tree_labels_unique_within_message
+FAILED tests/test_g22_tree_label_dedup.py::test_tree_labels_leaf_only_when_unique
+FAILED tests/test_g22_tree_label_dedup.py::test_tree_labels_suffixed_on_collision
+FAILED tests/test_g22_tree_label_dedup.py::test_tree_param_still_full_path_non_regression
+FAILED tests/test_populate_atomic.py::test_parent_transaction_ends_before_long_population

@@ -71,6 +71,9 @@ def decode_capture(db,pid,cap,level,*,force=False):
     start=time.perf_counter();params={'pid':pid,'cap':cap}
     db.execute(text('SELECT pg_advisory_xact_lock(hashtext(:k))'),{'k':'populate:'+pid})
     old=db.execute(text('SELECT * FROM nmf_capture WHERE project_id=:pid AND capture_id=:cap'),params).mappings().first()
+    parsing = old or db.execute(text('''SELECT parse_binning_mode AS binning_mode,
+        parse_temporal_resolution AS temporal_resolution, parse_spatial_bin_m AS spatial_bin_m
+        FROM projects WHERE id=:pid'''),params).mappings().one()
     if old and old['decoder_version']==DECODER_VERSION and (old['decode_level']=='deep' or old['decode_level']==level) and not force:
         return dict(capture_id=cap,skipped=True,elapsed_s=0)
     file=db.execute(text('''SELECT DISTINCT n.id,n.source_path,n.sha256 FROM nmf_file n JOIN stg_event_raw r ON r.nmf_file_id=n.id
@@ -114,12 +117,14 @@ def decode_capture(db,pid,cap,level,*,force=False):
     # null = capture non classifiable (très rare : ni SCAN* ni CELLMEAS/CI).
     kind=classify_capture_kind(db,pid,cap)
     db.execute(text('''INSERT INTO nmf_capture(project_id,capture_id,nmf_file_id,decode_level,decoder_version,schema_version,format_version,
-        deep_decoded_at,n_records,n_partial,elapsed_s,kind) VALUES(:pid,:cap,:fid,:level,:version,:version,:format,
-        CASE WHEN :level='deep' THEN now() END,:n,:partial,:elapsed,:kind)
+        deep_decoded_at,n_records,n_partial,elapsed_s,kind,binning_mode,temporal_resolution,spatial_bin_m,aggregation_contract_version)
+        VALUES(:pid,:cap,:fid,:level,:version,:version,:format,
+        CASE WHEN :level='deep' THEN now() END,:n,:partial,:elapsed,:kind,:binning_mode,:temporal_resolution,:spatial_bin_m,'query-binning-v1')
         ON CONFLICT(project_id,capture_id) DO UPDATE SET decode_level=excluded.decode_level,decoder_version=excluded.decoder_version,
         schema_version=excluded.schema_version,format_version=excluded.format_version,deep_decoded_at=excluded.deep_decoded_at,
         decoded_at=now(),n_records=excluded.n_records,n_partial=excluded.n_partial,elapsed_s=excluded.elapsed_s,kind=excluded.kind'''),
-        dict(params,fid=file['id'],level=level,version=DECODER_VERSION,format=version,n=n,partial=partial,elapsed=elapsed,kind=kind))
+        dict(params,fid=file['id'],level=level,version=DECODER_VERSION,format=version,n=n,partial=partial,elapsed=elapsed,kind=kind,
+             binning_mode=parsing['binning_mode'],temporal_resolution=parsing['temporal_resolution'],spatial_bin_m=parsing['spatial_bin_m']))
     return dict(capture_id=cap,level=level,n_records=n,n_partial=partial,elapsed_s=elapsed,kind=kind)
 
 
@@ -143,4 +148,5 @@ def classify_capture_kind(db,pid,cap):
 
 def ensure_light(db,pid):
     caps=db.execute(text('SELECT DISTINCT capture_id FROM stg_event_raw WHERE project_id=:pid ORDER BY capture_id'),{'pid':pid}).scalars().all()
-    return [decode_capture(db,pid,cap,'light') for cap in caps]
+    level=db.execute(text('SELECT parse_decode_level FROM projects WHERE id=:pid'),{'pid':pid}).scalar_one()
+    return [decode_capture(db,pid,cap,level) for cap in caps]

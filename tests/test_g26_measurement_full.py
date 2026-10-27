@@ -53,7 +53,7 @@ def ref_pid(client_noauth, admin_token) -> str:
     for p in r.json():
         if p.get("name") == "REF_PETITE_FORET":
             return p["id"]
-    pytest.skip(
+    pytest.fail(
         "Projet REF_PETITE_FORET introuvable — lancer "
         "`scripts/ingest_ref_petite_foret.sh` avant G26."
     )
@@ -153,7 +153,7 @@ def test_nmf_source_files_on_disk(ref_pid: str):
     if not os.path.isdir(project_dir):
         # Le test tourne peut-être depuis le host (pas dans le conteneur) :
         # on skip plutôt qu'échouer silencieusement, en déclarant.
-        pytest.skip(
+        pytest.fail(
             f"{project_dir} absent côté host — vérifier via "
             f"`docker exec bc4-api-1 ls {project_dir}/`"
         )

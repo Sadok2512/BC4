@@ -1,0 +1,433 @@
+INFO:httpx:HTTP Request: POST http://testserver/auth/login "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://testserver/projects "HTTP/1.1 201 Created"
+INFO:httpx:HTTP Request: POST http://testserver/projects/183ff02b7820/nmf "HTTP/1.1 202 Accepted"
+INFO:app.services.import_worker:Import df42875d8e3c43dcb67ed99206bc32d0: 1/1 files processed
+INFO:app.dict.populate:populate_param_occurrence project=183ff02b7820 events=1065 ok=600 err=465 params=9870 denied=0
+INFO:app.services.populate_chain:[populate_chain] A measurements project=183ff02b7820
+INFO:app.services.populate_chain:[populate_chain] B measurement_points project=183ff02b7820
+INFO:app.services.populate_chain:[populate_chain] C ecgi project=183ff02b7820
+INFO:app.services.populate_chain:[populate_chain] D task_run project=183ff02b7820
+INFO:app.services.populate_chain:[populate_chain] DONE project=183ff02b7820 n_points=8880 elapsed=231.2s
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/imports/df42875d8e3c43dcb67ed99206bc32d0 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/signaling/captures "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://testserver/projects/183ff02b7820/decode?level=deep&capture_id=eebf5c3bef7b "HTTP/1.1 202 Accepted"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/signaling?capture_id=eebf5c3bef7b&page=1&size=1 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/dict/v2/templates "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/tasks "HTTP/1.1 200 OK"
+G34 FIXTURE project_id=183ff02b7820 capture_id=eebf5c3bef7b job_id=df42875d8e3c43dcb67ed99206bc32d0 message_seq=59 template_category=phy
+INFO:httpx:HTTP Request: POST http://testserver/auth/login "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://testserver/projects "HTTP/1.1 403 Forbidden"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820 "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://testserver/projects/183ff02b7820/assistant "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: POST http://testserver/projects/183ff02b7820/assistant "HTTP/1.1 422 Unprocessable Entity"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/captures/eebf5c3bef7b/events?types=rrc "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/captures/eebf5c3bef7b/events?types=rrc "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/captures/eebf5c3bef7b/kpi/THR_DL_APP/time-series "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/captures/eebf5c3bef7b/kpi/THR_DL_APP/time-series "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/captures/eebf5c3bef7b/sheet "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/captures/eebf5c3bef7b/sheet "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/captures/eebf5c3bef7b/tasks "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/captures/eebf5c3bef7b/tasks "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/cell-ref/export.csv "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/cell-ref/export.csv "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/conversations "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/conversations "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://testserver/projects/183ff02b7820/decode?level=light&capture_id=eebf5c3bef7b "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/decode/status "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/decode/status "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/dict "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/dict "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/dict/identity "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/dict/identity "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/dict/param?param_key=rrcConnectionRequest%2FrrcConnectionRequest-r8%2FestablishmentCause "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/dict/param?param_key=rrcConnectionRequest%2FrrcConnectionRequest-r8%2FestablishmentCause "HTTP/1.1 422 Unprocessable Entity"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/dict/param/map?param_key=rrcConnectionRequest%2FrrcConnectionRequest-r8%2FestablishmentCause "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/dict/param/map?param_key=rrcConnectionRequest%2FrrcConnectionRequest-r8%2FestablishmentCause "HTTP/1.1 400 Bad Request"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/dict/params "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/dict/params "HTTP/1.1 400 Bad Request"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/dict/tree "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/dict/tree "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/dict/v2/distribution?keys=rrcConnectionRequest%2FrrcConnectionRequest-r8%2FestablishmentCause "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/dict/v2/distribution?keys=rrcConnectionRequest%2FrrcConnectionRequest-r8%2FestablishmentCause "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/dict/v2/filters "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/dict/v2/filters "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/dict/v2/map?keys=rrcConnectionRequest%2FrrcConnectionRequest-r8%2FestablishmentCause "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/dict/v2/map?keys=rrcConnectionRequest%2FrrcConnectionRequest-r8%2FestablishmentCause "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/dict/v2/param/rrcConnectionRequest/rrcConnectionRequest-r8/establishmentCause "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/dict/v2/param/rrcConnectionRequest/rrcConnectionRequest-r8/establishmentCause "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/dict/v2/templates "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/dict/v2/templates "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/dict/v2/templates/phy/summary "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/dict/v2/templates/phy/summary "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/dict/v2/tree "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/dict/v2/tree "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/files/summary "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/files/summary "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/import "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/import "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/imports/df42875d8e3c43dcb67ed99206bc32d0 "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/imports/df42875d8e3c43dcb67ed99206bc32d0 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/ingest "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/ingest "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://testserver/projects/183ff02b7820/kpi/_populate_ecgi "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: POST http://testserver/projects/183ff02b7820/kpi/_populate_ecgi "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://testserver/projects/183ff02b7820/kpi/_rebuild_param_occurrence "HTTP/1.1 404 Not Found"
+INFO:app.dict.populate:populate_param_occurrence project=183ff02b7820 events=1065 ok=600 err=465 params=9870 denied=0
+INFO:httpx:HTTP Request: POST http://testserver/projects/183ff02b7820/kpi/_rebuild_param_occurrence "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/kpi/axes "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/kpi/axes "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/kpi/catalog "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/kpi/catalog "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/kpi/filters "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/kpi/filters "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/kpi/THR_DL_APP "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/kpi/THR_DL_APP "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/kpi/THR_DL_APP/captures "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/kpi/THR_DL_APP/captures "HTTP/1.1 422 Unprocessable Entity"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/kpi/THR_DL_APP/points?x=rsrp "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/kpi/THR_DL_APP/points?x=rsrp "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/kpi/THR_DL_APP/series?x=task_time "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/kpi/THR_DL_APP/series?x=task_time "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/measurements/raw "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/measurements/raw "HTTP/1.1 422 Unprocessable Entity"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/measurements/summary "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/measurements/summary "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/metrics "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/metrics "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/metrics/analysis?codes=TEST-G34-CODE "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/metrics/analysis?codes=TEST-G34-CODE "HTTP/1.1 422 Unprocessable Entity"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/metrics/captures "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/metrics/captures "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/metrics/series?metric_ids=TEST-G34-METRIC "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/metrics/series?metric_ids=TEST-G34-METRIC "HTTP/1.1 422 Unprocessable Entity"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/metrics/table?codes=TEST-G34-CODE "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/metrics/table?codes=TEST-G34-CODE "HTTP/1.1 422 Unprocessable Entity"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/metrics/unknown "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/metrics/unknown "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/metrics/THR_DL_APP/aggregate "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/metrics/THR_DL_APP/aggregate "HTTP/1.1 422 Unprocessable Entity"
+INFO:httpx:HTTP Request: POST http://testserver/projects/183ff02b7820/nmf "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/overview "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/overview "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: PATCH http://testserver/projects/183ff02b7820/parsing "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: PATCH http://testserver/projects/183ff02b7820/parsing "HTTP/1.1 422 Unprocessable Entity"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/shares "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/shares "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://testserver/projects/183ff02b7820/shares "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: POST http://testserver/projects/183ff02b7820/shares "HTTP/1.1 201 Created"
+INFO:httpx:HTTP Request: DELETE http://testserver/projects/183ff02b7820/shares/TEST-G34-USER-B "HTTP/1.1 204 No Content"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/signaling?capture_id=eebf5c3bef7b "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/signaling?capture_id=eebf5c3bef7b "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/signaling/captures "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/signaling/captures "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/signaling/context?capture_id=eebf5c3bef7b&seq=59 "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/signaling/context?capture_id=eebf5c3bef7b&seq=59 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/signaling/details?capture_id=eebf5c3bef7b&seq=59 "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/signaling/details?capture_id=eebf5c3bef7b&seq=59 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/signaling/events?capture_id=eebf5c3bef7b "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/signaling/events?capture_id=eebf5c3bef7b "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/signaling/export?capture_id=eebf5c3bef7b "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/signaling/export?capture_id=eebf5c3bef7b "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/signaling/message?capture_id=eebf5c3bef7b&seq=59 "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/signaling/message?capture_id=eebf5c3bef7b&seq=59 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/signaling/points?capture_id=eebf5c3bef7b "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/signaling/points?capture_id=eebf5c3bef7b "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/signaling/procedures?capture_id=eebf5c3bef7b "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/signaling/procedures?capture_id=eebf5c3bef7b "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/signaling/timeline?capture_id=eebf5c3bef7b "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/signaling/timeline?capture_id=eebf5c3bef7b "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/tasks "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/tasks "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/results/14a2698e-c8f5-4f53-b854-cba3feefb490 "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/results/14a2698e-c8f5-4f53-b854-cba3feefb490 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: DELETE http://testserver/projects/183ff02b7820 "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: POST http://testserver/projects/183ff02b7820/shares "HTTP/1.1 201 Created"
+INFO:httpx:HTTP Request: DELETE http://testserver/projects/183ff02b7820/shares/TEST-G34-USER-B "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: DELETE http://testserver/projects/183ff02b7820/shares/TEST-G34-USER-B "HTTP/1.1 204 No Content"
+INFO:httpx:HTTP Request: POST http://testserver/projects/183ff02b7820/shares "HTTP/1.1 201 Created"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: PATCH http://testserver/projects/183ff02b7820/parsing "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: DELETE http://testserver/projects/183ff02b7820/shares/TEST-G34-USER-B "HTTP/1.1 204 No Content"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820 "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: POST http://testserver/auth/login "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://testserver/projects "HTTP/1.1 201 Created"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820 "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://testserver/projects/183ff02b7820/assistant "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: POST http://testserver/projects/183ff02b7820/assistant "HTTP/1.1 422 Unprocessable Entity"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/captures/eebf5c3bef7b/events?types=rrc "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/captures/eebf5c3bef7b/events?types=rrc "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/captures/eebf5c3bef7b/kpi/THR_DL_APP/time-series "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/captures/eebf5c3bef7b/kpi/THR_DL_APP/time-series "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/captures/eebf5c3bef7b/sheet "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/captures/eebf5c3bef7b/sheet "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/captures/eebf5c3bef7b/tasks "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/captures/eebf5c3bef7b/tasks "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/cell-ref/export.csv "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/cell-ref/export.csv "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/conversations "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/conversations "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://testserver/projects/183ff02b7820/decode?level=light&capture_id=eebf5c3bef7b "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/decode/status "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/decode/status "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/dict "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/dict "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/dict/identity "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/dict/identity "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/dict/param?param_key=rrcConnectionRequest%2FrrcConnectionRequest-r8%2FestablishmentCause "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/dict/param?param_key=rrcConnectionRequest%2FrrcConnectionRequest-r8%2FestablishmentCause "HTTP/1.1 422 Unprocessable Entity"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/dict/param/map?param_key=rrcConnectionRequest%2FrrcConnectionRequest-r8%2FestablishmentCause "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/dict/param/map?param_key=rrcConnectionRequest%2FrrcConnectionRequest-r8%2FestablishmentCause "HTTP/1.1 400 Bad Request"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/dict/params "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/dict/params "HTTP/1.1 400 Bad Request"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/dict/tree "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/dict/tree "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/dict/v2/distribution?keys=rrcConnectionRequest%2FrrcConnectionRequest-r8%2FestablishmentCause "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/dict/v2/distribution?keys=rrcConnectionRequest%2FrrcConnectionRequest-r8%2FestablishmentCause "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/dict/v2/filters "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/dict/v2/filters "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/dict/v2/map?keys=rrcConnectionRequest%2FrrcConnectionRequest-r8%2FestablishmentCause "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/dict/v2/map?keys=rrcConnectionRequest%2FrrcConnectionRequest-r8%2FestablishmentCause "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/dict/v2/param/rrcConnectionRequest/rrcConnectionRequest-r8/establishmentCause "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/dict/v2/param/rrcConnectionRequest/rrcConnectionRequest-r8/establishmentCause "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/dict/v2/templates "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/dict/v2/templates "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/dict/v2/templates/phy/summary "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/dict/v2/templates/phy/summary "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/dict/v2/tree "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/dict/v2/tree "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/files/summary "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/files/summary "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/import "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/import "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/imports/df42875d8e3c43dcb67ed99206bc32d0 "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/imports/df42875d8e3c43dcb67ed99206bc32d0 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/ingest "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/ingest "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://testserver/projects/183ff02b7820/kpi/_populate_ecgi "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: POST http://testserver/projects/183ff02b7820/kpi/_populate_ecgi "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://testserver/projects/183ff02b7820/kpi/_rebuild_param_occurrence "HTTP/1.1 404 Not Found"
+INFO:app.dict.populate:populate_param_occurrence project=183ff02b7820 events=1065 ok=600 err=465 params=9870 denied=0
+INFO:httpx:HTTP Request: POST http://testserver/projects/183ff02b7820/kpi/_rebuild_param_occurrence "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/kpi/axes "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/kpi/axes "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/kpi/catalog "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/kpi/catalog "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/kpi/filters "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/kpi/filters "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/kpi/THR_DL_APP "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/kpi/THR_DL_APP "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/kpi/THR_DL_APP/captures "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/kpi/THR_DL_APP/captures "HTTP/1.1 422 Unprocessable Entity"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/kpi/THR_DL_APP/points?x=rsrp "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/kpi/THR_DL_APP/points?x=rsrp "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/kpi/THR_DL_APP/series?x=task_time "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/kpi/THR_DL_APP/series?x=task_time "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/measurements/raw "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/measurements/raw "HTTP/1.1 422 Unprocessable Entity"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/measurements/summary "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/measurements/summary "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/metrics "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/metrics "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/metrics/analysis?codes=TEST-G34-CODE "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/metrics/analysis?codes=TEST-G34-CODE "HTTP/1.1 422 Unprocessable Entity"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/metrics/captures "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/metrics/captures "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/metrics/series?metric_ids=TEST-G34-METRIC "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/metrics/series?metric_ids=TEST-G34-METRIC "HTTP/1.1 422 Unprocessable Entity"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/metrics/table?codes=TEST-G34-CODE "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/metrics/table?codes=TEST-G34-CODE "HTTP/1.1 422 Unprocessable Entity"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/metrics/unknown "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/metrics/unknown "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/metrics/THR_DL_APP/aggregate "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/metrics/THR_DL_APP/aggregate "HTTP/1.1 422 Unprocessable Entity"
+INFO:httpx:HTTP Request: POST http://testserver/projects/183ff02b7820/nmf "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/overview "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/overview "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: PATCH http://testserver/projects/183ff02b7820/parsing "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: PATCH http://testserver/projects/183ff02b7820/parsing "HTTP/1.1 422 Unprocessable Entity"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/shares "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/shares "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://testserver/projects/183ff02b7820/shares "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: POST http://testserver/projects/183ff02b7820/shares "HTTP/1.1 201 Created"
+INFO:httpx:HTTP Request: DELETE http://testserver/projects/183ff02b7820/shares/TEST-G34-USER-B "HTTP/1.1 204 No Content"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/signaling?capture_id=eebf5c3bef7b "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/signaling?capture_id=eebf5c3bef7b "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/signaling/captures "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/signaling/captures "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/signaling/context?capture_id=eebf5c3bef7b&seq=59 "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/signaling/context?capture_id=eebf5c3bef7b&seq=59 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/signaling/details?capture_id=eebf5c3bef7b&seq=59 "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/signaling/details?capture_id=eebf5c3bef7b&seq=59 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/signaling/events?capture_id=eebf5c3bef7b "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/signaling/events?capture_id=eebf5c3bef7b "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/signaling/export?capture_id=eebf5c3bef7b "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/signaling/export?capture_id=eebf5c3bef7b "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/signaling/message?capture_id=eebf5c3bef7b&seq=59 "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/signaling/message?capture_id=eebf5c3bef7b&seq=59 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/signaling/points?capture_id=eebf5c3bef7b "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/signaling/points?capture_id=eebf5c3bef7b "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/signaling/procedures?capture_id=eebf5c3bef7b "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/signaling/procedures?capture_id=eebf5c3bef7b "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/signaling/timeline?capture_id=eebf5c3bef7b "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/signaling/timeline?capture_id=eebf5c3bef7b "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/tasks "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820/tasks "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/results/14a2698e-c8f5-4f53-b854-cba3feefb490 "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/results/14a2698e-c8f5-4f53-b854-cba3feefb490 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: DELETE http://testserver/projects/183ff02b7820 "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: POST http://testserver/projects/183ff02b7820/shares "HTTP/1.1 201 Created"
+INFO:httpx:HTTP Request: DELETE http://testserver/projects/183ff02b7820/shares/TEST-G34-USER-B "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: DELETE http://testserver/projects/183ff02b7820/shares/TEST-G34-USER-B "HTTP/1.1 204 No Content"
+INFO:httpx:HTTP Request: POST http://testserver/projects/183ff02b7820/shares "HTTP/1.1 201 Created"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: PATCH http://testserver/projects/183ff02b7820/parsing "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: DELETE http://testserver/projects/183ff02b7820/shares/TEST-G34-USER-B "HTTP/1.1 204 No Content"
+INFO:httpx:HTTP Request: GET http://testserver/projects/183ff02b7820 "HTTP/1.1 404 Not Found"
+B role | route | method | A HTTP | B HTTP | verdict
+--- | --- | --- | ---: | ---: | ---
+lecteur | /projects | GET | 200 | 200 | PASS_BLOCKED
+lecteur | /projects | POST | 403 | 403 | PASS_BLOCKED
+lecteur | /projects/{project_id} | GET | 200 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id}/assistant | POST | 422 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id}/captures/{capture_id}/events | GET | 200 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id}/captures/{capture_id}/kpi/{code}/time-series | GET | 200 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id}/captures/{capture_id}/sheet | GET | 200 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id}/captures/{capture_id}/tasks | GET | 200 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id}/cell-ref/export.csv | GET | 200 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id}/conversations | GET | 200 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id}/decode | POST | 202 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id}/decode/status | GET | 200 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id}/dict | GET | 200 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id}/dict/identity | GET | 200 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id}/dict/param | GET | 422 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id}/dict/param/map | GET | 400 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id}/dict/params | GET | 400 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id}/dict/tree | GET | 200 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id}/dict/v2/distribution | GET | 200 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id}/dict/v2/filters | GET | 200 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id}/dict/v2/map | GET | 200 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id}/dict/v2/param/{param_key:path} | GET | 200 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id}/dict/v2/templates | GET | 200 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id}/dict/v2/templates/{category}/summary | GET | 200 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id}/dict/v2/tree | GET | 200 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id}/files/summary | GET | 200 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id}/import | GET | 200 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id}/imports/{job_id} | GET | 200 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id}/ingest | GET | 200 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id}/kpi/_populate_ecgi | POST | 200 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id}/kpi/_rebuild_param_occurrence | POST | 200 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id}/kpi/axes | GET | 200 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id}/kpi/catalog | GET | 200 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id}/kpi/filters | GET | 200 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id}/kpi/{code} | GET | 200 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id}/kpi/{code}/captures | GET | 422 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id}/kpi/{code}/points | GET | 200 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id}/kpi/{code}/series | GET | 200 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id}/measurements/raw | GET | 422 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id}/measurements/summary | GET | 200 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id}/metrics | GET | 200 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id}/metrics/analysis | GET | 422 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id}/metrics/captures | GET | 200 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id}/metrics/series | GET | 422 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id}/metrics/table | GET | 422 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id}/metrics/unknown | GET | 200 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id}/metrics/{code}/aggregate | GET | 422 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id}/nmf | POST | 202 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id}/overview | GET | 200 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id}/parsing | PATCH | 422 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id}/shares | GET | 200 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id}/shares | POST | 201 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id}/signaling | GET | 200 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id}/signaling/captures | GET | 200 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id}/signaling/context | GET | 200 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id}/signaling/details | GET | 200 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id}/signaling/events | GET | 200 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id}/signaling/export | GET | 200 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id}/signaling/message | GET | 200 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id}/signaling/points | GET | 200 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id}/signaling/procedures | GET | 200 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id}/signaling/timeline | GET | 200 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id}/tasks | GET | 200 | 404 | PASS_BLOCKED
+lecteur | /results/{result_id} | GET | 200 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id} | DELETE | 204 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id}/shares/{user_id} | DELETE | 204 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id} [shared] | GET | 200 | 200 | PASS_SHARED_READ
+lecteur | /projects/{project_id}/parsing [shared] | PATCH | 200 | 404 | PASS_BLOCKED
+lecteur | /projects/{project_id} [revoked] | GET | 200 | 404 | PASS_REVOKED
+admin | /projects | GET | 200 | 200 | PASS_BLOCKED
+admin | /projects | POST | 201 | 201 | PASS_OWN_CREATE
+admin | /projects/{project_id} | GET | 200 | 404 | PASS_BLOCKED
+admin | /projects/{project_id}/assistant | POST | 422 | 404 | PASS_BLOCKED
+admin | /projects/{project_id}/captures/{capture_id}/events | GET | 200 | 404 | PASS_BLOCKED
+admin | /projects/{project_id}/captures/{capture_id}/kpi/{code}/time-series | GET | 200 | 404 | PASS_BLOCKED
+admin | /projects/{project_id}/captures/{capture_id}/sheet | GET | 200 | 404 | PASS_BLOCKED
+admin | /projects/{project_id}/captures/{capture_id}/tasks | GET | 200 | 404 | PASS_BLOCKED
+admin | /projects/{project_id}/cell-ref/export.csv | GET | 200 | 404 | PASS_BLOCKED
+admin | /projects/{project_id}/conversations | GET | 200 | 404 | PASS_BLOCKED
+admin | /projects/{project_id}/decode | POST | 202 | 404 | PASS_BLOCKED
+admin | /projects/{project_id}/decode/status | GET | 200 | 404 | PASS_BLOCKED
+admin | /projects/{project_id}/dict | GET | 200 | 404 | PASS_BLOCKED
+admin | /projects/{project_id}/dict/identity | GET | 200 | 404 | PASS_BLOCKED
+admin | /projects/{project_id}/dict/param | GET | 422 | 404 | PASS_BLOCKED
+admin | /projects/{project_id}/dict/param/map | GET | 400 | 404 | PASS_BLOCKED
+admin | /projects/{project_id}/dict/params | GET | 400 | 404 | PASS_BLOCKED
+admin | /projects/{project_id}/dict/tree | GET | 200 | 404 | PASS_BLOCKED
+admin | /projects/{project_id}/dict/v2/distribution | GET | 200 | 404 | PASS_BLOCKED
+admin | /projects/{project_id}/dict/v2/filters | GET | 200 | 404 | PASS_BLOCKED
+admin | /projects/{project_id}/dict/v2/map | GET | 200 | 404 | PASS_BLOCKED
+admin | /projects/{project_id}/dict/v2/param/{param_key:path} | GET | 200 | 404 | PASS_BLOCKED
+admin | /projects/{project_id}/dict/v2/templates | GET | 200 | 404 | PASS_BLOCKED
+admin | /projects/{project_id}/dict/v2/templates/{category}/summary | GET | 200 | 404 | PASS_BLOCKED
+admin | /projects/{project_id}/dict/v2/tree | GET | 200 | 404 | PASS_BLOCKED
+admin | /projects/{project_id}/files/summary | GET | 200 | 404 | PASS_BLOCKED
+admin | /projects/{project_id}/import | GET | 200 | 404 | PASS_BLOCKED
+admin | /projects/{project_id}/imports/{job_id} | GET | 200 | 404 | PASS_BLOCKED
+admin | /projects/{project_id}/ingest | GET | 200 | 404 | PASS_BLOCKED
+admin | /projects/{project_id}/kpi/_populate_ecgi | POST | 200 | 404 | PASS_BLOCKED
+admin | /projects/{project_id}/kpi/_rebuild_param_occurrence | POST | 200 | 404 | PASS_BLOCKED
+admin | /projects/{project_id}/kpi/axes | GET | 200 | 404 | PASS_BLOCKED
+admin | /projects/{project_id}/kpi/catalog | GET | 200 | 404 | PASS_BLOCKED
+admin | /projects/{project_id}/kpi/filters | GET | 200 | 404 | PASS_BLOCKED
+admin | /projects/{project_id}/kpi/{code} | GET | 200 | 404 | PASS_BLOCKED
+admin | /projects/{project_id}/kpi/{code}/captures | GET | 422 | 404 | PASS_BLOCKED
+admin | /projects/{project_id}/kpi/{code}/points | GET | 200 | 404 | PASS_BLOCKED
+admin | /projects/{project_id}/kpi/{code}/series | GET | 200 | 404 | PASS_BLOCKED
+admin | /projects/{project_id}/measurements/raw | GET | 422 | 404 | PASS_BLOCKED
+admin | /projects/{project_id}/measurements/summary | GET | 200 | 404 | PASS_BLOCKED
+admin | /projects/{project_id}/metrics | GET | 200 | 404 | PASS_BLOCKED
+admin | /projects/{project_id}/metrics/analysis | GET | 422 | 404 | PASS_BLOCKED
+admin | /projects/{project_id}/metrics/captures | GET | 200 | 404 | PASS_BLOCKED
+admin | /projects/{project_id}/metrics/series | GET | 422 | 404 | PASS_BLOCKED
+admin | /projects/{project_id}/metrics/table | GET | 422 | 404 | PASS_BLOCKED
+admin | /projects/{project_id}/metrics/unknown | GET | 200 | 404 | PASS_BLOCKED
+admin | /projects/{project_id}/metrics/{code}/aggregate | GET | 422 | 404 | PASS_BLOCKED
+admin | /projects/{project_id}/nmf | POST | 202 | 404 | PASS_BLOCKED
+admin | /projects/{project_id}/overview | GET | 200 | 404 | PASS_BLOCKED
+admin | /projects/{project_id}/parsing | PATCH | 422 | 404 | PASS_BLOCKED
+admin | /projects/{project_id}/shares | GET | 200 | 404 | PASS_BLOCKED
+admin | /projects/{project_id}/shares | POST | 201 | 404 | PASS_BLOCKED
+admin | /projects/{project_id}/signaling | GET | 200 | 404 | PASS_BLOCKED
+admin | /projects/{project_id}/signaling/captures | GET | 200 | 404 | PASS_BLOCKED
+admin | /projects/{project_id}/signaling/context | GET | 200 | 404 | PASS_BLOCKED
+admin | /projects/{project_id}/signaling/details | GET | 200 | 404 | PASS_BLOCKED
+admin | /projects/{project_id}/signaling/events | GET | 200 | 404 | PASS_BLOCKED
+admin | /projects/{project_id}/signaling/export | GET | 200 | 404 | PASS_BLOCKED
+admin | /projects/{project_id}/signaling/message | GET | 200 | 404 | PASS_BLOCKED
+admin | /projects/{project_id}/signaling/points | GET | 200 | 404 | PASS_BLOCKED
+admin | /projects/{project_id}/signaling/procedures | GET | 200 | 404 | PASS_BLOCKED
+admin | /projects/{project_id}/signaling/timeline | GET | 200 | 404 | PASS_BLOCKED
+admin | /projects/{project_id}/tasks | GET | 200 | 404 | PASS_BLOCKED
+admin | /results/{result_id} | GET | 200 | 404 | PASS_BLOCKED
+admin | /projects/{project_id} | DELETE | 204 | 404 | PASS_BLOCKED
+admin | /projects/{project_id}/shares/{user_id} | DELETE | 204 | 404 | PASS_BLOCKED
+admin | /projects/{project_id} [shared] | GET | 200 | 200 | PASS_SHARED_READ
+admin | /projects/{project_id}/parsing [shared] | PATCH | 200 | 404 | PASS_BLOCKED
+admin | /projects/{project_id} [revoked] | GET | 200 | 404 | PASS_REVOKED
+G34 operations=138 pass=138 fail=0 n_a=0 untestable=0
+G34 VERDICT=PASS
