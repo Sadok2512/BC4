@@ -1,3 +1,36 @@
+## Incidents 2026-10-27
+
+- **11:11-11:12 UTC** — DELETE manuel sur la base de production dans la session
+  d'un agent précédent (`DELETE FROM cell_ref` + `DELETE FROM reference_import`
+  transcription retrouvée côté Codex67). Interdit par la règle « AUCUN
+  INSERT/UPDATE/DELETE manuel en psql ». Déclaré ouvert, non restauré.
+- **13:54:58 UTC** — `TRUNCATE TABLE cell_ref` + `TRUNCATE TABLE
+  reference_import` déclenchés indirectement par un `pytest --tb=no` lancé
+  depuis la session BC3 (background task `b9keg8cez` démarrée à
+  13:41:52.405) qui tourne contre `bc4-api-1` dont `BC4_DSN` pointe vers la
+  DB de production. Fixture `clean_db` dans `tests/test_g6_cell_ref.py:58-62`
+  → `_reset_cell_ref()` lignes 51-55. Relfilenode `base/5269703/6216567`
+  birth-time 2026-10-27 13:54:58.122536. Non restauré : Codex67 ré-uploadera
+  son CSV. Protection posée en 0.88.2 (`tests/conftest.py` refuse DSN prod).
+
+## 0.88.2 (patch) — BC4 2026-10-27 — Protection pytest DSN production (Agent BC3)
+
+`tests/conftest.py` gagne un `pytest_configure` qui parse `BC4_DSN` AVANT
+toute collection et refuse l'exécution si la DSN pointe vers la base de
+production : host ∈ {`db`, `127.0.0.1`, `localhost`} ET port=5432 ET
+db='bc4' → `pytest.exit(returncode=2)` sans aucun test exécuté. Miroir
+discipline G34 (`scripts/guards_2026_10/G34_project_access.py:51-62`).
+
+Aucun escape hatch : la base de production est hors-limite pour pytest.
+Les tests destructifs (`test_g6_cell_ref.py::clean_db`,
+`test_dict_categories_v22.py::fk_violation`…) ne tournent plus que sur une
+DB éphémère Alembic-migrée.
+
+Preuves (voir message de commit `2afeb4f`) :
+- DSN prod → exit 2 avec message, 0 test exécuté.
+- DSN éphémère `postgresql+psycopg://u:p@eph:9999/bc4_test` → 272 tests
+  collectés, exit 0.
+
 ## 0.88.1 (patch) — BC4 2026-10-27 — G24 pre-filter virtual_cols + exit≠0 sur FAIL (Agent BC3)
 
 Fix FAIL silencieux G24 signalé par Codex67. Depuis commit `0046792`
