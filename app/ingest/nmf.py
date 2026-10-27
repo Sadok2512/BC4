@@ -340,7 +340,12 @@ def decode_nmf_file(path: str, handle: DecoderHandle) -> DecodeResult:
                 )
             lat = ev.get("lat")
             lon = ev.get("lon")
-            if lat is not None and lon is not None:
+            # N1 — n_gps = COUNT(event_code='GPS'), pas lignes-avec-coords.
+            # Avant N1 : chaque event qui portait lat/lon (y compris
+            # positions héritées fix précédent dans certains décodeurs)
+            # comptait → inflation. Désormais seuls les events GPS true
+            # (code 'GPS') incrémentent le compteur.
+            if _s(ev.get("event_code")) == "GPS" and lat is not None and lon is not None:
                 gps += 1
             plmn = ev.get("plmn")
             if plmn:

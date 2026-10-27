@@ -366,7 +366,13 @@ class Dataset:
                         scatter.append(dict(code=m['selection'],seq=y['seq'],x_seq=previous['seq'],seq_gap=y['seq']-previous['seq'],cell=m['cell'],x=previous['value'],value=y['value']))
         # 0.75.0 — GPS seq→(lat,lon). Lu une fois, utilisé pour map_points
         # ET pour enrichir chaque row de la table (previous-or-same seq).
-        gps_fixes=sorted(({'seq':r['seq'],'lat':r['lat'],'lon':r['lon']} for r in self.query('SELECT seq,lat,lon FROM stg_event_raw WHERE project_id=:pid AND capture_id=:cap AND lat IS NOT NULL AND lon IS NOT NULL AND NOT(lat=0 AND lon=0) ORDER BY seq')), key=lambda f: f['seq'])
+        # N1 — filter event_code='GPS' AJOUTÉ : avant N1, tout event avec
+        # lat/lon non-NULL (y compris positions héritées propagées par Nemo)
+        # était traité comme fix exact → les points de la carte étaient
+        # majoritairement des positions ré-utilisées. Désormais seuls les
+        # events GPS vrais peuplent `gps_exact` ; `_pair_previous_or_same`
+        # produit explicitement `previous_fix` + `delta_seq`.
+        gps_fixes=sorted(({'seq':r['seq'],'lat':r['lat'],'lon':r['lon']} for r in self.query("SELECT seq,lat,lon FROM stg_event_raw WHERE project_id=:pid AND capture_id=:cap AND event_code='GPS' AND lat IS NOT NULL AND lon IS NOT NULL AND NOT(lat=0 AND lon=0) ORDER BY seq")), key=lambda f: f['seq'])
         gps_exact={f['seq']:(f['lat'],f['lon']) for f in gps_fixes}
         if include_map:
             # Serving-cell proof for map links. CHI #6 is the documented LTE
@@ -390,25 +396,47 @@ class Dataset:
                     FROM cell_ref
                     WHERE eci=ANY(:serving_ecgis) AND geom IS NOT NULL
                 """,{'serving_ecgis':cell_ids})}
-            # Exact recorded GPS only: no previous-position point presented as exact.
+            # N1 — map_points.position_source ∈ {'exact','previous_fix'} + delta_seq.
+            # Avant N1 : seuls les rows exactement sur un GPS fix étaient
+            # tracés ; les autres n'étaient PAS ajoutés sur la carte. En plus
+            # `gps_exact` incluait les lat/lon héritées (bug fix ligne 369).
+            # Désormais : chaque row avec une valeur est tracé ; position_source
+            # distingue le fix exact du fix précédent (delta_seq = r.seq - prev.seq).
+            rows_for_map: list[tuple] = []
             for m,rows in loaded:
                 for r,chi in _pair_previous_or_same(chi_rows,rows):
-                    if r['seq'] in gps_exact and r['value'] is not None:
-                        lat,lng=gps_exact[r['seq']]
-                        ref=cell_refs.get(chi['eci']) if chi else None
-                        map_points.append(dict(
-                            seq=r['seq'],lat=lat,lng=lng,code=m['selection'],
-                            value=r['value'],t_rel_s=r['t_rel_s'],
-                            tooltip=f"{m['label']} · seq {r['seq']} · {r['value']} {m['unit']}",
-                            serving_cell_id=chi['eci'] if ref else None,
-                            serving_cell_seq=chi['seq'] if ref else None,
-                            serving_cell_ref_id=ref['cell_ref_id'] if ref else None,
-                            serving_site_id=ref['site_id'] if ref else None,
-                            serving_site_name=ref['site_name'] if ref else None,
-                            serving_cell_lat=ref['lat'] if ref else None,
-                            serving_cell_lng=ref['lng'] if ref else None,
-                            serving_cell_source='chi_previous_seq_cell_ref_exact' if ref else None,
-                        ))
+                    if r['value'] is None:
+                        continue
+                    rows_for_map.append((m, r, chi))
+            # Un seul previous-or-same seq join GPS pour toute la boucle.
+            keyed=[{'seq':r['seq'],'_tuple':(m,r,chi)} for (m,r,chi) in rows_for_map]
+            keyed.sort(key=lambda e: e['seq'])
+            for y, prev in _pair_previous_or_same(gps_fixes, keyed):
+                if prev is None:
+                    continue
+                m,r,chi = y['_tuple']
+                lat,lng = prev['lat'], prev['lon']
+                position_source = 'exact' if prev['seq']==r['seq'] else 'previous_fix'
+                delta_seq = r['seq'] - prev['seq']
+                ref=cell_refs.get(chi['eci']) if chi else None
+                tooltip = (f"{m['label']} · seq {r['seq']} · {r['value']} {m['unit']}"
+                           + (f" · position héritée du fix seq {prev['seq']} (Δseq {delta_seq})"
+                              if position_source=='previous_fix' else ''))
+                map_points.append(dict(
+                    seq=r['seq'],lat=lat,lng=lng,code=m['selection'],
+                    value=r['value'],t_rel_s=r['t_rel_s'],
+                    position_source=position_source, delta_seq=delta_seq,
+                    position_fix_seq=prev['seq'],
+                    tooltip=tooltip,
+                    serving_cell_id=chi['eci'] if ref else None,
+                    serving_cell_seq=chi['seq'] if ref else None,
+                    serving_cell_ref_id=ref['cell_ref_id'] if ref else None,
+                    serving_site_id=ref['site_id'] if ref else None,
+                    serving_site_name=ref['site_name'] if ref else None,
+                    serving_cell_lat=ref['lat'] if ref else None,
+                    serving_cell_lng=ref['lng'] if ref else None,
+                    serving_cell_source='chi_previous_seq_cell_ref_exact' if ref else None,
+                ))
         pair_rows=[dict(p) for p in self.pairs if self.admissible(p['seq_start']) and (p['seq_end'] is None or self.admissible(p['seq_end']))]
         pair_rates=[]
         for kind in sorted({p['type'] for p in pair_rows}):
