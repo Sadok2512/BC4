@@ -81,6 +81,12 @@ def main():
             if differ or orph_pair or orph_proc:
                 print(f"  {cap[:12]}  pairs={len(pair_rows)} procs={len(procs_by_key)} "
                       f"differ={differ} orph_pair={orph_pair} orph_proc={orph_proc}")
+        # 0.89.5 — garde sans témoin = FAIL. `caps` vient de `SELECT ...
+        # FROM nmf_capture` : 0 capture ⇒ aucun échantillon ⇒ FAIL.
+        if len(caps) == 0:
+            print(f"\nG32_VERDICT FAIL no_witness examined=0 "
+                  f"(nmf_capture vide — ingérer au moins une capture)")
+            sys.exit(1)
         verdict = "PASS" if (total_diff == 0 and total_orphans_pair == 0 and total_orphans_proc == 0) else "FAIL"
         # 0.87.2 — rapport procs_only (hors _PAIR_TYPES) visible, mais pas FAIL
         print(f"\nG32 procs_only (hors _PAIR_TYPES, légitimes) : {procs_only_by_type}")

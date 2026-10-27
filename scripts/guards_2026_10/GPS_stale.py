@@ -20,6 +20,16 @@ TEMOIN = "d8d7fa995c44"
 def main():
     db = SessionLocal()
     try:
+        # 0.89.5 — exige que le témoin existe en base. Si la capture
+        # TEMOIN n'est pas ingérée, le garde ne prouve rien.
+        exists = db.execute(text(
+            "SELECT COUNT(*) FROM nmf_capture WHERE capture_id=:cap"
+        ), {"cap": TEMOIN}).scalar_one() or 0
+        if exists == 0:
+            print(f"GPS_stale_VERDICT FAIL no_witness examined=0 "
+                  f"(témoin capture_id={TEMOIN} absent de nmf_capture — "
+                  f"ingérer cette capture avant de rejouer le garde)")
+            sys.exit(1)
         row = db.execute(text("""
             SELECT COUNT(*) FROM measurement_points
             WHERE capture_id=:cap AND lat IS NOT NULL AND geo_source='gps_fix'
@@ -44,6 +54,8 @@ def main():
         witness_pass = (row == 0)
         verdict = "PASS" if witness_pass and not anomalies else "FAIL"
         print(f"GPS_stale_VERDICT {verdict} witness_zero={witness_pass} anomalies={len(anomalies)}")
+        if verdict == "FAIL":
+            sys.exit(1)
     finally:
         db.close()
 
