@@ -1,3 +1,56 @@
+## 0.87.0 (minor) — BC4 2026-10-27 — cell_ref upload accepte géo + radio + site (Agent BC3)
+
+Fix d'un bug invisible : `POST /settings/cell-ref/upload` ne persistait
+qu'un sous-ensemble ARCEP (`dr`, `plaque`, `dor`, `arcep_zone`,
+`commune`, `insee`) ; les colonnes `lat`/`lng`/`pci`/`azimuth`/
+`techno`/`site_name`/… présentes dans un vrai CSV référentiel
+étaient **ignorées silencieusement** à l'INSERT, laissant `geom=NULL`
+→ les cellules n'apparaissaient **jamais** sur la Map/Signaling
+(filtre `WHERE geom IS NOT NULL`). D'où le symptôme utilisateur
+« à chaque upload les cells disparaissent ».
+
+### Endpoint étendu (`app/routes/settings_cell_ref.py`)
+
+- `_ALLOWED_FIELDS` étendu avec : `pci`, `azimuth`, `tilt`, `height`,
+  `earfcn`, `band_src`, `band_3gpp`, `techno`, `vendor`, `rat`,
+  `site_id`, `site_name`, `sector`, `cell_class`, `coverage`, `etat`,
+  `nci`, `snapshot_date`, `cell_op_leader`.
+- `_GEO_FIELDS = {lat, lng}` traité à part :
+  `geom = ST_SetSRID(ST_Point(:lng, :lat), 4326)` quand les deux
+  valeurs sont présentes et dans la plage `lat ∈ [-90,90]` /
+  `lng ∈ [-180,180]`. Si une seule présente ou invalide, `geom`
+  reste NULL + warning dans le rapport ; **jamais** interpolé.
+- `_normalize_header` enrichi des alias CSV réels :
+  `sac_ci_eci→eci`, `nom_dr→dr`, `plaque_site→plaque`,
+  `id_site→site_id`, `etat_fonctionnement→etat`,
+  `cat_arcep_code→arcep_zone`, `latitude→lat`, `longitude→lng`,
+  `band→band_src`.
+- `_normalize_rat` : `"4G"→"LTE"`, `"5G"→"NR"`, `"3G"→"UMTS"`,
+  `"2G"→"GSM"` (insensible à la casse).
+- `_safe_int` / `_safe_float` pour tolérer les cellules CSV vides
+  ou mal typées sans crasher la ligne.
+- `arcep_zone` **relaxé** : accepte legacy ZTD/ZMD/ZPD (2019) ET
+  taxonomie 2024 (`01`, `02`, `03`, `04`, `01/ Top15` …).
+  Valeur non-vide toujours acceptée, warning en lieu et place du
+  rejet strict précédent.
+- Lookup étendu : UPDATE par `eci` d'abord, puis `enodebid`
+  (multi-apply), puis `id` CSV (si fourni comme PK). INSERT en
+  dernier recours avec `id = csv_id` ou `upload-<uuid>`.
+
+### Rapport
+- Nouveau champ `rows_with_geo` dans la réponse + dans
+  `reference_import.report` : nombre de lignes CSV avec lat+lng
+  valides effectivement persistées en `geom`.
+- `cells_affected = 0` → `status='rejected'` inchangé.
+
+### Compat ascendante
+- Les CSV historiques (ARCEP-only : dr/plaque/dor/zone/commune/insee)
+  continuent de fonctionner identique à 0.86.0.
+- Les colonnes CSV non reconnues sont ignorées silencieusement
+  (pas de rejet).
+
+Rebuild sous DEPLOY_LOCK BC3 2026-10-27T10:30Z depuis clean HEAD.
+
 ## 0.86.0 (minor) — BC4 2026-10-27 — File summary traçable (Agent BC1)
 
 - Ajoute `GET /projects/{id}/files/summary`, paginé sur le listing Projects, avec les tâches, débits applicatifs et radio LTE/NR, MOS, échecs RACH/appel/session et latence.
