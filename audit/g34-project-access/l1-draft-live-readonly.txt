@@ -1,0 +1,24 @@
+    conname    | pg_get_constraintdef
+---------------+----------------------
+ projects_pkey | PRIMARY KEY (id)
+(1 row)
+
+        id         |         name         |   status   | status_ingest | captures |           actor
+-------------------+----------------------+------------+---------------+----------+----------------------------
+ 134af70a06eb      | TEST2                | ready      | ready         |       16 | demo@demo.com
+ 4b7bfd50ddb6      | Test_3               | ready      | ready         |       58 | demo@demo.com
+ ea93767bd734      | Test_outdoor         | ready      | ready         |       10 | demo@demo.com
+ fa9301f2f3fe      | One_Log              | ready      | ready         |        2 | signaling-reader@bc4.local
+ idf-t3-2026       | Paris 2026 Q1        | ready      | draft         |  2400000 |
+ lille-indoor-2026 | Tests Indoor         | processing | draft         |   320000 |
+ lyon-drive-2026   | Lyon Métropole       | ready      | ready         |   850000 |
+ marseille-5g-2026 | Marseille 5G         | ready      | ready         |  1200000 |
+ national-2026     | Benchmark National   | ready      |               |  5800000 |
+ rennes-lte-2026   | Rennes LTE (sans NR) | ready      | ready         |   410000 |
+(10 rows)
+
+        id        |           email            |   role    | active
+------------------+----------------------------+-----------+--------
+ adm-30bf55313911 | admin@bc4.local            | admin     | t
+ u-6295b748dabe   | signaling-reader@bc4.local | ingenieur | t
+(2 rows)

@@ -1,0 +1,28 @@
+Pager usage is off.
+Q1 witnesses: source records vs current 1-second light rows
+  project_id  |  capture_id  | decode_level | native_rows | current_light_rows | verified_light_buckets | staged_raw_rows
+--------------+--------------+--------------+-------------+--------------------+------------------------+-----------------
+ 4b7bfd50ddb6 | 289784700e72 | light        |       58774 |               2266 |                   2266 |           58774
+ 4b7bfd50ddb6 | 44621571bccc | light        |       48660 |              27651 |                  27618 |           48660
+ 4b7bfd50ddb6 | e84832b42679 | light        |       56698 |              27970 |                  27970 |           56698
+(3 rows)
+
+Q2 physical size including all nmf_event_light partitions
+ light_total_bytes | light_total_rows | physical_bytes_per_light_row
+-------------------+------------------+------------------------------
+        1645936640 |          1719140 |                       957.42
+(1 row)
+
+Q3 corpus 85 capture rows: current vs native rows and prorated bytes
+ capture_rows | current_light_rows | native_rows | bytes_per_row | current_prorated_bytes | native_prorated_bytes | native_to_current_ratio
+--------------+--------------------+-------------+---------------+------------------------+-----------------------+-------------------------
+           85 |            1719140 |     3949116 |        957.42 |             1645936640 |            3780957176 |                    2.30
+(1 row)
+
+Q4 per-witness prorated bytes using measured physical bytes/row
+  capture_id  | current_rows | native_rows | current_prorated_bytes | native_prorated_bytes | ratio
+--------------+--------------+-------------+------------------------+-----------------------+-------
+ 289784700e72 |         2266 |       58774 |                2169511 |              56271322 | 25.94
+ 44621571bccc |        27651 |       48660 |               26473582 |              46587990 |  1.76
+ e84832b42679 |        27970 |       56698 |               26778999 |              54283721 |  2.03
+(3 rows)

@@ -1,0 +1,84 @@
+DROP DATABASE
+CREATE DATABASE
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 0001_initial, initial schema
+INFO  [alembic.runtime.migration] Running upgrade 0001_initial -> 0002_cell_ref, cell_ref + reference_import (B1-réf)
+INFO  [alembic.runtime.migration] Running upgrade 0002_cell_ref -> 0003_nmf_ingest, nmf_file + stg_event + colonnes d'ingestion sur projects (B1-ingest)
+INFO  [alembic.runtime.migration] Running upgrade 0003_nmf_ingest -> 0004_stg_event_decoder_fields, stg_event : attributs ts/freq/pci exposés par bc4_decoder 1.0.0
+INFO  [alembic.runtime.migration] Running upgrade 0004_stg_event_decoder_fields -> 0005_app_user, app_user (B2 — comptes locaux)
+INFO  [alembic.runtime.migration] Running upgrade 0005_app_user -> 0006_cell_ref_arcep_zone, cell_ref.arcep_zone (B1-réf — dimension Zone ARCEP)
+INFO  [alembic.runtime.migration] Running upgrade 0006_cell_ref_arcep_zone -> 0007_project_perimeter, projects.perimeter (B2 — jointure cell_ref)
+INFO  [alembic.runtime.migration] Running upgrade 0007_project_perimeter -> 0008_param_occurrence, param_occurrence (0.12.0 — dictionnaire complet RRC LTE+NR)
+INFO  [alembic.runtime.migration] Running upgrade 0008_param_occurrence -> 0009_llm_settings, settings_llm (B2 — config LLM persistée)
+INFO  [alembic.runtime.migration] Running upgrade 0009_llm_settings -> 0010_stg_measurement_raw, stg_measurement_raw : stream raw d'events mesure + débit (Keystone 0.24.0)
+INFO  [alembic.runtime.migration] Running upgrade 0010_stg_measurement_raw -> 0011_measurement_points_metrics, measurement_points : colonnes métriques (nullable) — Keystone 0.24.0
+INFO  [alembic.runtime.migration] Running upgrade 0011_measurement_points_metrics -> 0012_llm_cost_control, settings_llm: model_loop + daily_cap_usd + llm_usage (0.27.0)
+INFO  [alembic.runtime.migration] Running upgrade 0012_llm_cost_control -> 0013_measurement_enriched, measurement_points : colonnes enrichies pour câblage décodeur 2.0.0 (0.30.0)
+INFO  [alembic.runtime.migration] Running upgrade 0013_measurement_enriched -> 0014_stg_event_raw_and_file_meta, stg_event_raw + nmf_file.meta/source_path (0.30.0 — câblage décodeur 2.0.0)
+INFO  [alembic.runtime.migration] Running upgrade 0014_stg_event_raw_and_file_meta -> 0015_skill, Skills Center (0.38.0 — skills Markdown déclaratifs)
+INFO  [alembic.runtime.migration] Running upgrade 0015_skill -> 0016_mp_ecgi_cell_ref_geo, ECGI sur measurement_points + commune/insee sur cell_ref (0.41.0)
+INFO  [alembic.runtime.migration] Running upgrade 0016_mp_ecgi_cell_ref_geo -> 0017_param_occurrence_dict_v2, Dictionnaire v2 : colonnes d'enrichissement sur param_occurrence (0.45.0)
+INFO  [alembic.runtime.migration] Running upgrade 0017_param_occurrence_dict_v2 -> 0018_project_populate_tracking, 0.46.0 — projects.last_populate_at + projects.n_points
+INFO  [alembic.runtime.migration] Running upgrade 0018_project_populate_tracking -> 0019_ref_import_source_path, 0.47.1 — reference_import.source_path (persistance du blob upload)
+INFO  [alembic.runtime.migration] Running upgrade 0019_ref_import_source_path -> 0020_mp_lat_lng_nullable, 0.47.3 — measurement_points.lat/lng nullable + geo_source
+INFO  [alembic.runtime.migration] Running upgrade 0020_mp_lat_lng_nullable -> 0021_stg_evt_pid_evcode_idx, 0.48.0 — index (project_id, event_code) sur stg_event_raw
+INFO  [alembic.runtime.migration] Running upgrade 0021_stg_evt_pid_evcode_idx -> 0022_mp_ecgi_source, 0.48.0 — colonne measurement_points.ecgi_source
+INFO  [alembic.runtime.migration] Running upgrade 0022_mp_ecgi_source -> 0023_nmf_import_jobs, Persistent background NMF import queue.
+INFO  [alembic.runtime.migration] Running upgrade 0023_nmf_import_jobs -> 0024_dict_templates, RRC template configuration, no measurements or reference data.
+INFO  [alembic.runtime.migration] Running upgrade 0024_dict_templates -> 0025_dict_categories_v22, Category/subcategory configuration for dict v2.2 (BC1).
+INFO  [alembic.runtime.migration] Running upgrade 0025_dict_categories_v22 -> 0026_task_run, Task runs, samples and server-side analytical evidence (BC1).
+INFO  [alembic.runtime.migration] Command privacy redactions by project: {}
+INFO  [alembic.runtime.migration] Running upgrade 0026_task_run -> 0027_task_pairing, KPI integral quality and explicit capture-local radio distance.
+INFO  [alembic.runtime.migration] Running upgrade 0027_task_pairing -> 0028_task_cellmeas, Pair CELLMEAS independently from CQI, preserving explicit provenance.
+INFO  [alembic.runtime.migration] Running upgrade 0028_task_cellmeas -> 0029_dict_ie_suffix, BC1 approved IE suffix categories and identifier flags. Data migration only.
+INFO  [alembic.runtime.migration] Running upgrade 0029_dict_ie_suffix -> 0030_metric_def, Proof-gated Nemo metric definitions and measured observations.
+INFO  [alembic.runtime.migration] Running upgrade 0030_metric_def -> 0031_nmf_decoder, Versioned Nemo typed storage and resumable decode jobs. No JSON payload columns.
+INFO  [alembic.runtime.migration] Running upgrade 0031_nmf_decoder -> 0032_nmf_ci_pairing, Keep the source sequence of CI-derived task SINR independently of CELLMEAS.
+INFO  [alembic.runtime.migration] Running upgrade 0032_nmf_ci_pairing -> 0033_kpi_context_index, Cover exact-sequence analytic attribution without reading raw payload pages.
+INFO  [alembic.runtime.migration] Running upgrade 0033_kpi_context_index -> 0034_kpi_light_context_index, Cover source event ranges used to validate filtered Light buckets.
+INFO  [alembic.runtime.migration] Running upgrade 0034_kpi_light_context_index -> 0035_nmf_decoder_1_1_0, nmf_decoder 1.1.0 — ajout 174 + 0 + 174 + 0 colonnes.
+INFO  [alembic.runtime.migration] Running upgrade 0035_nmf_decoder_1_1_0 -> 0036_signaling_procedure, Capture-local signaling procedures.
+INFO  [alembic.runtime.migration] Running upgrade 0036_signaling_procedure -> 0037_sig_rrc_connection, Add rrc_connection to signaling_procedure.type CHECK.
+INFO  [alembic.runtime.migration] Running upgrade 0037_sig_rrc_connection -> 0038_decoder_cell_context, Nemo explicit contexts, documented event attributes and CA projections.
+INFO  [alembic.runtime.migration] Running upgrade 0038_decoder_cell_context -> 0039_decoder_lock_fields, Documented LOCK attributes in typed repeated groups.
+INFO  [alembic.runtime.migration] Running upgrade 0039_decoder_lock_fields -> 0040_metrics_catalog_cache, Persistent project-scoped cache for the expensive metrics catalogue.
+INFO  [alembic.runtime.migration] Running upgrade 0040_metrics_catalog_cache -> 0041_sig_idx, Indexes for capture-scoped Signaling View projections.
+INFO  [alembic.runtime.migration] Running upgrade 0041_sig_idx -> 0042_utc_offset, Add nmf_file.utc_offset_min (minutes, signed local-UTC) from NMF header #UT col 1.
+INFO  [alembic.runtime.migration] Running upgrade 0042_utc_offset -> 0043_kind, Add nmf_capture.kind ('ue' | 'scanner') to classify Nemo captures.
+INFO  [alembic.runtime.migration] Running upgrade 0043_kind -> 0044_nmf_string_columns, Use text storage for NMF documented string fields.
+INFO  [alembic.runtime.migration] Running upgrade 0044_nmf_string_columns -> 0045_settings_pkeys, Restore primary keys for singleton settings tables.
+INFO  [alembic.runtime.migration] Running upgrade 0045_settings_pkeys -> 0046_seed_pkeys, Restore primary keys required by idempotent application seeds.
+INFO  [alembic.runtime.migration] Running upgrade 0046_seed_pkeys -> 0047_nmf_string_columns, Reconstructed from DB state after container rebuild erased the original file.
+INFO  [alembic.runtime.migration] Running upgrade 0047_nmf_string_columns -> 0048_catalog_release, catalog_release table — versionned catalog artefact tracking.
+INFO  [alembic.runtime.migration] Running upgrade 0048_catalog_release -> 0049_nmf_event_light_ext, nmf_event_light_ext — narrow extension table for NFF 2.50 fields not
+mapped to a dedicated column in nmf_event_light.
+INFO  [alembic.runtime.migration] Running upgrade 0049_nmf_event_light_ext -> 0050_light_2_50_cols, Add non-structural NFF 2.50 columns to nmf_event_light for the 98 simple
+corpus events (261 columns).
+INFO  [alembic.runtime.migration] Running upgrade 0050_light_2_50_cols -> 0051_param_occurrence_fk_index, Index on param_occurrence.stg_event_id — accelerate ON DELETE CASCADE.
+INFO  [alembic.runtime.migration] Running upgrade 0051_param_occurrence_fk_index -> 0052_deep_2_50_cols, Add 261 NFF 2.50 non-structural columns to nmf_event_deep (symmetric 0050).
+INFO  [alembic.runtime.migration] Running upgrade 0052_deep_2_50_cols -> 0053_decoder_1_7_0_nr_cols, decoder 1.7.0 NR columns
+INFO  [alembic.runtime.migration] Running upgrade 0053_decoder_1_7_0_nr_cols -> 0054_light_group_1_7_0, decoder 1.7.0 light group cols
+INFO  [alembic.runtime.migration] Running upgrade 0054_light_group_1_7_0 -> 0056_range_violations, range_violations table
+[0050] added 261 columns
+[0052] added 262 columns to nmf_event_deep (partitions propagées)
+empty_to_0056_exit=0
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running downgrade 0056_range_violations -> 0054_light_group_1_7_0, range_violations table
+INFO  [alembic.runtime.migration] Running downgrade 0054_light_group_1_7_0 -> 0053_decoder_1_7_0_nr_cols, decoder 1.7.0 light group cols
+INFO  [alembic.runtime.migration] Running downgrade 0053_decoder_1_7_0_nr_cols -> 0052_deep_2_50_cols, decoder 1.7.0 NR columns
+INFO  [alembic.runtime.migration] Running downgrade 0052_deep_2_50_cols -> 0051_param_occurrence_fk_index, Add 261 NFF 2.50 non-structural columns to nmf_event_deep (symmetric 0050).
+downgrade_0056_to_0051_exit=0
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade 0051_param_occurrence_fk_index -> 0052_deep_2_50_cols, Add 261 NFF 2.50 non-structural columns to nmf_event_deep (symmetric 0050).
+INFO  [alembic.runtime.migration] Running upgrade 0052_deep_2_50_cols -> 0053_decoder_1_7_0_nr_cols, decoder 1.7.0 NR columns
+INFO  [alembic.runtime.migration] Running upgrade 0053_decoder_1_7_0_nr_cols -> 0054_light_group_1_7_0, decoder 1.7.0 light group cols
+INFO  [alembic.runtime.migration] Running upgrade 0054_light_group_1_7_0 -> 0056_range_violations, range_violations table
+[0052] added 262 columns to nmf_event_deep (partitions propagées)
+reupgrade_0051_to_0056_exit=0
+  column_name  |    data_type
+---------------+------------------
+ dci_dci_count | double precision
+(1 row)

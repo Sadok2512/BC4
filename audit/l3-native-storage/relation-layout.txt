@@ -1,0 +1,14 @@
+       oid       | relkind | pg_total_relation_size
+-----------------+---------+------------------------
+ nmf_event_light | r       |             1645936640
+(1 row)
+
+ children | child_bytes
+----------+-------------
+        0 |           0
+(1 row)
+
+ direct_bytes
+--------------
+   1645936640
+(1 row)
