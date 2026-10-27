@@ -208,22 +208,26 @@ def seed() -> None:
             stmt = stmt.on_conflict_do_nothing(index_elements=["id"])
             db.execute(stmt)
 
-        # ----- Users -----
-        for u in USERS:
-            row = {
-                **u,
-                "created_at": datetime.fromisoformat(u["created_at"].replace("Z", "+00:00")),
-                "last_login_at": (
-                    datetime.fromisoformat(u["last_login_at"].replace("Z", "+00:00"))
-                    if u["last_login_at"]
-                    else None
-                ),
-            }
-            stmt = pg_insert(User).values(**row).on_conflict_do_update(
-                index_elements=["id"],
-                set_={k: row[k] for k in ("login", "display_name", "role", "active", "last_login_at")},
-            )
-            db.execute(stmt)
+        # ----- Users (dépréciée) : gatée derrière BC4_SEED_DEMO ------
+        # 0.89.4 — la table `users` est dépréciée (vs `app_user`) mais garde
+        # le seed historique de 85 lignes de fixtures démo. On ne pose plus
+        # rien par défaut : jamais d'identité inventée dans la base.
+        if settings.seed_demo:
+            for u in USERS:
+                row = {
+                    **u,
+                    "created_at": datetime.fromisoformat(u["created_at"].replace("Z", "+00:00")),
+                    "last_login_at": (
+                        datetime.fromisoformat(u["last_login_at"].replace("Z", "+00:00"))
+                        if u["last_login_at"]
+                        else None
+                    ),
+                }
+                stmt = pg_insert(User).values(**row).on_conflict_do_update(
+                    index_elements=["id"],
+                    set_={k: row[k] for k in ("login", "display_name", "role", "active", "last_login_at")},
+                )
+                db.execute(stmt)
 
         # ----- Assistant exec steps -----
         for step in ASSISTANT_EXEC_STEPS:
@@ -258,30 +262,33 @@ def seed() -> None:
         )
         db.execute(stmt)
 
-        # ----- Projects -----
-        for p in PROJECTS:
-            row = {
-                "id": p["id"],
-                "name": p["name"],
-                "geography": p["geography"],
-                "center_lng": p["center"][0],
-                "center_lat": p["center"][1],
-                "operators": p["operators"],
-                "technologies": p["technologies"],
-                "services": p["services"],
-                "bands": p["bands"],
-                "departements": p["departements"],
-                "period_start": p["periodStart"],
-                "period_end": p["periodEnd"],
-                "captures": p["captures"],
-                "imported_at": p["importedAt"],
-                "status": p["status"],
-            }
-            stmt = pg_insert(Project).values(**row).on_conflict_do_update(
-                index_elements=["id"],
-                set_={k: row[k] for k in row if k != "id"},
-            )
-            db.execute(stmt)
+        # ----- Projects (démo) : gatée derrière BC4_SEED_DEMO ------
+        # 0.89.4 — zéro projet démo par défaut. Codex67 crée ses projets
+        # via l'UI (POST /projects) ou via upload NMF.
+        if settings.seed_demo:
+            for p in PROJECTS:
+                row = {
+                    "id": p["id"],
+                    "name": p["name"],
+                    "geography": p["geography"],
+                    "center_lng": p["center"][0],
+                    "center_lat": p["center"][1],
+                    "operators": p["operators"],
+                    "technologies": p["technologies"],
+                    "services": p["services"],
+                    "bands": p["bands"],
+                    "departements": p["departements"],
+                    "period_start": p["periodStart"],
+                    "period_end": p["periodEnd"],
+                    "captures": p["captures"],
+                    "imported_at": p["importedAt"],
+                    "status": p["status"],
+                }
+                stmt = pg_insert(Project).values(**row).on_conflict_do_update(
+                    index_elements=["id"],
+                    set_={k: row[k] for k in row if k != "id"},
+                )
+                db.execute(stmt)
 
         # ----- Dict messages / params / conversion_rule -----
         for m in DICT_MESSAGES:
@@ -308,21 +315,24 @@ def seed() -> None:
 
         db.commit()
 
-        # ----- Measurement points: regenerate per project (truncate-and-insert, deterministic) -----
-        for p in PROJECTS:
-            db.execute(delete(MeasurementPoint).where(MeasurementPoint.project_id == p["id"]))
-            pts = _generate_points(p)
-            if pts:
-                db.execute(MeasurementPoint.__table__.insert(), pts)
-        db.commit()
+        # ----- Measurement points & RRC observations : démo gaté ------
+        # 0.89.4 — données générées par fixtures ne sont posées que si
+        # BC4_SEED_DEMO=1. Jamais inventées sinon : les vrais points
+        # viennent des uploads NMF.
+        if settings.seed_demo:
+            for p in PROJECTS:
+                db.execute(delete(MeasurementPoint).where(MeasurementPoint.project_id == p["id"]))
+                pts = _generate_points(p)
+                if pts:
+                    db.execute(MeasurementPoint.__table__.insert(), pts)
+            db.commit()
 
-        # ----- RRC observations per project -----
-        for p in PROJECTS:
-            db.execute(delete(RrcObservation).where(RrcObservation.project_id == p["id"]))
-            obs = _generate_observations(p, DICT_PARAMS)
-            if obs:
-                db.execute(RrcObservation.__table__.insert(), obs)
-        db.commit()
+            for p in PROJECTS:
+                db.execute(delete(RrcObservation).where(RrcObservation.project_id == p["id"]))
+                obs = _generate_observations(p, DICT_PARAMS)
+                if obs:
+                    db.execute(RrcObservation.__table__.insert(), obs)
+            db.commit()
 
     _seed_admin_from_env()
     _seed_demo_from_env()

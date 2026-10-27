@@ -34,6 +34,12 @@ class Settings(BaseSettings):
     demo_email: str | None = Field(default=None, alias="BC4_DEMO_EMAIL")
     demo_password: str | None = Field(default=None, alias="BC4_DEMO_PASSWORD")
     demo_role: str = Field(default="ingenieur", alias="BC4_DEMO_ROLE")
+    # 0.89.4 — gate démo seed. Défaut 0 (= aucun projet démo ni
+    # measurement_points/rrc_observations ni table users dépréciée).
+    # Mettre `BC4_SEED_DEMO=1` dans .env pour une installation de
+    # démonstration. Ne RÉACTIVE PAS les comptes BC4_DEMO_* (ceux-ci
+    # restent gatés par leur propre BC4_DEMO_EMAIL/PASSWORD).
+    seed_demo: bool = Field(default=False, alias="BC4_SEED_DEMO")
 
     # LLM (0.16.0) — précédence : DB (settings_llm) > env ci-dessous.
     # BC4_LLM_SECRET_KEY : clé Fernet pour chiffrer l'api_key au repos.
