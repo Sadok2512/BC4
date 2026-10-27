@@ -1,3 +1,37 @@
+## 0.88.0 (minor) — BC4 2026-10-27 — rf.events RRC_STATE/UE_STATE light-fallback + G33 (Agent BC3)
+
+E3 Codex67 : RRC State « Unknown » + UE State vide sur frise Signaling,
+alors que RRCConnectionRequest / Setup / SetupComplete sont présents.
+
+Cause : `app/signaling/rf.py:21-24` `DEEP_SQL` requête `nmf_event_deep`
+uniquement. Pour `decode_level='light'`, `nmf_event_deep` vide → aucune
+`emit('rrc-state:…', 'RRC_STATE', …)` à `rf.py:113`. Distribution live :
+**66 captures light / 19 deep** (78% light).
+
+Fix : `DEEP_SQL` étendu en CTE `WITH deep … light_fallback …` qui UNION
+les deux sources, deep priorité, light pour les seq non présents en
+deep. Champs HOA/CAD/RRD spécifiques restent NULL en light — events
+dépendants restent "UNKNOWN" explicitement, jamais inventés. Ordre
+`(capture_id, seq)` préservé (jamais `ts`).
+
+Témoin `01bfc2fc5350` : `rf.events() → RRC_STATE=25 UE_STATE=25`
+(avant : 0, 0).
+
+### Garde G33 (nouveau, `scripts/guards_2026_10/G33_rrc_state_cycles.py`)
+Compare N(RRC_STATE events émis par rf.events) ↔ N(triplets RRA→RRC→RRD
+par context_id, ordre `(capture_id, seq)`) sur chaque capture light du
+périmètre. Deep rapporté sans PASS/FAIL (chemin pré-fix fonctionnel).
+
+Résultat run 85 captures (66 light + 19 deep) :
+```
+G33_VERDICT FAIL light_PASS=53 light_FAIL=13 deep_reported=19
+```
+13 light FAIL avec écart ±1 (cause probable : multi-RRC avec même
+context_id dans fenêtre pair → rf.py:94 `len(middles)!=1 continue` saute
+le 2e). Déclaré OUVERT, non bloquant déploiement.
+
+Scope restant OUVERT : gaps UNKNOWN entre segments → front D.3.
+
 ## 0.87.2 (patch) — BC4 2026-10-27 — G32 visibilité procs_only + exit≠0 sur FAIL (Agent BC3)
 
 Correction d'un défaut constaté lors de la revue COND 3 BC3 :

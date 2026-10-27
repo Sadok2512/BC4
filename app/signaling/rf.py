@@ -15,10 +15,40 @@ UNAVAILABLE = {
     'nr_radio': 'NR SSB occurrences lack verified physical-unit conversions and serving-MO attribution.',
     'ho_failure': 'No proven causal association between handover attempts and radio failures.',
 }
-DEEP_SQL = '''SELECT seq,event_code,system,context_id,decode_status,reasons,
- hoa_ch_number,hoa_pci,hoa_band,hoa_att_ch,hoa_att_pci,hoa_att_band,
- cad_call_type,cad_cs_disc_status,cad_volte_cause,rrd_rrc_rel_status,rrd_rrc_rel_cause
- FROM nmf_event_deep WHERE project_id=:pid AND capture_id=:cap AND event_code=ANY(:markers) ORDER BY seq'''
+# 0.88.0 BC3 — Fallback nmf_event_light pour captures decode_level='light'.
+# Avant 0.88.0 : rf.events ne lisait que nmf_event_deep. Pour les 66/85
+# captures live en decode_level='light' (78%), `deep` était vide → aucun
+# RRC_STATE / UE_STATE émis → UI « Unknown » partout.
+# Fix : UNION ALL deep PRIORITY puis light (uniquement pour les seq NON
+# présents dans deep). Les champs HOA/CAD/RRD spécifiques (hoa_ch_number,
+# cad_call_type, …) restent NULL en light → les events dépendants (HOA
+# full dump, CAD VoLTE discriminator) restent "UNKNOWN" explicite (jamais
+# inventé). Ordre (capture_id, seq) préservé par ORDER BY seq.
+DEEP_SQL = '''
+WITH deep AS (
+  SELECT seq, event_code, system, context_id, decode_status, reasons,
+    hoa_ch_number, hoa_pci, hoa_band, hoa_att_ch, hoa_att_pci, hoa_att_band,
+    cad_call_type, cad_cs_disc_status, cad_volte_cause,
+    rrd_rrc_rel_status, rrd_rrc_rel_cause
+  FROM nmf_event_deep
+  WHERE project_id=:pid AND capture_id=:cap AND event_code=ANY(:markers)
+),
+light_fallback AS (
+  SELECT l.seq, l.event_code, l.system, l.context_id,
+    'light_fallback'::text AS decode_status, NULL::text[] AS reasons,
+    NULL::int AS hoa_ch_number, NULL::int AS hoa_pci, NULL::int AS hoa_band,
+    NULL::int AS hoa_att_ch, NULL::int AS hoa_att_pci, NULL::int AS hoa_att_band,
+    NULL::int AS cad_call_type, NULL::int AS cad_cs_disc_status,
+    NULL::int AS cad_volte_cause,
+    NULL::int AS rrd_rrc_rel_status, NULL::int AS rrd_rrc_rel_cause
+  FROM nmf_event_light l
+  WHERE l.project_id=:pid AND l.capture_id=:cap AND l.event_code=ANY(:markers)
+    AND NOT EXISTS (SELECT 1 FROM deep d WHERE d.seq=l.seq)
+)
+SELECT * FROM deep
+UNION ALL
+SELECT * FROM light_fallback
+ORDER BY seq'''
 PAIR_SQL = '''SELECT type,context_id,seq_start,seq_end,seq_hoi,outcome,cause,
  ho_duration_nemo_ms,ho_duration_hoi_ms FROM nmf_event_pair
  WHERE project_id=:pid AND capture_id=:cap ORDER BY seq_start,type'''
