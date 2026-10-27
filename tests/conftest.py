@@ -88,7 +88,7 @@ def admin_token(client_noauth) -> str:
     email = os.environ.get("BC4_ADMIN_EMAIL")
     pw = os.environ.get("BC4_ADMIN_PASSWORD")
     if not email or not pw:
-        pytest.skip("BC4_ADMIN_EMAIL/BC4_ADMIN_PASSWORD manquants")
+        pytest.fail("BC4_ADMIN_EMAIL/BC4_ADMIN_PASSWORD manquants")
     r = client_noauth.post("/auth/login", json={"email": email, "password": pw})
     if r.status_code != 200:
         raise RuntimeError(f"Login admin échoué : {r.status_code} {r.text}")

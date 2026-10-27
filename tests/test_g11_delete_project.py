@@ -40,7 +40,7 @@ def _hdr(t: str) -> dict[str, str]:
 def admin_tok(client_noauth) -> str:
     e, p = os.environ.get("BC4_ADMIN_EMAIL"), os.environ.get("BC4_ADMIN_PASSWORD")
     if not e or not p:
-        pytest.skip("BC4_ADMIN_EMAIL/BC4_ADMIN_PASSWORD manquants")
+        pytest.fail("BC4_ADMIN_EMAIL/BC4_ADMIN_PASSWORD manquants")
     return _login(client_noauth, e, p)
 
 
@@ -48,7 +48,7 @@ def admin_tok(client_noauth) -> str:
 def ingenieur_tok(client_noauth) -> str:
     e, p = os.environ.get("BC4_DEMO_EMAIL"), os.environ.get("BC4_DEMO_PASSWORD")
     if not e or not p or os.environ.get("BC4_DEMO_ROLE", "ingenieur") != "ingenieur":
-        pytest.skip("compte ingenieur de démo manquant")
+        pytest.fail("compte ingenieur de démo manquant")
     return _login(client_noauth, e, p)
 
 
@@ -73,7 +73,11 @@ def lecteur_tok(client_noauth, admin_tok) -> str:
 
 
 def _create(client_noauth, tok: str, name: str) -> str:
-    r = client_noauth.post("/projects", headers=_hdr(tok), json={"name": name})
+    r = client_noauth.post("/projects", headers=_hdr(tok), json={
+        "name": name, "visibility": "private", "parse_decode_level": "light",
+        "parse_binning_mode": "temporal", "parse_temporal_resolution": "native",
+        "parse_spatial_bin_m": None,
+    })
     assert r.status_code in {200, 201}, r.text
     return r.json()["id"]
 
@@ -84,10 +88,10 @@ def test_delete_404_on_unknown_id(client_noauth, admin_tok):
     assert r.json()["detail"]["code"] == "NOT_FOUND"
 
 
-def test_delete_403_for_lecteur(client_noauth, lecteur_tok, admin_tok):
+def test_delete_404_for_lecteur_on_private_project(client_noauth, lecteur_tok, admin_tok):
     pid = _create(client_noauth, admin_tok, f"g11-del-{uuid.uuid4().hex[:6]}")
     r = client_noauth.delete(f"/projects/{pid}", headers=_hdr(lecteur_tok))
-    assert r.status_code == 403
+    assert r.status_code == 404
     # Nettoyage : admin supprime pour ne pas laisser de dette.
     client_noauth.delete(f"/projects/{pid}", headers=_hdr(admin_tok))
 
@@ -106,7 +110,7 @@ def test_delete_by_admin_204_and_disappears(client_noauth, admin_tok):
 
 
 def test_delete_by_ingenieur_204(client_noauth, ingenieur_tok, admin_tok):
-    pid = _create(client_noauth, admin_tok, f"g11-ing-del-{uuid.uuid4().hex[:6]}")
+    pid = _create(client_noauth, ingenieur_tok, f"g11-ing-del-{uuid.uuid4().hex[:6]}")
     r = client_noauth.delete(f"/projects/{pid}", headers=_hdr(ingenieur_tok))
     assert r.status_code == 204, r.text
 
@@ -155,9 +159,10 @@ def test_refresh_project_summary_writes_technologies():
 
     with SessionLocal() as db:
         pid = f"g11-enrich-{uuid.uuid4().hex[:8]}"
+        owner_id = db.execute(text("SELECT id FROM app_user WHERE role='admin' ORDER BY id LIMIT 1")).scalar_one()
         from datetime import datetime, timezone
         p = Project(
-            id=pid, name="G11 Enrich", geography="", center_lng=0.0, center_lat=0.0,
+            id=pid, owner_id=owner_id, visibility="private", name="G11 Enrich", geography="", center_lng=0.0, center_lat=0.0,
             operators=[], technologies=[], services=[], bands=[], departements=[],
             period_start="2026-01-01", period_end="2026-01-02", captures=0,
             imported_at="2026-01-02", status="processing",

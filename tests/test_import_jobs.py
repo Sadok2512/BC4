@@ -20,7 +20,7 @@ def db(tmp_path, monkeypatch):
         model.__table__.create(engine)
     monkeypatch.setattr(queue, 'NMF_SOURCE_DIR', str(tmp_path))
     with Session(engine) as session:
-        session.add(Project(id='p', name='Queue test', geography='', center_lng=0,
+        session.add(Project(id='p', owner_id='test-owner', visibility='private', name='Queue test', geography='', center_lng=0,
             center_lat=0, operators=[], technologies=[], services=[], bands=[],
             departements=[], period_start='', period_end='', captures=0,
             imported_at='', status='processing', status_ingest='draft'))

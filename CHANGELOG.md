@@ -6299,3 +6299,8 @@ du front `franco-focus-forge` et lancer **front + back** de bout en bout.
 - Documented string fields are retained as strings; only undocumented strings
   are hashed. Metrics projections therefore expose the same values as the NMF
   source and preserve zero-valued measurements.
+## Unreleased — patch (tests) — Préparation merge L1–L3 (Agent BC1)
+
+- Rend les tests hérités explicites : une précondition absente produit un échec au lieu d'un `SKIP`.
+- Aligne les fixtures projet sur le propriétaire et la visibilité obligatoires de 0057.
+- Avec `BC4_SEED_DEMO=1`, attribue les projets démo à l'admin configuré ou échoue explicitement si aucun propriétaire ne peut être créé.

@@ -51,7 +51,7 @@ def test_parent_transaction_ends_before_long_population(monkeypatch):
         event.listen(parent, 'after_begin', short_timeout)
         project = parent.get(Project, '134af70a06eb')
         if project is None:
-            pytest.skip('TEST2 integration project absent')
+            pytest.fail('TEST2 integration project absent')
         parent.commit()  # expires project.id, reproducing the worker call site
         def slow(work, stored):
             assert not parent.in_transaction()

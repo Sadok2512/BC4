@@ -27,7 +27,7 @@ ADMIN_PW_ENV = "BC4_ADMIN_PASSWORD"
 def _admin_creds() -> tuple[str, str]:
     e, p = os.environ.get(ADMIN_EMAIL_ENV), os.environ.get(ADMIN_PW_ENV)
     if not e or not p:
-        pytest.skip("BC4_ADMIN_EMAIL/BC4_ADMIN_PASSWORD manquants pour G8")
+        pytest.fail("BC4_ADMIN_EMAIL/BC4_ADMIN_PASSWORD manquants pour G8")
     return e, p
 
 

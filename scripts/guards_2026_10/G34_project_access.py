@@ -77,6 +77,12 @@ engine = create_engine(dsn, future=True)
 def seed_users() -> None:
     now = datetime.now(timezone.utc)
     with engine.begin() as conn:
+        # A failed previous guard run may have left its private fixture. The
+        # ephemeral-only guard must be restartable without weakening the live
+        # safety gate or deleting any unrelated project.
+        conn.execute(
+            text("DELETE FROM projects WHERE owner_id IN ('TEST-G34-USER-A','TEST-G34-USER-B')")
+        )
         conn.execute(
             text("DELETE FROM app_user WHERE email IN (:a,:b)"),
             {"a": USER_A_EMAIL, "b": USER_B_EMAIL},
