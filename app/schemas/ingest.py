@@ -113,6 +113,14 @@ class NmfFileEntry(BaseModel):
     n_gps: int
     decoder_version: str | None
     error_msg: str | None
+    # NMFHE2 — exposer la date d'upload (back avait déjà la colonne
+    # `nmf_file.uploaded_at`, mais le front recevait toujours null →
+    # colonne IMPORTED affichée en N/D dans le dialog Superstream).
+    imported_at: str | None = None
+    # Pour le dialog Superstream : nombre de records bruts de la capture
+    # (= `nmf_capture.n_records`). Complément à `n_events` qui compte
+    # UNIQUEMENT les messages L3 décodés (RRCSM/SIPSM/L3SM).
+    n_records: int | None = None
 
 
 class NmfImportReport(BaseModel):

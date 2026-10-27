@@ -112,6 +112,60 @@ class ProjectShare(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
+class Superstream(Base):
+    """Groupe ordonné de captures d'un MÊME projet. Aucune donnée copiée.
+
+    Lecture : ordre canonique (position, seq). JAMAIS trié ni entrelacé par
+    ts (interdit par la règle). Les membres sont des captures `done` ; cette
+    contrainte est appliquée au niveau route (filtre `nmf_file.status`), pas
+    DDL — le FK composite garantit déjà (project_id, capture_id) existe dans
+    `nmf_capture`.
+    """
+
+    __tablename__ = "superstream"
+    __table_args__ = (
+        UniqueConstraint("project_id", "name", name="uq_superstream_project_name"),
+    )
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    project_id: Mapped[str] = mapped_column(
+        ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    created_by: Mapped[str | None] = mapped_column(
+        ForeignKey("app_user.id", ondelete="SET NULL"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class SuperstreamMember(Base):
+    """Membre d'un superstream : (position, project_id, capture_id).
+
+    PK (superstream_id, position) : garantit un ordre strict et pas de
+    doublon de position. UNIQUE (superstream_id, capture_id) : une même
+    capture ne peut apparaître deux fois dans un stream.
+
+    FK composite vers nmf_capture(project_id, capture_id) : la capture
+    existe dans le MÊME projet que celui référencé — barrière DDL contre
+    le mélange inter-projets, en complément de la vérif route 422.
+    """
+
+    __tablename__ = "superstream_member"
+    __table_args__ = (
+        UniqueConstraint(
+            "superstream_id", "capture_id", name="uq_superstream_member_capture"
+        ),
+    )
+
+    superstream_id: Mapped[str] = mapped_column(
+        ForeignKey("superstream.id", ondelete="CASCADE"), primary_key=True
+    )
+    position: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[str] = mapped_column(String, nullable=False)
+    capture_id: Mapped[str] = mapped_column(String, nullable=False)
+
+
 class NmfFile(Base):
     __tablename__ = "nmf_file"
     __table_args__ = (

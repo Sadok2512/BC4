@@ -28,6 +28,8 @@ from app.models.base import (
     StgEvent,
     StgEventRaw,
     StgMeasurementRaw,
+    Superstream,
+    SuperstreamMember,
     User,
 )
 
@@ -57,6 +59,8 @@ __all__ = [
     "ProjectShare",
     "ReferenceImport",
     "RrcObservation",
+    "Superstream",
+    "SuperstreamMember",
     "Skill",
     "StgEvent",
     "StgEventRaw",

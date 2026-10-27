@@ -140,6 +140,13 @@ app.include_router(nmf_decode.router, dependencies=PROJECT_ACCESS)
 from app.routes import signaling
 app.include_router(signaling.router, dependencies=PROJECT_ACCESS)
 
+# Superstreams (lot NMFHE2) : routes avec accès déjà géré par le routeur
+# lui-même (get_accessible_project en lecture, require_project_write en
+# écriture via dependencies des endpoints). Pas de PROJECT_ACCESS global
+# ici car POST/PUT/DELETE ont leurs propres gardes `require_project_write`.
+from app.routes import superstreams
+app.include_router(superstreams.router)
+
 # 0.78.2 — Site layer map (SA1) : /sites?bbox=... lazy par bbox.
 from app.routes import sites as sites_route
 app.include_router(sites_route.router)

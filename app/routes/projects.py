@@ -5,7 +5,7 @@ import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Response, UploadFile
-from sqlalchemy import exists
+from sqlalchemy import exists, text
 from sqlalchemy.orm import Session
 
 from app.db import get_db
@@ -323,6 +323,13 @@ def get_import_report(
     if not project:
         raise HTTPException(404, {"code": "NOT_FOUND", "message": "Projet introuvable"})
     files = db.query(NmfFile).filter(NmfFile.project_id == project.id).order_by(NmfFile.uploaded_at).all()
+    # NMFHE2 — récupérer n_records par capture pour alimenter la colonne
+    # Records du dialog Superstream (complément de n_events qui ne compte
+    # que les messages L3 décodés).
+    cap_n_records = dict(db.execute(text(
+        "SELECT nmf_file_id, SUM(n_records) FROM nmf_capture "
+        "WHERE project_id=:pid GROUP BY nmf_file_id"
+    ), {"pid": project.id}).all())
     entries = [
         NmfFileEntry(
             filename=f.filename,
@@ -332,6 +339,8 @@ def get_import_report(
             n_gps=f.n_gps,
             decoder_version=f.decoder_version,
             error_msg=f.error_msg,
+            imported_at=f.uploaded_at.isoformat().replace("+00:00", "Z"),
+            n_records=int(cap_n_records.get(f.id) or 0),
         )
         for f in files
     ]
