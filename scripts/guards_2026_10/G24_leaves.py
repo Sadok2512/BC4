@@ -27,13 +27,16 @@ from sqlalchemy import text
 from app.db import SessionLocal
 
 CHUNK = 50
-WITNESS_PID = "134af70a06eb"
 
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--pid", default=WITNESS_PID,
-                    help=f"project témoin (défaut: {WITNESS_PID})")
+    # --pid OBLIGATOIRE. Pas de défaut hardcodé (ex. "134af70a06eb") : après
+    # reset DB, un défaut pointerait vers un projet absent et G24 ferait
+    # VERDICT FAIL silencieux. Ici l'omission du flag → argparse exit=2
+    # avec message clair, pas de SKIP, pas de FAIL muet.
+    ap.add_argument("--pid", required=True,
+                    help="project_id témoin à recompter (OBLIGATOIRE)")
     ap.add_argument("--limit", type=int, default=0,
                     help="limite de candidats re-comptés (0 = tous)")
     args = ap.parse_args()
@@ -63,11 +66,12 @@ def main():
             flag = "  <= witness" if p == pid else ""
             print(f"{p:<20} {reason:<36} {total:>12} {selectable:>11} {n_gt0:>5}{flag}")
 
-        # 2) Re-count LIVE sur le projet témoin (ou --pid passé)
+        # 2) Re-count LIVE sur le projet passé en --pid.
         print(f"\n[G24 recount] witness project={pid}")
         if pid not in pids:
-            print(f"G24_VERDICT FAIL witness_pid={pid} not in metrics_catalog_cache")
-            return
+            print(f"G24_VERDICT FAIL witness_pid={pid} not in metrics_catalog_cache "
+                  f"(available: {pids or 'empty cache'})")
+            sys.exit(1)
 
         candidates = db.execute(text("""
             SELECT m->>'source_column' AS col, m->>'label' AS lbl, m->>'node_id' AS nid
