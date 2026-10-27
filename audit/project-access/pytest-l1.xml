@@ -1,0 +1,608 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testsuite name="pytest-l1-differential" tests="273" failures="23" errors="20" skipped="0"><testcase classname="tests.test_catalog_cache" name="test_expiry_isolation_eviction_and_immutable_results" time="0.003" /><testcase classname="tests.test_catalog_cache" name="test_failure_is_retried" time="0.002" /><testcase classname="tests.test_catalog_cache" name="test_concurrent_requests_share_one_load" time="0.004" /><testcase classname="tests.test_chronogram" name="test_minmax_preserves_spikes_deterministic_bounded" time="0.001" /><testcase classname="tests.test_chronogram" name="test_categories_preserve_actual_changes_and_fail_if_too_many" time="0.001" /><testcase classname="tests.test_chronogram" name="test_capture_clock_does_not_smooth_or_sort_timestamps" time="0.001" /><testcase classname="tests.test_dict_categories_v22" name="test_only_approved_exclusions" time="0.001" /><testcase classname="tests.test_dict_categories_v22" name="test_exact_prefix_not_name_and_event_specificity" time="0.001" /><testcase classname="tests.test_dict_categories_v22" name="test_missing_discriminator_is_not_an_explicit_null" time="0.001" /><testcase classname="tests.test_dict_categories_v22" name="test_every_observed_population_is_accounted_for" time="0.335" /><testcase classname="tests.test_dict_categories_v22" name="test_seed_consistent_but_review_required" time="0.048" /><testcase classname="tests.test_dict_categories_v22" name="test_regex_configuration_rejected" time="0.014" /><testcase classname="tests.test_dict_categories_v22" name="test_upgrade_gate_before_ddl" time="0.234" /><testcase classname="tests.test_dict_categories_v22" name="test_schema_roundtrip_constraints_and_templates_unchanged" time="0.949" /><testcase classname="tests.test_dict_categories_v22" name="test_stale_template_review_rejected_before_ddl" time="0.302" /><testcase classname="tests.test_dict_categories_v23" name="test_message_wrapper_does_not_change_category[rrcConnectionReconfiguration]" time="0.006" /><testcase classname="tests.test_dict_categories_v23" name="test_message_wrapper_does_not_change_category[rrcConnectionReestablishment]" time="0.002" /><testcase classname="tests.test_dict_categories_v23" name="test_message_wrapper_does_not_change_category[rrcConnectionSetup]" time="0.002" /><testcase classname="tests.test_dict_categories_v23" name="test_all_reviewed_test3_paths_are_classified_or_excluded" time="0.174" /><testcase classname="tests.test_dict_categories_v23" name="test_no_message_duplicate_or_name_regex" time="0.006" /><testcase classname="tests.test_dict_categories_v23" name="test_identifier_paths[TEST/measId-r12]" time="0.001" /><testcase classname="tests.test_dict_categories_v23" name="test_identifier_paths[TEST/scramblingID0]" time="0.001" /><testcase classname="tests.test_dict_categories_v23" name="test_identifier_paths[TEST/traceReference-r10/traceId]" time="0.001" /><testcase classname="tests.test_dict_categories_v23" name="test_identifier_paths[TEST/mnc/[1]]" time="0.001" /><testcase classname="tests.test_dict_categories_v23" name="test_identifier_paths[TEST/physCellId]" time="0.001" /><testcase classname="tests.test_dict_categories_v23" name="test_identifier_paths[TEST/interFreqExcludedCellList/[1]/start]" time="0.001" /><testcase classname="tests.test_dict_categories_v23" name="test_parameters_are_kept[TEST/logicalChannelGroup]" time="0.001" /><testcase classname="tests.test_dict_categories_v23" name="test_parameters_are_kept[TEST/offsetToCarrier]" time="0.001" /><testcase classname="tests.test_dict_categories_v23" name="test_parameters_are_kept[TEST/start]" time="0.001" /><testcase classname="tests.test_dict_categories_v23" name="test_parameters_are_kept[TEST/codebookSubsetRestriction/n2TxAntenna-tm4]" time="0.001" /><testcase classname="tests.test_dict_categories_v23" name="test_nr_sa_and_secondary_cell_group_same_rules" time="0.002" /><testcase classname="tests.test_dict_categories_v23" name="test_most_specific_rule_wins" time="0.002" /><testcase classname="tests.test_dict_categories_v23" name="test_mapping_path_cache_does_not_change_normalization" time="0.001" /><testcase classname="tests.test_dict_distribution_totals" name="test_totals_are_sql_population_not_displayed_values" time="0.055" /><testcase classname="tests.test_dict_geo_filters" name="test_options_are_project_bound_and_deduplicated" time="0.027" /><testcase classname="tests.test_dict_geo_filters" name="test_intersection_and_no_count_multiplication" time="0.057" /><testcase classname="tests.test_dict_geo_filters" name="test_multiselect_or_and_mismatched_dimensions" time="0.047" /><testcase classname="tests.test_dict_geo_filters" name="test_ambiguous_ecgi_and_non_strict_sources_are_excluded" time="0.023" /><testcase classname="tests.test_dict_geo_filters" name="test_unavailable_filter_is_explicit" time="0.027" /><testcase classname="tests.test_dict_geo_filters" name="test_api_repeated_query_parameters_and_auth" time="0.135" /><testcase classname="tests.test_dict_map_v2" name="test_points_use_exact_event_source_and_no_site_coordinates" time="0.035" /><testcase classname="tests.test_dict_map_v2" name="test_operator_band_and_null_filters" time="0.040" /><testcase classname="tests.test_dict_map_v2" name="test_geography_matches_distribution_and_does_not_multiply" time="0.048" /><testcase classname="tests.test_dict_map_v2" name="test_filters_technology_project_and_key" time="0.043" /><testcase classname="tests.test_dict_map_v2" name="test_limit_is_explicit_and_legend_counts_returned_population" time="0.032" /><testcase classname="tests.test_dict_map_v2" name="test_zero_values_and_zero_coordinates_are_real" time="0.028" /><testcase classname="tests.test_dict_map_v2" name="test_unknown_geography_rejected" time="0.026" /><testcase classname="tests.test_dict_map_v2" name="test_missing_values_and_ue_reports_not_in_map_population" time="0.030" /><testcase classname="tests.test_dict_map_v2" name="test_map_api_query_contract_and_auth" time="0.138" /><testcase classname="tests.test_dict_map_v2" name="test_aggregate_keys_resolve_source_occurrences_without_duplicates" time="0.102" /><testcase classname="tests.test_dict_map_v2" name="test_malformed_aggregate_map_key_rejected" time="0.026" /><testcase classname="tests.test_dict_templates" name="test_exact_prefix" time="0.001" /><testcase classname="tests.test_dict_templates" name="test_empty_keeps_seed" time="0.056" /><testcase classname="tests.test_dict_templates" name="test_summary_population_null_ties_and_one_aggregate" time="0.046" /><testcase classname="tests.test_dict_templates" name="test_admin_config_rejects_project_injection" time="0.001" /><testcase classname="tests.test_dict_templates" name="test_admin_permissions_revision_and_update" time="0.046" /><testcase classname="tests.test_dict_templates" name="test_overlapping_discriminators_rejected" time="0.001" /><testcase classname="tests.test_dict_templates" name="test_normalized_population_preserves_overlapping_refs_and_units" time="0.057" /><testcase classname="tests.test_dict_templates" name="test_metadata_has_no_invented_counts_and_does_not_scan_occurrences" time="0.038" /><testcase classname="tests.test_file_summary" name="test_summary_uses_command_window_and_preserves_zero" time="0.001" /><testcase classname="tests.test_file_summary" name="test_scanner_has_only_task" time="0.001" /><testcase classname="tests.test_file_summary" name="test_missing_failure_source_is_unavailable_not_zero" time="0.001" /><testcase classname="tests.test_file_summary" name="test_duplicate_persisted_rows_are_counted_once_by_capture_and_seq" time="0.001" /><testcase classname="tests.test_g10_users_policy_roles" name="test_admin_can_post_protected" time="0.324" /><testcase classname="tests.test_g10_users_policy_roles" name="test_ingenieur_can_post_protected" time="0.153" /><testcase classname="tests.test_g10_users_policy_roles" name="test_lecteur_cannot_post_protected" time="0.298" /><testcase classname="tests.test_g10_users_policy_roles" name="test_create_user_weak_password_422" time="0.013" /><testcase classname="tests.test_g10_users_policy_roles" name="test_create_user_valid_password_201" time="0.253" /><testcase classname="tests.test_g10_users_policy_roles" name="test_create_user_generated_password_works_once" time="0.264" /><testcase classname="tests.test_g10_users_policy_roles" name="test_ingenieur_cannot_create_user_403" time="0.013" /><testcase classname="tests.test_g11_delete_project" name="test_delete_404_on_unknown_id" time="0.144" /><testcase classname="tests.test_g11_delete_project" name="test_delete_404_for_lecteur_on_private_project" time="0.346" /><testcase classname="tests.test_g11_delete_project" name="test_delete_by_admin_204_and_disappears" time="0.113" /><testcase classname="tests.test_g11_delete_project" name="test_delete_by_ingenieur_204" time="0.166" /><testcase classname="tests.test_g11_delete_project" name="test_seed_projects_have_operators_technos_bands" time="0.008" /><testcase classname="tests.test_g11_delete_project" name="test_fresh_project_without_ingest_declared_empty" time="0.067" /><testcase classname="tests.test_g11_delete_project" name="test_refresh_project_summary_writes_technologies" time="0.273" /><testcase classname="tests.test_g12_enrich" name="test_band_from_freq_lte_nr" time="0.001"><failure message="ModuleNotFoundError: No module named 'bc4_enrich'">def test_band_from_freq_lte_nr():
+&gt;       import bc4_enrich
+E       ModuleNotFoundError: No module named 'bc4_enrich'
+
+tests/test_g12_enrich.py:57: ModuleNotFoundError</failure></testcase><testcase classname="tests.test_g12_enrich" name="test_plmn_table_covers_fr_operators" time="0.001"><failure message="ModuleNotFoundError: No module named 'bc4_enrich'">def test_plmn_table_covers_fr_operators():
+&gt;       import bc4_enrich
+E       ModuleNotFoundError: No module named 'bc4_enrich'
+
+tests/test_g12_enrich.py:73: ModuleNotFoundError</failure></testcase><testcase classname="tests.test_g12_enrich" name="test_detect_context_no_sib1_declares_empty_operators" time="0.001"><failure message="ModuleNotFoundError: No module named 'bc4_enrich'">def test_detect_context_no_sib1_declares_empty_operators():
+&gt;       import bc4_enrich
+E       ModuleNotFoundError: No module named 'bc4_enrich'
+
+tests/test_g12_enrich.py:81: ModuleNotFoundError</failure></testcase><testcase classname="tests.test_g12_enrich" name="test_detect_context_four_fr_operators" time="0.001"><failure message="ModuleNotFoundError: No module named 'bc4_enrich'">def test_detect_context_four_fr_operators():
+&gt;       import bc4_enrich
+E       ModuleNotFoundError: No module named 'bc4_enrich'
+
+tests/test_g12_enrich.py:97: ModuleNotFoundError</failure></testcase><testcase classname="tests.test_g12_enrich" name="test_detect_context_unknown_plmn_declares" time="0.001"><failure message="ModuleNotFoundError: No module named 'bc4_enrich'">def test_detect_context_unknown_plmn_declares():
+        """Un PLMN non répertorié FR doit tomber dans `plmns_unknown`,
+        JAMAIS deviné comme un opérateur FR."""
+&gt;       import bc4_enrich
+E       ModuleNotFoundError: No module named 'bc4_enrich'
+
+tests/test_g12_enrich.py:126: ModuleNotFoundError</failure></testcase><testcase classname="tests.test_g13_perimeter" name="test_enrich_v11_exposes_cells" time="0.001"><failure message="ModuleNotFoundError: No module named 'bc4_enrich'">def test_enrich_v11_exposes_cells():
+&gt;       import bc4_enrich
+E       ModuleNotFoundError: No module named 'bc4_enrich'
+
+tests/test_g13_perimeter.py:63: ModuleNotFoundError</failure></testcase><testcase classname="tests.test_g13_perimeter" name="test_compute_perimeter_empty_cells_declares_none" time="0.001" /><testcase classname="tests.test_g13_perimeter" name="test_compute_perimeter_non_orange_not_attributable" time="0.001" /><testcase classname="tests.test_g13_perimeter" name="test_compute_perimeter_orange_joined_against_cell_ref" time="0.030" /><testcase classname="tests.test_g16_value_distribution" name="test_value_distribution_numeric_rsrp_result" time="0.147"><failure message="Failed: projet TEST2 absent — garde G16 skippée">client = &lt;httpx.Client object at 0x7fa927516420&gt;
+
+    def test_value_distribution_numeric_rsrp_result(client):
+        """Un paramètre numérique (rsrpResult) doit exposer value_distribution
+        non vide, somme = count, et formule 3GPP (idx - 141) respectée."""
+&gt;       pid = _test2_id()
+
+tests/test_g16_value_distribution.py:56: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def _test2_id() -&gt; str:
+        with SessionLocal() as db:
+            pid = db.execute(
+                text("SELECT id FROM projects WHERE name = 'TEST2'")
+            ).scalar()
+        if not pid:
+&gt;           pytest.fail("projet TEST2 absent — garde G16 skippée")
+E           Failed: projet TEST2 absent — garde G16 skippée
+
+tests/test_g16_value_distribution.py:36: Failed</failure></testcase><testcase classname="tests.test_g16_value_distribution" name="test_value_distribution_enum_null_converted" time="0.004"><failure message="Failed: projet TEST2 absent — garde G16 skippée">client = &lt;httpx.Client object at 0x7fa927516420&gt;
+
+    def test_value_distribution_enum_null_converted(client):
+        """Un paramètre enum (ex. dl-Bandwidth) doit renvoyer
+        value_converted=null sur chaque entrée."""
+&gt;       pid = _test2_id()
+
+tests/test_g16_value_distribution.py:106: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def _test2_id() -&gt; str:
+        with SessionLocal() as db:
+            pid = db.execute(
+                text("SELECT id FROM projects WHERE name = 'TEST2'")
+            ).scalar()
+        if not pid:
+&gt;           pytest.fail("projet TEST2 absent — garde G16 skippée")
+E           Failed: projet TEST2 absent — garde G16 skippée
+
+tests/test_g16_value_distribution.py:36: Failed</failure></testcase><testcase classname="tests.test_g16_value_distribution" name="test_value_distribution_filter_operator_restricts" time="0.003"><failure message="Failed: projet TEST2 absent — garde G16 skippée">client = &lt;httpx.Client object at 0x7fa927516420&gt;
+
+    def test_value_distribution_filter_operator_restricts(client):
+        """Filtrer sur operator=Orange doit restreindre la distribution
+        (somme filtrée &lt;= somme non filtrée) sans fabriquer d'opérateur."""
+&gt;       pid = _test2_id()
+
+tests/test_g16_value_distribution.py:134: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def _test2_id() -&gt; str:
+        with SessionLocal() as db:
+            pid = db.execute(
+                text("SELECT id FROM projects WHERE name = 'TEST2'")
+            ).scalar()
+        if not pid:
+&gt;           pytest.fail("projet TEST2 absent — garde G16 skippée")
+E           Failed: projet TEST2 absent — garde G16 skippée
+
+tests/test_g16_value_distribution.py:36: Failed</failure></testcase><testcase classname="tests.test_g16_value_distribution" name="test_value_distribution_preserves_operator_band_buckets" time="0.003"><failure message="Failed: projet TEST2 absent — garde G16 skippée">client = &lt;httpx.Client object at 0x7fa927516420&gt;
+
+    def test_value_distribution_preserves_operator_band_buckets(client):
+        """Non-régression : le champ `buckets` (op x band) reste présent."""
+&gt;       pid = _test2_id()
+
+tests/test_g16_value_distribution.py:169: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def _test2_id() -&gt; str:
+        with SessionLocal() as db:
+            pid = db.execute(
+                text("SELECT id FROM projects WHERE name = 'TEST2'")
+            ).scalar()
+        if not pid:
+&gt;           pytest.fail("projet TEST2 absent — garde G16 skippée")
+E           Failed: projet TEST2 absent — garde G16 skippée
+
+tests/test_g16_value_distribution.py:36: Failed</failure></testcase><testcase classname="tests.test_g16_value_distribution" name="test_value_distribution_sorted_ascending_numeric" time="0.004"><failure message="Failed: projet TEST2 absent — garde G16 skippée">client = &lt;httpx.Client object at 0x7fa927516420&gt;
+
+    def test_value_distribution_sorted_ascending_numeric(client):
+        """La distribution numérique est triée par value_converted asc (float)."""
+&gt;       pid = _test2_id()
+
+tests/test_g16_value_distribution.py:184: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def _test2_id() -&gt; str:
+        with SessionLocal() as db:
+            pid = db.execute(
+                text("SELECT id FROM projects WHERE name = 'TEST2'")
+            ).scalar()
+        if not pid:
+&gt;           pytest.fail("projet TEST2 absent — garde G16 skippée")
+E           Failed: projet TEST2 absent — garde G16 skippée
+
+tests/test_g16_value_distribution.py:36: Failed</failure></testcase><testcase classname="tests.test_g17_llm_settings" name="test_get_llm_requires_bearer" time="0.006" /><testcase classname="tests.test_g17_llm_settings" name="test_get_llm_forbidden_for_non_admin" time="0.141" /><testcase classname="tests.test_g17_llm_settings" name="test_get_llm_shape" time="0.155" /><testcase classname="tests.test_g17_llm_settings" name="test_put_llm_requires_admin" time="0.024" /><testcase classname="tests.test_g17_llm_settings" name="test_put_llm_sets_key_without_leaking" time="0.034" /><testcase classname="tests.test_g17_llm_settings" name="test_put_llm_clear_key" time="0.041" /><testcase classname="tests.test_g19_llm_probe" name="test_probe_requires_bearer" time="0.011" /><testcase classname="tests.test_g19_llm_probe" name="test_probe_forbidden_for_non_admin" time="0.142" /><testcase classname="tests.test_g19_llm_probe" name="test_probe_disabled_returns_ok_false" time="0.162" /><testcase classname="tests.test_g19_llm_probe" name="test_probe_unreachable_returns_200_no_leak" time="0.113" /><testcase classname="tests.test_g1_boot" name="test_health" time="0.027" /><testcase classname="tests.test_g20_value_matrix" name="test_value_matrix_present_and_coherent_rsrp_result" time="0.003"><failure message="Failed: projet TEST2 absent — garde G20 skippée">client = &lt;httpx.Client object at 0x7fa927516420&gt;
+
+    def test_value_matrix_present_and_coherent_rsrp_result(client):
+        """Un paramètre peuplé (rsrpResult) doit exposer un `value_matrix`
+        non vide, cohérent (somme = count) et sans inversion de formule."""
+&gt;       pid = _test2_id()
+
+tests/test_g20_value_matrix.py:62: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def _test2_id() -&gt; str:
+        with SessionLocal() as db:
+            pid = db.execute(
+                text("SELECT id FROM projects WHERE name = 'TEST2'")
+            ).scalar()
+        if not pid:
+&gt;           pytest.fail("projet TEST2 absent — garde G20 skippée")
+E           Failed: projet TEST2 absent — garde G20 skippée
+
+tests/test_g20_value_matrix.py:42: Failed</failure></testcase><testcase classname="tests.test_g20_value_matrix" name="test_value_matrix_contains_non_attribue_somewhere" time="0.004"><failure message="Failed: projet TEST2 absent — garde G20 skippée">client = &lt;httpx.Client object at 0x7fa927516420&gt;
+
+    def test_value_matrix_contains_non_attribue_somewhere(client):
+        """TEST2 porte ~30% d'occurrences `operator=NULL` (events sans SIB1 avant
+        + sans match freq/pci). Elles doivent apparaître explicitement sous
+        `operator="non attribué"` OU `band="non attribué"` quelque part.
+    
+        Observation : sur TEST2 les NULL sont concentrés côté NR (events NR
+        sans SIB1 LTE précédent + sans match freq/pci NR catalogué). On
+        scanne donc les deux systèmes et on exige qu'au moins un paramètre
+        expose un bucket NULL — un vide total serait un bug du COALESCE.
+        """
+&gt;       pid = _test2_id()
+
+tests/test_g20_value_matrix.py:129: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def _test2_id() -&gt; str:
+        with SessionLocal() as db:
+            pid = db.execute(
+                text("SELECT id FROM projects WHERE name = 'TEST2'")
+            ).scalar()
+        if not pid:
+&gt;           pytest.fail("projet TEST2 absent — garde G20 skippée")
+E           Failed: projet TEST2 absent — garde G20 skippée
+
+tests/test_g20_value_matrix.py:42: Failed</failure></testcase><testcase classname="tests.test_g20_value_matrix" name="test_value_matrix_filter_operator_strict" time="0.004"><failure message="Failed: projet TEST2 absent — garde G20 skippée">client = &lt;httpx.Client object at 0x7fa927516420&gt;
+
+    def test_value_matrix_filter_operator_strict(client):
+        """Filtrer sur operator=Orange → value_matrix ne contient PLUS QUE des
+        cellules avec operator=='Orange'. Jamais un bucket inventé ailleurs."""
+&gt;       pid = _test2_id()
+
+tests/test_g20_value_matrix.py:157: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def _test2_id() -&gt; str:
+        with SessionLocal() as db:
+            pid = db.execute(
+                text("SELECT id FROM projects WHERE name = 'TEST2'")
+            ).scalar()
+        if not pid:
+&gt;           pytest.fail("projet TEST2 absent — garde G20 skippée")
+E           Failed: projet TEST2 absent — garde G20 skippée
+
+tests/test_g20_value_matrix.py:42: Failed</failure></testcase><testcase classname="tests.test_g20_value_matrix" name="test_value_matrix_sum_matches_distribution" time="0.004"><failure message="Failed: projet TEST2 absent — garde G20 skippée">client = &lt;httpx.Client object at 0x7fa927516420&gt;
+
+    def test_value_matrix_sum_matches_distribution(client):
+        """Cohérence croisée : somme(value_matrix.count) == somme(value_distribution.count)
+        (même périmètre, agrégations différentes sur la même donnée)."""
+&gt;       pid = _test2_id()
+
+tests/test_g20_value_matrix.py:176: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def _test2_id() -&gt; str:
+        with SessionLocal() as db:
+            pid = db.execute(
+                text("SELECT id FROM projects WHERE name = 'TEST2'")
+            ).scalar()
+        if not pid:
+&gt;           pytest.fail("projet TEST2 absent — garde G20 skippée")
+E           Failed: projet TEST2 absent — garde G20 skippée
+
+tests/test_g20_value_matrix.py:42: Failed</failure></testcase><testcase classname="tests.test_g20_value_matrix" name="test_value_matrix_preserves_buckets_non_breaking" time="0.003"><failure message="Failed: projet TEST2 absent — garde G20 skippée">client = &lt;httpx.Client object at 0x7fa927516420&gt;
+
+    def test_value_matrix_preserves_buckets_non_breaking(client):
+        """Non-régression : le champ `buckets` (op × band) reste exposé pour
+        les clients qui l'utilisaient avant 0.21.0."""
+&gt;       pid = _test2_id()
+
+tests/test_g20_value_matrix.py:204: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def _test2_id() -&gt; str:
+        with SessionLocal() as db:
+            pid = db.execute(
+                text("SELECT id FROM projects WHERE name = 'TEST2'")
+            ).scalar()
+        if not pid:
+&gt;           pytest.fail("projet TEST2 absent — garde G20 skippée")
+E           Failed: projet TEST2 absent — garde G20 skippée
+
+tests/test_g20_value_matrix.py:42: Failed</failure></testcase><testcase classname="tests.test_g20_value_matrix" name="test_buckets_now_include_non_attribue_when_nulls" time="0.003"><failure message="Failed: projet TEST2 absent — garde G20 skippée">client = &lt;httpx.Client object at 0x7fa927516420&gt;
+
+    def test_buckets_now_include_non_attribue_when_nulls(client):
+        """0.21.0 — Les buckets (op × band) exposent maintenant un bucket
+        'non attribué' (operator et/ou band) quand des occurrences NULL
+        existent (c'était silencieusement omis avant 0.21.0).
+    
+        Scan LTE + NR (sur TEST2 les NULL sont côté NR)."""
+&gt;       pid = _test2_id()
+
+tests/test_g20_value_matrix.py:223: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def _test2_id() -&gt; str:
+        with SessionLocal() as db:
+            pid = db.execute(
+                text("SELECT id FROM projects WHERE name = 'TEST2'")
+            ).scalar()
+        if not pid:
+&gt;           pytest.fail("projet TEST2 absent — garde G20 skippée")
+E           Failed: projet TEST2 absent — garde G20 skippée
+
+tests/test_g20_value_matrix.py:42: Failed</failure></testcase><testcase classname="tests.test_g22_tree_label_dedup" name="test_tree_params_expose_label_field" time="0.003"><failure message="Failed: projet TEST2 absent — garde G22 skippée">client = &lt;httpx.Client object at 0x7fa927516420&gt;
+
+    def test_tree_params_expose_label_field(client):
+        """`/dict/tree` v2 doit renvoyer `label` sur chaque param (0.22.3)."""
+&gt;       pid = _test2_id()
+
+tests/test_g22_tree_label_dedup.py:63: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def _test2_id() -&gt; str:
+        with SessionLocal() as db:
+            pid = db.execute(
+                text("SELECT id FROM projects WHERE name = 'TEST2'")
+            ).scalar()
+        if not pid:
+&gt;           pytest.fail("projet TEST2 absent — garde G22 skippée")
+E           Failed: projet TEST2 absent — garde G22 skippée
+
+tests/test_g22_tree_label_dedup.py:40: Failed</failure></testcase><testcase classname="tests.test_g22_tree_label_dedup" name="test_tree_labels_unique_within_message" time="0.004"><failure message="Failed: projet TEST2 absent — garde G22 skippée">client = &lt;httpx.Client object at 0x7fa927516420&gt;
+
+    def test_tree_labels_unique_within_message(client):
+        """Dans un même `(system, message)`, aucun doublon de `label`
+        (sauf si deux params ont le même `param`, ce qui ne se produit pas
+        grâce au GROUP BY SQL)."""
+&gt;       pid = _test2_id()
+
+tests/test_g22_tree_label_dedup.py:88: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def _test2_id() -&gt; str:
+        with SessionLocal() as db:
+            pid = db.execute(
+                text("SELECT id FROM projects WHERE name = 'TEST2'")
+            ).scalar()
+        if not pid:
+&gt;           pytest.fail("projet TEST2 absent — garde G22 skippée")
+E           Failed: projet TEST2 absent — garde G22 skippée
+
+tests/test_g22_tree_label_dedup.py:40: Failed</failure></testcase><testcase classname="tests.test_g22_tree_label_dedup" name="test_tree_labels_leaf_only_when_unique" time="0.003"><failure message="Failed: projet TEST2 absent — garde G22 skippée">client = &lt;httpx.Client object at 0x7fa927516420&gt;
+
+    def test_tree_labels_leaf_only_when_unique(client):
+        """Un leaf unique dans son `(system, message)` ne doit PAS porter
+        de suffixe parenthésé — pas de pollution visuelle."""
+&gt;       pid = _test2_id()
+
+tests/test_g22_tree_label_dedup.py:112: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def _test2_id() -&gt; str:
+        with SessionLocal() as db:
+            pid = db.execute(
+                text("SELECT id FROM projects WHERE name = 'TEST2'")
+            ).scalar()
+        if not pid:
+&gt;           pytest.fail("projet TEST2 absent — garde G22 skippée")
+E           Failed: projet TEST2 absent — garde G22 skippée
+
+tests/test_g22_tree_label_dedup.py:40: Failed</failure></testcase><testcase classname="tests.test_g22_tree_label_dedup" name="test_tree_labels_suffixed_on_collision" time="0.004"><failure message="Failed: projet TEST2 absent — garde G22 skippée">client = &lt;httpx.Client object at 0x7fa927516420&gt;
+
+    def test_tree_labels_suffixed_on_collision(client):
+        """Un leaf en collision (plusieurs paths distincts partageant le
+        même dernier segment dans un `(system, message)`) DOIT porter un
+        suffixe parenthésé `(…)`."""
+&gt;       pid = _test2_id()
+
+tests/test_g22_tree_label_dedup.py:140: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def _test2_id() -&gt; str:
+        with SessionLocal() as db:
+            pid = db.execute(
+                text("SELECT id FROM projects WHERE name = 'TEST2'")
+            ).scalar()
+        if not pid:
+&gt;           pytest.fail("projet TEST2 absent — garde G22 skippée")
+E           Failed: projet TEST2 absent — garde G22 skippée
+
+tests/test_g22_tree_label_dedup.py:40: Failed</failure></testcase><testcase classname="tests.test_g22_tree_label_dedup" name="test_tree_param_still_full_path_non_regression" time="0.004"><failure message="Failed: projet TEST2 absent — garde G22 skippée">client = &lt;httpx.Client object at 0x7fa927516420&gt;
+
+    def test_tree_param_still_full_path_non_regression(client):
+        """`param` reste le path complet (inchangé) — c'est la clé qui
+        permet au front de faire `/dict/params?path=&lt;param&gt;` et de
+        retrouver la ligne. On re-sonde une path qui aurait collidé
+        (`.../rsrpResult`) et on exige que `/dict/params` la retrouve."""
+&gt;       pid = _test2_id()
+
+tests/test_g22_tree_label_dedup.py:175: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def _test2_id() -&gt; str:
+        with SessionLocal() as db:
+            pid = db.execute(
+                text("SELECT id FROM projects WHERE name = 'TEST2'")
+            ).scalar()
+        if not pid:
+&gt;           pytest.fail("projet TEST2 absent — garde G22 skippée")
+E           Failed: projet TEST2 absent — garde G22 skippée
+
+tests/test_g22_tree_label_dedup.py:40: Failed</failure></testcase><testcase classname="tests.test_g24_measurement_full" name="test_a_measurement_points_non_empty" time="0.004"><error message="failed on setup with &quot;Failed: REF_PETITE_FORET (7e656b8c6c19) absent — ingérer d'abord.&quot;">@pytest.fixture(scope="module")
+    def ref_pid() -&gt; str:
+        if not _db_has_project(REF_PID):
+&gt;           pytest.fail(f"REF_PETITE_FORET ({REF_PID}) absent — ingérer d'abord.")
+E           Failed: REF_PETITE_FORET (7e656b8c6c19) absent — ingérer d'abord.
+
+tests/test_g24_measurement_full.py:50: Failed</error></testcase><testcase classname="tests.test_g24_measurement_full" name="test_b_breakdown_operator_service_phase" time="0.001"><error message="failed on setup with &quot;Failed: REF_PETITE_FORET (7e656b8c6c19) absent — ingérer d'abord.&quot;">@pytest.fixture(scope="module")
+    def ref_pid() -&gt; str:
+        if not _db_has_project(REF_PID):
+&gt;           pytest.fail(f"REF_PETITE_FORET ({REF_PID}) absent — ingérer d'abord.")
+E           Failed: REF_PETITE_FORET (7e656b8c6c19) absent — ingérer d'abord.
+
+tests/test_g24_measurement_full.py:50: Failed</error></testcase><testcase classname="tests.test_g24_measurement_full" name="test_c_proof_table_rsrp_rsrq_proven" time="0.001"><error message="failed on setup with &quot;Failed: REF_PETITE_FORET (7e656b8c6c19) absent — ingérer d'abord.&quot;">@pytest.fixture(scope="module")
+    def ref_pid() -&gt; str:
+        if not _db_has_project(REF_PID):
+&gt;           pytest.fail(f"REF_PETITE_FORET ({REF_PID}) absent — ingérer d'abord.")
+E           Failed: REF_PETITE_FORET (7e656b8c6c19) absent — ingérer d'abord.
+
+tests/test_g24_measurement_full.py:50: Failed</error></testcase><testcase classname="tests.test_g24_measurement_full" name="test_c_sinr_cqi_rejected_declared" time="0.001"><error message="failed on setup with &quot;Failed: REF_PETITE_FORET (7e656b8c6c19) absent — ingérer d'abord.&quot;">@pytest.fixture(scope="module")
+    def ref_pid() -&gt; str:
+        if not _db_has_project(REF_PID):
+&gt;           pytest.fail(f"REF_PETITE_FORET ({REF_PID}) absent — ingérer d'abord.")
+E           Failed: REF_PETITE_FORET (7e656b8c6c19) absent — ingérer d'abord.
+
+tests/test_g24_measurement_full.py:50: Failed</error></testcase><testcase classname="tests.test_g24_measurement_full" name="test_d_cross_check_rsrp_per_band" time="0.001"><error message="failed on setup with &quot;Failed: REF_PETITE_FORET (7e656b8c6c19) absent — ingérer d'abord.&quot;">@pytest.fixture(scope="module")
+    def ref_pid() -&gt; str:
+        if not _db_has_project(REF_PID):
+&gt;           pytest.fail(f"REF_PETITE_FORET ({REF_PID}) absent — ingérer d'abord.")
+E           Failed: REF_PETITE_FORET (7e656b8c6c19) absent — ingérer d'abord.
+
+tests/test_g24_measurement_full.py:50: Failed</error></testcase><testcase classname="tests.test_g24_measurement_full" name="test_e_operator_mismatch_declared" time="0.001"><error message="failed on setup with &quot;Failed: REF_PETITE_FORET (7e656b8c6c19) absent — ingérer d'abord.&quot;">@pytest.fixture(scope="module")
+    def ref_pid() -&gt; str:
+        if not _db_has_project(REF_PID):
+&gt;           pytest.fail(f"REF_PETITE_FORET ({REF_PID}) absent — ingérer d'abord.")
+E           Failed: REF_PETITE_FORET (7e656b8c6c19) absent — ingérer d'abord.
+
+tests/test_g24_measurement_full.py:50: Failed</error></testcase><testcase classname="tests.test_g24_measurement_full" name="test_f_no_subscriber_identity" time="0.001"><error message="failed on setup with &quot;Failed: REF_PETITE_FORET (7e656b8c6c19) absent — ingérer d'abord.&quot;">@pytest.fixture(scope="module")
+    def ref_pid() -&gt; str:
+        if not _db_has_project(REF_PID):
+&gt;           pytest.fail(f"REF_PETITE_FORET ({REF_PID}) absent — ingérer d'abord.")
+E           Failed: REF_PETITE_FORET (7e656b8c6c19) absent — ingérer d'abord.
+
+tests/test_g24_measurement_full.py:50: Failed</error></testcase><testcase classname="tests.test_g24_measurement_full" name="test_g_no_duplicates" time="0.001"><error message="failed on setup with &quot;Failed: REF_PETITE_FORET (7e656b8c6c19) absent — ingérer d'abord.&quot;">@pytest.fixture(scope="module")
+    def ref_pid() -&gt; str:
+        if not _db_has_project(REF_PID):
+&gt;           pytest.fail(f"REF_PETITE_FORET ({REF_PID}) absent — ingérer d'abord.")
+E           Failed: REF_PETITE_FORET (7e656b8c6c19) absent — ingérer d'abord.
+
+tests/test_g24_measurement_full.py:50: Failed</error></testcase><testcase classname="tests.test_g24_measurement_full" name="test_h_18_nmf_files" time="0.001"><error message="failed on setup with &quot;Failed: REF_PETITE_FORET (7e656b8c6c19) absent — ingérer d'abord.&quot;">@pytest.fixture(scope="module")
+    def ref_pid() -&gt; str:
+        if not _db_has_project(REF_PID):
+&gt;           pytest.fail(f"REF_PETITE_FORET ({REF_PID}) absent — ingérer d'abord.")
+E           Failed: REF_PETITE_FORET (7e656b8c6c19) absent — ingérer d'abord.
+
+tests/test_g24_measurement_full.py:50: Failed</error></testcase><testcase classname="tests.test_g24_measurement_full" name="test_i_env_filled_on_all_nmf" time="0.001"><error message="failed on setup with &quot;Failed: REF_PETITE_FORET (7e656b8c6c19) absent — ingérer d'abord.&quot;">@pytest.fixture(scope="module")
+    def ref_pid() -&gt; str:
+        if not _db_has_project(REF_PID):
+&gt;           pytest.fail(f"REF_PETITE_FORET ({REF_PID}) absent — ingérer d'abord.")
+E           Failed: REF_PETITE_FORET (7e656b8c6c19) absent — ingérer d'abord.
+
+tests/test_g24_measurement_full.py:50: Failed</error></testcase><testcase classname="tests.test_g25_assistant_v2" name="test_plan_project_id_rejected" time="0.004" /><testcase classname="tests.test_g25_assistant_v2" name="test_plan_sensitive_dataset_rejected" time="0.001" /><testcase classname="tests.test_g25_assistant_v2" name="test_plan_banned_identifier_rejected" time="0.001" /><testcase classname="tests.test_g25_assistant_v2" name="test_plan_no_group_by_still_has_count" time="0.003" /><testcase classname="tests.test_g25_assistant_v2" name="test_measure_recomposable_warning" time="0.001" /><testcase classname="tests.test_g25_assistant_v2" name="test_result_id_stable" time="0.001" /><testcase classname="tests.test_g25_assistant_v2" name="test_validate_comparison_requires_two" time="0.001" /><testcase classname="tests.test_g25_assistant_v2" name="test_validate_comparison_aligned_plans_ok" time="0.001" /><testcase classname="tests.test_g25_assistant_v2" name="test_validate_comparison_different_datasets_rejected" time="0.001" /><testcase classname="tests.test_g25_assistant_v2" name="test_tool_schemas_shape" time="0.006" /><testcase classname="tests.test_g26_measurement_full" name="test_stg_event_raw_breakdown" time="0.039"><error message="failed on setup with &quot;Failed: Projet REF_PETITE_FORET introuvable — lancer `scripts/ingest_ref_petite_foret.sh` avant G26.&quot;">client_noauth = &lt;httpx.Client object at 0x7fa935ab79b0&gt;
+admin_token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG0tYjlkYmFjODkxODk0Iiwicm9sZSI6ImFkbWluIiwiaWF0IjoxNzkzMTMzNzg1LCJleHAiOjE3OTMxMzczODV9.CM3zXUW2iDwDzQWNSZaFa5Q9eqRfpxiDKusV8TEALvA'
+
+    @pytest.fixture(scope="module")
+    def ref_pid(client_noauth, admin_token) -&gt; str:
+        pid = os.environ.get("BC4_REF_PID")
+        if pid:
+            return pid
+        r = client_noauth.get("/projects", headers=_hdr(admin_token))
+        assert r.status_code == 200, r.text
+        for p in r.json():
+            if p.get("name") == "REF_PETITE_FORET":
+                return p["id"]
+&gt;       pytest.fail(
+            "Projet REF_PETITE_FORET introuvable — lancer "
+            "`scripts/ingest_ref_petite_foret.sh` avant G26."
+        )
+E       Failed: Projet REF_PETITE_FORET introuvable — lancer `scripts/ingest_ref_petite_foret.sh` avant G26.
+
+tests/test_g26_measurement_full.py:56: Failed</error></testcase><testcase classname="tests.test_g26_measurement_full" name="test_stg_event_signalling_present" time="0.001"><error message="failed on setup with &quot;Failed: Projet REF_PETITE_FORET introuvable — lancer `scripts/ingest_ref_petite_foret.sh` avant G26.&quot;">client_noauth = &lt;httpx.Client object at 0x7fa935ab79b0&gt;
+admin_token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG0tYjlkYmFjODkxODk0Iiwicm9sZSI6ImFkbWluIiwiaWF0IjoxNzkzMTMzNzg1LCJleHAiOjE3OTMxMzczODV9.CM3zXUW2iDwDzQWNSZaFa5Q9eqRfpxiDKusV8TEALvA'
+
+    @pytest.fixture(scope="module")
+    def ref_pid(client_noauth, admin_token) -&gt; str:
+        pid = os.environ.get("BC4_REF_PID")
+        if pid:
+            return pid
+        r = client_noauth.get("/projects", headers=_hdr(admin_token))
+        assert r.status_code == 200, r.text
+        for p in r.json():
+            if p.get("name") == "REF_PETITE_FORET":
+                return p["id"]
+&gt;       pytest.fail(
+            "Projet REF_PETITE_FORET introuvable — lancer "
+            "`scripts/ingest_ref_petite_foret.sh` avant G26."
+        )
+E       Failed: Projet REF_PETITE_FORET introuvable — lancer `scripts/ingest_ref_petite_foret.sh` avant G26.
+
+tests/test_g26_measurement_full.py:56: Failed</error></testcase><testcase classname="tests.test_g26_measurement_full" name="test_nmf_file_meta_renseigne" time="0.001"><error message="failed on setup with &quot;Failed: Projet REF_PETITE_FORET introuvable — lancer `scripts/ingest_ref_petite_foret.sh` avant G26.&quot;">client_noauth = &lt;httpx.Client object at 0x7fa935ab79b0&gt;
+admin_token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG0tYjlkYmFjODkxODk0Iiwicm9sZSI6ImFkbWluIiwiaWF0IjoxNzkzMTMzNzg1LCJleHAiOjE3OTMxMzczODV9.CM3zXUW2iDwDzQWNSZaFa5Q9eqRfpxiDKusV8TEALvA'
+
+    @pytest.fixture(scope="module")
+    def ref_pid(client_noauth, admin_token) -&gt; str:
+        pid = os.environ.get("BC4_REF_PID")
+        if pid:
+            return pid
+        r = client_noauth.get("/projects", headers=_hdr(admin_token))
+        assert r.status_code == 200, r.text
+        for p in r.json():
+            if p.get("name") == "REF_PETITE_FORET":
+                return p["id"]
+&gt;       pytest.fail(
+            "Projet REF_PETITE_FORET introuvable — lancer "
+            "`scripts/ingest_ref_petite_foret.sh` avant G26."
+        )
+E       Failed: Projet REF_PETITE_FORET introuvable — lancer `scripts/ingest_ref_petite_foret.sh` avant G26.
+
+tests/test_g26_measurement_full.py:56: Failed</error></testcase><testcase classname="tests.test_g26_measurement_full" name="test_nmf_source_files_on_disk" time="0.001"><error message="failed on setup with &quot;Failed: Projet REF_PETITE_FORET introuvable — lancer `scripts/ingest_ref_petite_foret.sh` avant G26.&quot;">client_noauth = &lt;httpx.Client object at 0x7fa935ab79b0&gt;
+admin_token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG0tYjlkYmFjODkxODk0Iiwicm9sZSI6ImFkbWluIiwiaWF0IjoxNzkzMTMzNzg1LCJleHAiOjE3OTMxMzczODV9.CM3zXUW2iDwDzQWNSZaFa5Q9eqRfpxiDKusV8TEALvA'
+
+    @pytest.fixture(scope="module")
+    def ref_pid(client_noauth, admin_token) -&gt; str:
+        pid = os.environ.get("BC4_REF_PID")
+        if pid:
+            return pid
+        r = client_noauth.get("/projects", headers=_hdr(admin_token))
+        assert r.status_code == 200, r.text
+        for p in r.json():
+            if p.get("name") == "REF_PETITE_FORET":
+                return p["id"]
+&gt;       pytest.fail(
+            "Projet REF_PETITE_FORET introuvable — lancer "
+            "`scripts/ingest_ref_petite_foret.sh` avant G26."
+        )
+E       Failed: Projet REF_PETITE_FORET introuvable — lancer `scripts/ingest_ref_petite_foret.sh` avant G26.
+
+tests/test_g26_measurement_full.py:56: Failed</error></testcase><testcase classname="tests.test_g26_measurement_full" name="test_measurement_points_enriched" time="0.001"><error message="failed on setup with &quot;Failed: Projet REF_PETITE_FORET introuvable — lancer `scripts/ingest_ref_petite_foret.sh` avant G26.&quot;">client_noauth = &lt;httpx.Client object at 0x7fa935ab79b0&gt;
+admin_token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG0tYjlkYmFjODkxODk0Iiwicm9sZSI6ImFkbWluIiwiaWF0IjoxNzkzMTMzNzg1LCJleHAiOjE3OTMxMzczODV9.CM3zXUW2iDwDzQWNSZaFa5Q9eqRfpxiDKusV8TEALvA'
+
+    @pytest.fixture(scope="module")
+    def ref_pid(client_noauth, admin_token) -&gt; str:
+        pid = os.environ.get("BC4_REF_PID")
+        if pid:
+            return pid
+        r = client_noauth.get("/projects", headers=_hdr(admin_token))
+        assert r.status_code == 200, r.text
+        for p in r.json():
+            if p.get("name") == "REF_PETITE_FORET":
+                return p["id"]
+&gt;       pytest.fail(
+            "Projet REF_PETITE_FORET introuvable — lancer "
+            "`scripts/ingest_ref_petite_foret.sh` avant G26."
+        )
+E       Failed: Projet REF_PETITE_FORET introuvable — lancer `scripts/ingest_ref_petite_foret.sh` avant G26.
+
+tests/test_g26_measurement_full.py:56: Failed</error></testcase><testcase classname="tests.test_g26_measurement_full" name="test_operator_from_dl_is_authoritative" time="0.001"><error message="failed on setup with &quot;Failed: Projet REF_PETITE_FORET introuvable — lancer `scripts/ingest_ref_petite_foret.sh` avant G26.&quot;">client_noauth = &lt;httpx.Client object at 0x7fa935ab79b0&gt;
+admin_token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG0tYjlkYmFjODkxODk0Iiwicm9sZSI6ImFkbWluIiwiaWF0IjoxNzkzMTMzNzg1LCJleHAiOjE3OTMxMzczODV9.CM3zXUW2iDwDzQWNSZaFa5Q9eqRfpxiDKusV8TEALvA'
+
+    @pytest.fixture(scope="module")
+    def ref_pid(client_noauth, admin_token) -&gt; str:
+        pid = os.environ.get("BC4_REF_PID")
+        if pid:
+            return pid
+        r = client_noauth.get("/projects", headers=_hdr(admin_token))
+        assert r.status_code == 200, r.text
+        for p in r.json():
+            if p.get("name") == "REF_PETITE_FORET":
+                return p["id"]
+&gt;       pytest.fail(
+            "Projet REF_PETITE_FORET introuvable — lancer "
+            "`scripts/ingest_ref_petite_foret.sh` avant G26."
+        )
+E       Failed: Projet REF_PETITE_FORET introuvable — lancer `scripts/ingest_ref_petite_foret.sh` avant G26.
+
+tests/test_g26_measurement_full.py:56: Failed</error></testcase><testcase classname="tests.test_g26_measurement_full" name="test_operator_mismatch_declared" time="0.001"><error message="failed on setup with &quot;Failed: Projet REF_PETITE_FORET introuvable — lancer `scripts/ingest_ref_petite_foret.sh` avant G26.&quot;">client_noauth = &lt;httpx.Client object at 0x7fa935ab79b0&gt;
+admin_token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG0tYjlkYmFjODkxODk0Iiwicm9sZSI6ImFkbWluIiwiaWF0IjoxNzkzMTMzNzg1LCJleHAiOjE3OTMxMzczODV9.CM3zXUW2iDwDzQWNSZaFa5Q9eqRfpxiDKusV8TEALvA'
+
+    @pytest.fixture(scope="module")
+    def ref_pid(client_noauth, admin_token) -&gt; str:
+        pid = os.environ.get("BC4_REF_PID")
+        if pid:
+            return pid
+        r = client_noauth.get("/projects", headers=_hdr(admin_token))
+        assert r.status_code == 200, r.text
+        for p in r.json():
+            if p.get("name") == "REF_PETITE_FORET":
+                return p["id"]
+&gt;       pytest.fail(
+            "Projet REF_PETITE_FORET introuvable — lancer "
+            "`scripts/ingest_ref_petite_foret.sh` avant G26."
+        )
+E       Failed: Projet REF_PETITE_FORET introuvable — lancer `scripts/ingest_ref_petite_foret.sh` avant G26.
+
+tests/test_g26_measurement_full.py:56: Failed</error></testcase><testcase classname="tests.test_g26_measurement_full" name="test_rsrp_cross_check_declared" time="0.001"><error message="failed on setup with &quot;Failed: Projet REF_PETITE_FORET introuvable — lancer `scripts/ingest_ref_petite_foret.sh` avant G26.&quot;">client_noauth = &lt;httpx.Client object at 0x7fa935ab79b0&gt;
+admin_token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG0tYjlkYmFjODkxODk0Iiwicm9sZSI6ImFkbWluIiwiaWF0IjoxNzkzMTMzNzg1LCJleHAiOjE3OTMxMzczODV9.CM3zXUW2iDwDzQWNSZaFa5Q9eqRfpxiDKusV8TEALvA'
+
+    @pytest.fixture(scope="module")
+    def ref_pid(client_noauth, admin_token) -&gt; str:
+        pid = os.environ.get("BC4_REF_PID")
+        if pid:
+            return pid
+        r = client_noauth.get("/projects", headers=_hdr(admin_token))
+        assert r.status_code == 200, r.text
+        for p in r.json():
+            if p.get("name") == "REF_PETITE_FORET":
+                return p["id"]
+&gt;       pytest.fail(
+            "Projet REF_PETITE_FORET introuvable — lancer "
+            "`scripts/ingest_ref_petite_foret.sh` avant G26."
+        )
+E       Failed: Projet REF_PETITE_FORET introuvable — lancer `scripts/ingest_ref_petite_foret.sh` avant G26.
+
+tests/test_g26_measurement_full.py:56: Failed</error></testcase><testcase classname="tests.test_g26_measurement_full" name="test_zero_identity_leak" time="0.001"><error message="failed on setup with &quot;Failed: Projet REF_PETITE_FORET introuvable — lancer `scripts/ingest_ref_petite_foret.sh` avant G26.&quot;">client_noauth = &lt;httpx.Client object at 0x7fa935ab79b0&gt;
+admin_token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG0tYjlkYmFjODkxODk0Iiwicm9sZSI6ImFkbWluIiwiaWF0IjoxNzkzMTMzNzg1LCJleHAiOjE3OTMxMzczODV9.CM3zXUW2iDwDzQWNSZaFa5Q9eqRfpxiDKusV8TEALvA'
+
+    @pytest.fixture(scope="module")
+    def ref_pid(client_noauth, admin_token) -&gt; str:
+        pid = os.environ.get("BC4_REF_PID")
+        if pid:
+            return pid
+        r = client_noauth.get("/projects", headers=_hdr(admin_token))
+        assert r.status_code == 200, r.text
+        for p in r.json():
+            if p.get("name") == "REF_PETITE_FORET":
+                return p["id"]
+&gt;       pytest.fail(
+            "Projet REF_PETITE_FORET introuvable — lancer "
+            "`scripts/ingest_ref_petite_foret.sh` avant G26."
+        )
+E       Failed: Projet REF_PETITE_FORET introuvable — lancer `scripts/ingest_ref_petite_foret.sh` avant G26.
+
+tests/test_g26_measurement_full.py:56: Failed</error></testcase><testcase classname="tests.test_g26_measurement_full" name="test_canonical_order_unique" time="0.001"><error message="failed on setup with &quot;Failed: Projet REF_PETITE_FORET introuvable — lancer `scripts/ingest_ref_petite_foret.sh` avant G26.&quot;">client_noauth = &lt;httpx.Client object at 0x7fa935ab79b0&gt;
+admin_token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG0tYjlkYmFjODkxODk0Iiwicm9sZSI6ImFkbWluIiwiaWF0IjoxNzkzMTMzNzg1LCJleHAiOjE3OTMxMzczODV9.CM3zXUW2iDwDzQWNSZaFa5Q9eqRfpxiDKusV8TEALvA'
+
+    @pytest.fixture(scope="module")
+    def ref_pid(client_noauth, admin_token) -&gt; str:
+        pid = os.environ.get("BC4_REF_PID")
+        if pid:
+            return pid
+        r = client_noauth.get("/projects", headers=_hdr(admin_token))
+        assert r.status_code == 200, r.text
+        for p in r.json():
+            if p.get("name") == "REF_PETITE_FORET":
+                return p["id"]
+&gt;       pytest.fail(
+            "Projet REF_PETITE_FORET introuvable — lancer "
+            "`scripts/ingest_ref_petite_foret.sh` avant G26."
+        )
+E       Failed: Projet REF_PETITE_FORET introuvable — lancer `scripts/ingest_ref_petite_foret.sh` avant G26.
+
+tests/test_g26_measurement_full.py:56: Failed</error></testcase><testcase classname="tests.test_g2_parity" name="test_projects_list" time="0.042" /><testcase classname="tests.test_g2_parity" name="test_project_detail" time="0.016" /><testcase classname="tests.test_g2_parity" name="test_overview_paris" time="0.094" /><testcase classname="tests.test_g2_parity" name="test_overview_rennes" time="0.088" /><testcase classname="tests.test_g2_parity" name="test_dict_project" time="0.014" /><testcase classname="tests.test_g2_parity" name="test_dict_tree" time="0.031" /><testcase classname="tests.test_g2_parity" name="test_dict_params" time="0.256" /><testcase classname="tests.test_g2_parity" name="test_dict_param_detail" time="0.062" /><testcase classname="tests.test_g2_parity" name="test_dict_param_map" time="0.122" /><testcase classname="tests.test_g2_parity" name="test_kpi_catalog" time="0.016" /><testcase classname="tests.test_g2_parity" name="test_appearance" time="0.010" /><testcase classname="tests.test_g2_parity" name="test_organization" time="0.015" /><testcase classname="tests.test_g2_parity" name="test_about" time="0.008" /><testcase classname="tests.test_g2_parity" name="test_users" time="0.019" /><testcase classname="tests.test_g2_parity" name="test_kpi_settings" time="0.015" /><testcase classname="tests.test_g2_parity" name="test_ai_config" time="0.016" /><testcase classname="tests.test_g2_parity" name="test_assistant" time="0.026" /><testcase classname="tests.test_g3_nr_coverage" name="test_paris_nr_populated" time="0.031" /><testcase classname="tests.test_g3_nr_coverage" name="test_rennes_nr_empty" time="0.025" /><testcase classname="tests.test_g4_conversion" name="test_lte_rsrp_rule" time="0.055" /><testcase classname="tests.test_g4_conversion" name="test_nr_rsrp_rule" time="0.053" /><testcase classname="tests.test_g6_cell_ref" name="test_upload_witness_batch" time="0.267" /><testcase classname="tests.test_g6_cell_ref" name="test_band_map_contract" time="0.015" /><testcase classname="tests.test_g6_cell_ref" name="test_upload_bad_header_422" time="0.142" /><testcase classname="tests.test_g8_auth" name="test_login_success" time="0.141" /><testcase classname="tests.test_g8_auth" name="test_login_bad_password_401" time="0.120" /><testcase classname="tests.test_g8_auth" name="test_login_unknown_email_401_same_shape" time="0.233" /><testcase classname="tests.test_g8_auth" name="test_protected_without_bearer_401" time="0.006" /><testcase classname="tests.test_g8_auth" name="test_protected_with_bearer_200" time="0.163" /><testcase classname="tests.test_g8_auth" name="test_me_returns_current_user" time="0.138" /><testcase classname="tests.test_g8_auth" name="test_password_stored_as_argon2_hash" time="0.005" /><testcase classname="tests.test_g8_auth" name="test_logout_requires_bearer" time="0.138" /><testcase classname="tests.test_g9_cors_demo" name="test_preflight_from_front_origin_allowed" time="0.005" /><testcase classname="tests.test_g9_cors_demo" name="test_preflight_from_unknown_origin_not_allowed" time="0.004" /><testcase classname="tests.test_g9_cors_demo" name="test_authenticated_post_from_front_origin" time="0.021" /><testcase classname="tests.test_g9_cors_demo" name="test_demo_seed_from_env_idempotent" time="0.020" /><testcase classname="tests.test_import_jobs" name="test_accepts_durable_files_without_decoding_and_rejects_overlap" time="0.087" /><testcase classname="tests.test_import_jobs" name="test_62_files_finalized_once_and_not_per_file" time="0.675" /><testcase classname="tests.test_import_jobs" name="test_interrupted_job_resumes_skipping_completed_files" time="0.258" /><testcase classname="tests.test_import_jobs" name="test_file_error_is_not_reported_as_success" time="0.068" /><testcase classname="tests.test_import_jobs" name="test_rejected_oversize_batch_leaves_no_job_or_partial_files" time="0.027" /><testcase classname="tests.test_import_jobs" name="test_finalization_failure_is_persisted" time="0.070" /><testcase classname="tests.test_import_jobs" name="test_missing_measurements_do_not_crash_finalization" time="0.021" /><testcase classname="tests.test_import_jobs" name="test_report_recovery_does_not_decode_or_repopulate" time="0.040" /><testcase classname="tests.test_import_jobs" name="test_report_recovery_rejects_unfinished_files" time="0.036" /><testcase classname="tests.test_kpi_operator_population" name="test_no_selection_is_explicit_false_not_unrestricted" time="0.001" /><testcase classname="tests.test_kpi_operator_population" name="test_values_are_bound_and_multiple_operators_form_one_population" time="0.001" /><testcase classname="tests.test_kpi_operator_population" name="test_capture_scopes_rrc_by_event_identity_not_time" time="0.001" /><testcase classname="tests.test_kpi_operator_population" name="test_transfer_catalogue_availability_does_not_require_applied_filters" time="0.003" /><testcase classname="tests.test_kpi_operator_population" name="test_unassigned_selection_is_null_population_not_all" time="0.001" /><testcase classname="tests.test_kpi_timeseries_unit" name="test_project_missing_returns_404" time="0.001" /><testcase classname="tests.test_kpi_timeseries_unit" name="test_unknown_kpi_code_returns_unavailable" time="0.001" /><testcase classname="tests.test_kpi_timeseries_unit" name="test_calculated_kpi_without_direct_metric_returns_unavailable" time="0.002" /><testcase classname="tests.test_kpi_timeseries_unit" name="test_nmf_metric_absent_from_catalog_returns_unavailable" time="0.002" /><testcase classname="tests.test_kpi_timeseries_unit" name="test_capture_not_decoded_returns_unavailable" time="0.003" /><testcase classname="tests.test_kpi_timeseries_unit" name="test_axes_always_declare_unit_s_for_x" time="0.001" /><testcase classname="tests.test_metrics_v3" name="test_closed_selectors_and_unproven_cells" time="0.054" /><testcase classname="tests.test_metrics_v3" name="test_last_is_ordered_and_null_is_not_zero" time="0.001" /><testcase classname="tests.test_metrics_v3" name="test_event_attributes_exclude_private_columns_and_keep_two_ho_durations" time="0.030" /><testcase classname="tests.test_metrics_v3" name="test_explicit_empty_operator_population_is_not_all" time="0.001" /><testcase classname="tests.test_nmf_cells_context" name="test_context_is_not_a_system_and_hoi_has_no_system" time="0.001" /><testcase classname="tests.test_nmf_cells_context" name="test_private_fields_are_never_numeric_or_unknown_values" time="0.001" /><testcase classname="tests.test_nmf_cells_context" name="test_distinct_ho_durations_and_contexts" time="0.001" /><testcase classname="tests.test_nmf_cells_context" name="test_rate_sum_and_bler_weighted_by_blocks_not_mean_of_means" time="0.002" /><testcase classname="tests.test_nmf_cells_context" name="test_unknown_event_never_guesses_system" time="0.001" /><testcase classname="tests.test_nmf_cells_context" name="test_volte_cause_is_conditional_and_privacy_unknown_layout_fails_closed" time="0.001" /><testcase classname="tests.test_nmf_cells_context" name="test_legacy_null_context_ids_replay_as_empty_dimension" time="0.001" /><testcase classname="tests.test_nmf_cells_context" name="test_drate_keeps_independent_context_dimensions" time="0.001" /><testcase classname="tests.test_nmf_cells_context" name="test_undecoded_nr_does_not_create_zero_neighbors_or_collide_with_lte" time="0.002" /><testcase classname="tests.test_nmf_cells_context" name="test_txpc_content_proven_cell_discriminator_depends_on_format" time="0.001" /><testcase classname="tests.test_nmf_cells_context" name="test_crel_variable_header_has_declared_system_and_preserves_long_cell_ids" time="0.001" /><testcase classname="tests.test_nmf_cells_context" name="test_lock_variable_groups_and_light_last_snapshot" time="0.001" /><testcase classname="tests.test_nmf_decoder" name="test_eight_source_witnesses" time="0.004" /><testcase classname="tests.test_nmf_decoder" name="test_content_privacy_preserves_long_numeric_and_hashes_quoted_numeric" time="0.001" /><testcase classname="tests.test_nmf_decoder" name="test_identity_headers_never_retained[#EI]" time="0.001" /><testcase classname="tests.test_nmf_decoder" name="test_identity_headers_never_retained[#SI]" time="0.001" /><testcase classname="tests.test_nmf_decoder" name="test_identity_headers_never_retained[#DN]" time="0.001" /><testcase classname="tests.test_nmf_decoder" name="test_no_system_heuristic_and_range_rejection" time="0.001" /><testcase classname="tests.test_nmf_decoder" name="test_truncated_group_and_csv_are_counted" time="0.001" /><testcase classname="tests.test_nmf_decoder" name="test_light_weighted_distribution_and_missing_time_not_lost" time="0.001" /><testcase classname="tests.test_nmf_decoder" name="test_application_type_is_not_inferred_from_an_unknown_extension" time="0.001" /><testcase classname="tests.test_nmf_decoder" name="test_light_replay_normalizes_null_group_dimensions" time="0.001" /><testcase classname="tests.test_populate_atomic" name="test_chain_rolls_back_internal_commits_on_failure" time="0.016" /><testcase classname="tests.test_populate_atomic" name="test_chain_detects_unenriched_capture" time="0.005" /><testcase classname="tests.test_populate_atomic" name="test_parent_transaction_ends_before_long_population" time="0.010"><failure message="Failed: TEST2 integration project absent">monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x7fa92734ede0&gt;
+
+    def test_parent_transaction_ends_before_long_population(monkeypatch):
+        """Real PostgreSQL, read-only TEST2: old code exceeds the 200ms idle limit."""
+        from sqlalchemy import event
+        from app.models import Project
+        with Session(engine) as parent:
+            def short_timeout(session, transaction, connection):
+                connection.execute(text("SET LOCAL idle_in_transaction_session_timeout = '200ms'"))
+            event.listen(parent, 'after_begin', short_timeout)
+            project = parent.get(Project, '134af70a06eb')
+            if project is None:
+&gt;               pytest.fail('TEST2 integration project absent')
+E               Failed: TEST2 integration project absent
+
+tests/test_populate_atomic.py:54: Failed</failure></testcase><testcase classname="tests.test_rf_timeline" name="test_connected_starts_at_indication_not_attempt_and_never_extends_open_end" time="0.001" /><testcase classname="tests.test_rf_timeline" name="test_equal_source_timestamps_are_not_rendered_as_a_fabricated_period" time="0.001" /><testcase classname="tests.test_rf_timeline" name="test_overlapping_contexts_cannot_supply_connection_indication" time="0.001" /><testcase classname="tests.test_rf_timeline" name="test_unknown_call_type_is_not_volte_and_nr_is_not_sa" time="0.001" /><testcase classname="tests.test_rf_timeline" name="test_absent_time_remains_null_and_partial_task_is_not_success" time="0.001" /><testcase classname="tests.test_rf_timeline" name="test_ho_success_requires_hos_and_source_order_is_seq" time="0.001" /><testcase classname="tests.test_rf_timeline" name="test_proven_context_evidence_enriches_matching_legacy_connection_only" time="0.001" /><testcase classname="tests.test_signaling_message" name="test_content_inspected_before_dictionary_deny[value0]" time="0.001" /><testcase classname="tests.test_signaling_message" name="test_content_inspected_before_dictionary_deny[value1]" time="0.001" /><testcase classname="tests.test_signaling_message" name="test_content_inspected_before_dictionary_deny[value2]" time="0.001" /><testcase classname="tests.test_signaling_message" name="test_content_inspected_before_dictionary_deny[value3]" time="0.001" /><testcase classname="tests.test_signaling_message" name="test_content_inspected_before_dictionary_deny[value4]" time="0.001" /><testcase classname="tests.test_signaling_message" name="test_opaque_and_unknown_fail_closed_but_bit_string_is_not_blanket_denied" time="0.001" /><testcase classname="tests.test_signaling_message" name="test_g18b_even_without_occurrences[RRCConnectionRequest]" time="0.001" /><testcase classname="tests.test_signaling_message" name="test_g18b_even_without_occurrences[RRCConnectionSetupComplete]" time="0.001" /><testcase classname="tests.test_signaling_message" name="test_g18b_even_without_occurrences[RRCSetupComplete]" time="0.001" /><testcase classname="tests.test_signaling_message" name="test_g18b_even_without_occurrences[ULInformationTransfer]" time="0.001" /><testcase classname="tests.test_signaling_message" name="test_g18b_even_without_occurrences[DLInformationTransfer]" time="0.001" /><testcase classname="tests.test_signaling_message" name="test_safe_hex_requires_content_and_exact_roundtrip" time="0.001" /><testcase classname="tests.test_signaling_message" name="test_invalid_nas_and_failed_decode_do_not_echo_content" time="0.001" /><testcase classname="tests.test_signaling_message" name="test_exact_occurrences_no_aggregation_identifiers_removed_zero_preserved" time="0.002" /><testcase classname="tests.test_signaling_message" name="test_absence_ambiguity_and_unsupported_protocol[events0-404]" time="0.001" /><testcase classname="tests.test_signaling_message" name="test_absence_ambiguity_and_unsupported_protocol[events1-409]" time="0.001" /><testcase classname="tests.test_signaling_message" name="test_absence_ambiguity_and_unsupported_protocol[events2-422]" time="0.001" /><testcase classname="tests.test_signaling_message" name="test_route_auth_validation_and_openapi" time="2.264" /><testcase classname="tests.test_signaling_message" name="test_protocol_uses_source_event_not_message_label[RRCSM-NR-rrc_nr]" time="0.003" /><testcase classname="tests.test_signaling_message" name="test_protocol_uses_source_event_not_message_label[L3SM-LTE-nas]" time="0.002" /><testcase classname="tests.test_signaling_message" name="test_identifier_path_defense_even_when_legacy_flag_false" time="0.002" /><testcase classname="tests.test_signaling_message" name="test_setup_complete_decodes_safe_rrc_leaf_but_never_nas_or_identity" time="0.003" /><testcase classname="tests.test_task_run" name="test_privacy_redaction_before_storage_is_idempotent" time="0.004" /><testcase classname="tests.test_task_run" name="test_malformed_payload_fails_closed_and_never_raises_payload" time="0.001" /><testcase classname="tests.test_task_run" name="test_canonical_capture_boundary_and_incomplete_tasks" time="0.002" /><testcase classname="tests.test_task_run" name="test_nonmonotonic_time_not_interpolated" time="0.001" /><testcase classname="tests.test_task_run" name="test_missing_drate_allows_proven_dcomp_fallback" time="0.001" /><testcase classname="tests.test_task_run" name="test_axis_and_project_scope" time="0.001" /><testcase classname="tests.test_task_run" name="test_result_sql_is_admin_only" time="0.001" /><testcase classname="tests.test_task_run" name="test_integral_not_cumulative_counter_and_partial_gap" time="0.001" /><testcase classname="tests.test_task_run" name="test_axes_route_precedes_dynamic_kpi_route" time="1.678" /><testcase classname="tests.test_task_run" name="test_first_zero_interval_cannot_be_ok" time="0.002" /><testcase classname="tests.test_task_run" name="test_cellmeas_predecessor_crosses_task_boundary_but_not_capture" time="0.001" /><testcase classname="tests.test_task_run" name="test_radio_predecessor_conflict_is_not_arbitrarily_resolved" time="0.001" /><testcase classname="tests.test_task_run" name="test_points_cqi_uses_its_own_provenance" time="0.001" /><testcase classname="tests.test_task_run" name="test_excluded_counts_are_server_classified" time="0.001" /><testcase classname="tests.test_task_run" name="test_cellmeas_gating_preserves_null_and_raw_value" time="0.288" /><testcase classname="tests.test_g17_llm_settings" name="test_put_llm_rejects_key_without_secret" time="0.520" /></testsuite>

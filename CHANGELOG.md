@@ -1,28 +1,30 @@
-## Unreleased — minor — Paramètres de parsing projet L3 (Agent BC1)
+## 0.90.0 (minor) — BC4 2026-10-27 — Projets par utilisateur, partage et paramètres de parsing (Agent BC1)
+
+### L3 — Paramètres de parsing projet
 
 - Stocke les choix Light/Deep et binning temps/distance comme défauts projet.
 - Fige le contrat de parsing sur chaque capture et chaque job ; les modifications futures du projet ne réécrivent aucun snapshot.
 - Conserve les données brutes : le contrat `query-binning-v1` réserve l’agrégation aux requêtes.
 
-## Unreleased — minor — Partage nominatif des projets L2 (Agent BC1)
+### L2 — Partage nominatif des projets
 
 - Ajoute des partages nominatifs en lecture seule, révocables immédiatement, sans annuaire public.
 - Étend `scope=all` aux projets partagés et conserve les écritures au propriétaire uniquement.
 
-## Unreleased — minor — Propriété et visibilité des projets L1 (Agent BC1)
+### L1 — Propriété et visibilité des projets
 
 - Rend `projects.owner_id` et `projects.visibility` obligatoires dès la migration 0057 sur base vide, sans reprise ni données seedées.
 - Limite chaque route projet au propriétaire ou aux projets publics en lecture, réserve les mutations au propriétaire et renvoie 404 pour toute ressource inaccessible, sans exception administrateur.
 - Ajoute `scope=my|all` au listing et crée chaque projet avec le propriétaire authentifié et une visibilité explicite.
 - Retire la création de projets de démonstration du seed serveur : les projets naissent uniquement via la route authentifiée.
 
-## Unreleased — patch (test) — G34 isolation des projets (Agent BC1)
+### Tests — G34 isolation des projets
 
 - Complète le garde manuel G34 sur PostgreSQL éphémère avec création du projet par API, upload d’un vrai NMF du corpus, import et décodage par les workers applicatifs, puis deux passes utilisateur B (`admin` et `lecteur`) sans ressource fabriquée par SQL.
 - Répare le replay sur base vide : 0052 crée aussi `nmf_event_light.dci_dci_count`, auparavant présent seulement par DDL live, afin que le vrai import G34 ne casse plus au `COPY`.
 - Ajoute la base du garde Alembic 0057, remplacée dans L1 par le contrat simplifié pour base vide.
 
-## Unreleased — patch (tests) — Préparation merge L1–L3 (Agent BC1)
+### Tests — Préparation merge L1–L3
 
 - Rend G34 redémarrable en supprimant uniquement les projets appartenant aux propriétaires `TEST-G34-*`, après validation obligatoire de la base jetable et avant leur recréation.
 - Rend les tests hérités explicites : une précondition absente produit un échec au lieu d'un `SKIP`.
