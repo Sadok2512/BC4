@@ -10,6 +10,9 @@ decoder). B then calls every OpenAPI operation whose path contains
 ``/projects`` or ``/results``. A matching 404 for A and B is *not* considered a
 pass: it is reported as UNTESTABLE/FAIL because resource absence is not an access
 control decision.
+
+Capture identifiers are shared between projects. Every capture lookup in this
+guard therefore uses the canonical key ``(project_id, capture_id, seq)``.
 """
 
 from __future__ import annotations
@@ -182,7 +185,8 @@ def prepare_real_fixture(client: TestClient, token_a: str) -> None:
         occurrence = conn.execute(
             text("""SELECT p.param_key,e.seq FROM param_occurrence p
                     JOIN stg_event e ON e.id=p.stg_event_id
-                    WHERE p.project_id=:pid AND e.capture_id=:cap AND NOT p.is_identifier
+                    WHERE p.project_id=:pid AND e.project_id=:pid
+                      AND e.capture_id=:cap AND NOT p.is_identifier
                     ORDER BY e.seq,p.id LIMIT 1"""),
             {"pid": PROJECT_ID, "cap": CAPTURE_ID},
         ).mappings().first()
