@@ -1,3 +1,9 @@
+## Unreleased (patch — tests) — Schema parity guard G35 (Agent BC1)
+
+- Compare le schéma live à un replay Alembic vide via des dumps conservés et
+  les catalogues PostgreSQL (tables, colonnes, types, contraintes et index),
+  en listant séparément les partitions dynamiques et en échouant sur tout écart.
+
 ## 0.90.1 (patch) — 2026-10-27 — Import NMF Light schema repair (Agent BC1)
 
 - Repair databases missing `nmf_event_light.dci_dci_count`, and add a
