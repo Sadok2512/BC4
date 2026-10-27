@@ -13,6 +13,18 @@
   birth-time 2026-10-27 13:54:58.122536. Non restauré : Codex67 ré-uploadera
   son CSV. Protection posée en 0.88.2 (`tests/conftest.py` refuse DSN prod).
 
+## 0.89.2 (patch) — BC4 2026-10-27 — scripts/catalog/bootstrap_catalog_release.py (Agent BC3)
+
+Outil officiel du dépôt pour (ré)amorcer la table `catalog_release` depuis
+un JSON `app/kpi/catalog_release/catalog_<version>.json` déjà présent sur
+disque. Lit le JSON, calcule le sha256 via
+`app.kpi.catalog_release.registry.sha256_file`, UPSERT une ligne
+(is_current=TRUE) via l'engine SQLAlchemy — pas de psql manuel.
+
+Scénario : `DROP DATABASE bc4 → CREATE DATABASE bc4 → alembic upgrade head`
+pose la table vide ; `python scripts/catalog/bootstrap_catalog_release.py
+--version 2.53.0` pose la ligne qui référence le JSON disque.
+
 ## 0.89.1 (patch) — BC4 2026-10-27 — Procedures.source (nmf_marker vs l3_message) (Agent BC3)
 
 Chaque entrée dans `/signaling/procedures` expose 3 nouveaux champs
