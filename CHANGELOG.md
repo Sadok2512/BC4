@@ -1,3 +1,9 @@
+## 0.85.0 (minor) — BC4 2026-10-27 — Proven RSRP-to-serving-cell map links (Agent BC1)
+
+- `/projects/{id}/metrics/table?include_map=true` enrichit chaque point cartographique avec la dernière cellule servante LTE `CHI #6` précédente dans la même capture et en ordre `(capture_id, seq)`.
+- La cellule n'est publiée que si son ECI correspond exactement à `cell_ref.eci` et possède une géométrie. Aucun site proche, PCI ou emplacement n'est déduit.
+- Le contrat expose l'ECI, la séquence CHI, la référence cellule/site, les coordonnées et la source de preuve `chi_previous_seq_cell_ref_exact`.
+
 ## 0.84.1 (patch) — BC4 2026-10-26 — Clôture 2.53 : G30 sans SKIP, resolver headers depuis .nmf text (Agent BC3)
 
 Durcissement du resolver CAPTURE File + Script :

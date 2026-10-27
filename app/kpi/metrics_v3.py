@@ -369,11 +369,46 @@ class Dataset:
         gps_fixes=sorted(({'seq':r['seq'],'lat':r['lat'],'lon':r['lon']} for r in self.query('SELECT seq,lat,lon FROM stg_event_raw WHERE project_id=:pid AND capture_id=:cap AND lat IS NOT NULL AND lon IS NOT NULL AND NOT(lat=0 AND lon=0) ORDER BY seq')), key=lambda f: f['seq'])
         gps_exact={f['seq']:(f['lat'],f['lon']) for f in gps_fixes}
         if include_map:
+            # Serving-cell proof for map links. CHI #6 is the documented LTE
+            # Cell ID. Its state is carried forward only inside this capture
+            # in canonical seq order, then joined by exact ECI to cell_ref.
+            # An absent reference match stays absent: never pick a nearby site.
+            chi_rows=[dict(r) for r in self.query("""
+                SELECT seq, raw_fields->>'c9' AS eci
+                FROM stg_event_raw
+                WHERE project_id=:pid AND capture_id=:cap
+                  AND event_code='CHI' AND system='LTE'
+                  AND raw_fields->>'c9' ~ '^[0-9]+$'
+                ORDER BY seq
+            """)]
+            cell_ids=sorted({r['eci'] for r in chi_rows})
+            cell_refs={}
+            if cell_ids:
+                cell_refs={r['eci']:dict(r) for r in self.query("""
+                    SELECT eci,id AS cell_ref_id,site_id,site_name,
+                           ST_Y(geom) AS lat,ST_X(geom) AS lng
+                    FROM cell_ref
+                    WHERE eci=ANY(:serving_ecgis) AND geom IS NOT NULL
+                """,{'serving_ecgis':cell_ids})}
             # Exact recorded GPS only: no previous-position point presented as exact.
             for m,rows in loaded:
-                for r in rows:
+                for r,chi in _pair_previous_or_same(chi_rows,rows):
                     if r['seq'] in gps_exact and r['value'] is not None:
-                        lat,lng=gps_exact[r['seq']];map_points.append(dict(seq=r['seq'],lat=lat,lng=lng,code=m['selection'],value=r['value'],t_rel_s=r['t_rel_s'],tooltip=f"{m['label']} · seq {r['seq']} · {r['value']} {m['unit']}"))
+                        lat,lng=gps_exact[r['seq']]
+                        ref=cell_refs.get(chi['eci']) if chi else None
+                        map_points.append(dict(
+                            seq=r['seq'],lat=lat,lng=lng,code=m['selection'],
+                            value=r['value'],t_rel_s=r['t_rel_s'],
+                            tooltip=f"{m['label']} · seq {r['seq']} · {r['value']} {m['unit']}",
+                            serving_cell_id=chi['eci'] if ref else None,
+                            serving_cell_seq=chi['seq'] if ref else None,
+                            serving_cell_ref_id=ref['cell_ref_id'] if ref else None,
+                            serving_site_id=ref['site_id'] if ref else None,
+                            serving_site_name=ref['site_name'] if ref else None,
+                            serving_cell_lat=ref['lat'] if ref else None,
+                            serving_cell_lng=ref['lng'] if ref else None,
+                            serving_cell_source='chi_previous_seq_cell_ref_exact' if ref else None,
+                        ))
         pair_rows=[dict(p) for p in self.pairs if self.admissible(p['seq_start']) and (p['seq_end'] is None or self.admissible(p['seq_end']))]
         pair_rates=[]
         for kind in sorted({p['type'] for p in pair_rows}):

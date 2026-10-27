@@ -35,6 +35,10 @@ class Scatter(BaseModel):
     code:str;seq:int;x_seq:int;seq_gap:int;cell:str;x:float|str;value:float|str
 class MapPoint(BaseModel):
     seq:int;lat:float;lng:float;code:str;value:float|str;t_rel_s:float|None;tooltip:str
+    serving_cell_id:str|None=None;serving_cell_seq:int|None=None
+    serving_cell_ref_id:str|None=None;serving_site_id:str|None=None;serving_site_name:str|None=None
+    serving_cell_lat:float|None=None;serving_cell_lng:float|None=None
+    serving_cell_source:Literal['chi_previous_seq_cell_ref_exact']|None=None
 class PairRate(BaseModel):
     type:str;attempts:int;completed:int;success:int;known_outcomes:int;success_pct:float|None
 class Analysis(BaseModel):
