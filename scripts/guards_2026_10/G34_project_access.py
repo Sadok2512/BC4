@@ -31,7 +31,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
 
 
-EXPECTED_OPERATIONS = 62
+EXPECTED_OPERATIONS = 66
 PROJECT_ID = ""
 CAPTURE_ID = ""
 RESULT_ID = ""
@@ -41,6 +41,7 @@ TEMPLATE_CATEGORY = ""
 MESSAGE_SEQ = 0
 USER_A_EMAIL = "test-g34-a@example.invalid"
 USER_B_EMAIL = "test-g34-b@example.invalid"
+USER_B_ID = "TEST-G34-USER-B"
 PASSWORD_A = "TEST-G34-A-only-9!"
 PASSWORD_B = "TEST-G34-B-only-9!"
 
@@ -116,7 +117,7 @@ def prepare_real_fixture(client: TestClient, token_a: str) -> None:
     created = client.post(
         "/projects",
         headers={"Authorization": f"Bearer {token_a}"},
-        json={"name": "TEST-G34 project owned by A", "visibility": "private"},
+        json={"name": "TEST-G34 project owned by A", "visibility": "private", "parse_decode_level": "light", "parse_binning_mode": "temporal", "parse_temporal_resolution": "native", "parse_spatial_bin_m": None},
     )
     if created.status_code != 201:
         fail(f"POST /projects returned {created.status_code}: {created.text[:300]}")
@@ -216,6 +217,7 @@ def concrete_path(path: str) -> str:
         "capture_id": CAPTURE_ID,
         "result_id": RESULT_ID,
         "job_id": JOB_ID,
+        "user_id": USER_B_ID,
         "code": "THR_DL_APP",
         "category": TEMPLATE_CATEGORY,
         "param_key:path": PARAM_KEY,
@@ -256,7 +258,11 @@ def body_for(method: str, path: str) -> tuple[dict[str, Any] | None, dict[str, A
     if method != "POST":
         return None, None
     if path == "/projects":
-        return {"name": "TEST-G34 project created by B", "visibility": "private"}, None
+        return {"name": "TEST-G34 project created by B", "visibility": "private", "parse_decode_level": "light", "parse_binning_mode": "temporal", "parse_temporal_resolution": "native", "parse_spatial_bin_m": None}, None
+    if path.endswith("/shares"):
+        return {"email": USER_B_EMAIL}, None
+    if path.endswith("/parsing"):
+        return {"parse_decode_level": "deep", "parse_binning_mode": "spatial", "parse_temporal_resolution": None, "parse_spatial_bin_m": 25}, None
     if path.endswith("/assistant"):
         return {"message": "TEST-G34"}, None
     if path.endswith("/decode"):
@@ -296,6 +302,15 @@ def call(client: TestClient, token: str, method: str, route: str):
         json=json_body,
         files=files,
     )
+
+
+def revoke_b(client: TestClient, token_a: str) -> None:
+    response = client.delete(
+        f"/projects/{PROJECT_ID}/shares/{USER_B_ID}",
+        headers={"Authorization": f"Bearer {token_a}"},
+    )
+    if response.status_code not in {204, 404}:
+        fail(f"share cleanup returned {response.status_code}")
 
 
 def finish_mutation(route: str, response: Any) -> None:
@@ -362,6 +377,19 @@ def main() -> int:
                     rows.append(Row(role, method, route, expected, b.status_code, verdict))
                     continue
                 if method == "DELETE":
+                    if route.endswith("/shares/{user_id}"):
+                        owner_share = client.post(
+                            f"/projects/{PROJECT_ID}/shares",
+                            headers={"Authorization": f"Bearer {token_a}"},
+                            json={"email": USER_B_EMAIL},
+                        )
+                        if owner_share.status_code not in {200, 201}:
+                            fail(f"share fixture returned {owner_share.status_code}")
+                        b = call(client, token_b, method, route)
+                        a = call(client, token_a, method, route)
+                        rows.append(Row(role, method, route, a.status_code, b.status_code,
+                                        "PASS_BLOCKED" if a.status_code == 204 and b.status_code == 404 else "FAIL_EXPOSED"))
+                        continue
                     if role == "lecteur":
                         b = call(client, token_b, method, route)
                         rows.append(Row(role, method, route, 204, b.status_code,
@@ -384,11 +412,45 @@ def main() -> int:
                                     "PASS_BLOCKED" if b.status_code in {401, 403, 404}
                                     else "FAIL_EXPOSED"))
                     continue
+                if method == "POST" and route.endswith("/shares"):
+                    b = call(client, token_b, method, route)
+                    a = call(client, token_a, method, route)
+                    rows.append(Row(role, method, route, a.status_code, b.status_code,
+                                    "PASS_BLOCKED" if a.status_code in {200, 201} and b.status_code == 404 else "FAIL_EXPOSED"))
+                    revoke_b(client, token_a)
+                    continue
                 b = call(client, token_b, method, route)
                 finish_mutation(route, b)
                 a = call(client, token_a, method, route)
                 finish_mutation(route, a)
                 rows.append(Row(role, method, route, a.status_code, b.status_code, classify(route, method, a, b)))
+
+            # L2 contract: a named share grants reads only, and revocation is immediate.
+            shared = client.post(
+                f"/projects/{PROJECT_ID}/shares",
+                headers={"Authorization": f"Bearer {token_a}"},
+                json={"email": USER_B_EMAIL},
+            )
+            if shared.status_code not in {200, 201}:
+                fail(f"share creation returned {shared.status_code}")
+            shared_get = client.get(
+                f"/projects/{PROJECT_ID}", headers={"Authorization": f"Bearer {token_b}"}
+            )
+            shared_write = client.patch(
+                f"/projects/{PROJECT_ID}/parsing",
+                headers={"Authorization": f"Bearer {token_b}"},
+                json={"parse_decode_level": "light", "parse_binning_mode": "temporal", "parse_temporal_resolution": "native", "parse_spatial_bin_m": None},
+            )
+            rows.append(Row(role, "GET", "/projects/{project_id} [shared]", 200, shared_get.status_code,
+                            "PASS_SHARED_READ" if shared_get.status_code == 200 else "FAIL_SHARED_READ"))
+            rows.append(Row(role, "PATCH", "/projects/{project_id}/parsing [shared]", 200, shared_write.status_code,
+                            "PASS_BLOCKED" if shared_write.status_code == 404 else "FAIL_EXPOSED"))
+            revoke_b(client, token_a)
+            revoked = client.get(
+                f"/projects/{PROJECT_ID}", headers={"Authorization": f"Bearer {token_b}"}
+            )
+            rows.append(Row(role, "GET", "/projects/{project_id} [revoked]", 200, revoked.status_code,
+                            "PASS_REVOKED" if revoked.status_code == 404 else "FAIL_EXPOSED"))
 
     print("B role | route | method | A HTTP | B HTTP | verdict")
     print("--- | --- | --- | ---: | ---: | ---")

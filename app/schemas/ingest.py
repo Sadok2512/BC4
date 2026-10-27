@@ -10,17 +10,51 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 ProjectIngestStatus = Literal["draft", "importing", "ready", "error"]
 ProjectVisibility = Literal["private", "public"]
+DecodeLevel = Literal["light", "deep"]
+BinningMode = Literal["temporal", "spatial"]
+TemporalResolution = Literal["native", "1ms", "10ms", "100ms", "1s"]
 NmfFileStatus = Literal["pending", "decoding", "done", "error"]
 
 
-class ProjectCreate(BaseModel):
+class ParsingContract(BaseModel):
+    parse_decode_level: DecodeLevel
+    parse_binning_mode: BinningMode
+    parse_temporal_resolution: TemporalResolution | None = None
+    parse_spatial_bin_m: Literal[10, 25, 50, 100] | None = None
+
+    @model_validator(mode="after")
+    def validate_resolution(self):
+        if self.parse_binning_mode == "temporal":
+            if self.parse_temporal_resolution is None or self.parse_spatial_bin_m is not None:
+                raise ValueError("temporal requires a temporal resolution and no spatial bin")
+        elif self.parse_spatial_bin_m is None or self.parse_temporal_resolution is not None:
+            raise ValueError("spatial requires a spatial bin and no temporal resolution")
+        return self
+
+
+class ProjectCreate(ParsingContract):
     name: str = Field(min_length=1, max_length=200)
     visibility: ProjectVisibility
+
+
+class ProjectParsingUpdate(ParsingContract):
+    pass
+
+
+class ProjectShareCreate(BaseModel):
+    email: str = Field(min_length=3, max_length=320)
+
+
+class ProjectShareView(BaseModel):
+    user_id: str
+    email: str
+    role: Literal["admin", "ingenieur", "lecteur"]
+    created_at: str
 
 
 class PerimeterView(BaseModel):
@@ -51,6 +85,10 @@ class ProjectIngestView(BaseModel):
     id: str
     owner_id: str
     visibility: ProjectVisibility
+    parse_decode_level: DecodeLevel
+    parse_binning_mode: BinningMode
+    parse_temporal_resolution: TemporalResolution | None
+    parse_spatial_bin_m: Literal[10, 25, 50, 100] | None
     name: str
     created_at: str | None
     actor: str | None

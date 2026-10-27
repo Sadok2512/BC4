@@ -5,6 +5,7 @@ import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Response, UploadFile
+from sqlalchemy import exists
 from sqlalchemy.orm import Session
 
 from app.db import get_db
@@ -16,7 +17,7 @@ from app.ingest.nmf import (
     refresh_project_summary,
     resolve_decoder,
 )
-from app.models import NmfFile, Project, NmfImportJob
+from app.models import AppUser, NmfFile, Project, ProjectShare, NmfImportJob
 from app.services.import_jobs import enqueue, job_view, active_job
 from app.schemas.ingest import NmfImportJobView
 from app.schemas.common import FilterContext, OverviewData, Project as ProjectSchema
@@ -24,6 +25,9 @@ from app.schemas.ingest import (
     NmfFileEntry,
     NmfImportReport,
     ProjectCreate,
+    ProjectParsingUpdate,
+    ProjectShareCreate,
+    ProjectShareView,
     ProjectIngestView,
 )
 from app.schemas.settings import Actor
@@ -58,7 +62,12 @@ def list_projects(
         query = query.filter(Project.owner_id == current_user.id)
     else:
         query = query.filter(
-            (Project.owner_id == current_user.id) | (Project.visibility == "public")
+            (Project.owner_id == current_user.id)
+            | (Project.visibility == "public")
+            | exists().where(
+                (ProjectShare.project_id == Project.id)
+                & (ProjectShare.user_id == current_user.id)
+            )
         )
     return [project_to_schema(p) for p in query.order_by(Project.imported_at.desc()).all()]
 
@@ -75,6 +84,10 @@ def _ingest_view(p: Project) -> ProjectIngestView:
         id=p.id,
         owner_id=p.owner_id,
         visibility=p.visibility,
+        parse_decode_level=p.parse_decode_level,
+        parse_binning_mode=p.parse_binning_mode,
+        parse_temporal_resolution=p.parse_temporal_resolution,
+        parse_spatial_bin_m=p.parse_spatial_bin_m,
         name=p.name,
         created_at=created,
         actor=p.actor,
@@ -107,6 +120,10 @@ def create_project(
         id=pid,
         owner_id=current_user.id,
         visibility=body.visibility,
+        parse_decode_level=body.parse_decode_level,
+        parse_binning_mode=body.parse_binning_mode,
+        parse_temporal_resolution=body.parse_temporal_resolution,
+        parse_spatial_bin_m=body.parse_spatial_bin_m,
         name=body.name,
         geography="",
         center_lng=ORIGIN_LNG,
@@ -134,6 +151,101 @@ def create_project(
     db.commit()
     db.refresh(p)
     return _ingest_view(p)
+
+
+@router.patch("/{project_id}/parsing", response_model=ProjectIngestView)
+def update_project_parsing(
+    project_id: str,
+    body: ProjectParsingUpdate,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ProjectIngestView:
+    project = _owned_project(db, project_id, current_user.id)
+    project.parse_decode_level = body.parse_decode_level
+    project.parse_binning_mode = body.parse_binning_mode
+    project.parse_temporal_resolution = body.parse_temporal_resolution
+    project.parse_spatial_bin_m = body.parse_spatial_bin_m
+    db.commit()
+    db.refresh(project)
+    return _ingest_view(project)
+
+
+def _owned_project(db: Session, project_id: str, user_id: str) -> Project:
+    project = db.get(Project, project_id)
+    if project is None or project.owner_id != user_id:
+        raise HTTPException(404, {"code": "NOT_FOUND", "message": "Projet introuvable"})
+    return project
+
+
+def _share_view(share: ProjectShare, user: AppUser) -> ProjectShareView:
+    return ProjectShareView(
+        user_id=user.id,
+        email=user.email,
+        role=user.role,
+        created_at=share.created_at.isoformat().replace("+00:00", "Z"),
+    )
+
+
+@router.get("/{project_id}/shares", response_model=list[ProjectShareView])
+def list_project_shares(
+    project_id: str,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[ProjectShareView]:
+    _owned_project(db, project_id, current_user.id)
+    rows = (
+        db.query(ProjectShare, AppUser)
+        .join(AppUser, AppUser.id == ProjectShare.user_id)
+        .filter(ProjectShare.project_id == project_id)
+        .order_by(AppUser.email)
+        .all()
+    )
+    return [_share_view(share, user) for share, user in rows]
+
+
+@router.post("/{project_id}/shares", response_model=ProjectShareView, status_code=201)
+def create_project_share(
+    project_id: str,
+    body: ProjectShareCreate,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ProjectShareView:
+    _owned_project(db, project_id, current_user.id)
+    email = body.email.strip().lower()
+    user = db.query(AppUser).filter(AppUser.email == email, AppUser.active.is_(True)).one_or_none()
+    if user is None:
+        raise HTTPException(404, {"code": "NOT_FOUND", "message": "Utilisateur introuvable"})
+    if user.id == current_user.id:
+        raise HTTPException(409, {"code": "CONFLICT", "message": "Le propriétaire a déjà accès"})
+    existing = db.get(ProjectShare, (project_id, user.id))
+    if existing is not None:
+        return _share_view(existing, user)
+    share = ProjectShare(
+        project_id=project_id,
+        user_id=user.id,
+        created_by=current_user.id,
+        created_at=datetime.now(timezone.utc),
+    )
+    db.add(share)
+    db.commit()
+    db.refresh(share)
+    return _share_view(share, user)
+
+
+@router.delete("/{project_id}/shares/{user_id}", status_code=204, response_class=Response)
+def delete_project_share(
+    project_id: str,
+    user_id: str,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Response:
+    _owned_project(db, project_id, current_user.id)
+    share = db.get(ProjectShare, (project_id, user_id))
+    if share is None:
+        raise HTTPException(404, {"code": "NOT_FOUND", "message": "Partage introuvable"})
+    db.delete(share)
+    db.commit()
+    return Response(status_code=204)
 
 
 @router.get("/{project_id}", response_model=ProjectSchema)

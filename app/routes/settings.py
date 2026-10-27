@@ -1,4 +1,5 @@
 import uuid
+import secrets
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -32,6 +33,7 @@ from app.schemas.settings import (
     PasswordPolicy,
     User as UserSchema,
     UserCreate,
+    UserCreated,
     UsersResponse,
 )
 from app.schemas.llm import LlmSettings, LlmSettingsInput, LlmTestResult
@@ -138,12 +140,12 @@ def get_users(
     )
 
 
-@router.post("/users", response_model=UserSchema, status_code=201)
+@router.post("/users", response_model=UserCreated, status_code=201)
 def create_user(
     body: UserCreate,
     actor: Actor = Depends(get_actor),
     db: Session = Depends(get_db),
-) -> UserSchema:
+) -> UserCreated:
     """Crée un compte (B2) : admin requis, policy mdp appliquée côté serveur.
     Le compte est écrit à la fois dans `app_user` (source d'auth JWT) et
     dans `users` (affichage settings). Role mappé Zod → DB FR via
@@ -152,7 +154,12 @@ def create_user(
 
     # Policy serveur — jamais tolérée par défaut, violations rendues à l'utilisateur.
     policy = db.query(PasswordPolicyRow).one()
-    if body.password != body.password_confirm:
+    generated_password = None
+    password = body.password
+    if password is None:
+        generated_password = secrets.token_urlsafe(max(12, policy.min_length)) + "A1"
+        password = generated_password
+    if body.password is not None and body.password != body.password_confirm:
         raise HTTPException(
             422,
             {
@@ -161,7 +168,7 @@ def create_user(
                 "field": "password_confirm",
             },
         )
-    problems = _check_password_policy(body.password, policy)
+    problems = _check_password_policy(password, policy)
     if problems:
         raise HTTPException(
             422,
@@ -195,7 +202,7 @@ def create_user(
         raise HTTPException(422, {"code": "VALIDATION", "message": f"Rôle inconnu : {body.role}"})
 
     now = datetime.now(timezone.utc)
-    hashed = hash_password(body.password)
+    hashed = hash_password(password)
 
     # 1) app_user (source d'auth)
     app_u = AppUser(
@@ -221,7 +228,7 @@ def create_user(
     db.add(u)
     db.commit()
     db.refresh(u)
-    return _user_schema(u)
+    return UserCreated(**_user_schema(u).model_dump(), initial_password=generated_password)
 
 
 # ----- Geography (seeded read-only) -----

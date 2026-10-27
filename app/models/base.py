@@ -57,6 +57,10 @@ class Project(Base):
         ForeignKey("app_user.id", ondelete="RESTRICT"), nullable=False, index=True
     )
     visibility: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    parse_decode_level: Mapped[str] = mapped_column(String, nullable=False, default="light")
+    parse_binning_mode: Mapped[str] = mapped_column(String, nullable=False, default="temporal")
+    parse_temporal_resolution: Mapped[str | None] = mapped_column(String, nullable=True, default="native")
+    parse_spatial_bin_m: Mapped[int | None] = mapped_column(Integer, nullable=True)
     name: Mapped[str] = mapped_column(String, nullable=False)
     geography: Mapped[str] = mapped_column(String, nullable=False)
     center_lng: Mapped[float] = mapped_column(Float, nullable=False)
@@ -91,6 +95,21 @@ class Project(Base):
     # n_points = 0)` est **incomplet** (NMF ingérés mais pas transformés).
     last_populate_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     n_points: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+
+class ProjectShare(Base):
+    __tablename__ = "project_share"
+
+    project_id: Mapped[str] = mapped_column(
+        ForeignKey("projects.id", ondelete="CASCADE"), primary_key=True
+    )
+    user_id: Mapped[str] = mapped_column(
+        ForeignKey("app_user.id", ondelete="CASCADE"), primary_key=True, index=True
+    )
+    created_by: Mapped[str] = mapped_column(
+        ForeignKey("app_user.id", ondelete="RESTRICT"), nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
 class NmfFile(Base):

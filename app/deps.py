@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.db import get_db
-from app.models import AppUser, Project
+from app.models import AppUser, Project, ProjectShare
 from app.schemas.settings import Actor
 from app.services.auth import TokenError, decode_token
 
@@ -112,8 +112,16 @@ def get_accessible_project(
     if project_id is None:
         return None
     project = db.get(Project, project_id)
+    shared = False
+    if project is not None and project.owner_id != current.id and project.visibility != "public":
+        shared = (
+            db.query(ProjectShare)
+            .filter(ProjectShare.project_id == project.id, ProjectShare.user_id == current.id)
+            .first()
+            is not None
+        )
     if project is None or (
-        project.owner_id != current.id and project.visibility != "public"
+        project.owner_id != current.id and project.visibility != "public" and not shared
     ):
         raise _project_not_found()
     return project

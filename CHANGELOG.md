@@ -1,3 +1,14 @@
+## Unreleased — minor — Paramètres de parsing projet L3 (Agent BC1)
+
+- Stocke les choix Light/Deep et binning temps/distance comme défauts projet.
+- Fige le contrat de parsing sur chaque capture et chaque job ; les modifications futures du projet ne réécrivent aucun snapshot.
+- Conserve les données brutes : le contrat `query-binning-v1` réserve l’agrégation aux requêtes.
+
+## Unreleased — minor — Partage nominatif des projets L2 (Agent BC1)
+
+- Ajoute des partages nominatifs en lecture seule, révocables immédiatement, sans annuaire public.
+- Étend `scope=all` aux projets partagés et conserve les écritures au propriétaire uniquement.
+
 ## Unreleased — minor — Propriété et visibilité des projets L1 (Agent BC1)
 
 - Rend `projects.owner_id` et `projects.visibility` obligatoires dès la migration 0057 sur base vide, sans reprise ni données seedées.
