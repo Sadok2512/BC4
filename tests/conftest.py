@@ -1,8 +1,63 @@
 import os
 from contextlib import contextmanager
+from urllib.parse import urlparse
 
 import httpx
 import pytest
+
+
+# -----------------------------------------------------------------------------
+# GARDE DÉMARRAGE : interdit l'exécution de la suite contre la DB de production.
+#
+# Incident 2026-10-27 : fixture `clean_db` dans `tests/test_g6_cell_ref.py:58-62`
+# exécute `_reset_cell_ref` → `TRUNCATE TABLE cell_ref; TRUNCATE TABLE
+# reference_import` via `app.db.SessionLocal`. `SessionLocal` lit `BC4_DSN` sans
+# override côté tests. Deux pytest full-suite BC3 (12:25 et 13:41-13:54) ont
+# vidé la table de production, confirmée par relfilenode birth-time
+# `base/5269703/6216567 = 2026-10-27 13:54:58`.
+#
+# Miroir de la discipline G34 (`scripts/guards_2026_10/G34_project_access.py:51-62`) :
+# le test refuse de démarrer si la DSN pointe vers `bc4@{db,127.0.0.1,localhost}:5432/bc4`.
+# Aucun escape hatch : la base de prod est hors-limite pour pytest.
+# -----------------------------------------------------------------------------
+
+_PROD_HOSTS = {"db", "127.0.0.1", "localhost"}
+_PROD_DB_NAME = "bc4"
+_PROD_DEFAULT_PORT = 5432
+
+
+def _looks_like_production_dsn(dsn: str) -> tuple[bool, str]:
+    """Return (is_prod, human_readable) for the given SQLAlchemy DSN."""
+    if not dsn:
+        return (False, "<empty>")
+    normalized = dsn.replace("postgresql+psycopg", "postgresql", 1)
+    parsed = urlparse(normalized)
+    host = (parsed.hostname or "").lower()
+    port = parsed.port or _PROD_DEFAULT_PORT
+    db = (parsed.path or "").lstrip("/")
+    human = f"host={host} port={port} db={db}"
+    is_prod = host in _PROD_HOSTS and port == _PROD_DEFAULT_PORT and db == _PROD_DB_NAME
+    return (is_prod, human)
+
+
+def pytest_configure(config: pytest.Config) -> None:  # type: ignore[name-defined]
+    """Refuse pytest contre la DB de production. Appelé AVANT toute collection."""
+    dsn = os.environ.get("BC4_DSN", "")
+    is_prod, human = _looks_like_production_dsn(dsn)
+    if is_prod:
+        pytest.exit(
+            "\n".join(
+                [
+                    "[conftest] REFUS DE DÉMARRER — DSN pointe vers la base de production.",
+                    f"  BC4_DSN cible: {human}",
+                    "  Motif: fixtures destructrices (ex. test_g6_cell_ref.py::clean_db) exécuteraient",
+                    "         `TRUNCATE TABLE cell_ref; TRUNCATE TABLE reference_import` sur la base ciblée.",
+                    "  Correctif: lancer pytest contre une DB éphémère Alembic-migrée, par exemple",
+                    "         BC4_DSN='postgresql+psycopg://user:pwd@ephemeral-host:PORT/dbname_test' pytest tests/",
+                ]
+            ),
+            returncode=2,
+        )
 
 
 def _base() -> str:
