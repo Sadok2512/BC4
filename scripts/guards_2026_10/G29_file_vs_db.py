@@ -28,6 +28,7 @@ META_COLS = {
 
 def main():
     db = SessionLocal()
+    global_fails: list[tuple] = []
     try:
         light_cols = [c for c in inspect(db.get_bind()).get_columns("nmf_event_light")
                       if c["name"] not in META_COLS]
@@ -75,10 +76,26 @@ def main():
                         FULL OUTER JOIN mp   USING (event_code)
                 ORDER BY lignes_fichier DESC
             """), {"pid": pid, "cap": cap}).all()
-            print(f"{'event_code':<16} {'file':>8} {'stg_e':>8} {'light_Σ':>10} {'ldocNN':>8} {'mp':>6}")
+            print(f"{'event_code':<16} {'file':>8} {'stg_e':>8} {'light_Σ':>10} {'ldocNN':>8} {'mp':>6} verdict")
+            fails = 0
             for r in rows:
-                print(f"{r[0]:<16} {int(r[1]):>8} {int(r[2]):>8} {int(r[3]):>10} {int(r[4]):>8} {int(r[5]):>6}")
-            print(f"TOTAL rows={len(rows)}")
+                code, lf, se, lsum, lnn, mp = r[0], int(r[1]), int(r[2]), int(r[3]), int(r[4]), int(r[5])
+                # Divergence stricte : code présent au fichier mais totalement absent du décodage light
+                is_divergent = (lf > 0 and lsum == 0 and lnn == 0)
+                tag = "DIVERGENT" if is_divergent else "ok"
+                if is_divergent:
+                    fails += 1
+                    global_fails.append((pid, cap, code, lf, se, lsum, lnn, mp))
+                print(f"{code:<16} {lf:>8} {se:>8} {lsum:>10} {lnn:>8} {mp:>6} {tag}")
+            print(f"TOTAL rows={len(rows)} divergent={fails}")
+        if global_fails:
+            print("\n== Divergences G29 (code présent au fichier mais absent du décodage light) ==")
+            for g in global_fails:
+                print(f"  pid={g[0]} cap={g[1]} code={g[2]} file={g[3]} light_sum={g[5]} light_doc_nn={g[6]}")
+        verdict = "PASS" if not global_fails else "FAIL"
+        print(f"\nG29_VERDICT {verdict} captures={len(CAPTURES)} divergences={len(global_fails)}")
+        if verdict == "FAIL":
+            sys.exit(1)
     finally:
         db.close()
 

@@ -32,7 +32,19 @@ RANGES = [
     (re.compile(r"bitrate|throughput|thrpt|dl_bytes|ul_bytes"), 0, None),  # ≥ 0
 ]
 
+# Exclusions : colonnes qui PARTAGENT un suffixe sémantique (rate, pct, count,
+# etc.) ne sont PAS des mesures physiques même si leur nom contient `cqi`,
+# `rsrp`, etc. (ex. cqi_req_rate, cqi_requested_rank_pct).
+EXCLUDE_SUFFIXES = (
+    "_rate", "_pct", "_count", "_total", "_sum", "_n_records",
+    "_duration_ms", "_duration", "_time", "_rank_pct", "_grants",
+    "_format", "_sample_duration", "_sample_count",
+)
+
+
 def match_range(colname):
+    if any(colname.endswith(s) for s in EXCLUDE_SUFFIXES):
+        return None
     for rx, lo, hi in RANGES:
         if rx.search(colname): return (lo, hi)
     return None
@@ -42,6 +54,8 @@ def main():
     insp = inspect(db.get_bind())
     numeric_cols = [c["name"] for c in insp.get_columns("nmf_event_light")
                     if c["name"] not in META and str(c["type"]).lower().startswith(("double","int","numeric","float","real"))]
+    global_fails = 0
+    out_of_range_samples: list[tuple[str, str, str, int, float, float, float]] = []
     try:
         for cap in CAPTURES:
             print(f"\n=== G28 capture={cap} ===")
@@ -68,8 +82,28 @@ def main():
                     if mn < lo or (hi is not None and mx > hi):
                         verdict = f"OUT[{lo},{hi}]"
                         fails += 1
+                        global_fails += 1
+                        # Collecte jusqu'à 10 points hors plage (project_id, capture_id, seq, value)
+                        if len(out_of_range_samples) < 10:
+                            hi_clause = f"OR \"{col}\" > {hi}" if hi is not None else ""
+                            offenders = db.execute(text(f"""
+                                SELECT project_id, capture_id, seq, "{col}" AS v FROM nmf_event_light
+                                WHERE project_id=:pid AND capture_id=:cap
+                                  AND ("{col}" < {lo} {hi_clause})
+                                ORDER BY seq LIMIT :k
+                            """), {"pid": pid, "cap": cap, "k": 10 - len(out_of_range_samples)}).all()
+                            for off in offenders:
+                                out_of_range_samples.append((col, off[0], off[1], int(off[2]), float(off[3]), lo, hi if hi is not None else float("inf")))
                 print(f"{col:<35} {n:>7} {mn:>10.3f} {p1:>10.3f} {p50:>10.3f} {p99:>10.3f} {mx:>10.3f} {verdict}")
-            print(f"G28 cap={cap} metrics_with_data={sum(1 for _ in numeric_cols if True)} fails={fails}")
+            print(f"G28 cap={cap} fails={fails}")
+        if out_of_range_samples:
+            print("\n== 10 premiers points hors plage (col, project_id, capture_id, seq, value, [lo, hi]) ==")
+            for s in out_of_range_samples:
+                print(f"  col={s[0]} pid={s[1]} cap={s[2]} seq={s[3]} value={s[4]} range=[{s[5]},{s[6]}]")
+        verdict = "PASS" if global_fails == 0 else "FAIL"
+        print(f"\nG28_VERDICT {verdict} captures={len(CAPTURES)} total_fails={global_fails}")
+        if verdict == "FAIL":
+            sys.exit(1)
     finally:
         db.close()
 
