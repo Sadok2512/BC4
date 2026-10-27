@@ -13,6 +13,21 @@
   birth-time 2026-10-27 13:54:58.122536. Non restauré : Codex67 ré-uploadera
   son CSV. Protection posée en 0.88.2 (`tests/conftest.py` refuse DSN prod).
 
+## 0.88.3 (patch) — BC4 2026-10-27 — G24b anti-fuite identité colonnes cap_* (Agent BC3)
+
+Nouveau garde `scripts/guards_2026_10/G24b_identity_leak.py`. Détecte les
+leaves du catalogue dont `source_column` commence par `cap_` ET matche un
+substring d'identité interdit (`identity`, `subscriber`, `device_name`,
+`log_file_name`, `measurement_id`, `unit_id`, `session_id`, `imei`, `imsi`,
+`phone_number`) ET est marqué `selectable=true`. Verdict `G24b_VERDICT
+FAIL` + `exit=1` si fuite détectée.
+
+Scan sur base pré-reset : **25 fuites détectées** (5 colonnes × 5 projets)
+sur `cap_file_{device_name, log_file_name, measurement_id, session_id,
+unit_id}`. `cap_identity_subscriber_identity` était déjà masqué
+(`selectable=false`, PASS). Correctif builder catalog (metrics_catalog_v4)
+à faire en lot séparé pour marquer `selectable=false` sur ces 5 codes.
+
 ## 0.88.2 (patch) — BC4 2026-10-27 — Protection pytest DSN production (Agent BC3)
 
 `tests/conftest.py` gagne un `pytest_configure` qui parse `BC4_DSN` AVANT
