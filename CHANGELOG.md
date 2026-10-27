@@ -13,6 +13,30 @@
   birth-time 2026-10-27 13:54:58.122536. Non restauré : Codex67 ré-uploadera
   son CSV. Protection posée en 0.88.2 (`tests/conftest.py` refuse DSN prod).
 
+## 0.89.1 (patch) — BC4 2026-10-27 — Procedures.source (nmf_marker vs l3_message) (Agent BC3)
+
+Chaque entrée dans `/signaling/procedures` expose 3 nouveaux champs
+(additifs, patch) :
+
+- `source` ∈ {`nmf_marker`, `l3_message`} : indique comment l'intervalle
+  a été reconstitué.
+  - `nmf_marker` : rrc_connection/ho/call/data_session/attach/bearer
+    (depuis `nmf_event_pair`, construit sur marqueurs Nemo
+    RRA/HOA/CAA/DAA/GAA/PBA).
+  - `l3_message` : rrc_setup/reestablishment (depuis
+    `procedures.reconstruct`, messages L3 ASN.1 décodés deep).
+- `source_start` : code/message qui a OUVERT l'intervalle (ex. `RRA` ou
+  `RRCConnectionRequest`).
+- `source_end` : idem fermeture, NULL si incomplete.
+
+Table `signaling_procedure` persist non-touchée : les 3 champs sont
+calculés déterministement à chaque `population()` depuis `type` + rows
+(pas d'alembic migration).
+
+Front : afficher dans tooltip chaque procédure « source: Nemo marker RRA
+→ RRD » vs « L3 message RRCConnectionRequest → RRCConnectionSetupComplete »
+à faire côté franco-focus-forge dans un lot ultérieur.
+
 ## 0.89.0 (minor) — BC4 2026-10-27 — N1 map_points.position_source + Δseq + n_gps GPS-only (Agent BC3)
 
 Contrat `map_points` enrichi (minor car ajoute 3 champs). Trois corrections
