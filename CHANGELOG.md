@@ -1,3 +1,55 @@
+## Incidents (ajout 2026-10-27 22:30 UTC) — Base de données & API exposées en 0.0.0.0
+
+Jusqu'au 2026-10-27 22:30, trois surfaces d'attaque étaient ouvertes vers
+l'Internet (confirmé par test TCP `echo >/dev/tcp/185.248.33.125/<port>`) :
+
+- `0.0.0.0:5432/tcp` — PostgreSQL bind sur toutes interfaces, mot de passe
+  rôle `bc4` = `bc4` (défaut compose). Toute machine joignant l'IP
+  publique du serveur pouvait tenter une connexion directe.
+- `0.0.0.0:8000/tcp` — FastAPI exposée. Même si l'authentification est
+  requise (JWT), l'API était directement scannable (vu dans les logs :
+  requêtes `GET /api/v1/alarms` depuis `35.181.62.69` → 404).
+- `bc4-cloudflared-quick` — tunnel public cloudflare lancé manuellement
+  le 2026-10-21 21:22 (`docker run python:3.12-slim`, binaire cloudflared
+  avec `--url http://localhost:8000`) exposant l'API via un URL
+  `*.trycloudflare.com`.
+
+Durcissement 2026-10-27 22:30 (voir 0.90.2) : bind localhost, rotation PG
+password (`secrets.token_urlsafe(32)`), suppression du tunnel, `.env`
+chmod 600 avec `${VAR:?required}` fail-fast dans compose. BC4_JWT_SECRET
+non rotaté (sessions utilisateur conservées).
+
+## 0.90.2 (patch) — BC4 2026-10-27 — Durcissement sécurité infra (Agent BC3)
+
+- `docker-compose.yml` : `db` bind `127.0.0.1:5432:5432` (ancien
+  `5432:5432` = `0.0.0.0`). `api` bind `127.0.0.1:8000:8000` (ancien
+  `8000:8000`). `front` inchangé `0.0.0.0:5174:5173` (UI publique).
+- `POSTGRES_PASSWORD`, `BC4_PGPW`, `BC4_JWT_SECRET` : plus de défauts en
+  dur dans compose, interpolation `${VAR:?required}` → `docker compose
+  up` échoue fail-fast si absents.
+- Rotation `POSTGRES_PASSWORD` + `BC4_PGPW` (43 chars `secrets.
+  token_urlsafe(32)`) via `ALTER ROLE bc4 WITH PASSWORD :'pw'` + `.env`
+  chmod 600. Ancien pw `bc4` refusé depuis l'extérieur (règle
+  `scram-sha-256` dans pg_hba.conf).
+- `bc4-cloudflared-quick` : `docker stop && docker rm`, plus de tunnel
+  public.
+- `docker-compose.yml` versionné dans `bc4-back/deploy/docker-compose.yml`
+  + `deploy/README.md` (sans secret) + `deploy/.env.example` (valeurs
+  factices). Symlink `/home/devmat/BC4/docker-compose.yml →
+  bc4-back/deploy/docker-compose.yml` conservé pour `docker compose up`
+  historique.
+
+Preuves post-durcissement (`echo >/dev/tcp/185.248.33.125/<port>`) :
+
+```
+5432 → Connection refused  ✓
+8000 → Connection refused  ✓
+5174 → OUVERT (UI)         ✓
+```
+
+`BC4_JWT_SECRET` **non rotaté** : les sessions utilisateurs ouvertes
+restent valides (Codex67 peut recharger `:5174` sans se re-logger).
+
 ## 0.90.1 (patch) — 2026-10-27 — Import NMF Light schema repair (Agent BC1)
 
 - Repair databases missing `nmf_event_light.dci_dci_count`, and add a

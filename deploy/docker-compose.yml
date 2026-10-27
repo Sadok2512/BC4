@@ -1,0 +1,133 @@
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_USER: bc4
+      # Durcissement 2026-10-27 : plus de défaut "bc4", obligatoire via .env.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required in .env (chmod 600)}
+      POSTGRES_DB: bc4
+    ports:
+      # Bind localhost uniquement — plus d'exposition 0.0.0.0 externe.
+      # Pour debug depuis l'hôte : psql -h 127.0.0.1 ou SSH tunnel.
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - bc4_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # Force TCP via -h so the healthcheck doesn't go green on the Unix
+      # socket while PostGIS init restarts the daemon (init race).
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p 5432 -U bc4 -d bc4"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+      start_period: 20s
+
+  api:
+    image: bc4-api:latest
+    build: ./bc4-back
+    environment:
+      # Durcissement 2026-10-27 : DSN construit depuis .env (plus de "bc4:bc4").
+      BC4_DSN: postgresql+psycopg://bc4:${BC4_PGPW:?BC4_PGPW required in .env}@db:5432/bc4
+      BC4_ENV: development
+      # P1-1 : liste étendue (localhost + 127.0.0.1 variants). Surchargeable
+      # via BC4_CORS_ORIGINS côté host en prod. Jamais en dur dans le code.
+      BC4_CORS_ORIGINS: ${BC4_CORS_ORIGINS:-http://localhost:5173,http://localhost:5174,http://localhost:8080,http://127.0.0.1:5173,http://127.0.0.1:5174,http://127.0.0.1:8080,https://franco-focus-forge.lovable.app,https://id-preview--a8015a08-bb84-4b94-b38f-e26461097bfa.lovable.app,https://a8015a08-bb84-4b94-b38f-e26461097bfa.lovableproject.com}
+      # Durcissement 2026-10-27 : plus de défaut "dev-secret-change-me", obligatoire via .env.
+      BC4_JWT_SECRET: ${BC4_JWT_SECRET:?BC4_JWT_SECRET required in .env}
+      BC4_JWT_TTL_MIN: ${BC4_JWT_TTL_MIN:-60}
+      # Seed admin idempotent (B2) — crie si absent, pas d'invention.
+      BC4_ADMIN_EMAIL: ${BC4_ADMIN_EMAIL:-admin@bc4.local}
+      BC4_ADMIN_PASSWORD: ${BC4_ADMIN_PASSWORD:-ChangeMeAdmin123!}
+      # Compte démo optionnel (P1-1). Vide par défaut → pas de seed.
+      BC4_DEMO_EMAIL: ${BC4_DEMO_EMAIL:-}
+      BC4_DEMO_PASSWORD: ${BC4_DEMO_PASSWORD:-}
+      BC4_DEMO_ROLE: ${BC4_DEMO_ROLE:-ingenieur}
+      # Clé Fernet (base64) utilisée pour chiffrer `settings_llm.api_key_cipher`
+      # au repos (0.16.0+). Générée via :
+      #   python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+      # À surcharger via `.env` host en prod. Sans elle, GET /settings/llm
+      # marche mais PUT d'une api_key renvoie 400 LLM_CRYPTO (fail-fast).
+      # ⚠ Changer cette clé rend ILLISIBLES les ciphers déjà stockés
+      # (procédure de rotation : PUT api_key:"" puis PUT nouvelle clé).
+      BC4_LLM_SECRET_KEY: ${BC4_LLM_SECRET_KEY:-uhvf4VfgIGAG68ug0E-vtXK1J0v1i5Dq21ezW-m3Hys=}
+      # Chemin où `app/ingest/nmf.py::resolve_decoder` cherche `bc4_decoder.py`.
+      # Le décodeur est un artefact SÉPARÉ (pas copié dans l'image) : bind-mount
+      # read-only pour qu'un bump du décodeur ne force pas un rebuild de l'API.
+      BC4_NMF_DECODER_PATH: /opt/nmf_decoder
+      # 0.30.0 — Dossier persistant du .nmf source. Volume nommé
+      # `bc4_nmf_source` monté ici. Chaque NMF ingéré est copié vers
+      # `<BC4_NMF_SOURCE_DIR>/<project_id>/<nmf_file_id>.nmf`. Préservé
+      # entre `docker compose down` sans `-v`. Pour inspecter depuis
+      # l'hôte : `docker exec bc4-api-1 ls /var/lib/bc4/nmf-source/<pid>/`.
+      BC4_NMF_SOURCE_DIR: /var/lib/bc4/nmf-source
+      # 0.47.1 — Dossier de persistance des blobs d'upload cell_ref
+      # (CSV référentiel géo). Volume nommé pour survivre au down. Avant
+      # 0.47.1, les uploads n'étaient PAS persistés — impossible d'auditer.
+      BC4_REFERENCES_DIR: /var/lib/bc4/references
+    volumes:
+      # Décodeur canonique monté en RO. Le dossier contient `bc4_decoder.py`
+      # (stdlib pure, aucune dépendance). Les archives (`nmf_export.py`,
+      # `build_dict.py`, `build_geo.py`) sont dans `./decoder-archive/` et
+      # NE sont PAS montées : lot « dictionnaire » ultérieur.
+      - ./decoder:/opt/nmf_decoder:ro
+      # Stockage persistant des .nmf source (0.30.0). Volume nommé pour
+      # survivre à `docker compose down`. Non monté en RO : l'ingest doit
+      # pouvoir y copier le .nmf après hashing.
+      - bc4_nmf_source:/var/lib/bc4/nmf-source
+      # 0.47.1 — Blobs source des uploads cell_ref persistés (idem NMF).
+      - bc4_references:/var/lib/bc4/references
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      # Durcissement 2026-10-27 : bind localhost uniquement — plus d'exposition
+      # 0.0.0.0:8000. Le front atteint l'API via le proxy /api → http://api:8000
+      # (réseau Docker interne, pas de port host nécessaire).
+      - "127.0.0.1:8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  import-worker:
+    image: bc4-api:latest
+    command: python -m app.services.import_worker
+    restart: unless-stopped
+    environment:
+      # Durcissement 2026-10-27 : DSN + JWT depuis .env (plus de défauts).
+      BC4_DSN: postgresql+psycopg://bc4:${BC4_PGPW:?BC4_PGPW required in .env}@db:5432/bc4
+      BC4_ENV: development
+      BC4_JWT_SECRET: ${BC4_JWT_SECRET:?BC4_JWT_SECRET required in .env}
+      BC4_NMF_DECODER_PATH: /opt/nmf_decoder
+      BC4_NMF_SOURCE_DIR: /var/lib/bc4/nmf-source
+    volumes:
+      - ./decoder:/opt/nmf_decoder:ro
+      - bc4_nmf_source:/var/lib/bc4/nmf-source
+    depends_on:
+      api:
+        condition: service_healthy
+
+  front:
+    # Image de PRODUCTION Nitro runtime (Dockerfile.v2 du dépôt
+    # franco-focus-forge). Même origine via le proxy /api → http://api:8000
+    # (serveur-à-serveur, pas de CORS). Pour builder : depuis
+    # franco-focus-forge/ `docker build -f Dockerfile.v2 -t bc4-front-v2:<ver>
+    # --build-arg VCS_REF=<sha> --build-arg APP_VERSION=<ver> .`
+    image: bc4-front-v2:1.114.1
+    # Host port 5174 → container 5173. Port historique du handover
+    # Codex67 ; ne pas changer sans prévenir.
+    ports:
+      - "5174:5173"
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  bc4_pgdata:
+  # 0.30.0 — Source brute des NMF ingérés (`<project_id>/<nmf_file_id>.nmf`).
+  # Volume nommé pour persister au `docker compose down` (sans `-v`).
+  bc4_nmf_source:
+  # 0.47.1 — Blobs d'upload cell_ref (`<reference_id>.csv`). Jusqu'à
+  # 0.47.0, les uploads étaient parsés puis jetés → impossible d'auditer
+  # la source d'un référentiel chargé. Désormais conservés comme les NMF.
+  bc4_references:
