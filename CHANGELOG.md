@@ -13,6 +13,29 @@
   birth-time 2026-10-27 13:54:58.122536. Non restauré : Codex67 ré-uploadera
   son CSV. Protection posée en 0.88.2 (`tests/conftest.py` refuse DSN prod).
 
+## 0.89.0 (minor) — BC4 2026-10-27 — N1 map_points.position_source + Δseq + n_gps GPS-only (Agent BC3)
+
+Contrat `map_points` enrichi (minor car ajoute 3 champs). Trois corrections
+liées à l'inflation « positions héritées = fix exact » :
+
+- `app/kpi/metrics_v3.py:369` → SELECT gagne `AND event_code='GPS'`.
+  `gps_exact` ne contient plus que les fix GPS vrais.
+- `app/kpi/metrics_v3.py` bloc map_points → chaque row avec `value`
+  non-NULL produit un point. Trois nouveaux champs :
+  - `position_source` ∈ {`exact`, `previous_fix`}
+  - `delta_seq` = `r.seq - prev.seq`
+  - `position_fix_seq` = seq du fix GPS source
+  Tooltip augmenté « position héritée du fix seq X (Δseq Y) » pour les
+  `previous_fix`.
+- `app/ingest/nmf.py:343` → `n_gps += 1` seulement si `event_code='GPS'`
+  ET lat/lon valides. Avant : tout lat/lon non-NULL comptait → surcount
+  jusqu'à ×1000 selon le fichier.
+
+Ordre canonique `(project_id, capture_id, seq)` respecté partout.
+
+Front : rendu différencié des deux `position_source` (marker style +
+tooltip) à faire côté `franco-focus-forge` dans un lot ultérieur.
+
 ## 0.88.4 (patch) — BC4 2026-10-27 — G18b/G28/G29 verdict + exit≠0 + G28 exclusion explicite (Agent BC3)
 
 - `scripts/guards_2026_10/G18b_parity.py` : `sys.exit(1)` sur FAIL. Scope
