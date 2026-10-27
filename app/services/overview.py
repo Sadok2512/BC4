@@ -6,7 +6,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session, object_session
 
 from app.models import MeasurementPoint, NmfFile, Project, NmfImportJob
-from app.services.import_jobs import job_view
+from app.services.import_jobs import job_view, measurement_period
 from app.schemas.common import (
     FilterContext,
     MeasurementPoint as MeasurementPointSchema,
@@ -58,6 +58,8 @@ def _project_schema(p: Project) -> ProjectSchema:
     latest_job = (db.query(NmfImportJob).filter(NmfImportJob.project_id == p.id)
         .order_by(NmfImportJob.created_at.desc()).first()) if db is not None else None
     status = _ingest_status(n_files, p.n_points, p.status_ingest)
+    measured_period = measurement_period(db, p.id) if db is not None else None
+    period_start, period_end = measured_period or (p.period_start, p.period_end)
     return ProjectSchema(
         id=p.id,
         owner_id=p.owner_id,
@@ -74,8 +76,8 @@ def _project_schema(p: Project) -> ProjectSchema:
         services=p.services,
         bands=p.bands,
         departements=p.departements,
-        periodStart=p.period_start,
-        periodEnd=p.period_end,
+        periodStart=period_start,
+        periodEnd=period_end,
         captures=p.captures,
         importedAt=p.imported_at,
         status=p.status,

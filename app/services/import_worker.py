@@ -22,8 +22,22 @@ stop = threading.Event()
 LOCK_ID = 741629305
 
 
+def parsing_snapshot(job):
+    """Return the enqueue-time contract or reject an unsnapshotted legacy job."""
+    fields = (
+        'decode_level', 'binning_mode', 'temporal_resolution', 'spatial_bin_m',
+        'aggregation_contract_version', 'decoder_version',
+    )
+    snapshot = {field: getattr(job, field) for field in fields}
+    required = ('decode_level', 'binning_mode', 'aggregation_contract_version', 'decoder_version')
+    if any(snapshot[field] is None for field in required):
+        raise ValueError('import_job_parsing_snapshot_missing')
+    return snapshot
+
+
 def run_job(db, job):
     project = db.get(Project, job.project_id)
+    snapshot = parsing_snapshot(job)
     handle = resolve_decoder()
     if not handle.available:
         raise RuntimeError('Décodeur NMF indisponible')
@@ -43,7 +57,10 @@ def run_job(db, job):
         # manifest commit, the SHA-256 lookup safely finds the existing file.
         try:
             with Path(entry['path']).open('rb') as stream:
-                nmf = ingest_upload(db, project, stream, entry['filename'], handle, populate=False)
+                nmf = ingest_upload(
+                    db, project, stream, entry['filename'], handle,
+                    populate=False, parsing_snapshot=snapshot,
+                )
             entry.update(status=nmf.status, n_captures=nmf.n_captures,
                 n_events=nmf.n_events, n_gps=nmf.n_gps,
                 decoder_version=nmf.decoder_version, error_msg=nmf.error_msg)

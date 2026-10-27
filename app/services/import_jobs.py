@@ -11,6 +11,8 @@ from sqlalchemy import func
 from app.ingest.nmf import NMF_SOURCE_DIR, BodyTooLarge, spool_and_hash
 from app.models import NmfFile, NmfImportJob, Project
 from app.schemas.ingest import NmfFileEntry, NmfImportJobView
+from app.nmf_decoder import DECODER_VERSION
+from app.kpi.service import date_from_start_at_py
 
 ACTIVE = ('queued', 'decoding', 'finalizing')
 
@@ -26,6 +28,12 @@ def job_view(job):
         files_total=len(entries), files_done=sum(f.status == 'done' for f in entries),
         files_error=sum(f.status == 'error' for f in entries), by_file=entries,
         error_msg=job.error_msg, report=job.report,
+        decode_level=job.decode_level,
+        binning_mode=job.binning_mode,
+        temporal_resolution=job.temporal_resolution,
+        spatial_bin_m=job.spatial_bin_m,
+        aggregation_contract_version=job.aggregation_contract_version,
+        decoder_version=job.decoder_version,
     )
 
 
@@ -58,8 +66,20 @@ def enqueue(db, project_id, uploads):
             entries.append(dict(path=str(target), filename=upload.filename or 'unnamed.nmf',
                 status='pending', n_captures=0, n_events=0, n_gps=0,
                 decoder_version=None, error_msg=None))
-        job = NmfImportJob(id=jid, project_id=project.id, status='queued',
-            created_at=now(), updated_at=now(), files=entries)
+        job = NmfImportJob(
+            id=jid,
+            project_id=project.id,
+            status='queued',
+            created_at=now(),
+            updated_at=now(),
+            files=entries,
+            decode_level=project.parse_decode_level,
+            binning_mode=project.parse_binning_mode,
+            temporal_resolution=project.parse_temporal_resolution,
+            spatial_bin_m=project.parse_spatial_bin_m,
+            aggregation_contract_version='query-binning-v1',
+            decoder_version=DECODER_VERSION,
+        )
         db.add(job)
         project.status = 'processing'
         project.status_ingest = 'importing'
@@ -82,3 +102,24 @@ def update_capture_counts(db, project):
     project.captures = int(captures or 0)
     project.n_captures_ingest = int(captures or 0)
     project.n_events_ingest = int(events or 0)
+    # Measurement period comes from the NMF #START content persisted as
+    # nmf_file.start_at, never from imported_at or wall-clock time. Updating
+    # this small file-level aggregate after each completed file is cheap and
+    # makes the period truthful while a multi-file import is still running.
+    measured = measurement_period(db, project.id)
+    if measured is not None:
+        project.period_start, project.period_end = measured
+
+
+def measurement_period(db, project_id: str) -> tuple[str, str] | None:
+    """Return min/max capture dates proven by completed NMF #START headers."""
+    starts = db.query(NmfFile.start_at).filter(
+        NmfFile.project_id == project_id,
+        NmfFile.status == 'done',
+        NmfFile.start_at.is_not(None),
+    ).all()
+    dates = [date_from_start_at_py(row[0]) for row in starts]
+    dates = [date for date in dates if date is not None]
+    if dates:
+        return min(dates), max(dates)
+    return None

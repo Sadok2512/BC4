@@ -1,3 +1,12 @@
+## Unreleased (minor) — Immutable import parsing snapshot and measured project period (Agent BC1)
+
+- Adds migration 0061 and guard G40: every new NMF import job freezes the
+  project parsing contract at enqueue time, and every capture produced by that
+  job receives the same immutable snapshot even if project defaults change.
+- Derives `projects.period_start` / `period_end` after each completed file from
+  the persisted NMF `#START` date (`nmf_file.start_at`), instead of retaining
+  the project creation/import date.
+
 ## Unreleased (patch — tests) — Schema parity guard G35 (Agent BC1)
 
 - Compare le schéma live à un replay Alembic vide via des dumps conservés et

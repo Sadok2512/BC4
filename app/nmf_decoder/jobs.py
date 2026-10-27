@@ -13,7 +13,7 @@ def process_next(db,stop_event=None):
         for i,cap in enumerate(job['capture_ids']):
             if stop_event is not None and stop_event.is_set():return True
             if i<job['done']:continue
-            decode_capture(db,job['project_id'],cap,job['decode_level'])
+            decode_capture(db,job['project_id'],cap,job['decode_level'],parsing_snapshot=job)
             db.execute(text('UPDATE nmf_decode_job SET done=:n,updated_at=now() WHERE id=:id'),{'id':jid,'n':i+1});db.commit()
         refresh_projections(db,job['project_id'])
         from app.services.task_run import populate_tasks
