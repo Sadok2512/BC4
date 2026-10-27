@@ -1,3 +1,19 @@
+## 0.89.3 (patch) — BC4 2026-10-27 — G24 --pid obligatoire, FAIL exit≠0 (Agent BC3)
+
+Retrait du défaut hardcodé `WITNESS_PID="134af70a06eb"` dans
+`scripts/guards_2026_10/G24_leaves.py`. Après reset DB, ce défaut faisait
+`G24_VERDICT FAIL` muet (projet absent). Désormais :
+
+- `--pid` est `required=True` → omission → argparse exit=2 avec
+  `error: the following arguments are required: --pid`.
+- `--pid <projet absent>` → `G24_VERDICT FAIL witness_pid=<X> not in
+  metrics_catalog_cache (available: ...)` + `sys.exit(1)`.
+
+Preuves (direct exit code) :
+
+  $ python scripts/guards_2026_10/G24_leaves.py                    ; echo $?  →  2
+  $ python scripts/guards_2026_10/G24_leaves.py --pid test-xyz     ; echo $?  →  1
+
 ## Incidents 2026-10-27
 
 - **11:11-11:12 UTC** — DELETE manuel sur la base de production dans la session
