@@ -1,3 +1,16 @@
+## 0.87.2 (patch) — BC4 2026-10-27 — G32 visibilité procs_only + exit≠0 sur FAIL (Agent BC3)
+
+Correction d'un défaut constaté lors de la revue COND 3 BC3 :
+`G32_procedures_vs_event_pair` filtrait silencieusement les procédures
+de types absents de nmf_event_pair (`rrc_setup`, `reestablishment`) via
+`if p['type'] in _PAIR_TYPES`. Un garde silencieux = garde nul.
+
+1. Rapport dédié `procs_only_by_type` : `{rrc_setup: 1209,
+   reestablishment: 37}` sur 85 captures.
+2. `sys.exit(1)` sur FAIL — précédemment exit=0 même en FAIL.
+
+G32_VERDICT PASS exit=0 sur 85 captures après fix E2.
+
 ## 0.87.1 (patch) — BC4 2026-10-27 — /signaling/procedures lit nmf_event_pair (source unique) + G32 (Agent BC3)
 
 E2 Codex67 : badge « attach · 801107 ms » à t=0.000. Cause tracée au

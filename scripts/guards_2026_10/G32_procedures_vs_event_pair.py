@@ -30,15 +30,24 @@ def main():
     db = SessionLocal()
     try:
         caps = db.execute(text(
-            "SELECT project_id, capture_id FROM nmf_capture ORDER BY capture_id LIMIT 10"
+            "SELECT project_id, capture_id FROM nmf_capture ORDER BY capture_id"
         )).all()
-        print(f"G32 witnesses: {len(caps)} captures (first 10 by capture_id)")
+        print(f"G32 witnesses: {len(caps)} captures (full perimeter)")
         total_diff = 0
         total_orphans_pair = 0
         total_orphans_proc = 0
+        procs_only_by_type: dict[str, int] = {}  # 0.87.2 — visibilité
         for pid, cap in caps:
             # procedures via service
             _rows, procs, _meta, _times = population(db, pid, cap, persist=False)
+            # 0.87.2 — rapport séparé des types procs_only : rrc_setup et
+            # reestablishment sont LÉGITIMEMENT absents de nmf_event_pair
+            # (pas pairés par pipeline capture-local, produits par
+            # procedures.py RULES). Compte explicite pour visibilité, PAS
+            # orphans. Avant 0.87.2 G32 filtrait silencieusement → aveugle.
+            for p in procs:
+                if p['type'] not in _PAIR_TYPES:
+                    procs_only_by_type[p['type']] = procs_only_by_type.get(p['type'], 0) + 1
             procs_by_key = {(p['type'], p['seq_start']): p for p in procs if p['type'] in _PAIR_TYPES}
             # pairs direct
             pair_rows = db.execute(text(
@@ -73,8 +82,13 @@ def main():
                 print(f"  {cap[:12]}  pairs={len(pair_rows)} procs={len(procs_by_key)} "
                       f"differ={differ} orph_pair={orph_pair} orph_proc={orph_proc}")
         verdict = "PASS" if (total_diff == 0 and total_orphans_pair == 0 and total_orphans_proc == 0) else "FAIL"
-        print(f"\nG32_VERDICT {verdict}  total_differ={total_diff} "
+        # 0.87.2 — rapport procs_only (hors _PAIR_TYPES) visible, mais pas FAIL
+        print(f"\nG32 procs_only (hors _PAIR_TYPES, légitimes) : {procs_only_by_type}")
+        print(f"G32_VERDICT {verdict}  total_differ={total_diff} "
               f"total_orphans_pair={total_orphans_pair} total_orphans_proc={total_orphans_proc}")
+        # 0.87.2 — exit non-zero sur FAIL pour qu'un wrapper CI/manuel détecte.
+        if verdict == "FAIL":
+            sys.exit(1)
     finally:
         db.close()
 
