@@ -90,6 +90,7 @@ def main():
     numeric_cols = [c["name"] for c in insp.get_columns("nmf_event_light")
                     if c["name"] not in META and str(c["type"]).lower().startswith(("double","int","numeric","float","real"))]
     global_fails = 0
+    examined_captures = 0
     out_of_range_samples: list[tuple[str, str, str, int, float, float, float]] = []
     try:
         for pid, cap in CAPTURES:
@@ -102,6 +103,7 @@ def main():
             if row is None:
                 print(f"NO_CAPTURE (pid={pid}, cap={cap})")
                 continue
+            examined_captures += 1
             print(f"{'metric':<35} {'n':>7} {'min':>10} {'P1':>10} {'P50':>10} {'P99':>10} {'max':>10} verdict")
             fails = 0
             for col in numeric_cols:
@@ -139,8 +141,14 @@ def main():
             print("\n== 10 premiers points hors plage (col, project_id, capture_id, seq, value, [lo, hi]) ==")
             for s in out_of_range_samples:
                 print(f"  col={s[0]} pid={s[1]} cap={s[2]} seq={s[3]} value={s[4]} range=[{s[5]},{s[6]}]")
+        # 0.89.5 — garde sans témoin = FAIL (aucune capture examinée).
+        if examined_captures == 0:
+            print(f"\nG28_VERDICT FAIL no_witness examined=0 "
+                  f"(aucune des {len(CAPTURES)} captures témoin trouvée dans nmf_capture — "
+                  f"ingérer les captures ou passer --pid/--capture)")
+            sys.exit(1)
         verdict = "PASS" if global_fails == 0 else "FAIL"
-        print(f"\nG28_VERDICT {verdict} captures={len(CAPTURES)} total_fails={global_fails} excluded_metrics={len(EXCLUDE_METRICS)}")
+        print(f"\nG28_VERDICT {verdict} captures={examined_captures} total_fails={global_fails} excluded_metrics={len(EXCLUDE_METRICS)}")
         if verdict == "FAIL":
             sys.exit(1)
     finally:

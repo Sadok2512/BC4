@@ -83,6 +83,12 @@ def main():
                 if only_fresh:
                     print(f"    only_fresh[:3]={list(only_fresh.keys())[:3]}")
 
+        # 0.89.5 — garde sans témoin = FAIL. Un garde qui n'a examiné aucun
+        # projet (cache vide) ne prouve rien ; il doit lever, pas renvoyer PASS.
+        if len(pids) == 0:
+            print(f"G18b_VERDICT FAIL no_witness examined=0 "
+                  f"(metrics_catalog_cache vide — upload un projet d'abord)")
+            sys.exit(1)
         verdict = "PASS" if divergent == 0 else "FAIL"
         print(f"G18b_VERDICT {verdict} projects={len(pids)} divergent={divergent}  "
               f"mode={mode}")

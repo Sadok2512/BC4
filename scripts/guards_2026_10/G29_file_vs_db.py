@@ -42,6 +42,7 @@ def main():
             if not pid:
                 print(f"NO_CAPTURE in nmf_capture")
                 continue
+            examined_captures += 1
             # Union all event codes across the 5 sources, GROUP BY event_code
             rows = db.execute(text(f"""
                 WITH ev AS (
@@ -92,8 +93,14 @@ def main():
             print("\n== Divergences G29 (code présent au fichier mais absent du décodage light) ==")
             for g in global_fails:
                 print(f"  pid={g[0]} cap={g[1]} code={g[2]} file={g[3]} light_sum={g[5]} light_doc_nn={g[6]}")
+        # 0.89.5 — garde sans témoin = FAIL.
+        if examined_captures == 0:
+            print(f"\nG29_VERDICT FAIL no_witness examined=0 "
+                  f"(aucune des {len(CAPTURES)} captures témoin trouvée dans nmf_capture — "
+                  f"ingérer les captures ou passer --capture)")
+            sys.exit(1)
         verdict = "PASS" if not global_fails else "FAIL"
-        print(f"\nG29_VERDICT {verdict} captures={len(CAPTURES)} divergences={len(global_fails)}")
+        print(f"\nG29_VERDICT {verdict} captures={examined_captures} divergences={len(global_fails)}")
         if verdict == "FAIL":
             sys.exit(1)
     finally:

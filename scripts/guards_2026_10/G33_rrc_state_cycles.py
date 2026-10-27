@@ -64,6 +64,11 @@ def main():
                 if kind == "light":
                     if verdict == "PASS": total_light_ok += 1
                     else: total_light_fail += 1
+        # 0.89.5 — garde sans témoin = FAIL. Ni light ni deep ⇒ 0 preuve.
+        if (len(caps_light) + len(caps_deep)) == 0:
+            print(f"\nG33_VERDICT FAIL no_witness examined=0 "
+                  f"(nmf_capture vide — ingérer au moins une capture)")
+            sys.exit(1)
         global_verdict = "PASS" if total_light_fail == 0 else "FAIL"
         print(f"\nG33_VERDICT {global_verdict}  light_PASS={total_light_ok} "
               f"light_FAIL={total_light_fail} deep_reported={len(caps_deep)}")

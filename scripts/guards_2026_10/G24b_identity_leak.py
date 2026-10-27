@@ -55,6 +55,11 @@ def main():
                 fails.append(r)
             elif any(sub in col for sub in WARN_ONLY) and r["sel"]:
                 warns.append(r)
+        # 0.89.5 — garde sans témoin = FAIL (jamais PASS silencieux).
+        if len(rows) == 0:
+            print(f"G24b_VERDICT FAIL no_witness examined=0 "
+                  f"(metrics_catalog_cache vide ou aucun leaf cap_* — upload un projet d'abord)")
+            sys.exit(1)
         print(f"G24b scan : {len(rows)} leaves cap_* examinés")
         if warns:
             print(f"  WARN ({len(warns)}) — identifiants non critiques exposés :")
