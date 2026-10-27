@@ -1,0 +1,11 @@
+INFO:app.warmup:warm /kpi/catalog pid=idf-t3-2026 OK
+INFO:httpx:HTTP Request: POST http://testserver/auth/login "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: PATCH http://testserver/projects/507f401db068/parsing "HTTP/1.1 200 OK"
+INFO:app.warmup:warm /kpi/catalog pid=lyon-drive-2026 OK
+INFO:httpx:HTTP Request: POST http://testserver/projects/507f401db068/decode?level=deep&capture_id=e84832b42679 "HTTP/1.1 202 Accepted"
+G37 project_id=507f401db068 capture_id=e84832b42679
+G37 capture_before={'decode_level': 'deep', 'binning_mode': 'temporal', 'temporal_resolution': 'native', 'spatial_bin_m': None, 'aggregation_contract_version': 'query-binning-v1', 'decoder_version': '1.7.1'}
+G37 project_patch_http=200
+G37 capture_after={'decode_level': 'deep', 'binning_mode': 'temporal', 'temporal_resolution': 'native', 'spatial_bin_m': None, 'aggregation_contract_version': 'query-binning-v1', 'decoder_version': '1.7.1'}
+G37 job_snapshot={'decode_level': 'deep', 'binning_mode': 'spatial', 'temporal_resolution': None, 'spatial_bin_m': 50, 'aggregation_contract_version': 'query-binning-v1', 'decoder_version': '1.7.1'}
+G37 VERDICT=PASS
