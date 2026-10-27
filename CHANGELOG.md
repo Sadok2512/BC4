@@ -1,3 +1,31 @@
+## 0.89.5 (patch) — BC4 2026-10-27 — Garde sans témoin = FAIL exit 1 (Agent BC3)
+
+Règle Codex67 : « garde qui saute en silence = garde nul, SKIP interdit,
+un garde SANS TÉMOIN = FAIL exit≠0 (jamais PASS) ».
+
+Modifications :
+
+- `G18b_parity.py` : si `len(pids)==0` → `G18b_VERDICT FAIL no_witness
+  examined=0 (metrics_catalog_cache vide — upload un projet d'abord)` + exit 1.
+- `G24b_identity_leak.py` : si 0 leaves cap_* → `G24b_VERDICT FAIL
+  no_witness examined=0 (metrics_catalog_cache vide ou aucun leaf cap_*)`
+  + exit 1.
+- `G28_ranges.py` : compteur `examined_captures` ; si 0 → `G28_VERDICT
+  FAIL no_witness examined=0 (aucune des 3 captures témoin trouvée
+  dans nmf_capture — ingérer les captures ou passer --pid/--capture)`
+  + exit 1.
+- `G29_file_vs_db.py` : idem via compteur `examined_captures`.
+- `G32_procedures_vs_event_pair.py` : si `nmf_capture` vide → FAIL
+  no_witness exit 1.
+- `G33_rrc_state_cycles.py` : si `caps_light + caps_deep == 0` → FAIL
+  no_witness exit 1.
+- `GPS_stale.py` : exige que `TEMOIN=d8d7fa995c44` existe dans
+  `nmf_capture` ; absent → FAIL no_witness exit 1. Ajoute aussi
+  `sys.exit(1)` sur verdict FAIL (manquait précédemment).
+
+Chaque message FAIL cite l'origine (cache vide, nmf_capture vide, témoin
+absent) et l'action à prendre (ingérer / passer --pid / --capture).
+
 ## 0.89.4 (patch) — BC4 2026-10-27 — Gate démo seed derrière BC4_SEED_DEMO (Agent BC3)
 
 Décision Codex67 : « zéro projet, zéro donnée inventée, un seul compte ».
