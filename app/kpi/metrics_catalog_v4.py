@@ -422,11 +422,17 @@ def build_catalog_v4(
     # 2.54.0 — Enum NFF 2.50 par event (baké par build_catalog.py).
     # Fallback `lte_scell` pour les anciens JSON (compat 2.53.0−).
     event_ct_enum: dict[str, str] = {}
+    # 2.55.0 — Écart décodeur par event (baké depuis categories.yaml
+    # `decoder_gap`). Repris dans le tooltip des feuilles outsider NULL
+    # pour expliciter la cause (ex. PLAIU 2.19 vs spec 2.50).
+    event_decoder_gap: dict[str, str] = {}
     for n in nodes_in:
         if n.get("node_type") != "event":
             continue
         ev = (n.get("event") or "").lstrip("#")
         event_ct_enum[ev] = n.get("cell_type_enum") or _DEFAULT_ENUM
+        if n.get("decoder_gap"):
+            event_decoder_gap[ev] = n["decoder_gap"]
     # Un event est dispatché par CELL_TYPE soit en header (colonne
     # `<ev_lower>_cell_type` dans nmf_event_light, cas CI/CQI/DCI/…), soit
     # en groupe (nmf_event_light_group.cell_type, cas CELLMEAS/MIMOMEAS).
@@ -789,12 +795,20 @@ def build_catalog_v4(
         if ct == -1:
             # cell_type NULL sur la ligne de dispatch (header ou group).
             label_full = f"{field_name} @ cell_type non renseigné (NULL)"
-            reason_outsider = (
-                f"La ligne n'était pas rattachée à une cellule au décodage "
-                f"(nmf_event_light.{ev.lower()}_cell_type / "
-                f"nmf_event_light_group.cell_type IS NULL). "
-                f"{nn} observations."
-            )
+            gap = event_decoder_gap.get(ev)
+            if gap:
+                # 2.55.0 — Écart décodeur déclaré en categories.yaml → tooltip
+                # explicite plutôt que message générique.
+                reason_outsider = (
+                    f"{gap} ({nn} observations dans ce projet)"
+                )
+            else:
+                reason_outsider = (
+                    f"La ligne n'était pas rattachée à une cellule au décodage "
+                    f"(nmf_event_light.{ev.lower()}_cell_type / "
+                    f"nmf_event_light_group.cell_type IS NULL). "
+                    f"{nn} observations."
+                )
             node_id = f"lf_outsider_{ev.lower()}_null_{col}"
             proof_tag = "observed-no-cell-type"
         else:

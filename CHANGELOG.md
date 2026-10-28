@@ -69,6 +69,59 @@ sur `feat/bc3-g44-immutable-snapshot`. Un seul merge couvre les deux lots.
   + `decoded_at` identiques. G44 live PASS exit=0.
 - Tests unitaires PASS 8/8.
 
+## 0.94.0 (minor) — BC4 2026-10-28 — Catalogue 2.55.0 spec-fidèle CELLMEAS/MIMOMEAS + libellés distincts par position + PLAIU decoder gap (Agent BC4, déployé Agent BC3)
+
+Lot `a4/catalog-cell-type` suite — commit `3e679f5` mergé isolé sur `main`.
+Décodeur reste **1.7.2** (lot B BC1 décodeur 1.8.0 suspendu par Codex67,
+régression en analyse). `pyproject.toml` 0.93.1 → 0.94.0 attribué par BC3.
+
+**Correctif 2.55.0 (sur 2.54.0 déployé)** :
+
+- `scripts/catalog/build_catalog.py` : enum `cell_type_lte_mesure` hardcodé
+  (BC3 2.51.0) retiré (vidé) — était non-spec (`Scanner`/`Scanner neighbour`
+  à values 3/4 n'existent pas dans NFF 2.50 CELLMEAS LTE p.30475, qui
+  saute de `2 Detected` à `10 SCell 1`). Mapping événement → enum NFF 2.50
+  reste `EVENT_CELL_TYPE_ENUM` + `ENUM_VARIANTS` (lte_scell / lte_cellmeas /
+  lte_mimo). CELLMEAS LTE affiche désormais `Serving / Listed / Detected /
+  SCell 1-4` (valeurs 0 / 1 / 2 / 10-13), MIMOMEAS LTE affiche `Serving /
+  SCell 1-4` (valeurs 0 / 10-13). Codex67 2026-10-28, option A spec-fidèle.
+- `scripts/catalog/build_catalog.py` : dédoublonnage **des libellés** pour
+  les champs répétés de la spec 2.50 (points 2 Codex67). `#Variables`,
+  `#Params/variable`, `CCE aggregation`, `Count`, `DCI format`, etc. se
+  distinguent désormais par le `(bloc <section>)` ou `(bloc <section>
+  #<field_no>)` quand la répétition est intra-section (ex. DCI NR
+  `#Variables` apparaît aux positions 7 et 11 — deux blocs de distribution
+  imbriqués, section CSV identique). Source : colonne `section` du CSV
+  spec, jamais inventé.
+- `scripts/catalog/categories.yaml` : `PLAIU` cell_scoped reste `true`
+  (NFF 2.50 p.28633 porte « Cell type Serving cell type »), avec un champ
+  `decoder_gap` qui déclare l'écart décodeur — le décodeur 1.7.2
+  (`app/nmf_decoder/schemas/PLAIU.yaml`) reste sur schéma NFF 2.19 et
+  n'alimente pas `plaiu_cell_type`. Serve-time : les feuilles PLAIU
+  tombent dans le bucket `cell_type NULL` avec un tooltip explicite
+  (`PLAIU reste sur schéma NFF 2.19 — cell_type non décodé.
+  CHANGELOG_DECODER X.Y.Z requis pour upgrade NFF 2.50`). Écart déclaré
+  **ouvert au décodeur** — à patcher dans un lot décodeur dédié.
+- `app/kpi/metrics_catalog_v4.py` : propagation de `decoder_gap` depuis
+  le node event vers le tooltip des feuilles outsider NULL.
+- `app/kpi/metrics_v3.py:parse_selection` : whitelist cell étendue à
+  `{all, null, <entier ≥ 0, ≤ 10000>}` pour accepter l'enum NFF 2.50
+  complet (SCell 1-31, SCG SCell 100-131, SCG PSCell 199, NR neighbours
+  1000-1002). **Écart déclaré ouvert au décodeur et à `nmf_cell_second`**
+  (`app/nmf_decoder/cells.py:73` filtre LTE `raw not in range(5)` →
+  cells.py drop les lignes SCell 5+) : parse_selection accepte, mais
+  `/metrics/table` renvoie 0 ligne pour cells > 4 LTE tant que le
+  décodeur ne patche pas la projection cell_second. P1 complet à
+  reprendre dans un lot décodeur.
+- `app/kpi/catalog_release/catalog_2.55.0.json` : nouvel artefact
+  (**sha256 disque vérifié par BC3 au merge : da743a49c9847a0d424af8c4dbe9ca3ef5abe4dd6f071c3ef3dfa26f6f2a456a**. Le `7aff531b…` indiqué par BC4 dans sa prose correspondait à un build antérieur ; le fichier mergé a bien le sha ci-dessus),
+  `n_leaves=6945` (bare 2 653 + cell 4 292). Même SHA count que 2.54.0,
+  les delta sont dans les LIBELLÉS (bloc …) uniquement.
+
+**Déploiement** : UNIQUEMENT par
+`scripts/catalog/bootstrap_catalog_release.py --version 2.55.0`. Aucun
+UPDATE/INSERT manuel en base.
+
 ## 0.92.0 (minor) — BC4 2026-10-28 — Catalogue 2.54.0 : Cell type retiré, enum NFF 2.50 par événement, G25.3/4/5 (Agent BC4, déployé Agent BC3)
 
 Lot `a4/catalog-cell-type`, numéro final attribué par BC3 au merge

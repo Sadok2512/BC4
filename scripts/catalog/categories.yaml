@@ -201,7 +201,18 @@ events:
   # ===== Link quality =====
   CQI:             {tech: LTE, category: "Link quality", cell_scoped: true}
   PLAID:           {tech: LTE, category: "Allocation & MCS", cell_scoped: true}
-  PLAIU:           {tech: LTE, category: "Allocation & MCS", cell_scoped: true}
+  # 2.55.0 (BC4) — PLAIU LTE porte un champ `Cell type` (NFF 2.50 p.28633,
+  # Serving cell type standard RRC), mais le décodeur 1.7.2 reste sur
+  # schéma NFF 2.19 (voir `app/nmf_decoder/schemas/PLAIU.yaml` : `min_format:
+  # "2.19"`, `schema_version: "1.0.0"`, aucun field `cell_type`). Conséquence :
+  # toutes les lignes PLAIU en base ont `plaiu_cell_type IS NULL`, le
+  # dispatch cellule tombe sur le bucket `cell_type NULL` du serve-time.
+  # Écart ouvert au décodeur, à patcher dans un lot décodeur dédié
+  # (CHANGELOG_DECODER X.Y.Z : upgrade PLAIU vers NFF 2.50 — ajoute
+  # `cell_type` + 7 variantes @cell). On conserve `cell_scoped: true` pour
+  # que la bascule serve-time soit immédiate dès que le décodeur upgrade.
+  PLAIU:           {tech: LTE, category: "Allocation & MCS", cell_scoped: true,
+                    decoder_gap: "PLAIU reste sur schéma NFF 2.19 — cell_type non décodé. CHANGELOG_DECODER X.Y.Z requis pour upgrade NFF 2.50 (ajoute plaiu_cell_type)."}
   PLAISUM:         {tech: LTE, category: "Allocation & MCS", cell_scoped: false}
   DCI:             {tech: LTE, category: "Allocation & MCS", cell_scoped: true}
   TAD:             {tech: LTE, category: "Link quality", cell_scoped: true}

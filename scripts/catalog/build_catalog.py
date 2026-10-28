@@ -238,12 +238,16 @@ def parse_enums(txt_path: Path) -> dict:
                 pass
         elif current and not m and s and not line.startswith("    "):
             current = None  # end of enum block
-    # LTE cell types : add 0=PCell + 10+ measurement contexts hardcoded (NFF 2.50 §Cell type)
-    enums["cell_type_lte_mesure"] = [
-        {"value": 0, "label": "PCell"}, {"value": 1, "label": "Listed neighbour"},
-        {"value": 2, "label": "Detected neighbour"}, {"value": 3, "label": "Scanner"},
-        {"value": 4, "label": "Scanner neighbour"},
-    ]
+    # 2.55.0 — Enum `cell_type_lte_mesure` RETIRÉ (était hardcodé 2.51.0 BC3,
+    # non-spec). Les valeurs 3 et 4 (`Scanner` / `Scanner neighbour`) n'existent
+    # PAS dans la spec NFF 2.50 CELLMEAS LTE p.30475 : la spec saute de
+    # 2 (Detected) à 10 (SCell 1). On conserve une liste VIDE pour continuité
+    # (le JSON reste valide, aucun code ne reste à lire les 5 anciens
+    # pseudo-labels) et le mapping événement → enum passe désormais par
+    # `EVENT_CELL_TYPE_ENUM` + `ENUM_VARIANTS` ci-dessus (lte_cellmeas pour
+    # CELLMEAS LTE, lte_mimo pour MIMOMEAS LTE, lte_scell pour tous les
+    # autres cell_scoped LTE).
+    enums["cell_type_lte_mesure"] = []
     enums["cell_type_nr"] = [
         {"value": 0, "label": "PCell"}, {"value": 199, "label": "SCG PSCell"},
     ] + [{"value": i, "label": f"SCell {i}"} for i in range(1, 32)] \
@@ -437,6 +441,7 @@ def main():
                                   "parent_id": f"tech_{tech}"}
         # event node
         ev_nid = f"ev_{slugify(ev)}"
+        decoder_gap = (cfg or {}).get("decoder_gap") if cfg else None
         event_nodes[ev] = {"node_type": "event", "label": ev, "event": ev,
                            "node_id": ev_nid, "parent_id": cat_nodes[cat_key]["node_id"],
                            "cell_scoped": cell_scoped,
@@ -445,6 +450,11 @@ def main():
                            # sert pour délimiter les variantes canoniques du
                            # dispatch outsider.
                            "cell_type_enum": event_enum_name(ev) if cell_scoped else None,
+                           # 2.55.0 — Écart déclaré au décodeur (ex. PLAIU
+                           # cell_type non décodé car schéma 2.19). Repris
+                           # par metrics_catalog_v4 dans le tooltip NULL
+                           # du dispatch cellule.
+                           "decoder_gap": decoder_gap,
                            "tech": tech}
         # leaves : one per field; cell-scoped events get per-cell_type leaves
         kept_fields = []
@@ -465,8 +475,22 @@ def main():
         #   (b) Noms différents qui slugify en même chaîne
         #       (ADJMEAS "C/A -1" et "C/A +1" → "c_a_1") → vraie collision
         #       de slug. **Suffixer** avec `_f{field_no}` sur les suivants.
+        # 2.55.0 (BC4) — (c) Même nom à des positions distinctes dans un
+        # event (DCI NR "#Variables" position 7 et 11, "Count" position 9
+        # et 13, "CCE aggregation" position 4 et 14, etc.) : les labels
+        # doivent se distinguer VISUELLEMENT côté UI, pas seulement sur
+        # le slug. On ajoute un suffixe `(bloc <section>)` sur la 2e
+        # occurrence+ dans l'event, et `(bloc #<field_no>)` quand la
+        # section est identique entre les deux (répétition structurelle
+        # intra-section du spec 2.50, cf. DCI NR §Variables p.27805).
+        # Jamais inventé : le nom de section vient directement de la
+        # colonne `section` du CSV spec.
         name_seen: set[tuple[str, str]] = set()
         slug_seen_counts: dict[str, int] = {}
+        name_section_count: dict[tuple[str, str], int] = {}
+        name_total_count: dict[str, int] = {}
+        for row in kept_fields:
+            name_total_count[row["name"]] = name_total_count.get(row["name"], 0) + 1
         deduped_fields = []
         for row in kept_fields:
             key = (row["name"], row.get("field_no") or "")
@@ -481,6 +505,32 @@ def main():
             else:
                 row["_slug"] = f"{slug}_f{row.get('field_no') or cnt}"
             slug_seen_counts[slug] = cnt + 1
+            # Disambiguation de LABEL : si le nom apparaît > 1 fois dans
+            # l'event, on suffixe par la section CSV (ex. "Parameters for
+            # NR") ou par le field_no en cas de collision intra-section.
+            if name_total_count.get(row["name"], 0) > 1:
+                section = (row.get("section") or "").strip()
+                sect_key = (row["name"], section)
+                sect_cnt = name_section_count.get(sect_key, 0)
+                name_section_count[sect_key] = sect_cnt + 1
+                # Humanise la section CSV ("Parameters for NR" → "NR",
+                # "Parameters for LTE PBCH" → "LTE PBCH", etc.).
+                sect_short = section
+                if sect_short.lower().startswith("parameters for "):
+                    sect_short = sect_short[len("Parameters for "):]
+                if sect_cnt == 0:
+                    row["_label_suffix"] = f" (bloc {sect_short})" if sect_short else f" (bloc #{row.get('field_no')})"
+                else:
+                    # 2e occurrence+ dans la MÊME section — répétition
+                    # structurelle du spec (ex. DCI NR #Variables p.27805
+                    # dans deux blocs de distribution imbriqués).
+                    row["_label_suffix"] = (
+                        f" (bloc {sect_short} #{row.get('field_no')})"
+                        if sect_short
+                        else f" (bloc #{row.get('field_no')})"
+                    )
+            else:
+                row["_label_suffix"] = ""
             deduped_fields.append(row)
         kept_fields = deduped_fields
         if cell_scoped:
@@ -500,18 +550,21 @@ def main():
             ev_enum = event_enum_name(ev)
             variants = ENUM_VARIANTS[ev_enum]
             for ct, label_short, label_long, tech_cell in variants:
-                # Évince PSCell + SCell NR 100+ pour un event LTE-only
-                # (tech=LTE) et SCell 1..4 pour un event NR-only (tech=NR).
-                applicable = (
-                    tech == "Shared"
-                    or (tech == "LTE" and tech_cell == 7)
-                    or (tech == "NR" and tech_cell == 9)
-                )
+                # 2.55.1 (BC4 2026-10-28) — Correctif prod G25.3 stale_false_grey.
+                # L'ancien filtre `applicable = (tech=="LTE" AND tech_cell==7)` évinçait
+                # PSCell NR (ct=199) + SCG SCell NR (bucket ct=100) sur TOUT event
+                # `tech=LTE` (ex. PHRATE, TXPC, TAD) en bakant selectable=False +
+                # reason "N/A — event LTE-only ...". Faux : en EN-DC, un capture
+                # LTE-anchored transporte NR SCG (ct=199 et 100-131) sur les events
+                # LTE eux-mêmes. Preuve prod sur Test_5 d8d14aefa51f (lecture seule
+                # 2026-10-28) : SELECT COUNT(*) FROM nmf_event_light WHERE event_code
+                # IN ('PHRATE','TXPC','TAD') AND <ev>_cell_type=199 AND <col> IS
+                # NOT NULL → PHRATE 215, TXPC 211, TAD 82 lignes réelles PSCell.
+                # Fix : AUCUN filtre tech au bake. Toutes les variantes de l'enum
+                # NFF 2.50 restent structurellement possibles ; la décision tombe
+                # à serve-time via `n_per_cell > 0` (metrics_catalog_v4).
                 struct_reason = None
                 struct_selectable = None  # None = défère au serve-time
-                if not applicable:
-                    struct_selectable = False
-                    struct_reason = f"N/A — event {tech}-only (cell_type {ct} n'existe que côté {'NR' if tech_cell==9 else 'LTE'})"
                 for row in kept_fields:
                     name = row["name"]
                     # 2.54.0 — Retrait des feuilles « Cell type » du cell_scoped.
@@ -529,8 +582,9 @@ def main():
                         extras_selectable = False
                         extras_reason = "FF 2.62 non documenté 2.50 — nommage par contenu BC3 2026-10-25"
                     row_slug = row.get("_slug") or slugify(row["name"])
+                    row_label = row["name"] + (row.get("_label_suffix") or "")
                     leaf = {
-                        "node_type": "leaf", "event": ev, "label": f"{row['name']} @ {label_short}",
+                        "node_type": "leaf", "event": ev, "label": f"{row_label} @ {label_short}",
                         "metric_id": f"{ev.lower()}_{row_slug}@{ct}",
                         # 2.51.1 — source_column tirée du YAML du décodeur, jamais
                         # inventée depuis le label CSV. Chaîne vide si pas de
@@ -556,8 +610,9 @@ def main():
         else:
             for row in kept_fields:
                 row_slug = row.get("_slug") or slugify(row["name"])
+                row_label = row["name"] + (row.get("_label_suffix") or "")
                 leaves_bare.append({
-                    "node_type": "leaf", "event": ev, "label": row["name"],
+                    "node_type": "leaf", "event": ev, "label": row_label,
                     "metric_id": f"{ev.lower()}_{row_slug}", "parent_id": ev_nid,
                     # 2.51.1 — source_column YAML, pas convention nom.
                     "source_column": source_column_for(ev, row["name"]),

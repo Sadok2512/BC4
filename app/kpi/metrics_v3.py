@@ -172,7 +172,27 @@ def parse_selection(token,defs,cell='all',attr=None):
     cell=own_cell if sep else cell;attr=own_attr if sep_attr else attr
     if code not in defs:raise HTTPException(422,dict(reason='unknown_metric',code=code,allowed=sorted(defs)))
     m=dict(defs[code]);m['base_code']=code
-    if cell not in {'all','0','1','2','3','4'}:raise HTTPException(422,dict(reason='unknown_cell',allowed=['all','0','1','2','3','4']))
+    # 2.55.0 (BC4) — Codex67 point 1 : la whitelist cell `{all,0,1,2,3,4}`
+    # a été étendue à l'enum NFF 2.50 complet. Les valeurs admises sont :
+    #   - 'all'  → Total CA
+    #   - 'null' → cell_type non renseigné (dispatch cellule inconnu)
+    #   - tout entier non négatif ≤ 10000 (SCell 1-31, SCG SCell 100-131,
+    #     SCG PSCell 199, NR neighbours 1000-1002 ; max large pour
+    #     absorber de futures valeurs spec sans redéploiement). Le libellé
+    #     spec de la valeur vient de `nodes_out[].label` côté catalog ;
+    #     ici on produit un libellé minimal « cell N » / « cell NULL »
+    #     seulement en fallback (les clients canoniques utilisent la
+    #     feuille du catalogue qui porte déjà le libellé de l'enum).
+    if cell != 'all' and cell != 'null':
+        try:
+            _cell_int = int(cell)
+            if _cell_int < 0 or _cell_int > 10000:
+                raise ValueError
+        except (TypeError, ValueError):
+            raise HTTPException(422, dict(
+                reason='unknown_cell',
+                allowed=['all', 'null', '<entier ≥ 0, ≤ 10000 — enum NFF 2.50>']
+            ))
     if cell!='all' and not m['cell_scoped']:raise HTTPException(422,'metric_not_cell_scoped')
     if attr:
         a=next((a for a in m['attributes'] if a['code']==attr),None)
@@ -180,7 +200,16 @@ def parse_selection(token,defs,cell='all',attr=None):
         m.update(label=m['event']+' · '+a['label'],unit=a['unit'],kind=a['kind'],attr=attr)
     else:m['attr']=None
     m['cell']=cell;m['selection']=code+('~'+attr if attr else '')+('@'+cell if m['cell_scoped'] else '')
-    if m['cell_scoped']:m['label']+=' · '+('Total CA' if cell=='all' else 'PCell' if cell=='0' else 'SCell'+cell)
+    if m['cell_scoped']:
+        if cell == 'all':
+            cell_label = 'Total CA'
+        elif cell == 'null':
+            cell_label = 'cell_type NULL'
+        elif cell == '0':
+            cell_label = 'PCell'
+        else:
+            cell_label = f'cell {cell}'
+        m['label'] += ' · ' + cell_label
     return m
 
 
