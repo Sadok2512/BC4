@@ -41,6 +41,25 @@ class Settings(BaseSettings):
     # restent gatés par leur propre BC4_DEMO_EMAIL/PASSWORD).
     seed_demo: bool = Field(default=False, alias="BC4_SEED_DEMO")
 
+    # Import queue (0.92.0 candidate).  Processes are required here: NMF
+    # parsing is CPU-bound Python and therefore does not benefit from threads.
+    import_workers_max: int = Field(6, ge=1, le=6, alias="BC4_IMPORT_WORKERS_MAX")
+    import_reserved_mb: int = Field(4096, ge=0, alias="BC4_IMPORT_RESERVED_MB")
+    import_memory_margin_mb: int = Field(512, ge=1, alias="BC4_IMPORT_MEMORY_MARGIN_MB")
+    import_batch_size: int = Field(5000, ge=100, le=50000, alias="BC4_IMPORT_BATCH_SIZE")
+    import_finalize_batch_size: int = Field(
+        500, ge=100, le=5000, alias="BC4_IMPORT_FINALIZE_BATCH_SIZE"
+    )
+    # Conservative defaults until a deployment-specific six-file calibration
+    # overrides them.  Source and date are deliberately machine-readable.
+    import_memory_factor_deep: float = Field(146.0, gt=0, alias="BC4_IMPORT_MEMORY_FACTOR_DEEP")
+    import_memory_factor_light: float = Field(141.0, gt=0, alias="BC4_IMPORT_MEMORY_FACTOR_LIGHT")
+    import_memory_factor_source: str = Field(
+        "BC1 2026-10-28 bc4_bench six true NMF (5078863..7646305 bytes): "
+        "Light max=138.986x; Deep max=142.844x",
+        alias="BC4_IMPORT_MEMORY_FACTOR_SOURCE",
+    )
+
     # LLM (0.16.0) — précédence : DB (settings_llm) > env ci-dessous.
     # BC4_LLM_SECRET_KEY : clé Fernet pour chiffrer l'api_key au repos.
     # Si absente, GET fonctionne (api_key_set reflète la DB), mais PUT

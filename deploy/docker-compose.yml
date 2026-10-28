@@ -59,6 +59,13 @@ services:
       # entre `docker compose down` sans `-v`. Pour inspecter depuis
       # l'hôte : `docker exec bc4-api-1 ls /var/lib/bc4/nmf-source/<pid>/`.
       BC4_NMF_SOURCE_DIR: /var/lib/bc4/nmf-source
+      BC4_IMPORT_WORKERS_MAX: ${BC4_IMPORT_WORKERS_MAX:-6}
+      BC4_IMPORT_RESERVED_MB: ${BC4_IMPORT_RESERVED_MB:-4096}
+      BC4_IMPORT_MEMORY_MARGIN_MB: ${BC4_IMPORT_MEMORY_MARGIN_MB:-512}
+      BC4_IMPORT_BATCH_SIZE: ${BC4_IMPORT_BATCH_SIZE:-5000}
+      BC4_IMPORT_FINALIZE_BATCH_SIZE: ${BC4_IMPORT_FINALIZE_BATCH_SIZE:-500}
+      BC4_IMPORT_MEMORY_FACTOR_DEEP: ${BC4_IMPORT_MEMORY_FACTOR_DEEP:-141.0}
+      BC4_IMPORT_MEMORY_FACTOR_LIGHT: ${BC4_IMPORT_MEMORY_FACTOR_LIGHT:-141.0}
       # 0.47.1 — Dossier de persistance des blobs d'upload cell_ref
       # (CSV référentiel géo). Volume nommé pour survivre au down. Avant
       # 0.47.1, les uploads n'étaient PAS persistés — impossible d'auditer.
@@ -100,6 +107,13 @@ services:
       BC4_JWT_SECRET: ${BC4_JWT_SECRET:?BC4_JWT_SECRET required in .env}
       BC4_NMF_DECODER_PATH: /opt/nmf_decoder
       BC4_NMF_SOURCE_DIR: /var/lib/bc4/nmf-source
+      BC4_IMPORT_WORKERS_MAX: ${BC4_IMPORT_WORKERS_MAX:-6}
+      BC4_IMPORT_RESERVED_MB: ${BC4_IMPORT_RESERVED_MB:-4096}
+      BC4_IMPORT_MEMORY_MARGIN_MB: ${BC4_IMPORT_MEMORY_MARGIN_MB:-512}
+      BC4_IMPORT_BATCH_SIZE: ${BC4_IMPORT_BATCH_SIZE:-5000}
+      BC4_IMPORT_FINALIZE_BATCH_SIZE: ${BC4_IMPORT_FINALIZE_BATCH_SIZE:-500}
+      BC4_IMPORT_MEMORY_FACTOR_DEEP: ${BC4_IMPORT_MEMORY_FACTOR_DEEP:-141.0}
+      BC4_IMPORT_MEMORY_FACTOR_LIGHT: ${BC4_IMPORT_MEMORY_FACTOR_LIGHT:-141.0}
     volumes:
       - ./decoder:/opt/nmf_decoder:ro
       - bc4_nmf_source:/var/lib/bc4/nmf-source

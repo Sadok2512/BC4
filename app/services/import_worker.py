@@ -4,11 +4,21 @@ A session advisory lock remains held across the enrichment code's commits.
 This also prevents two worker replicas from recalculating measurements together.
 """
 import logging
+import hashlib
+import cProfile
+import io
+import multiprocessing
+import os
+import resource
+import pstats
 import signal
 import threading
+import time
+from concurrent.futures import FIRST_COMPLETED, ProcessPoolExecutor, wait
 from pathlib import Path
 
 from sqlalchemy import text
+from app.config import settings
 from app.db import SessionLocal, engine
 from app.models import NmfImportJob, Project
 from app.ingest.nmf import ingest_upload, refresh_project_summary, resolve_decoder
@@ -16,6 +26,7 @@ from app.dict.populate import populate_param_occurrence
 from app.services.populate_chain import run_populate_chain
 from app.services.import_report import build_import_report
 from app.services.import_jobs import ACTIVE, job_view, now, update_capture_counts
+from app.services.import_admission import decide
 
 log = logging.getLogger(__name__)
 stop = threading.Event()
@@ -35,44 +46,176 @@ def parsing_snapshot(job):
     return snapshot
 
 
+def _entry_result(nmf):
+    return dict(status=nmf.status, n_captures=nmf.n_captures,
+        n_events=nmf.n_events, n_gps=nmf.n_gps,
+        decoder_version=nmf.decoder_version, error_msg=nmf.error_msg)
+
+
+def _file_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open('rb') as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b''):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _print_profile(profile: cProfile.Profile, label: str) -> None:
+    stream = io.StringIO()
+    stats = pstats.Stats(profile, stream=stream).strip_dirs().sort_stats('cumulative')
+    stats.print_stats(15)
+    database_tottime = sum(
+        values[2] for func, values in stats.stats.items()
+        if any(term in ' '.join(map(str, func)).lower()
+               for term in ('psycopg', 'sqlalchemy', 'select.poll', 'cursor'))
+    )
+    total = stats.total_tt
+    database_pct = 100.0 * database_tottime / total if total else 0.0
+    print(f'PROFILE {label} total_s={total:.3f} '
+          f'postgresql_exclusive_s={database_tottime:.3f} '
+          f'postgresql_pct={database_pct:.2f} '
+          f'python_other_pct={100.0-database_pct:.2f}', flush=True)
+    print(f'PROFILE {label} TOP15\n{stream.getvalue()}', flush=True)
+
+
+def _process_file(job_id, index):
+    """Spawn-safe file worker with a session advisory lock per content hash."""
+    with SessionLocal() as db:
+        job = db.get(NmfImportJob, job_id)
+        entry = dict(job.files[index])
+        project = db.get(Project, job.project_id)
+        snapshot = parsing_snapshot(job)
+        identity = entry.get('sha256') or entry['path']
+        lock_key = f'import-file:{job.project_id}:{identity}'
+        locked = db.execute(text('SELECT pg_try_advisory_lock(hashtext(:key))'), {'key': lock_key}).scalar()
+        db.commit()
+        if not locked:
+            return dict(status='locked')
+        started = time.monotonic()
+        profiler = cProfile.Profile() if os.environ.get('BC4_IMPORT_PROFILE') == 'YES' else None
+        try:
+            if profiler: profiler.enable()
+            handle = resolve_decoder()
+            if not handle.available:
+                raise RuntimeError('Décodeur NMF indisponible')
+            queued_path = Path(entry['path'])
+            if entry.get('sha256') and _file_sha256(queued_path) != entry['sha256']:
+                raise ValueError('queued_source_sha_mismatch')
+            with queued_path.open('rb') as stream:
+                nmf = ingest_upload(db, project, stream, entry['filename'], handle,
+                    populate=False, parsing_snapshot=snapshot)
+            result = _entry_result(nmf)
+            result.update(
+                worker_elapsed_s=time.monotonic() - started,
+                worker_peak_rss_mb=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024,
+            )
+            return result
+        finally:
+            if profiler:
+                profiler.disable()
+                _print_profile(profiler, f'WORKER file={entry["filename"]}')
+            db.rollback()
+            db.execute(text('SELECT pg_advisory_unlock(hashtext(:key))'), {'key': lock_key})
+            db.commit()
+
+
+def _mark_entry(db, job, index, **changes):
+    entry = dict(job.files[index])
+    entry.update(changes)
+    job.files = [entry if i == index else item for i, item in enumerate(job.files)]
+    job.updated_at = now()
+    db.commit()
+
+
+def _run_sequential(db, job, project, snapshot, handle):
+    """SQLite/unit-test path; production PostgreSQL always uses processes."""
+    for index, raw in enumerate(list(job.files)):
+        if stop.is_set(): return
+        if raw['status'] in ('done', 'error'): continue
+        _mark_entry(db, job, index, status='decoding')
+        entry = dict(job.files[index])
+        try:
+            queued_path = Path(entry['path'])
+            if entry.get('sha256') and _file_sha256(queued_path) != entry['sha256']:
+                raise ValueError('queued_source_sha_mismatch')
+            with queued_path.open('rb') as stream:
+                result = _entry_result(ingest_upload(db, project, stream,
+                    entry['filename'], handle, populate=False,
+                    parsing_snapshot=snapshot))
+        except Exception as exc:
+            db.rollback(); result = dict(status='error', error_msg=str(exc))
+            log.exception('File import failed job=%s file=%s', job.id, entry['filename'])
+        _mark_entry(db, job, index, **result)
+        update_capture_counts(db, project); db.commit()
+
+
+def _run_parallel(db, job, project, snapshot):
+    job_id = job.id
+    pending = [i for i, entry in enumerate(job.files)
+        if entry['status'] not in ('done', 'error')]
+    running = {}
+    context = multiprocessing.get_context('spawn')
+    with ProcessPoolExecutor(max_workers=settings.import_workers_max, mp_context=context) as pool:
+        while pending or running:
+            started = False
+            while pending and len(running) < settings.import_workers_max and not stop.is_set():
+                index = pending[0]; entry = dict(job.files[index])
+                size = entry.get('size_bytes') or os.path.getsize(entry['path'])
+                decision = decide(size, snapshot['decode_level'], len(running))
+                log.info('import_admission file=%s size_bytes=%s estimate_mb=%s '
+                    'available_mb=%s decision=%s reason=%s running=%s',
+                    entry['filename'], size, decision.estimate_mb,
+                    decision.available_mb, decision.decision, decision.reason,
+                    decision.running)
+                if decision.decision == 'wait': break
+                pending.pop(0); _mark_entry(db, job, index, status='decoding')
+                running[pool.submit(_process_file, job_id, index)] = (index, size)
+                started = True
+            if stop.is_set():
+                for future in running: future.cancel()
+                return
+            if not running:
+                # Guard below margin: do not spin and do not start a file.
+                stop.wait(1); continue
+            done, _ = wait(running, timeout=1 if started else None,
+                return_when=FIRST_COMPLETED)
+            for future in done:
+                index, _ = running.pop(future)
+                try: result = future.result()
+                except Exception as exc:
+                    result = dict(status='error', error_msg=str(exc))
+                    log.exception('File process failed job=%s index=%s', job_id, index)
+                if result.get('status') == 'locked':
+                    pending.append(index); _mark_entry(db, job, index, status='pending')
+                    continue
+                _mark_entry(db, job, index, **result)
+                log.info('import_complete index=%s status=%s elapsed_s=%.3f '
+                    'peak_rss_mb=%.3f running=%s', index,
+                    result.get('status'), result.get('worker_elapsed_s', 0.0),
+                    result.get('worker_peak_rss_mb', 0.0), len(running))
+                update_capture_counts(db, project); db.commit()
+
+
 def run_job(db, job):
+    previous_expire_on_commit = db.expire_on_commit
+    db.expire_on_commit = False
+    try:
+        return _run_job_unexpired(db, job)
+    finally:
+        db.expire_on_commit = previous_expire_on_commit
+
+
+def _run_job_unexpired(db, job):
     project = db.get(Project, job.project_id)
     snapshot = parsing_snapshot(job)
     handle = resolve_decoder()
     if not handle.available:
         raise RuntimeError('Décodeur NMF indisponible')
-    job.status = 'decoding'
-    db.commit()
-    for index in range(len(job.files)):
-        if stop.is_set():
-            return  # Durable unfinished job will resume on the next startup.
-        entry = dict(job.files[index])
-        if entry['status'] in ('done', 'error'):
-            continue
-        entry['status'] = 'decoding'
-        job.files = [entry if i == index else f for i, f in enumerate(job.files)]
-        job.updated_at = now()
-        db.commit()
-        # Ingest commits staging atomically. If the process dies before the
-        # manifest commit, the SHA-256 lookup safely finds the existing file.
-        try:
-            with Path(entry['path']).open('rb') as stream:
-                nmf = ingest_upload(
-                    db, project, stream, entry['filename'], handle,
-                    populate=False, parsing_snapshot=snapshot,
-                )
-            entry.update(status=nmf.status, n_captures=nmf.n_captures,
-                n_events=nmf.n_events, n_gps=nmf.n_gps,
-                decoder_version=nmf.decoder_version, error_msg=nmf.error_msg)
-        except Exception as exc:
-            db.rollback()
-            entry.update(status='error', error_msg=str(exc))
-            log.exception('File import failed job=%s file=%s', job.id, entry['filename'])
-        job.files = [entry if i == index else f for i, f in enumerate(job.files)]
-        job.updated_at = now()
-        update_capture_counts(db, project)
-        db.commit()
-        log.info('Import %s: %s/%s files processed', job.id, index + 1, len(job.files))
+    job.status = 'decoding'; db.commit()
+    if db.get_bind().dialect.name == 'postgresql':
+        _run_parallel(db, job, project, snapshot)
+    else:
+        _run_sequential(db, job, project, snapshot, handle)
 
     if stop.is_set():
         return

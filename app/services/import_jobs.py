@@ -60,10 +60,11 @@ def enqueue(db, project_id, uploads):
         for index, upload in enumerate(uploads):
             target = directory / f'{index}.nmf'
             with target.open('wb') as out:
-                spool_and_hash(upload.file, out)
+                size_bytes, sha256 = spool_and_hash(upload.file, out)
                 out.flush()
                 os.fsync(out.fileno())
             entries.append(dict(path=str(target), filename=upload.filename or 'unnamed.nmf',
+                size_bytes=size_bytes, sha256=sha256,
                 status='pending', n_captures=0, n_events=0, n_gps=0,
                 decoder_version=None, error_msg=None))
         job = NmfImportJob(
