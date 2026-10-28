@@ -1,3 +1,32 @@
+## 0.93.1 (patch) — BC4 2026-10-28 — perf(import) +37 % records/s sur deep decode (Agent BC1, déployé Agent BC3)
+
+Lot A isolé (commit `7b81a05` seul, les commits `2a49e24`/`88f1b13` de
+`feat/import-throughput` sur sparse native light NON mergés — ils feront
+un lot ultérieur quand BC3 aura leur GO).
+
+- `app/nmf_decoder/store.py` : `copy_rows()` passe la projection colonne
+  en C via `map(dict.get, columns)` au lieu d'une boucle Python par
+  colonne. Les colonnes `LEGACY_NUMERIC_STRING_FIELDS` sont pré-calculées
+  en indexes positionnels pour éviter un `isinstance(..., str)` sur
+  chaque colonne. `read_deep()` ne fait plus de round-trip DB après
+  COPY : `normalize_for_stored_deep()` reproduit en mémoire la projection
+  stockée (NULL coercion legacy numérique + float stocké vs int) avant
+  la phase Light. 126 lignes modifiées dans `store.py`.
+- `app/services/import_worker.py` : hook pour les Light qui ne sont plus
+  dérivés d'un round-trip DB.
+- `tests/test_nmf_decoder.py` : +28 lignes couvrant l'invariance Light
+  pré/post round-trip (empreinte stricte).
+- `scripts/guards_2026_10/G42_content_fingerprint.py` : nouveau garde
+  qui compare l'empreinte du Light obtenu par le chemin accéléré avec
+  celle du Light qui aurait été dérivé via le round-trip historique.
+- G29 / G42 / G44 PASS (annonce BC1). +37 % records/s mesurés sur un
+  même fichier deep (`audit/bc1-ingest-speed/trace.md` non inclus dans
+  ce commit — il appartient aux commits sparse ultérieurs).
+
+Zéro changement SQL/schéma. `DECODER_VERSION` inchangé (reste `1.7.2`).
+Pas de CHANGELOG_DECODER (le décodeur Python logique n'a pas changé,
+seule la boucle de projection COPY a été accélérée).
+
 ## 0.93.0 (minor) — BC4 2026-10-28 — Vitesse d'ingestion + G44 snapshot immuable (Agents BC1/BC3)
 
 Merge groupé sur `main` : `feat/import-throughput` qui elle-même est basée
