@@ -40,9 +40,8 @@ def test_refuses_when_worker_lock_held():
          patch.object(reparse_capture, "decode_capture") as fake_decode, \
          patch("sys.argv", ["reparse_capture", "pid-1", "cap-1",
                             "--reason", "manual re-parse pour test"]):
-        with pytest.raises(SystemExit) as exc:
-            reparse_capture.main()
-        assert exc.value.code == 1
+        rc = reparse_capture.main()
+        assert rc == 1
         fake_decode.assert_not_called()
 
 
