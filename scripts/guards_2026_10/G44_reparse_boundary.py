@@ -67,7 +67,10 @@ if os.environ.get("G44_EPHEMERAL_DB") != "YES":
 if not dsn:
     fail_pre("BC4_DSN is required")
 parsed = urlparse(dsn.replace("postgresql+psycopg", "postgresql", 1))
-if parsed.port in (None, 5432) or parsed.path.rstrip("/") in ("", "/bc4"):
+ephemeral_host = (parsed.hostname or "").startswith("bc1-")
+non_live_port = parsed.port not in (None, 5432)
+if (not (ephemeral_host or non_live_port)
+        or parsed.path.rstrip("/") in ("", "/bc4")):
     fail_pre(f"refusing non-ephemeral DSN host={parsed.hostname} port={parsed.port} db={parsed.path}")
 
 
@@ -85,13 +88,17 @@ ADMIN_PASSWORD = "TEST-G44-admin-only-9!"
 
 DECODER_172_MARKER = "unsupported operand type(s) for +=: 'float' and 'str'"
 
-NMF_PATHS = [
+DEFAULT_NMF_PATHS = [
     # 2 petits ikea NMF (quelques centaines d'events) copiés depuis le
     # volume de production (lecture seule) vers /tmp pour le G44 live sur
     # base jetable. Choisis pour que le test tourne en quelques minutes.
     "/tmp/g44-nmf/ikea_26Jun10_172354.4.nmf",
     "/tmp/g44-nmf/ikea_26Jun10_172403.8.nmf",
 ]
+NMF_PATHS = [
+    path for path in os.environ.get("G44_NMF_PATHS", "").split(os.pathsep)
+    if path
+] or DEFAULT_NMF_PATHS
 
 SNAPSHOT_COLS = (
     "decode_level", "decoder_version", "schema_version", "format_version",
@@ -387,7 +394,9 @@ def main() -> int:
             "fails": fails,
             "frozen_captures": unchanged,
             "new_captures": new_captures,
-            "ephemeral_dsn": dsn,
+            "ephemeral_dsn": (
+                f"{parsed.hostname}:{parsed.port}{parsed.path}"
+            ),
             "ran_at": datetime.now(timezone.utc).isoformat(),
         }, indent=2))
 

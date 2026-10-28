@@ -5,7 +5,6 @@ from pathlib import Path
 from sqlalchemy import text
 from . import DECODER_VERSION
 from .schema import fields
-from .decoder import Record
 from .source import records
 from .light import Light
 from .cells import cell_rows
@@ -14,6 +13,8 @@ from .pairs import Pairs
 HEADERS=sorted(k for k,v in fields().items() if v['group'] is None)
 GROUPS=sorted(k for k,v in fields().items() if v['group'] is not None)
 ALL=sorted(fields())
+HEADER_SET=frozenset(HEADERS)
+GROUP_SET=frozenset(GROUPS)
 DEEP_BASE=['project_id','capture_id','seq','line_no','event_code','system','ts','t_rel_s','format_version','decoder_version','schema_version','decode_status','reasons','tokens','field_codes','unk_string','quoted','context_id','context_ids']
 GROUP_BASE=['project_id','capture_id','seq','group_name','set_index']
 LIGHT_BASE=['project_id','capture_id','seq','seq_last','event_code','system','second','dimension','t_rel_s','decoder_version','schema_version','format_version','decode_status','reasons','unknown','n_records','n_partial','context_id','context_ids']
@@ -21,59 +22,76 @@ LIGHT_BASE=['project_id','capture_id','seq','seq_last','event_code','system','se
 
 LEGACY_NUMERIC_STRING_FIELDS=set('bf_bts_file dl_device_label dn_device_name ei_device_identity ff_file_format_version hv_handler_version hw_hardware_version hw_manufacturer hw_model id_measurement_id mf_map_file product_product_name product_product_version si_subscriber_identity sp_subscriber_phone_number start_date stop_date sw_device_software_version ts_test_script_file caa_phone_number caa_own_phone_number caa_unique_id daa_host_address pac_ip rrcsm_rrc_msg rrcsm_subchannel rrcsm_rrc_data rtpsm_rtp_message rtpsm_rtp_data sipsm_sip_name sipsm_sip_data'.split())
 
+def storage_float_fields(db):
+    rows = db.execute(text("""
+        SELECT table_name, column_name
+        FROM information_schema.columns
+        WHERE table_schema='public'
+          AND table_name IN ('nmf_event_deep', 'nmf_event_group')
+          AND data_type IN ('double precision', 'real', 'numeric')
+    """)).all()
+    return {
+        table: frozenset(column for row_table, column in rows if row_table == table)
+        for table in ('nmf_event_deep', 'nmf_event_group')
+    }
+
+def normalize_for_stored_deep(record, float_fields=None):
+    """Match COPY's historical NULL coercion before deriving Light rows.
+
+    Deep used to be written and read back before Light aggregation.  Psycopg's
+    COPY adapter discarded textual values for legacy numeric columns, so the
+    readback exposed NULL.  Normalizing the in-memory record preserves that
+    exact behaviour while avoiding the database round trip.
+    """
+    for name, value in record.values.items():
+        if name in LEGACY_NUMERIC_STRING_FIELDS and isinstance(value, str):
+            record.values[name] = None
+    for group in record.groups:
+        for name, value in group['values'].items():
+            if name in LEGACY_NUMERIC_STRING_FIELDS and isinstance(value, str):
+                group['values'][name] = None
+    float_fields = float_fields or {}
+    header_floats = float_fields.get('nmf_event_deep', ())
+    group_floats = float_fields.get('nmf_event_group', ())
+    # Reproduce the stored Deep projection exactly.  Some format-dependent
+    # codes occur once as a header and once as a group field; the global SQL
+    # layout assigns each code to only one side.  The historical readback
+    # therefore omitted the other occurrence before Light aggregation.
+    record.values = {
+        name: float(value) if name in header_floats and isinstance(value, int)
+        and not isinstance(value, bool) else value
+        for name, value in record.values.items()
+        if name in HEADER_SET and value is not None
+    }
+    for group in record.groups:
+        group['values'] = {
+            name: float(value) if name in group_floats and isinstance(value, int)
+            and not isinstance(value, bool) else value
+            for name, value in group['values'].items()
+            if name in GROUP_SET and value is not None
+        }
+
 def copy_rows(db,table,columns,rows):
     if not rows:return
+    legacy_positions = [
+        index for index, name in enumerate(columns)
+        if name in LEGACY_NUMERIC_STRING_FIELDS
+    ]
     connection=db.connection().connection.dbapi_connection
     with connection.cursor() as cursor:
         with cursor.copy('COPY '+table+' ('+','.join(columns)+') FROM STDIN') as copy:
             for row in rows:
-                vals=[]
-                for c in columns:
-                    v=row.get(c)
-                    if isinstance(v,str) and c in LEGACY_NUMERIC_STRING_FIELDS:
-                        v=None
-                    vals.append(v)
+                # map(dict.get, ...) performs the hundreds of sparse column
+                # lookups in C.  Only legacy columns require a Python-side
+                # type check; all other values are passed through unchanged.
+                vals=list(map(row.get,columns))
+                for index in legacy_positions:
+                    if isinstance(vals[index],str):vals[index]=None
                 copy.write_row(tuple(vals))
     # A completed COPY batch is a resumability checkpoint.  Callers delete
     # the capture before replay, so an interrupted sequence is rebuilt without
     # duplicates while no transaction spans the next CPU-heavy batch build.
     db.commit()
-
-def read_deep(db,pid,cap):
-    params={'pid':pid,'cap':cap}
-    last_seq = -1
-    while True:
-        page_rows = db.execute(text('''
-            SELECT * FROM nmf_event_deep
-            WHERE project_id=:pid AND capture_id=:cap AND seq>:last_seq
-            ORDER BY seq LIMIT 100
-        '''), dict(params, last_seq=last_seq)).mappings().all()
-        if not page_rows:
-            db.commit()
-            return
-        page_last_seq = int(page_rows[-1]['seq'])
-        group_rows = db.execute(text('''
-            SELECT * FROM nmf_event_group
-            WHERE project_id=:pid AND capture_id=:cap
-              AND seq>:last_seq AND seq<=:page_last_seq
-            ORDER BY seq,group_name,set_index
-        '''), dict(params, last_seq=last_seq, page_last_seq=page_last_seq)).mappings().all()
-        # Rows are materialized.  Close the read transaction before the CPU-only
-        # mapping conversion and Light aggregation; the next page opens a new
-        # bounded transaction.
-        db.commit()
-        page = [dict(row) for row in page_rows]
-        grouped = [dict(row) for row in group_rows]
-        groups_by_seq = {}
-        for group in grouped:
-            groups_by_seq.setdefault(group['seq'], []).append(group)
-        for row in page:
-            d={k:row[k] for k in DEEP_BASE if k!='project_id'}
-            r=Record(**d);r.values={k:row[k] for k in HEADERS if row[k] is not None}
-            for group in groups_by_seq.get(r.seq, ()):
-                r.groups.append(dict(group_name=group['group_name'],set_index=group['set_index'],values={k:group[k] for k in GROUPS if group[k] is not None}))
-            yield r
-        last_seq = page_last_seq
 
 def write_light(db,pid,cap,light):
     db.execute(text('DELETE FROM nmf_event_light WHERE project_id=:pid AND capture_id=:cap'),{'pid':pid,'cap':cap})
@@ -127,17 +145,22 @@ def decode_capture(db,pid,cap,level,*,force=False,parsing_snapshot=None):
         WHERE n.project_id=:pid AND r.capture_id=:cap'''),params).mappings().all()
     if len(file)!=1 or not file[0]['source_path'] or not Path(file[0]['source_path']).is_file():raise ValueError('capture_source_unavailable')
     file=file[0]
+    if old and old['decode_level']=='deep':level='deep'  # Never downgrade or erase retained observations.
+    float_fields=storage_float_fields(db) if level=='deep' else {}
     # Le parsing NMF est du calcul fichier pur et peut durer plusieurs minutes.
     # Libère la transaction de métadonnées avant d'ouvrir le fichier ; le
     # populate_chain conserve son verrou advisory de session entre les commits.
     db.commit()
-    if old and old['decode_level']=='deep':level='deep'  # Never downgrade or erase retained observations.
     if level=='deep':
-        # Provision empty partitions in a short independent transaction. Holding the
-        # parent DDL lock during decode would block readers for the whole capture.
-        from app.db import engine
-        with engine.begin() as ddl:
-            ddl.execute(text('SELECT nmf_decoder_partition(:cap)'),{'cap':cap})
+        # Partition DDL and parent-table cleanup must be one short serialized
+        # transaction.  If separate workers interleave AccessExclusive (DDL)
+        # and RowExclusive (DELETE) locks across the two partitioned parents,
+        # PostgreSQL can deadlock.  The lock is released by the commit below,
+        # before the CPU-heavy decode starts.
+        db.execute(text(
+            "SELECT pg_advisory_xact_lock(hashtext('nmf_decoder_partition_ddl'))"
+        ))
+        db.execute(text('SELECT nmf_decoder_partition(:cap)'),{'cap':cap})
         for table in ('nmf_event_group','nmf_event_deep'):
             db.execute(text('DELETE FROM '+table+' WHERE project_id=:pid AND capture_id=:cap'),params)
         db.commit()
@@ -145,18 +168,17 @@ def decode_capture(db,pid,cap,level,*,force=False,parsing_snapshot=None):
     for r in records(file['source_path'],cap,file['sha256']):
         if r.excluded:continue
         n+=1;partial+=r.decode_status=='partial';version=r.format_version
+        if level=='deep':normalize_for_stored_deep(r,float_fields)
         pairs.add(r)
+        light.add(r)
         if level=='deep':
             deep_rows.append(dict(project_id=pid,**{k:getattr(r,k) for k in DEEP_BASE if k!='project_id'},**r.values))
             for g in r.groups:
                 group_rows.append(dict(project_id=pid,capture_id=cap,seq=r.seq,group_name=g['group_name'],set_index=g['set_index'],**g['values']))
             if len(deep_rows)>=1000:copy_rows(db,'nmf_event_deep',DEEP_BASE+HEADERS,deep_rows);deep_rows=[]
             if len(group_rows)>=10000:copy_rows(db,'nmf_event_group',GROUP_BASE+GROUPS,group_rows);group_rows=[]
-        else:light.add(r)
     if level=='deep':
         copy_rows(db,'nmf_event_deep',DEEP_BASE+HEADERS,deep_rows);copy_rows(db,'nmf_event_group',GROUP_BASE+GROUPS,group_rows)
-        # Deep is the sole stored truth. Light is rebuilt from the rows just written.
-        for r in read_deep(db,pid,cap):light.add(r)
     write_light(db,pid,cap,light)
     pair_values=[dict(project_id=pid,capture_id=cap,decoder_version=DECODER_VERSION,**r) for r in pairs.rows()]
     db.execute(text('DELETE FROM nmf_event_pair WHERE project_id=:pid AND capture_id=:cap'),params)

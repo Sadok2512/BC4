@@ -2,8 +2,9 @@
 import csv,io,json
 from pathlib import Path
 import pytest
-from app.nmf_decoder.decoder import decode,hashed
+from app.nmf_decoder.decoder import Record,decode,hashed
 from app.nmf_decoder.light import Light,Stat
+from app.nmf_decoder.store import normalize_for_stored_deep
 
 W=json.loads((Path(__file__).parent/'fixtures/nmf_decoder_witnesses.json').read_text())
 def line(tokens):
@@ -62,6 +63,31 @@ def test_light_replay_normalizes_null_group_dimensions():
     for g in stored.groups:g['values']={k:v for k,v in g['values'].items() if v is not None}
     one=Light();two=Light();one.add(r);two.add(stored)
     assert list(one.rows())==list(two.rows())
+
+def test_in_memory_light_uses_the_stored_deep_projection():
+    r=Record('TXPC','capture',1,9,'2.62',values={
+        'tad_ta':2,
+        # This code is a header in one TXPC layout but occupies the SQL group
+        # projection globally; historical Deep readback did not expose it.
+        'txpc_pusch_tpc':3.5,
+        'bf_bts_file':'legacy-text',
+    },groups=[dict(group_name='pusch_tpcs',set_index=0,values={
+        'txpc_pusch_tpc':3.0,
+        'tad_ta':9,
+    })])
+    normalize_for_stored_deep(r, {
+        'nmf_event_deep': frozenset(),
+        'nmf_event_group': frozenset({'cell_port'}),
+    })
+    assert r.values == {'tad_ta':2}
+    assert r.groups[0]['values'] == {'txpc_pusch_tpc':3.0}
+
+    r.groups[0]['values']['cell_port'] = 2
+    normalize_for_stored_deep(r, {
+        'nmf_event_deep': frozenset(),
+        'nmf_event_group': frozenset({'cell_port'}),
+    })
+    assert r.groups[0]['values']['cell_port'] == 2.0
 
 @pytest.mark.parametrize(
     ('event','text_values'),
