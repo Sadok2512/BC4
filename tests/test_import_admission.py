@@ -25,3 +25,10 @@ def test_admission_rechecks_memory_and_oversize_runs_alone(monkeypatch):
     assert (solo.decision, solo.reason) == ("start", "oversize_solo")
     guarded = admission.decide(1, "deep", running=0)
     assert (guarded.decision, guarded.reason) == ("wait", "below_margin")
+
+
+def test_affine_memory_estimate_has_fixed_base(monkeypatch):
+    monkeypatch.setattr(admission.settings, "import_memory_base_mb_deep", 500.0)
+    monkeypatch.setattr(admission.settings, "import_memory_slope_mb_per_mib_deep", 50.0)
+    assert admission.estimate_memory_mb(0, "deep") == 500
+    assert admission.estimate_memory_mb(10 * admission.MIB, "deep") == 1000

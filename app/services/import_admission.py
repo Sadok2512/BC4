@@ -6,6 +6,7 @@ decoder changes both host and cgroup headroom, so a cached value is unsafe.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from math import ceil
 from pathlib import Path
 
 from app.config import settings
@@ -38,12 +39,12 @@ def available_memory_mb() -> int:
 
 
 def estimate_memory_mb(size_bytes: int, level: str) -> int:
-    factor = (
-        settings.import_memory_factor_deep
+    base, slope = (
+        (settings.import_memory_base_mb_deep, settings.import_memory_slope_mb_per_mib_deep)
         if level == "deep"
-        else settings.import_memory_factor_light
+        else (settings.import_memory_base_mb_light, settings.import_memory_slope_mb_per_mib_light)
     )
-    return max(1, int((size_bytes * factor + MIB - 1) // MIB))
+    return max(1, ceil(base + slope * size_bytes / MIB))
 
 
 @dataclass(frozen=True)
