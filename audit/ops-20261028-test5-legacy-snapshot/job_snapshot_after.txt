@@ -1,0 +1,5 @@
+                id                | decode_level | binning_mode | temporal_resolution | spatial_bin_m | aggregation_contract_version | decoder_version 
+----------------------------------+--------------+--------------+---------------------+---------------+------------------------------+-----------------
+ c67112ccda3d4e39aae5bc1ffb171904 | deep         | temporal     | native              |               | query-binning-v1             | 1.7.2
+(1 row)
+

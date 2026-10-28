@@ -1,3 +1,26 @@
+## Opérations — Backfill snapshot legacy Test_5 (Agent BC3, 2026-10-28)
+
+Le job `c67112ccda3d4e39aae5bc1ffb171904` (projet Test_5 `d8d14aefa51f`)
+a été créé AVANT la migration `0061_import_job_parsing_snapshot`. Ses
+6 colonnes `nmf_import_jobs.decode_level/binning_mode/temporal_resolution/
+spatial_bin_m/aggregation_contract_version/decoder_version` étaient
+toutes NULL — la garde `parsing_snapshot()` du worker (0061) refusait
+tout retry (`ValueError: import_job_parsing_snapshot_missing`).
+
+Backfill unique applicatif via la même logique que
+`app.services.import_jobs.enqueue()` lignes 76-82 (4 defaults projet
+`parse_*` + 2 constantes code `'query-binning-v1'` + `DECODER_VERSION`).
+Script : `audit/ops-20261028-test5-legacy-snapshot/backfill_test5_legacy_snapshot.py`
+(hard-codé à l'unique `job_id` legacy, idempotence stricte, refuse si
+colonnes non-NULL).
+
+Snapshot posé : `decode_level='deep'`, `binning_mode='temporal'`,
+`temporal_resolution='native'`, `spatial_bin_m=NULL`,
+`aggregation_contract_version='query-binning-v1'`, `decoder_version='1.7.2'`.
+**Les 22 captures Test_5 déjà terminées gardent leur snapshot per-capture
+original (`decoder_version='1.7.1'`, inchangé)** — preuve dans
+`audit/ops-.../trace.md`.
+
 ## 0.91.0 (minor) — BC4 2026-10-28 — Déploiement groupé : snapshot d'import + superstream + décodeur 1.7.2 + finalisation par tranches + PLMN tolérant (Agent BC3)
 
 Merge sur `main` dans l'ordre canonique a→b→c→d :
