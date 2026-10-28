@@ -1,3 +1,16 @@
+## 0.91.0 (minor) — BC4 2026-10-28 — Déploiement groupé : snapshot d'import + superstream + décodeur 1.7.2 + finalisation par tranches + PLMN tolérant (Agent BC3)
+
+Merge sur `main` dans l'ordre canonique a→b→c→d :
+
+- **a) 0061 import snapshot + Période + G35 + G40** (`bc1/import-snapshot-period`) — Chaque `nmf_import_jobs` fige à l'enqueue 6 champs (`decode_level`, `binning_mode`, `temporal_resolution`, `spatial_bin_m`, `aggregation_contract_version`, `decoder_version`), propagés à chaque capture ingérée du job. `projects.period_start`/`period_end` dérivés du `#START` NMF (`nmf_file.start_at`) au lieu de la date de création. G35 vérifie parité schéma live vs replay. G40 vérifie que les snapshots des captures d'un même job sont égaux à ceux du job.
+- **b) 0062 superstream back + routes + G34 174/174 + G41 (7 invariants puis invariant 8)** (`bc1/g34-superstream`) — Nouvelles tables `superstream` et `superstream_member` (FK composite vers `nmf_capture(project_id, capture_id)`). Routes `POST/GET/PUT/DELETE /projects/{id}/superstreams` + `GET /{ss}/stream` qui lit le snapshot par capture dans `nmf_capture` et déclare `parse_snapshots_distinct`. G34 étendu aux 6 routes superstream (shared / revoked / lecteur / admin) → 174/174 PASS. G41 invariant 8 : la déclaration de `parse_snapshots_distinct` dans la réponse `/stream` doit être exacte vis-à-vis de `nmf_capture` — un mélange déclaré correctement = PASS ; un mélange caché ou une fausse déclaration = FAIL.
+- **c) décodeur 1.7.2 + Stat.add + G43** — `app/nmf_decoder/light.py:26` : `Stat.add` typé pour accepter des agrégations textuelles (chaînes « last ») sans crash `TypeError: unsupported operand type(s) for +=: 'float' and 'str'`. Corrige les 2 fichiers Test_5 (`parcours_26Jun10_160230.2.nmf`, `.4.nmf`). Guard G43 vérifie la cohérence des types d'agrégation entre le YAML et le code.
+- **0063 merge heads** (`fix(migrations): merge import and superstream heads`) — Fusion alembic des deux lignées 0061 et 0062. **sha256 identiques entre les 3 branches sources** (`bc1/import-snapshot-period:0061` + `bc1/g34-superstream:0062` + `fix/populate-chain-slices:0063` = `1675390c…`, `3752b4da…`, `efc7503f…`) **et** celles déjà en base (vérifiées pré-merge).
+- **d) finalisation par tranches + G40F** (`fix/populate-chain-slices`) — `populate_chain` tient toujours un verrou advisory session par projet mais chaque tranche fait un vrai `COMMIT`. Fix l'incident 2026-10-28 08:34 : la finalisation Test_5 tombait sur `idle_in_transaction_session_timeout = 5min` posé le 2026-10-17 (ALTER SYSTEM non tracé). G40F prouve que l'empreinte finale par tranches = celle en TX unique.
+- **hotfix PLMN 0.90.3** (`hotfix/0.90.3-plmn-uncatalogued`) — `ProjectSchema` et compagnons passent de `Literal[...]` à `str` sur les champs alimentés par l'ingestion (opérateurs/technos/services). Un PLMN non catalogué (ex. `208-08`) traverse brut, affiché en gris côté front avec tooltip explicite. Rien n'est renommé ni supprimé.
+
+**Preuves pré-merge** : DB prod à `0063_merge_import_superstream` depuis matin, G36 PASS, 0 job actif, 3 fichiers alembic sha256-identiques entre worktrees.
+
 ## 0.90.4 (patch) — BC4 2026-10-28 — Finalisation reprise par tranches (Agent BC1)
 
 - `populate_chain` conserve la sérialisation par projet avec un verrou advisory
