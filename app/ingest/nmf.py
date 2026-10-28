@@ -465,7 +465,7 @@ def ingest_upload(
     stream: IO[bytes],
     filename: str,
     handle: DecoderHandle,
-    *, populate: bool = True,
+    *, populate: bool = True, parsing_snapshot: dict[str, Any] | None = None,
 ) -> NmfFile:
     """Ingère UN upload : stream → disque → hash → idempotence → décode →
     stg_event. Retourne le `NmfFile` persisté (toujours : succès, erreur,
@@ -490,7 +490,12 @@ def ingest_upload(
             # Idempotent uploads also upgrade missing Light data, without re-ingesting RRC/staging.
             from app.nmf_decoder.store import decode_capture
             caps=db.execute(text('SELECT DISTINCT capture_id FROM stg_event_raw WHERE project_id=:pid AND nmf_file_id=:fid'),{'pid':project.id,'fid':existing.id}).scalars().all()
-            for cap in caps:decode_capture(db,project.id,cap,project.parse_decode_level)
+            for cap in caps:
+                decode_capture(
+                    db, project.id, cap,
+                    (parsing_snapshot or {}).get('decode_level', project.parse_decode_level),
+                    parsing_snapshot=parsing_snapshot,
+                )
             db.commit()
             return existing
 
@@ -719,7 +724,11 @@ def ingest_upload(
 
         from app.nmf_decoder.store import decode_capture
         for cap in sorted({ev["capture_id"] for ev in result.raw_events}):
-            decode_capture(db, project.id, cap, project.parse_decode_level)
+            decode_capture(
+                db, project.id, cap,
+                (parsing_snapshot or {}).get('decode_level', project.parse_decode_level),
+                parsing_snapshot=parsing_snapshot,
+            )
 
         nmf.status = "done"
         nmf.n_captures = result.captures

@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from app.models import Project, NmfFile, NmfImportJob
 from app.schemas.ingest import NmfImportReport
 from app.services import import_jobs as queue, import_worker as worker
+from app.services.overview import project_to_schema
 
 
 @pytest.fixture
@@ -48,8 +49,8 @@ def test_accepts_durable_files_without_decoding_and_rejects_overlap(db):
 
 def setup_worker(monkeypatch):
     calls = []
-    def ingest(db, project, stream, filename, handle, *, populate):
-        calls.append((filename, populate))
+    def ingest(db, project, stream, filename, handle, *, populate, parsing_snapshot):
+        calls.append((filename, populate, dict(parsing_snapshot)))
         return SimpleNamespace(status='done', n_captures=1, n_events=4,
             n_gps=2, decoder_version='test', error_msg=None)
     monkeypatch.setattr(worker, 'resolve_decoder', lambda: SimpleNamespace(available=True))
@@ -69,7 +70,8 @@ def test_62_files_finalized_once_and_not_per_file(db, monkeypatch):
     job = queue.enqueue(db, 'p', uploads(62))
     calls, summary, dictionary, chain = setup_worker(monkeypatch)
     worker.run_job(db, job)
-    assert len(calls) == 62 and all(populate is False for _, populate in calls)
+    assert len(calls) == 62 and all(populate is False for _, populate, _ in calls)
+    assert all(call[2]["decode_level"] == "light" for call in calls)
     summary.assert_called_once_with(db, db.get(Project, 'p'), populate=False, importing=True)
     dictionary.assert_called_once()
     chain.assert_called_once()
@@ -87,7 +89,7 @@ def test_interrupted_job_resumes_skipping_completed_files(db, monkeypatch):
     db.commit()
     calls, _, _, chain = setup_worker(monkeypatch)
     worker.run_job(db, job)
-    assert calls == [('file-1.nmf', False)]
+    assert calls[0][:2] == ('file-1.nmf', False)
     chain.assert_called_once()
     assert job.report['files_done'] == 2
 
@@ -96,10 +98,13 @@ def test_file_error_is_not_reported_as_success(db, monkeypatch):
     job = queue.enqueue(db, 'p', uploads())
     setup_worker(monkeypatch)
     original = worker.ingest_upload
-    def failing(db, project, stream, filename, handle, *, populate):
+    def failing(db, project, stream, filename, handle, *, populate, parsing_snapshot):
         if filename == 'file-0.nmf':
             raise ValueError('Malformed file')
-        return original(db, project, stream, filename, handle, populate=populate)
+        return original(
+            db, project, stream, filename, handle,
+            populate=populate, parsing_snapshot=parsing_snapshot,
+        )
     monkeypatch.setattr(worker, 'ingest_upload', failing)
     worker.run_job(db, job)
     assert job.status == 'error'
@@ -172,3 +177,64 @@ def test_report_recovery_rejects_unfinished_files(db, monkeypatch):
     with pytest.raises(ValueError, match='unfinished'):
         worker.finalize_import_report(db, job, db.get(Project, 'p'))
     assert job.status == 'queued' and job.report is None
+
+
+def test_import_job_freezes_parsing_contract_when_enqueued(db):
+    project = db.get(Project, 'p')
+    project.parse_decode_level = 'light'
+    project.parse_binning_mode = 'temporal'
+    project.parse_temporal_resolution = '10ms'
+    project.parse_spatial_bin_m = None
+    db.commit()
+
+    job = queue.enqueue(db, 'p', uploads(1))
+    before = {
+        'decode_level': job.decode_level,
+        'binning_mode': job.binning_mode,
+        'temporal_resolution': job.temporal_resolution,
+        'spatial_bin_m': job.spatial_bin_m,
+        'aggregation_contract_version': job.aggregation_contract_version,
+        'decoder_version': job.decoder_version,
+    }
+    project.parse_decode_level = 'deep'
+    project.parse_binning_mode = 'spatial'
+    project.parse_temporal_resolution = None
+    project.parse_spatial_bin_m = 50
+    db.commit()
+    db.refresh(job)
+
+    assert before == {
+        'decode_level': 'light',
+        'binning_mode': 'temporal',
+        'temporal_resolution': '10ms',
+        'spatial_bin_m': None,
+        'aggregation_contract_version': 'query-binning-v1',
+        'decoder_version': job.decoder_version,
+    }
+    assert worker.parsing_snapshot(job) == before
+
+
+def test_capture_counts_use_measurement_dates_from_file_content(db):
+    project = db.get(Project, 'p')
+    common = dict(
+        project_id='p', size_bytes=1, uploaded_at=queue.now(), status='done',
+        decoder_version='test', error_msg=None, n_captures=1, n_events=1, n_gps=0,
+    )
+    db.add_all([
+        NmfFile(id='date-a', filename='a.nmf', sha256='date-a', start_at='11.06.2026 00:01:00.000', **common),
+        NmfFile(id='date-b', filename='b.nmf', sha256='date-b', start_at='10.06.2026 23:59:00.000', **common),
+    ])
+    db.commit()
+
+    queue.update_capture_counts(db, project)
+
+    assert project.period_start == '2026-06-10'
+    assert project.period_end == '2026-06-11'
+    # Listing also corrects an already-imported legacy project without waiting
+    # for another file or mutating source data.
+    project.period_start = '2026-10-27'
+    project.period_end = '2026-10-27'
+    db.flush()
+    listing = project_to_schema(project)
+    assert listing.periodStart == '2026-06-10'
+    assert listing.periodEnd == '2026-06-11'

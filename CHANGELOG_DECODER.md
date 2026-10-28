@@ -1,5 +1,15 @@
 # CHANGELOG_DECODER
 
+## 1.7.2 (patch) — 2026-10-28 — Agrégations Light typées (Agent BC1)
+
+- `Stat.add()` ne calcule `total`, `weight`, `lo` et `hi` que pour les
+  agrégations numériques. `last`, `count` et les autres agrégations
+  non numériques conservent la valeur source et `n` sans arithmétique.
+- Les types NFF `text` et `str` restent textuels même lorsque leur contenu
+  ressemble à un nombre (`0E0`, `1E4`) ; aucune conversion silencieuse.
+- G43 audite exhaustivement les schémas effectivement chargés et échoue sur
+  tout champ non numérique déclaré avec `sum`, `mean`, `min` ou `max`.
+
 ## 1.7.1 (patch) — 2026-10-25 — Lot A + persistance RANGE_VIOLATIONS (Agent BC3)
 
 (Note: la 1.7.1 initialement livrée au Lot A couvrait les 12 tests

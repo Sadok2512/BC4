@@ -20,11 +20,18 @@ def txpc_cell_type(r):
     return int(value) if value.is_integer() and 0<=value<=4 else None
 
 class Stat:
+    NUMERIC_AGGREGATIONS=frozenset({'sum','mean','min','max'})
     def __init__(self,agg):self.agg=agg;self.total=0.;self.weight=0.;self.n=0;self.last=None;self.lo=None;self.hi=None;self.freq={}
     def add(self,value,weight=1.):
         if value is None or weight is None or weight<0:return
-        self.n+=1;self.last=value;self.total+=value*weight;self.weight+=weight
-        self.lo=value if self.lo is None else min(self.lo,value);self.hi=value if self.hi is None else max(self.hi,value)
+        self.n+=1;self.last=value
+        if self.agg in self.NUMERIC_AGGREGATIONS:
+            # Numeric schemas already decode to int/float.  Do not coerce a
+            # textual schema value merely because its spelling looks numeric.
+            if isinstance(value,bool) or not isinstance(value,(int,float)):
+                raise TypeError(f'{self.agg} aggregation requires a numeric value')
+            self.total+=value*weight;self.weight+=weight
+            self.lo=value if self.lo is None else min(self.lo,value);self.hi=value if self.hi is None else max(self.hi,value)
         if self.agg=='dominant':self.freq[value]=self.freq.get(value,0)+weight
     def value(self):
         if not self.n or (self.agg in ("mean","dominant") and self.weight==0):return None

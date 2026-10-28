@@ -1,3 +1,27 @@
+## 0.90.3 (patch) — BC4 2026-10-28 — Agrégations Light typées / decoder 1.7.2 (Agent BC1)
+
+- Empêche toute arithmétique Light sur les agrégations non numériques et
+  conserve littéralement les champs NFF textuels, dont QSPR/QSPN `0E0` et
+  `1E4`.
+- Ajoute G43, garde exhaustif de compatibilité type/agrégation des schémas
+  chargés, et la couverture de non-régression Deep → Light.
+- Aucun déploiement ni remise en file inclus dans ce patch.
+
+## Unreleased (minor) — Immutable import parsing snapshot and measured project period (Agent BC1)
+
+- Adds migration 0061 and guard G40: every new NMF import job freezes the
+  project parsing contract at enqueue time, and every capture produced by that
+  job receives the same immutable snapshot even if project defaults change.
+- Derives `projects.period_start` / `period_end` after each completed file from
+  the persisted NMF `#START` date (`nmf_file.start_at`), instead of retaining
+  the project creation/import date.
+
+## Unreleased (patch — tests) — Schema parity guard G35 (Agent BC1)
+
+- Compare le schéma live à un replay Alembic vide via des dumps conservés et
+  les catalogues PostgreSQL (tables, colonnes, types, contraintes et index),
+  en listant séparément les partitions dynamiques et en échouant sur tout écart.
+
 ## Incidents (ajout 2026-10-27 22:30 UTC) — Base de données & API exposées en 0.0.0.0
 
 Jusqu'au 2026-10-27 22:30, trois surfaces d'attaque étaient ouvertes vers

@@ -145,3 +145,10 @@ class NmfImportJobView(BaseModel):
     by_file: list[NmfFileEntry]
     error_msg: str | None
     report: NmfImportReport | None
+    # NULL means a legacy job created before the immutable snapshot contract.
+    decode_level: DecodeLevel | None = None
+    binning_mode: BinningMode | None = None
+    temporal_resolution: TemporalResolution | None = None
+    spatial_bin_m: Literal[10, 25, 50, 100] | None = None
+    aggregation_contract_version: str | None = None
+    decoder_version: str | None = None

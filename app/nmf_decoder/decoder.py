@@ -199,7 +199,8 @@ def decode(line,system=None,format_version='unknown',*,capture_id='',seq=0,line_
             # legitimate schema values.  Only undocumented strings are
             # hashed below; treating every field as numeric shifted or
             # discarded the first documented textual parameter.
-            value=(tokens[idx] if f.get('type') == 'str' and tokens[idx] != '' else None) if f.get('type') == 'str' else numeric(tokens[idx],f['type'])
+            textual=f.get('type') in {'str','text'}
+            value=(tokens[idx] if tokens[idx] != '' else None) if textual else numeric(tokens[idx],f['type'])
             if value is not None:
                 lo,hi=f.get('range',[None,None])
                 if (lo is not None and value<lo) or (hi is not None and value>hi) or ('enum' in f and value not in f['enum']):raise ValueError('range')

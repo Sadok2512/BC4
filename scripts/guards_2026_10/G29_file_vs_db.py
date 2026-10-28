@@ -13,12 +13,19 @@ Témoins : 44621571bccc (parcours long), fb5f59006096 (incar), un autre
 parcours_* 723547b196b3 (le plus gros fix GPS).
 Toute cellule en écart avec les 4 autres → ligne brute à côté.
 """
+import os
+from pathlib import Path
 import sys
-sys.path.insert(0, "/app")
+sys.path.insert(0, os.environ.get("G29_APP_ROOT", str(Path(__file__).resolve().parents[2])))
 from sqlalchemy import text, inspect
 from app.db import SessionLocal
 
-CAPTURES = ["44621571bccc", "fb5f59006096", "723547b196b3"]
+CAPTURES = [
+    item for item in os.environ.get(
+        "G29_CAPTURES", "44621571bccc,fb5f59006096,723547b196b3"
+    ).split(",") if item
+]
+PROJECT_ID = os.environ.get("G29_PROJECT_ID")
 # Colonnes "documentées" (non meta) de nmf_event_light = toutes sauf meta
 META_COLS = {
     "project_id","capture_id","seq","seq_last","event_code","system","second",
@@ -37,9 +44,13 @@ def main():
         nn_clause = " OR ".join([f'"{c["name"]}" IS NOT NULL' for c in light_cols])
         for cap in CAPTURES:
             print(f"\n=== G29 capture={cap} ===")
-            pid = db.execute(text(
+            pid = PROJECT_ID or db.execute(text(
                 "SELECT project_id FROM nmf_capture WHERE capture_id=:cap ORDER BY project_id LIMIT 1"
             ), {"cap": cap}).scalar()
+            if pid and not db.execute(text(
+                "SELECT 1 FROM nmf_capture WHERE project_id=:pid AND capture_id=:cap"
+            ), {"pid": pid, "cap": cap}).scalar():
+                pid = None
             if not pid:
                 print(f"NO_CAPTURE in nmf_capture")
                 continue
