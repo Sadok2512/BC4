@@ -21,9 +21,11 @@ def fail(reason: str, code: int = 1) -> None:
 
 dsn = os.environ.get("BC4_DSN", "")
 parsed = urlparse(dsn.replace("postgresql+psycopg", "postgresql", 1))
+ephemeral_host = (parsed.hostname or "").startswith("bc1-")
+non_live_port = parsed.port not in (None, 5432)
 if (
     os.environ.get("G40_EPHEMERAL_DB") != "YES"
-    or parsed.port in (None, 5432)
+    or not (ephemeral_host or non_live_port)
     or parsed.path.rstrip("/") in ("", "/bc4")
 ):
     fail("unsafe_or_missing_ephemeral_dsn", 2)

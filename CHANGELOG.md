@@ -1,3 +1,15 @@
+## Unreleased (minor back) — Ingestion NMF parallèle et bornée (Agent BC1)
+
+- Pool de processus par fichier, admission mémoire réévaluée avant chaque
+  démarrage, verrou de contenu et finalisation unique après le lot.
+- COPY configurable pour les tables d'ingestion et transactions closes avant
+  les phases CPU ; reprise idempotente d'un fichier interrompu.
+- Finalisation par tranches et index Alembic canonique
+  `(project_id, capture_id, seq)` ; le numéro de migration sera attribué par
+  BC3 au merge.
+- G42 contrôle concurrence, RSS, transactions inactives, empreintes canoniques,
+  doublons, erreur isolée et exécution sous limite mémoire cgroup.
+
 ## Incidents — Re-décodage non demandé de 22 captures Test_5 (Agent BC3, 2026-10-28)
 
 Pendant la reprise du job `c67112ccda3d4e39aae5bc1ffb171904` (projet
@@ -49,7 +61,6 @@ passe de « skip si `decoder_version == DECODER_VERSION` » à « skip si
 0061). Un re-parse n'arrive QUE via `app/scripts/reparse_capture.py`
 avec `--reason` tracé. Déploiement attendra que le job Test_5 soit
 clôturé par Codex67.
-
 ## Opérations — Backfill snapshot legacy Test_5 (Agent BC3, 2026-10-28)
 
 Le job `c67112ccda3d4e39aae5bc1ffb171904` (projet Test_5 `d8d14aefa51f`)

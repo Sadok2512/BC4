@@ -1,0 +1,45 @@
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_USER: bc4_bench
+      POSTGRES_PASSWORD: bc1-ingest-only
+      POSTGRES_DB: bc4_bench
+    command:
+      - postgres
+      - -c
+      - idle_in_transaction_session_timeout=5min
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U bc4_bench -d bc4_bench"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+    volumes:
+      - bench_pgdata:/var/lib/postgresql/data
+
+  runner:
+    image: bc1-import-throughput:dev
+    build: .
+    cpus: ${BC4_BENCH_CPUS:-8}
+    environment:
+      BC4_DSN: postgresql+psycopg://bc4_bench:bc1-ingest-only@db:5432/bc4_bench
+      BC4_ENV: test
+      BC4_JWT_SECRET: bc1-ingest-bench-not-live
+      BC4_NMF_DECODER_PATH: /opt/nmf_decoder
+      BC4_NMF_SOURCE_DIR: /var/lib/bc4/nmf-source
+      BC4_IMPORT_WORKERS_MAX: ${BC4_IMPORT_WORKERS_MAX:-6}
+      BC4_IMPORT_RESERVED_MB: ${BC4_IMPORT_RESERVED_MB:-4096}
+      BC4_IMPORT_MEMORY_MARGIN_MB: ${BC4_IMPORT_MEMORY_MARGIN_MB:-512}
+      BC4_IMPORT_BATCH_SIZE: ${BC4_IMPORT_BATCH_SIZE:-5000}
+      BC4_IMPORT_FINALIZE_BATCH_SIZE: ${BC4_IMPORT_FINALIZE_BATCH_SIZE:-500}
+    volumes:
+      - /home/devmat/BC4/decoder:/opt/nmf_decoder:ro
+      - /home/devmat/BC4/witness-nmf:/witness-nmf:ro
+      - bench_nmf_source:/var/lib/bc4/nmf-source
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  bench_pgdata:
+  bench_nmf_source:

@@ -101,9 +101,10 @@ def main() -> int:
         # 5. aucune ligne d'un autre projet (via le join member)
         foreign = db.execute(text("""
             SELECT COUNT(*) FROM superstream_member sm
-            JOIN stg_event_raw r ON r.capture_id=sm.capture_id
-            WHERE sm.superstream_id=:sid AND r.project_id <> sm.project_id
-        """), {"sid": ss_id}).scalar()
+            JOIN stg_event_raw r
+              ON r.project_id=sm.project_id AND r.capture_id=sm.capture_id
+            WHERE sm.superstream_id=:sid AND r.project_id <> :project_id
+        """), {"sid": ss_id, "project_id": project_id}).scalar()
         if foreign and foreign > 0:
             fails.append(f"cross-project rows = {foreign}")
 
