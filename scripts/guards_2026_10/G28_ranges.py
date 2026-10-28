@@ -14,16 +14,28 @@ Témoins (project_id='4b7bfd50ddb6', capture_id light) :
 Ordre canonique (project_id, capture_id) partout : jamais
 `WHERE capture_id=:cap LIMIT 1` (choix arbitraire du projet triplicate).
 """
-import re, sys
+import os, re, sys
 sys.path.insert(0, "/app")
 from sqlalchemy import text, inspect
 from app.db import SessionLocal
 
-CAPTURES = [
-    ("4b7bfd50ddb6", "44621571bccc"),
-    ("4b7bfd50ddb6", "fb5f59006096"),
-    ("4b7bfd50ddb6", "723547b196b3"),
-]
+# 2.55.0 (BC4 2026-10-28) — Témoins paramétrables par env, défaut Test_5
+# (`d8d14aefa51f`). Les 3 captures choisies par le CONTENU :
+#   - a4b0c321c52e : 363 423 records, 136 629 LTE + 51 371 NR, 4 858 GPS,
+#     RSRP -133..-67 (bornes NFF 2.19) → coverage multi-tech + GPS +
+#     plages diverses.
+#   - de18869eebe7 : 445 311 records, 1 351 CELLMEAS NR → coverage NR
+#     plus dense (SCG SCell / PSCell observés).
+#   - daa2b1df250d : 20 849 records, DCI cell_type=6 observé 165 fois →
+#     coverage cells hors canonique (SCell 6).
+# Les deux premiers couvrent les plages ; le 3e teste la robustesse face
+# à un cell_type non canonique.
+_DEFAULT_PID = os.environ.get("G28_PROJECT_ID", "d8d14aefa51f")
+_DEFAULT_CAPS = (
+    os.environ.get("G28_CAPTURES") or
+    "a4b0c321c52e,de18869eebe7,daa2b1df250d"
+).split(",")
+CAPTURES = [(_DEFAULT_PID, cap.strip()) for cap in _DEFAULT_CAPS if cap.strip()]
 META = {"project_id","capture_id","seq","seq_last","event_code","system","second",
         "dimension","t_rel_s","decoder_version","schema_version","format_version",
         "decode_status","reasons","unknown","n_records","n_partial"}

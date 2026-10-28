@@ -29,6 +29,168 @@ Chaque build écrit une ligne dans `catalog_release` (sha256, counts) ;
 
 ## Versions
 
+## 2.55.0 — 2026-10-28 — Spec-fidèle + hotfix PSCell stale_false_grey (Agent BC4)
+
+**Hotfix 2.55.0 (correctif sur 2.54.0 déployé en prod, remonté par Codex67
+2026-10-28)** — G25.3 sortait FAIL `stale_false_grey=11` sur Test_5
+(`d8d14aefa51f`), toutes les 11 feuilles `@ PSCell` (ct=199) :
+
+```
+PHRATE  n=215  phrate_pdsch_sch_bitrate
+TXPC    n=211  txpc_tx_power          │ 167 txpc_pusch_tx_power / txpc_pusch_pl
+                                      │ 158 txpc_pucch_tx_power / txpc_pucch_pl
+                                      │ 130 txpc_pusch_ph        │ 74  txpc_srs_tx_power
+                                      │ 27  txpc_n_pusch_tpcs ×2 (bloc LTE+NR)
+TAD     n=82   tad_ta
+```
+
+Toutes bakées `selectable=False` + reason « N/A — event LTE-only (cell_type
+199 n'existe que côté NR) », alors que les données prod portent bien ces
+observations (`SELECT COUNT(*) FROM nmf_event_light WHERE project_id='d8d14aefa51f'
+AND event_code='PHRATE' AND phrate_cell_type=199 AND phrate_pdsch_sch_bitrate
+IS NOT NULL` → 215, idem TXPC → 211/167/158/130/74/27, TAD → 82).
+
+**Cause (fichier:ligne)** : `scripts/catalog/build_catalog.py:555-559`
+(avant correctif) :
+
+```python
+applicable = (
+    tech == "Shared"
+    or (tech == "LTE" and tech_cell == 7)
+    or (tech == "NR" and tech_cell == 9)
+)
+```
+
+Pour les events `tech=LTE` (PHRATE, TXPC, TAD) et la variante PSCell
+(`tech_cell=9` NR), `applicable=False` → bake `selectable=False` + reason
+baked. Mais en **EN-DC**, une capture LTE-anchored porte des rows NR SCG
+(ct=199 PSCell, ct=100-131 SCG SCell) sur les events LTE eux-mêmes — le
+filtre est faux.
+
+**Correctif** : `scripts/catalog/build_catalog.py:552-563` — retrait du
+filtre `applicable`. Toutes les variantes de l'enum NFF 2.50 restent
+structurellement possibles ; la décision tombe à serve-time via
+`n_per_cell > 0` dans `metrics_catalog_v4.build_catalog_v4`.
+
+**Preuve** (lecture seule sur prod `d8d14aefa51f`, en chargeant le JSON
+2.55.0 patché via override `load_catalog_json`) :
+
+```
+[prod-readonly] catalog manuel 2.55.0 sha=da743a49c9847a0d n_leaves=6945
+[prod-readonly] payload nodes=7297 metrics=294
+[prod-readonly] PSCell leaves PHRATE/TXPC/TAD avec source_column: 24
+[prod-readonly]   selectable=True & n>0            : 11
+[prod-readonly]   selectable=False & n>0 (ex-SFG)  : 0  ← G25.3 PASS
+
+TOP sélectables (ex-stale_false_grey) :
+  PHRATE  n=215 sel=True phrate_pdsch_sch_bitrate 'PDSCH sch bitrate @ PSCell'
+  TXPC    n=211 sel=True txpc_tx_power            'TX power (bloc TETRA) @ PSCell'
+  TXPC    n=167 sel=True txpc_pusch_tx_power      'PUSCH TX power (bloc LTE) @ PSCell'
+  TXPC    n=167 sel=True txpc_pusch_pl            'PUSCH PL @ PSCell'
+  TXPC    n=158 sel=True txpc_pucch_tx_power      'PUCCH TX power (bloc LTE) @ PSCell'
+  TXPC    n=158 sel=True txpc_pucch_pl            'PUCCH PL @ PSCell'
+  TXPC    n=130 sel=True txpc_pusch_ph            'PUSCH PH @ PSCell'
+  TAD     n=82  sel=True tad_ta                   'TA (bloc GSM) @ PSCell'
+  TXPC    n=74  sel=True txpc_srs_tx_power        'SRS TX power (bloc LTE) @ PSCell'
+  TXPC    n=27  sel=True txpc_n_pusch_tpcs        '#PUSCH TPCs (bloc LTE) @ PSCell'
+  TXPC    n=27  sel=True txpc_n_pusch_tpcs        '#PUSCH TPCs (bloc NR) @ PSCell'
+```
+
+Nombre de sélectables identique au nombre de stale_false_grey reporté par
+Codex67 (11). Les 13 autres variantes PSCell sur PHRATE/TXPC/TAD ont n=0
+honnêtement (reason « Aucune observation de PSCell NR (199) pour <ev>
+dans ce projet »).
+
+**Impact catalogue structural** : les 4 292 feuilles cell_scoped sortent
+désormais toutes avec `selectable=null` (0 baked `False`), contre ~1 400
+en 2.54.0 (filtrées par applicabilité tech). Le JSON s'allège de ~1 000 ko.
+
+**NOUVEAU sha2.55.0** : `da743a49c9847a0d424af8c4dbe9ca3ef5abe4dd6f071c3ef3dfa26f6f2a456a`
+(ancien 2.55.0 pré-hotfix : `7aff531b644b36fecac06d308b37e0e8d0471436fc88d1eacbd4a73331931c3b`).
+
+**Déploiement 2.55.0** (BC3) : UNIQUEMENT par
+`scripts/catalog/bootstrap_catalog_release.py --version 2.55.0`.
+
+**Écart décodeur annexe découvert** : décodeur 1.7.2 n'alimente plus
+`phrate_cell_type` (ni `txpc_cell_type` ni `tad_cell_type` à vérifier).
+Captures prod décodées 1.7.1 ont `phrate_cell_type=199` sur
+ecffb18dbd7f ; même fichier re-ingéré via 1.7.2 sur base jetable → tous
+NULL. Non-bloquant pour ce correctif (le fix catalog porte sur
+`applicable`, pas sur la dispo du dispatch) mais à investiguer dans
+un lot décodeur dédié — CHANGELOG_DECODER X.Y.Z.
+
+## 2.55.0 — 2026-10-28 — Spec-fidèle : retrait enum hardcodé `cell_type_lte_mesure`, libellés distincts par position, PLAIU decoder_gap (Agent BC4)
+
+Lot `a4/catalog-cell-type` (correctif suite de 2.54.0, option A spec-fidèle).
+
+- **Enum `cell_type_lte_mesure` retiré du JSON** (vidé). Il était hardcodé
+  en 2.51.0 par BC3 avec `{0:PCell, 1:Listed neighbour, 2:Detected
+  neighbour, 3:Scanner, 4:Scanner neighbour}` — NON conforme à la spec
+  NFF 2.50 CELLMEAS LTE p.30475 qui définit `{0:Serving, 1:Listed,
+  2:Detected, 10-40:SCell 1-31}` et saute de 2 à 10 (pas de valeurs 3/4).
+  Les commentaires du build citent la spec. Mapping event → enum
+  reste piloté par `EVENT_CELL_TYPE_ENUM` (événement) + `ENUM_VARIANTS`
+  (variantes par enum).
+
+- **Dédoublonnage des libellés** pour les champs répétés de la spec 2.50
+  (point 2 Codex67). Dans la même event, un même nom de champ apparaissant
+  à plusieurs positions (ex. DCI `#Variables` positions 5 LTE, 7 NR, 11
+  NR — deux blocs de distribution imbriqués en NR) porte désormais un
+  suffixe de section :
+  ```
+  #Variables (bloc LTE)
+  #Variables (bloc NR)
+  #Variables (bloc NR #11)
+  ```
+  Source : colonne `section` du CSV spec. Pour les répétitions
+  intra-section (cas DCI NR), on ajoute `#<field_no>` sur la 2e+
+  occurrence. Jamais inventé.
+
+- **PLAIU `cell_scoped=true` conservé** avec un champ `decoder_gap`
+  (categories.yaml) qui déclare : le décodeur 1.7.2 reste sur schéma
+  NFF 2.19 (`app/nmf_decoder/schemas/PLAIU.yaml`) et n'alimente pas
+  `plaiu_cell_type`. Serve-time : les feuilles PLAIU tombent dans le
+  bucket `cell_type NULL` avec le tooltip `PLAIU reste sur schéma NFF
+  2.19 — cell_type non décodé. CHANGELOG_DECODER X.Y.Z requis pour
+  upgrade NFF 2.50 (ajoute plaiu_cell_type)`. Écart ouvert au décodeur.
+
+- **Table événement → enum NFF 2.50 (cité spec par ligne)** :
+
+  | Enum | Spec NFF 2.50 | Events (Test_5) |
+  |---|---|---|
+  | `lte_scell` « Serving cell type » (0=PCell, 1-31=SCell 1-31) | DCI p.27687, SCELL p.17140, SCELLMOD p.21068, MACRATE p.26693, MACRATEU p.26937, PHRATE p.27234, PHRATEU p.27583, PLAID p.28140, PLAIU p.28633 (décodeur 2.19), CQI p.29127, CSI p.29329, PMI p.29548, TAD p.33602, CI p.33818, TXPC p.34156 | CI, CQI, CSI, DCI, MACRATE, MACRATEU, PHRATE, PHRATEU, PLAID, PLAIU†, PMI, SCELL, SCELLMOD, TAD, TXPC |
+  | `lte_cellmeas` CELLMEAS LTE « Cell type » (0=Serving, 1=Listed, 2=Detected, 10-40=SCell 1-31) | CELLMEAS p.30475 | CELLMEAS (system=7/8) |
+  | `lte_mimo` MIMOMEAS LTE « MIMO cell type » (0=Serving, 10-40=SCell 1-31) | MIMOMEAS p.31586 | MIMOMEAS (system=7/8) |
+
+  † PLAIU : spec dit cell_type présent, décodeur sur NFF 2.19 ne le
+  produit pas (`decoder_gap` déclaré).
+
+- **(event, system) ambiguïté sur CELLMEAS/MIMOMEAS** : CELLMEAS NR
+  (spec p.30654) a un enum DIFFÉRENT (0=PCell, 1-31=SCell, 100-131=SCG
+  SCell, 199=SCG PSCell, 1000-1002=Listed/Detected neighbours). La
+  valeur 10 pour CELLMEAS LTE = `SCell 1`, pour CELLMEAS NR = `SCell 10`.
+  Mon code actuel applique l'enum LTE côté labels — un capture pur NR
+  verrait `10 → SCell 1 LTE` au lieu de `SCell 10 NR`. Écart déclaré
+  **ouvert** — fix dans un lot séparé (dispatch per (event, system)
+  avec `nmf_event_light.system`).
+
+- `parse_selection` étendu : whitelist cell `{all, null, <entier ≥ 0,
+  ≤ 10000>}` (NFF 2.50 complet). Point 1 Codex67. **Écart décodeur**
+  déclaré : `app/nmf_decoder/cells.py:73` filtre `raw not in range(5)`
+  pour LTE → les SCell 5+ ne sont pas projetés dans `nmf_cell_second`
+  → `/metrics/table` renvoie 0 ligne. Patch décodeur requis pour
+  compléter P1 (nmf_cell_second élargi).
+
+- `decoder_min_version` inchangé (`1.7.1`).
+- `spec_version` inchangé (`2.50`).
+
+Impact numérique : `n_leaves=6945` (identique à 2.54.0 — les delta sont
+dans les LIBELLÉS). sha256 `7aff531b644b36fecac06d308b37e0e8d0471436fc88d1eacbd4a73331931c3b`.
+
+**Déploiement du JSON 2.55.0** : UNIQUEMENT par
+`scripts/catalog/bootstrap_catalog_release.py --version 2.55.0`.
+Aucun UPDATE/INSERT manuel en base.
+
 ## 2.54.0 — 2026-10-28 — Retrait feuilles « Cell type » (dimension) + variantes par enum NFF 2.50 de l'événement + feuilles outsider (Agent BC4)
 
 Lot `a4/catalog-cell-type` (branche BC4, numéro final attribué par BC3 au merge).
