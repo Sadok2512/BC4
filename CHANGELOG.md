@@ -5,6 +5,8 @@
   `1E4`.
 - Ajoute G43, garde exhaustif de compatibilité type/agrégation des schémas
   chargés, et la couverture de non-régression Deep → Light.
+- Réunit explicitement les branches Alembic 0061 et 0062 via la révision
+  0063 afin que `alembic upgrade head` reste univoque après le merge.
 - Aucun déploiement ni remise en file inclus dans ce patch.
 
 ## Unreleased (minor) — Immutable import parsing snapshot and measured project period (Agent BC1)
