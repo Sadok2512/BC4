@@ -3,7 +3,7 @@ import csv,io,json
 from pathlib import Path
 import pytest
 from app.nmf_decoder.decoder import decode,hashed
-from app.nmf_decoder.light import Light
+from app.nmf_decoder.light import Light,Stat
 
 W=json.loads((Path(__file__).parent/'fixtures/nmf_decoder_witnesses.json').read_text())
 def line(tokens):
@@ -62,3 +62,37 @@ def test_light_replay_normalizes_null_group_dimensions():
     for g in stored.groups:g['values']={k:v for k,v in g['values'].items() if v is not None}
     one=Light();two=Light();one.add(r);two.add(stored)
     assert list(one.rows())==list(two.rows())
+
+@pytest.mark.parametrize(
+    ('event','text_values'),
+    [
+        ('QSPN',{17:'0E0',18:'1E4'}),
+        ('QSPR',{22:'0E0',23:'1E4',34:'0E0',35:'1E4'}),
+    ],
+)
+def test_deep_to_light_preserves_numeric_looking_text(event,text_values):
+    from app.nmf_decoder.schema import schema_for
+    schema=schema_for(event,7)
+    tokens=['']*max(field['col'] for field in schema['header'])
+    tokens[0]=event;tokens[1]='00:00:00.000';tokens[2]='0';tokens[3]='7'
+    for field in schema['header']:
+        tokens[field['col']-1]=text_values.get(field['col'],'1')
+    deep=decode(line(tokens),format_version='2.59',capture_id='typed-text',seq=1)
+    deep.t_rel_s=0
+    for col,value in text_values.items():
+        code=next(field['code'] for field in schema['header'] if field['col']==col).replace('.','_')
+        assert deep.values[code] == value
+        assert isinstance(deep.values[code],str)
+    light=Light();light.add(deep);row=list(light.rows())[0]
+    for col,value in text_values.items():
+        code=next(field['code'] for field in schema['header'] if field['col']==col).replace('.','_')
+        assert row['values'][code] == value
+
+def test_stat_non_numeric_aggregation_never_performs_arithmetic():
+    stat=Stat('last');stat.add('0E0');stat.add('1E4')
+    assert stat.value()=='1E4' and stat.n==2
+    assert stat.total==0 and stat.weight==0
+
+def test_stat_numeric_aggregation_rejects_text_without_coercion():
+    with pytest.raises(TypeError,match='requires a numeric value'):
+        Stat('mean').add('1E4')

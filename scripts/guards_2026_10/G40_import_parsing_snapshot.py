@@ -32,8 +32,11 @@ if (
     or parsed.path.rstrip("/") in ("", "/bc4")
 ):
     fail("unsafe_or_missing_ephemeral_dsn", 2)
-source = Path(os.environ.get("G40_NMF_PATH", ""))
-if not source.is_file():
+raw_paths = os.environ.get("G40_NMF_PATHS")
+sources = [Path(item) for item in raw_paths.split(os.pathsep)] if raw_paths else [
+    Path(os.environ.get("G40_NMF_PATH", ""))
+]
+if not sources or any(not source.is_file() for source in sources):
     fail("G40_NMF_PATH_missing", 2)
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
@@ -67,11 +70,18 @@ with TestClient(app, raise_server_exceptions=False) as client:
     if created.status_code != 201:
         fail(f"create_http_{created.status_code}")
     project_id = created.json()['id']
-    with source.open('rb') as stream:
+    streams = [source.open('rb') for source in sources]
+    try:
         queued = client.post(
             f'/projects/{project_id}/nmf', headers=headers,
-            files=[('files', (source.name, stream, 'application/octet-stream'))],
+            files=[
+                ('files', (source.name, stream, 'application/octet-stream'))
+                for source, stream in zip(sources, streams)
+            ],
         )
+    finally:
+        for stream in streams:
+            stream.close()
     if queued.status_code != 202:
         fail(f"queue_http_{queued.status_code}")
     job_id = queued.json()['id']

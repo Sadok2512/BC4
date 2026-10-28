@@ -1,3 +1,12 @@
+## 0.90.3 (patch) — BC4 2026-10-28 — Agrégations Light typées / decoder 1.7.2 (Agent BC1)
+
+- Empêche toute arithmétique Light sur les agrégations non numériques et
+  conserve littéralement les champs NFF textuels, dont QSPR/QSPN `0E0` et
+  `1E4`.
+- Ajoute G43, garde exhaustif de compatibilité type/agrégation des schémas
+  chargés, et la couverture de non-régression Deep → Light.
+- Aucun déploiement ni remise en file inclus dans ce patch.
+
 ## Unreleased (minor) — Immutable import parsing snapshot and measured project period (Agent BC1)
 
 - Adds migration 0061 and guard G40: every new NMF import job freezes the
