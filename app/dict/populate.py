@@ -21,6 +21,7 @@ from typing import Any
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.dict.conversions import convert
 from app.dict.decode import (
     DENY,
@@ -199,7 +200,7 @@ def _value_to_text(val: Any) -> str | None:
 # ---------------------------------------------------------------------------
 # Populate principal
 # ---------------------------------------------------------------------------
-BATCH_SIZE = 1000
+BATCH_SIZE = settings.import_finalize_batch_size
 
 
 # 0.36.0 — Backfill `stg_event.system` par le CONTENU
@@ -401,6 +402,9 @@ def populate_param_occurrence(
         ),
         {"pid": project_id},
     ).all()
+    # Row objects are materialized; close the read transaction before ASN.1
+    # decoding and Python flattening.
+    db.commit()
 
     stats["events_scanned"] = len(rows)
     if not rows:
@@ -438,6 +442,7 @@ def populate_param_occurrence(
             ),
             batch,
         )
+        db.commit()
         batch.clear()
 
     for r in rows:
