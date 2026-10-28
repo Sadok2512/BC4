@@ -1,3 +1,55 @@
+## Incidents — Re-décodage non demandé de 22 captures Test_5 (Agent BC3, 2026-10-28)
+
+Pendant la reprise du job `c67112ccda3d4e39aae5bc1ffb171904` (projet
+Test_5 `d8d14aefa51f`), les 22 captures déjà `done` ont été
+**re-décodées à l'insu de l'opérateur** par `populate_chain` →
+`ensure_light` (`app/nmf_decoder/store.py:156-173`) →
+`decode_capture` (`app/nmf_decoder/store.py:78`). Leur
+`decoder_version` est passé de `1.7.1` à `1.7.2` sur `nmf_capture`,
+leurs partitions `nmf_event_deep`/`_group`/`_light`/`_light_group`/
+`_pair` ont été TRUNCATE+COPY dans une seule transaction par capture.
+
+Cause (`app/nmf_decoder/store.py:78`, avant correctif) :
+
+```python
+if old and old['decoder_version']==DECODER_VERSION and (old['decode_level']=='deep' or old['decode_level']==level) and not force:
+    return skipped
+```
+
+Le skip était conditionné sur `decoder_version == DECODER_VERSION`
+live. Chaque upgrade du décodeur invalidait silencieusement le skip
+sur toutes les captures du projet et re-déclenchait `ensure_light`.
+
+**Preuves de non-perte** (lecture seule prod) :
+
+| capture | avant (hier) | après re-décodage |
+|---|---:|---:|
+| 973cec60122c (non touchée, encore 1.7.1) | 529 339 | 529 339 identique |
+| 019d6fd0c53b (re-décodée) | 14 337 | 14 337 identique |
+| 138396f44a7b (re-décodée) | 17 212 | 17 212 identique |
+| 1c85478155fc (re-décodée) | 21 733 | 21 733 identique |
+| 4ccdc50227fc (re-décodée) | 22 954 | 22 954 identique |
+| de18869eebe7 (dernière, 445k) | 445 311 | n_records=445 311, stg_event_raw=445 311, nmf_event_deep=445 311 ✓ |
+
+Zéro perte, aucune capture vide ni partielle. MVCC fait du
+remplacement atomique côté lecteur (DELETE+COPY+INSERT dans une seule
+transaction par capture, les sessions concurrentes voient l'ancienne
+version jusqu'au COMMIT).
+
+**Arrêt** : sur décision Codex67, worker `bc4-import-worker-1` stoppé
+`entre deux captures` à `2026-10-28T16:12:17Z` (count `1.7.2` passé
+de 19 à 20, surveillance background `/home/devmat/BC4/artifacts/stop-worker-between-captures.log`).
+État figé : **20×1.7.2 + 4×1.7.1** (mélange déclaré). Aucun UPDATE
+retour en arrière.
+
+**Correctif** : branche `feat/bc3-g44-immutable-snapshot` (3 commits
++ tests PASS 8/8 + G44 live PASS). Le gate `decode_capture` ligne 78
+passe de « skip si `decoder_version == DECODER_VERSION` » à « skip si
+`old` existe et `force=False` » (snapshot de capture immuable, suite
+0061). Un re-parse n'arrive QUE via `app/scripts/reparse_capture.py`
+avec `--reason` tracé. Déploiement attendra que le job Test_5 soit
+clôturé par Codex67.
+
 ## Opérations — Backfill snapshot legacy Test_5 (Agent BC3, 2026-10-28)
 
 Le job `c67112ccda3d4e39aae5bc1ffb171904` (projet Test_5 `d8d14aefa51f`)

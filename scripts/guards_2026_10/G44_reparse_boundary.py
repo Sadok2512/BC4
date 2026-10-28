@@ -86,8 +86,11 @@ ADMIN_PASSWORD = "TEST-G44-admin-only-9!"
 DECODER_172_MARKER = "unsupported operand type(s) for +=: 'float' and 'str'"
 
 NMF_PATHS = [
-    "/home/devmat/BC4/witness-nmf/Mesures Indoor/BCNE 26S24_VD_T_MESURE-BENCH-CENTRE-COMMERCIAL-PETITE-FORET_indoor_26Jun11_111346.7.nmf",
-    "/home/devmat/BC4/witness-nmf/Mesures Indoor/BCNE 26S24_VD_T_MESURE-BENCH-CENTRE-COMMERCIAL-PETITE-FORET_indoor_26Jun11_112544.6.nmf",
+    # 2 petits ikea NMF (quelques centaines d'events) copiés depuis le
+    # volume de production (lecture seule) vers /tmp pour le G44 live sur
+    # base jetable. Choisis pour que le test tourne en quelques minutes.
+    "/tmp/g44-nmf/ikea_26Jun10_172354.4.nmf",
+    "/tmp/g44-nmf/ikea_26Jun10_172403.8.nmf",
 ]
 
 SNAPSHOT_COLS = (
@@ -185,11 +188,18 @@ def snapshot_captures(project_id: str) -> dict[str, dict]:
     return out
 
 
-def mark_file_as_decoder_172_failure(job_id: str, filename: str) -> str:
+def mark_file_as_decoder_172_failure(job_id: str, filename: str,
+                                       source_path: str) -> str:
     """Simule l'échec décodeur 1.7.2 sur un fichier déjà `done` : patch
     `job.files` via ORM pour le repasser status='error' avec le marker
     `requeue_import_decoder_172_failures` reconnaît. Trouve aussi le
-    `capture_id` à retirer (sinon la capture reste orpheline)."""
+    `capture_id` à retirer (sinon la capture reste orpheline).
+
+    `app/services/import_worker.py:114` fait `unlink(missing_ok=True)` sur
+    les fichiers temp `jobs/<jid>/N.nmf` après ingest réussi. Pour qu'un
+    requeue puisse rejouer le fichier, on restaure le temp depuis la
+    source `source_path` que G44 a mise de côté avant l'ingest."""
+    import shutil
     with SessionLocal() as db:
         job = db.get(NmfImportJob, job_id)
         if job is None:
@@ -200,6 +210,12 @@ def mark_file_as_decoder_172_failure(job_id: str, filename: str) -> str:
             e = dict(entry)
             if e.get("filename") == filename and e.get("status") == "done":
                 touched = e.get("filename")
+                # Restaure le temp (unlinké par import_worker:114 après succès)
+                # pour que requeue_import_decoder_172_failures.py:50 trouve
+                # le fichier et puisse rejouer l'ingest.
+                target = Path(e["path"])
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(source_path, target)
                 e.update(status="error", error_msg=DECODER_172_MARKER,
                          n_captures=0, n_events=0, n_gps=0,
                          decoder_version=None)
@@ -272,7 +288,7 @@ def main() -> int:
         # Le .7 reste done — c'est lui qu'on surveille.
         file_to_requeue = Path(NMF_PATHS[1]).name
         print(f"\n[G44] simulating decoder 1.7.2 failure on {file_to_requeue}")
-        mark_file_as_decoder_172_failure(jid1, file_to_requeue)
+        mark_file_as_decoder_172_failure(jid1, file_to_requeue, NMF_PATHS[1])
 
         # requeue
         print("[G44] running requeue_import_decoder_172_failures")
@@ -295,31 +311,67 @@ def main() -> int:
                   f"n_records={d['n_records']} "
                   f"counts={d['counts']}")
 
-        # Comparaison : les captures présentes dans BOTH before/after doivent
-        # être strictement identiques (ne font pas partie des M fichiers remis).
-        # Les captures nouvelles (créées lors du re-import) correspondent au
-        # fichier remis en file et ne sont pas dans `before` ou leur capture_id
-        # change (nouveau nmf_file_id). On compte :
-        #   - fails_frozen   : captures `before` dont la version `after`
-        #                      diffère sur un champ immuable → FAIL
-        #   - new_captures   : captures présentes dans `after` et pas `before`
-        #                      → attendues (M fichiers)
+        # Comparaison : il faut distinguer
+        #   - captures FROZEN (ne font PAS partie des M fichiers remis) :
+        #     dans before ∧ after, décoded par la même source → doivent être
+        #     STRICTEMENT identiques (snapshot + comptes + decoded_at) ;
+        #   - captures remises en file : dans before ∧ after (même capture_id
+        #     grâce au contenu NMF déterministe) mais `decoded_at` a avancé
+        #     parce qu'elles ont été re-décodées via le requeue.
+        # On distingue en interrogeant `nmf_file.filename` lié à chaque capture.
+        requeued_filename = Path(NMF_PATHS[1]).name
+        with engine.connect() as conn:
+            cap_to_file = dict(conn.execute(text("""
+                SELECT c.capture_id, f.filename FROM nmf_capture c
+                JOIN nmf_file f ON f.id=c.nmf_file_id
+                WHERE c.project_id = :pid
+            """), {"pid": pid}).all())
+
         fails: list[str] = []
-        unchanged = 0
-        for cap_id, b in before.items():
-            if cap_id not in after:
-                fails.append(f"capture {cap_id} disparue après reprise (snapshot non immuable)")
-                continue
-            diffs = diff_capture(b, after[cap_id])
-            if diffs:
-                fails.append(f"capture {cap_id} modifiée (snapshot non immuable): {diffs}")
+        frozen_ids = []
+        requeued_ids = []
+        for cap_id in before:
+            fn = cap_to_file.get(cap_id, "?")
+            if fn == requeued_filename:
+                requeued_ids.append(cap_id)
             else:
-                unchanged += 1
+                frozen_ids.append(cap_id)
+
+        # 1. Les captures FROZEN doivent exister dans `after` et être strictement identiques
+        for cap_id in frozen_ids:
+            if cap_id not in after:
+                fails.append(f"frozen capture {cap_id} ({cap_to_file.get(cap_id)}) disparue après reprise")
+                continue
+            diffs = diff_capture(before[cap_id], after[cap_id])
+            if diffs:
+                fails.append(f"frozen capture {cap_id} ({cap_to_file.get(cap_id)}) modifiée malgré done: {diffs}")
+        # 2. Les captures REMISES EN FILE doivent avoir un `decoded_at` postérieur
+        for cap_id in requeued_ids:
+            if cap_id not in after:
+                fails.append(f"requeued capture {cap_id} ({cap_to_file.get(cap_id)}) manquante après reprise")
+                continue
+            if after[cap_id]["decoded_at"] <= before[cap_id]["decoded_at"]:
+                fails.append(
+                    f"requeued capture {cap_id} decoded_at pas avancé "
+                    f"({before[cap_id]['decoded_at']} → {after[cap_id]['decoded_at']}) → "
+                    f"re-décodage n'a pas eu lieu"
+                )
+            # n_records doit rester identique (même contenu NMF = même ingestion)
+            if after[cap_id]["n_records"] != before[cap_id]["n_records"]:
+                fails.append(
+                    f"requeued capture {cap_id} n_records changé: "
+                    f"{before[cap_id]['n_records']} → {after[cap_id]['n_records']} "
+                    f"(ingestion non déterministe)"
+                )
+
+        unchanged = len(frozen_ids) - sum(1 for f in fails if "frozen capture" in f)
+        print(f"\n[G44] frozen captures (done, pas remises en file): {len(frozen_ids)} "
+              f"identifiées, {unchanged} inchangées (snapshot + comptes + decoded_at)")
+        print(f"[G44] requeued captures (fichier remis en file): {len(requeued_ids)} "
+              f"identifiées, decoded_at vérifié avancé")
         new_captures = [c for c in after if c not in before]
-        print(f"\n[G44] frozen captures: {unchanged} (expected ≥ 1)")
-        print(f"[G44] new captures   : {len(new_captures)} (expected = 1)")
-        if len(new_captures) != 1:
-            fails.append(f"expected exactly 1 new capture after requeue, got {len(new_captures)}")
+        if new_captures:
+            fails.append(f"captures inattendues apparues: {new_captures}")
 
         verdict = "PASS" if not fails else "FAIL"
         print(f"\nG44_VERDICT {verdict} frozen={unchanged} new={len(new_captures)} fails={len(fails)}")
