@@ -1,3 +1,64 @@
+## 0.92.0 (minor) — BC4 2026-10-28 — Catalogue 2.54.0 : Cell type retiré, enum NFF 2.50 par événement, G25.3/4/5 (Agent BC4, déployé Agent BC3)
+
+Lot `a4/catalog-cell-type`, numéro final attribué par BC3 au merge
+(déclaré **minor** ; `pyproject.toml` conservé à `0.91.0` jusqu'au
+merge).
+
+- `scripts/catalog/build_catalog.py` : feuilles « Cell type » retirées
+  du bloc cell_scoped (247 leaves supprimés). 3 feuilles bare conservées
+  pour CHI / MACI / RACHI (events `cell_scoped=false`). Bake-time
+  **structural-only** : `selectable` baked uniquement quand c'est
+  l'applicabilité tech (LTE-only / NR-only) ou les extras `_fil`/`extra_N`
+  (FF 2.62 non documenté 2.50). Fin du bake « cell_type jamais observé
+  en base » (Codex67 2026-10-28 point 2).
+- `scripts/catalog/build_catalog.py` : mapping event → enum NFF 2.50,
+  cité spec par ligne (`EVENT_CELL_TYPE_ENUM` + `ENUM_VARIANTS`).
+  Trois familles d'enums LTE : `lte_scell` (DCI/CQI/CSI/.../TXPC —
+  0=PCell + 1-4=SCell N + bucket SCG 100-131 + PSCell 199),
+  `lte_cellmeas` (CELLMEAS LTE p.30475 — 0=Serving, 1=Listed,
+  2=Detected, 10-13=SCell 1-4), `lte_mimo` (MIMOMEAS LTE p.31586 —
+  0=Serving, 10-13=SCell 1-4). Les variantes d'arbre portent désormais
+  les libellés de l'enum de L'ÉVÉNEMENT, pas « SCell 1-4 » générique
+  (Codex67 2026-10-28 point 1, 2).
+- `app/kpi/metrics_catalog_v4.py` : nouveau comptage **par-projet**
+  `(event, cell_type, source_column)` via GROUP BY ciblé sur
+  `nmf_event_light.<ev>_cell_type` (CI/CQI/DCI/MACRATE/.../TXPC) et
+  `nmf_event_light_group.cell_type` (CELLMEAS/MIMOMEAS). `selectable
+  = col décodée ET n_per_cell > 0`. Reason honnête quand n_per_cell=0 :
+  `Aucune observation de <cellule> pour <event> dans ce projet`
+  (Codex67 point 2). Comptage « UL grants @ PCell » corrigé (37 309
+  global → n_per_cell réel filtré ; Codex67 point 3).
+- `app/kpi/metrics_catalog_v4.py` : découverte **feuilles outsider**
+  par-enum (`CANONICAL_CTS_PER_ENUM`). Les `cell_type` observés hors
+  canoniques de l'enum (SCell 5/6=14/15 pour lte_cellmeas, SCG non
+  bucketées pour lte_scell, 1000+ NR neighbours) et `cell_type NULL`
+  sortent en feuille grise sous l'event, avec libellé **humain** du
+  champ (« UL grants @ SCell 6 »), tooltip spec et proof
+  `observed-no-catalog` / `observed-no-cell-type`. Jamais un rejet
+  silencieux (Codex67 point 4).
+- `scripts/guards_2026_10/G25_catalogue.py` : G25.3 (stale_false_grey
+  générique, zéro test sur le texte de la raison, exclusion des
+  outsiders via proof `observed-*`), G25.4 (cell_sum_loss — somme des
+  n par cellule = COUNT global), G25.5 (grey_no_reason — tooltip
+  obligatoire sur grey). Exit != 0 quand FAIL (Codex67 point 5).
+- `app/kpi/catalog_release/catalog_2.54.0.json` : nouvel artefact
+  (généré par `build_catalog.py --version 2.54.0`), `n_leaves ≈ 7 000`.
+  **Déploiement : UNIQUEMENT** via
+  `scripts/catalog/bootstrap_catalog_release.py --version 2.54.0`
+  (lit le JSON depuis `app/kpi/catalog_release/`, calcule sha256,
+  upsert sur `catalog_release(version)` et bascule `is_current`).
+  **Aucun UPDATE/INSERT manuel en base**.
+
+Pré-requis build : G36 PASS avant base jetable.
+
+**Déploiement BC3 2026-10-28** : branche `a4/catalog-cell-type` commit
+`6de8d01` mergée sur `main` (merge commit à venir), version BC3 attribuée
+**0.92.0 (minor)**. Vérif point 0 pré-merge : 5 nœuds CELLMEAS collés
+depuis `catalog_2.54.0.json` → `@ Serving` / `@ Listed` / `@ Detected` /
+`@ SCell n` (conforme NFF 2.50 Cell type enum p. 30475, le point 1 de la
+consigne Codex67 est respecté). Comptages CELLMEAS-scoped : Serving 77,
+Listed 77, Detected 77, SCell n 308 (= 4 × 77 pour SCell 1-4).
+
 ## Opérations — Backfill snapshot legacy Test_5 (Agent BC3, 2026-10-28)
 
 Le job `c67112ccda3d4e39aae5bc1ffb171904` (projet Test_5 `d8d14aefa51f`)

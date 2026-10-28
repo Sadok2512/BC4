@@ -29,6 +29,98 @@ Chaque build écrit une ligne dans `catalog_release` (sha256, counts) ;
 
 ## Versions
 
+## 2.54.0 — 2026-10-28 — Retrait feuilles « Cell type » (dimension) + variantes par enum NFF 2.50 de l'événement + feuilles outsider (Agent BC4)
+
+Lot `a4/catalog-cell-type` (branche BC4, numéro final attribué par BC3 au merge).
+
+- **Retrait des 247 feuilles « Cell type » cell_scoped** dans l'arbre
+  des métriques. Le champ reste la dimension cellule (dispatch @cell
+  via `metrics_v3.parse_selection` et `cell_options`). Aucune donnée
+  supprimée. Les 12 feuilles « Cell type » **bare** sur 11 events
+  `cell_scoped=false` (CHI, MACI, RACHI explicitement ; AGRANT, BSR,
+  EDCHI, HARQI, HSSCCHI, MACBLER, MACERATE, SGRANT via défaut) sont
+  conservées : ces events n'exposent pas de dimension cellule, le
+  champ est exploité tel quel. Preuve :
+  ```sql
+  SELECT DISTINCT event_code, dimension FROM nmf_event_light
+  WHERE project_id='d8d14aefa51f' AND event_code IN ('CHI','MACI','RACHI');
+  → CHI | '' · MACI | '' · RACHI | ''
+  ```
+  Les events n'ont jamais de `.cell_type=` dans leur dimension.
+
+- **Mapping event → enum NFF 2.50** cité spec par ligne
+  (`EVENT_CELL_TYPE_ENUM` + `ENUM_VARIANTS` dans
+  `scripts/catalog/build_catalog.py`). L'arbre portait des libellés
+  « SCell 1-4 » génériques pour **tous** les events. Trois familles
+  distinctes maintenant :
+
+  | Enum | Spec NFF 2.50 (p.) | Variantes canoniques | Events |
+  |---|---|---|---|
+  | `lte_scell` | DCI p.27683 et parallèles « Serving cell type » | PCell(0), SCell 1-4(1-4), PSCell(199), SCell NR 100+ bucket(100-131) | CI, CQI, CSI, DCI, MACRATE, MACRATEU, PHRATE, PHRATEU, PLAID, PLAIU, PMI, SCELL, SCELLMOD, TAD, TXPC |
+  | `lte_cellmeas` | CELLMEAS LTE p.30475 | Serving(0), Listed(1), Detected(2), SCell 1-4(10-13) | CELLMEAS |
+  | `lte_mimo` | MIMOMEAS LTE p.31586 | Serving(0), SCell 1-4(10-13) | MIMOMEAS |
+
+  Pour un event en `lte_cellmeas`, les variantes affichées sont
+  « @ Serving / @ Listed / @ Detected / @ SCell 1-4 », **jamais**
+  « @ SCell 1-4 » générique. Idem `lte_mimo`.
+
+- **Fin du bake-time « cell_type jamais observé en base »**. Toutes
+  les variantes canoniques sortent avec `selectable` **omise** quand
+  elles sont applicables (le build ne consulte plus le corpus pour
+  décider — Codex67 2026-10-28 point 2). La bake-time conserve
+  uniquement les cas **structurels** : non applicable (LTE-only /
+  NR-only), champ `_fil` ou `extra_N` (FF 2.62 non documenté 2.50).
+
+- **Disponibilité calculée par projet** (`metrics_catalog_v4.py`).
+  Pour chaque feuille cell_scoped applicable, le serveur calcule
+  maintenant `n_per_cell = COUNT(*) WHERE project_id ET event_code
+  ET <ct_col>=<ct> ET <source_column> IS NOT NULL` au moment de servir
+  `/metrics`, puis `selectable = col décodée ET n_per_cell > 0`.
+  Reason honnête quand n_per_cell=0 : `Aucune observation de <cellule>
+  pour <event> dans ce projet` (jamais testé par texte).
+
+- **Comptage par cellule corrigé** (Codex67 point 3).
+  Avant : « UL grants @ PCell » affichait 37 309 (count total de
+  `dci_ul_grants`). Après : filtre `dci_cell_type=0` AND
+  `dci_ul_grants IS NOT NULL` → 1 976 (Test_5 full data).
+
+- **Feuilles outsider** (point 4 Codex67 : jamais un rejet silencieux).
+  Si un event cell_scoped observe un `cell_type` **hors canoniques de
+  son enum** (SCell 5=14, SCell 6=15 pour `lte_cellmeas` ; SCell 5=5,
+  SCell 6=6, SCG non bucketées pour `lte_scell` ; 1000+ NR neighbours)
+  ou `NULL`, une feuille grise par (event, cell_type, source_column)
+  est émise sous l'event, avec **libellé humain** du champ
+  (« UL grants @ SCell 6 (cellule non cataloguée) », pas
+  « dci_ul_grants @ SCell 6 »), tooltip spec et proof
+  `observed-no-catalog` / `observed-no-cell-type`. Non sélectable
+  (parse_selection cell range à étendre dans un lot futur).
+
+- **G25.3 stale_false_grey**, **G25.4 cell_sum_loss**, **G25.5 grey_no_reason**
+  (`scripts/guards_2026_10/G25_catalogue.py`). Tous contrôles
+  **structurels**, aucun test par texte. G25.3 attrape « col décodée +
+  n > 0 pour la cellule + selectable=false » (exclusion des outsiders
+  via proof `observed-*`) ; G25.4 contrôle la conservation (somme des
+  n variantes = COUNT global) ; G25.5 exige qu'un leaf grey porte un
+  reason non vide.
+
+- `decoder_min_version` inchangé (`1.7.1`).
+- `spec_version` inchangé (`2.50`).
+- Enums `cell_type_lte_scell`, `cell_type_lte_mesure`, `cell_type_nr`
+  dans le JSON du catalogue inchangés (générés depuis le pack 2.50).
+
+Impact numérique (JSON catalog_2.54.0.json) : `n_leaves = 6 993`
+(bare 2 653 + cell 4 340), vs 7 231 en 2.53.0 (−238 Cell type
+cell_scoped retirés + ajustement variantes par enum). Les feuilles
+outsider sont **ajoutées à la volée au serve-time**, pas dans le JSON.
+
+**Déploiement du JSON 2.54.0** : UNIQUEMENT par
+`scripts/catalog/bootstrap_catalog_release.py --version 2.54.0`.
+Le script lit `app/kpi/catalog_release/catalog_2.54.0.json`, calcule
+le sha256 avec `app.kpi.catalog_release.registry.sha256_file`, puis
+exécute l'upsert sur `catalog_release(version)` et bascule
+`is_current=TRUE` dans la même session. **Aucun UPDATE/INSERT manuel
+en base**.
+
 ## 2.51.0 — 2026-10-25 — 7 feuilles cellule canoniques @cell_type (Agent BC3)
 
 Phase 2.51.0 lot 1b. Build après redécode des 83 captures UE sous

@@ -22,12 +22,29 @@ Conséquences :
   avec `source_column` pointant pourtant sur une colonne existante.
   Signature claire du bug mapping label-CSV → colonne-réelle (corrigé
   en 2.51.1 : `source_column` vient du YAML du décodeur).
+- G25.3 (2.54.0, BC4 2026-10-28) stale_false_grey générique : contrôle
+  **structurel** (jamais sur le texte de la raison) qu'une feuille avec
+  `source_column IS NOT NULL` ET `n > 0` ET `selectable=false` est un
+  bug — col décodée + obs présentes + grise = contradiction. Attrape le
+  cas « cell_type jamais observé en base » et toute régression future
+  du même genre.
+- G25.4 (2.54.0, BC4 2026-10-28) conservation des lignes par cellule :
+  pour chaque (event, source_column) la **somme** des `n` sur toutes les
+  variantes cellule visibles (canoniques + uncatalogued + NULL) doit
+  égaler le COUNT global de la colonne pour l'event dans ce projet.
+  Aucune ligne perdue entre les variantes.
+- G25.5 (2.54.0, BC4 2026-10-28) tooltip obligatoire sur grey : toute
+  feuille `selectable=false` doit porter un `reason` non vide (règle
+  Codex67 « gris = toujours avec tooltip »).
 
 Verdict :
   - orphans > 0        → FAIL (invariant catalog_v4 cassé)
   - dup node_ids > 0   → FAIL (chaque position doit être unique)
   - dup metric codes > 0 → FAIL (metrics[] est une table, pas un multiset)
   - false_grey > 0     → FAIL (bug mapping label-CSV revenu)
+  - stale_false_grey > 0 → FAIL (G25.3 — col décodée + n>0 + non selectable)
+  - cell_sum_loss > 0  → FAIL (G25.4 — lignes perdues entre les variantes)
+  - grey_no_reason > 0 → FAIL (G25.5 — gris sans tooltip)
 """
 import json, sys
 from collections import Counter
@@ -67,6 +84,35 @@ def _event_fields_yaml():
     return out
 
 
+def _event_col_total(db, project_id: str, event_code: str, col: str,
+                     avail_light_cols: set[str], avail_group_cols: set[str]) -> int:
+    """COUNT global de `col` pour `(project_id, event_code)` sans filtre
+    cellule. Choisit `nmf_event_light` ou `nmf_event_light_group` selon
+    où vit la colonne. Utilisé par G25.4 (conservation).
+    """
+    if not col:
+        return 0
+    if not col.replace("_", "").isalnum():
+        return 0
+    if col in avail_light_cols:
+        sql = (
+            f'SELECT COUNT(*) FROM nmf_event_light '
+            f'WHERE project_id=:pid AND event_code=:ev AND "{col}" IS NOT NULL'
+        )
+        return int(db.execute(text(sql), {"pid": project_id, "ev": event_code}).scalar() or 0)
+    if col in avail_group_cols:
+        sql = (
+            f'SELECT COUNT(*) FROM nmf_event_light_group g '
+            f'JOIN nmf_event_light l '
+            f'  ON l.project_id=g.project_id '
+            f' AND l.capture_id=g.capture_id '
+            f' AND l.seq=g.seq '
+            f'WHERE l.project_id=:pid AND l.event_code=:ev AND g."{col}" IS NOT NULL'
+        )
+        return int(db.execute(text(sql), {"pid": project_id, "ev": event_code}).scalar() or 0)
+    return 0
+
+
 def main():
     db = SessionLocal()
     try:
@@ -74,13 +120,28 @@ def main():
             "SELECT project_id, payload FROM metrics_catalog_cache ORDER BY project_id"
         )).all()
         avail_cols = _available_columns(db)
+        avail_light_cols = {
+            r[0] for r in db.execute(text(
+                "SELECT column_name FROM information_schema.columns "
+                "WHERE table_name='nmf_event_light'"
+            )).all()
+        }
+        avail_group_cols = {
+            r[0] for r in db.execute(text(
+                "SELECT column_name FROM information_schema.columns "
+                "WHERE table_name='nmf_event_light_group'"
+            )).all()
+        }
         event_cols = _event_fields_yaml()
         total_orphans = 0
         total_dup_nodes = 0
         total_dup_metrics = 0
         total_false_grey = 0  # G25.2 — grey leaves qui ont une colonne existante
-        print(f"{'project_id':<20} {'metrics':>8} {'leaves':>8} {'orphans':>8} "
-              f"{'dup_node_ids':>13} {'dup_metric_codes':>17} {'false_grey':>11}")
+        total_stale_false_grey = 0  # G25.3 — col décodée + n>0 + non selectable
+        total_cell_sum_loss = 0  # G25.4 — lignes perdues entre les variantes
+        total_grey_no_reason = 0  # G25.5 — gris sans tooltip
+        print(f"{'project_id':<20} {'metrics':>8} {'leaves':>8} {'orph':>5} "
+              f"{'dupN':>5} {'dupC':>5} {'fg':>4} {'sfg':>4} {'loss':>5} {'nor':>4}")
         for pid, payload in rows:
             if isinstance(payload, str): payload = json.loads(payload)
             metrics = payload.get("metrics", [])
@@ -122,12 +183,74 @@ def main():
                 if sc and sc in avail_cols:
                     false_grey.append((n.get("label") or n.get("metric_id"), sc))
 
+            # 5) G25.3 — stale_false_grey générique (BC4 2026-10-28,
+            #    Codex67 point 5). Jamais sur le texte de la raison :
+            #    structurel col décodée + n > 0 + non selectable. Les
+            #    feuilles outsider (observées hors arbre canonique ou
+            #    cell_type NULL, émises par metrics_catalog_v4) sortent
+            #    du périmètre : par construction `selectable=false` et
+            #    data légitime, tooltip de cause en place.
+            stale_false_grey = []
+            for n in nodes:
+                if n.get("node_type") != "leaf": continue
+                proof = n.get("proof") or ""
+                if proof.startswith("observed-"): continue  # outsider
+                sc = n.get("source_column")
+                if not sc or sc not in avail_cols: continue
+                if n.get("selectable"): continue
+                nn = int(n.get("n") or 0)
+                if nn <= 0: continue
+                stale_false_grey.append((n.get("label") or n.get("metric_id"), sc, nn))
+
+            # 6) G25.4 — conservation par cellule (BC4 2026-10-28, point 5
+            #    Codex67). Pour chaque (event, source_column) cell_scoped
+            #    présent dans l'arbre, somme des n sur variantes visibles
+            #    doit égaler COUNT(*) global sans filtre.
+            cell_sum_loss = []
+            # Agrégation par (event, source_column) des n visibles pour
+            # feuilles ayant une cellule (uncatalogued inclus).
+            sum_by_pair: dict[tuple[str, str], int] = {}
+            for n in nodes:
+                if n.get("node_type") != "leaf": continue
+                sc = n.get("source_column")
+                ev = (n.get("event") or "").lstrip("#")
+                if not sc or not ev: continue
+                # On aggrège UNIQUEMENT les feuilles cell_scoped visibles
+                # (metric_id suffixé @<ct> ou feuille outsider). Les
+                # bare leaves (feuille unique sans dimension) ne font pas
+                # partie du sommaire.
+                mid = n.get("metric_id") or ""
+                is_cell_leaf = ("@" in mid) or str(n.get("node_id") or "").startswith("lf_outsider_")
+                if not is_cell_leaf: continue
+                key = (ev, sc)
+                sum_by_pair[key] = sum_by_pair.get(key, 0) + int(n.get("n") or 0)
+            for (ev, sc), s in sum_by_pair.items():
+                total = _event_col_total(
+                    db, pid, ev, sc, avail_light_cols, avail_group_cols
+                )
+                if total > s:
+                    cell_sum_loss.append((ev, sc, s, total, total - s))
+
+            # 7) G25.5 — grey sans tooltip (BC4 2026-10-28). Un leaf
+            #    selectable=false DOIT porter une raison non vide.
+            grey_no_reason = []
+            for n in nodes:
+                if n.get("node_type") != "leaf": continue
+                if n.get("selectable"): continue
+                r = n.get("reason")
+                if r is None or (isinstance(r, str) and not r.strip()):
+                    grey_no_reason.append(n.get("label") or n.get("metric_id"))
+
             total_orphans += len(orphans)
             total_dup_nodes += len(dup_node_ids)
             total_dup_metrics += len(dup_codes)
             total_false_grey += len(false_grey)
-            print(f"{pid:<20} {len(metrics):>8} {len(leaf_ids):>8} {len(orphans):>8} "
-                  f"{len(dup_node_ids):>13} {len(dup_codes):>17} {len(false_grey):>11}")
+            total_stale_false_grey += len(stale_false_grey)
+            total_cell_sum_loss += len(cell_sum_loss)
+            total_grey_no_reason += len(grey_no_reason)
+            print(f"{pid:<20} {len(metrics):>8} {len(leaf_ids):>8} {len(orphans):>5} "
+                  f"{len(dup_node_ids):>5} {len(dup_codes):>5} {len(false_grey):>4} "
+                  f"{len(stale_false_grey):>4} {len(cell_sum_loss):>5} {len(grey_no_reason):>4}")
             if dup_node_ids:
                 print(f"  DUP_NODE_IDS[:3]={dup_node_ids[:3]}")
             if dup_codes:
@@ -136,13 +259,25 @@ def main():
                 print(f"  ORPHANS[:3]={orphans[:3]}")
             if false_grey:
                 print(f"  FALSE_GREY[:3]={false_grey[:3]}")
+            if stale_false_grey:
+                print(f"  STALE_FALSE_GREY[:3]={stale_false_grey[:3]}")
+            if cell_sum_loss:
+                print(f"  CELL_SUM_LOSS[:3]={cell_sum_loss[:3]}")
+            if grey_no_reason:
+                print(f"  GREY_NO_REASON[:3]={grey_no_reason[:3]}")
 
         verdict = ("PASS" if total_orphans == 0 and total_dup_nodes == 0
-                   and total_dup_metrics == 0 and total_false_grey == 0 else "FAIL")
+                   and total_dup_metrics == 0 and total_false_grey == 0
+                   and total_stale_false_grey == 0 and total_cell_sum_loss == 0
+                   and total_grey_no_reason == 0 else "FAIL")
         print(f"G25_VERDICT {verdict} total_orphans={total_orphans} "
               f"total_dup_node_ids={total_dup_nodes} "
               f"total_dup_metric_codes={total_dup_metrics} "
-              f"total_false_grey={total_false_grey}")
+              f"total_false_grey={total_false_grey} "
+              f"total_stale_false_grey={total_stale_false_grey} "
+              f"total_cell_sum_loss={total_cell_sum_loss} "
+              f"total_grey_no_reason={total_grey_no_reason}")
+        sys.exit(0 if verdict == "PASS" else 1)
     finally:
         db.close()
 
