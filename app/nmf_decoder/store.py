@@ -43,24 +43,27 @@ def read_deep(db,pid,cap):
     params={'pid':pid,'cap':cap}
     last_seq = -1
     while True:
-        page = [dict(row) for row in db.execute(text('''
+        page_rows = db.execute(text('''
             SELECT * FROM nmf_event_deep
             WHERE project_id=:pid AND capture_id=:cap AND seq>:last_seq
-            ORDER BY seq LIMIT 1000
-        '''), dict(params, last_seq=last_seq)).mappings()]
-        if not page:
+            ORDER BY seq LIMIT 100
+        '''), dict(params, last_seq=last_seq)).mappings().all()
+        if not page_rows:
             db.commit()
             return
-        page_last_seq = int(page[-1]['seq'])
-        grouped = [dict(row) for row in db.execute(text('''
+        page_last_seq = int(page_rows[-1]['seq'])
+        group_rows = db.execute(text('''
             SELECT * FROM nmf_event_group
             WHERE project_id=:pid AND capture_id=:cap
               AND seq>:last_seq AND seq<=:page_last_seq
             ORDER BY seq,group_name,set_index
-        '''), dict(params, last_seq=last_seq, page_last_seq=page_last_seq)).mappings()]
+        '''), dict(params, last_seq=last_seq, page_last_seq=page_last_seq)).mappings().all()
         # Rows are materialized.  Close the read transaction before the CPU-only
-        # Light aggregation; the next page opens a new bounded transaction.
+        # mapping conversion and Light aggregation; the next page opens a new
+        # bounded transaction.
         db.commit()
+        page = [dict(row) for row in page_rows]
+        grouped = [dict(row) for row in group_rows]
         groups_by_seq = {}
         for group in grouped:
             groups_by_seq.setdefault(group['seq'], []).append(group)

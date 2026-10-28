@@ -53,21 +53,21 @@ class Settings(BaseSettings):
     # Affine RSS estimate: base_mb + slope_mb_per_mib * file_size_mib.
     # A fixed base avoids the severe over-reservation caused by a pure ratio.
     import_memory_base_mb_deep: float = Field(
-        560.0, ge=0, alias="BC4_IMPORT_MEMORY_BASE_MB_DEEP"
+        1370.0, ge=0, alias="BC4_IMPORT_MEMORY_BASE_MB_DEEP"
     )
     import_memory_slope_mb_per_mib_deep: float = Field(
-        59.0, gt=0, alias="BC4_IMPORT_MEMORY_SLOPE_MB_PER_MIB_DEEP"
+        46.0, gt=0, alias="BC4_IMPORT_MEMORY_SLOPE_MB_PER_MIB_DEEP"
     )
     import_memory_base_mb_light: float = Field(
-        560.0, ge=0, alias="BC4_IMPORT_MEMORY_BASE_MB_LIGHT"
+        1370.0, ge=0, alias="BC4_IMPORT_MEMORY_BASE_MB_LIGHT"
     )
     import_memory_slope_mb_per_mib_light: float = Field(
-        59.0, gt=0, alias="BC4_IMPORT_MEMORY_SLOPE_MB_PER_MIB_LIGHT"
+        46.0, gt=0, alias="BC4_IMPORT_MEMORY_SLOPE_MB_PER_MIB_LIGHT"
     )
     import_memory_model_source: str = Field(
-        "BC1 provisional envelope, pending authorized medium-file calibration; "
-        "six disposable NMF 5078863..7646305 bytes plus supplied production "
-        "reference 64 MiB / 4.2 GiB",
+        "BC1 2026-10-28 disposable Deep/Light NMF 5078863..17040816 bytes; "
+        "conservative envelope checked against supplied production reference "
+        "64 MiB / 4.2 GiB",
         alias="BC4_IMPORT_MEMORY_MODEL_SOURCE",
     )
 

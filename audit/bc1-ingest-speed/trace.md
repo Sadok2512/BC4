@@ -172,3 +172,153 @@ motif : commit expirant l'ORM dans `import_worker.py:39-60`, transaction ouverte
 avant CPU dans `ingest/nmf.py:484-526`, et branches Deep/Light rouvertes avant
 calcul dans `nmf_decoder/store.py:51-68,97-115`. L'audit était strictement en
 lecture seule ; aucune production n'a été modifiée.
+
+## Complément final après rebase BC3 `b1c2ce5`
+
+G36 immédiatement avant la recréation du banc :
+
+```text
+python3 /home/devmat/BC4/scripts/_guard_G36_disk.py
+G36_DISK path=/ free_bytes=41352253440 free_gib=38.51 threshold_bytes=21474836480 threshold_gib=20 verdict=PASS
+G36_PRE_BENCH_EXIT=0
+```
+
+### Débits
+
+Calcul collé :
+
+```text
+awk 'BEGIN { printf "COPY_BEFORE_RPS=%.3f\n",50318/98.412;
+printf "COPY_AFTER_RPS=%.3f\n",50318/99.159;
+printf "COPY_DELTA_PCT=%+.3f\n",100*((50318/99.159)/(50318/98.412)-1);
+printf "MIX_SEQ_RPS=%.3f\n",131815/407.627;
+printf "MIX_PAR_RPS=%.3f\n",131815/261.686;
+printf "MIX_SPEEDUP=%.3f\n",407.627/261.686;
+printf "SEQ_PEAK_MIB=%.3f\n",1968092/1024;
+printf "PAR_PEAK_MIB=%.3f\n",2697856/1024 }'
+COPY_BEFORE_RPS=511.299
+COPY_AFTER_RPS=507.448
+COPY_DELTA_PCT=-0.753
+MIX_SEQ_RPS=323.372
+MIX_PAR_RPS=503.714
+MIX_SPEEDUP=1.558
+SEQ_PEAK_MIB=1921.965
+PAR_PEAK_MIB=2634.625
+```
+
+| mesure | fichiers | actifs max | temps total s | records/s | pic RSS MiB | idle max s | verdict / exit |
+|---|---:|---:|---:|---:|---:|---:|---|
+| même NMF 5 078 863 octets, avant COPY (base BC3 `b1c2ce5`) | 1 | 1 | 98,412 | 511,299 | 671,516 | 5,297 | FAIL / 1 (inactivité historique) |
+| même NMF, après COPY et transactions courtes | 1 | 1 | 99,159 | 507,448 | 774,254 | 0,000 | PASS / 0 |
+| lot court Light séquentiel | 3 | 1 | 407,627 | 323,372 | 1 921,965 | 0,050 | PASS / 0 |
+| même lot Light parallèle | 3 | 3 | 261,686 | 503,714 | 2 634,625 | 0,048 | PASS / 0 |
+| référence production fournie, parcours 64 Mo Deep | 1 | 1 | 1 152,000 | 459,496 | 4 300,800 | non fourni | référence |
+
+COPY seul est neutre dans le bruit sur ce petit fichier end-to-end (`-0,753 %`).
+Le gain mesuré du lot court est `1,558×` et vient principalement du pool de
+processus. La chronologie parallèle, dérivée des trois `worker_elapsed_s`
+persistés, est : 3 fichiers de 0 à 75,900 s ; 2 de 75,900 à 78,003 s ; 1 de
+78,003 à 192,367 s ; puis 0 fichier pendant la finalisation unique jusqu'à
+261,686 s. Commande source :
+
+```text
+SELECT f->>'filename',f->>'worker_peak_rss_mb',f->>'worker_elapsed_s'
+FROM nmf_import_jobs j
+CROSS JOIN LATERAL jsonb_array_elements(j.files::jsonb) f
+WHERE j.id='2499916d84104f1db652d66f2141db7e'
+ORDER BY (f->>'worker_elapsed_s')::numeric;
+...105812.8.nmf|668.77734375|75.89979412899993
+...104724.6.nmf|770.22265625|78.00320922699757
+...103519.3.nmf|1816.7265625|192.3670389229992
+```
+
+### Modèle mémoire affine
+
+Le modèle final commun Deep/Light est :
+
+```text
+RSS_estimée_MiB = 1370 + 46 * taille_MiB
+```
+
+Il est une enveloppe d'admission, pas une régression moyenne : il ne
+sous-estime aucun témoin et ramène le gros fichier de 64 MiB à 4 314 MiB au
+lieu des quelque 9 GiB du facteur 146×. Calcul complet collé :
+
+```text
+awk 'BEGIN { base=1370; k=46; # mêmes données que le tableau ci-dessous
+  p=base+k*67108864/1048576; printf "prod64 predicted=%.3f\n",p }'
+prod64 predicted=4314.000
+```
+
+| niveau | taille octets | RSS mesurée MiB | modèle MiB | erreur |
+|---|---:|---:|---:|---:|
+| Deep | 5 078 863 | 691,875 | 1 592,805 | +130,216 % |
+| Deep | 6 076 126 | 800,465 | 1 636,554 | +104,450 % |
+| Deep | 6 306 369 | 818,949 | 1 646,654 | +101,069 % |
+| Deep | 6 703 712 | 880,848 | 1 664,085 | +88,919 % |
+| Deep | 6 802 128 | 890,551 | 1 668,403 | +87,345 % |
+| Deep | 7 646 305 | 985,410 | 1 705,436 | +73,069 % |
+| Deep | 17 040 816 | 2 111,117 | 2 117,564 | +0,305 % |
+| Deep production fourni | 67 108 864 | 4 300,800 | 4 314,000 | +0,307 % |
+| Light | 5 078 863 | 670,211 | 1 592,805 | +137,657 % |
+| Light | 6 076 126 | 771,164 | 1 636,554 | +112,219 % |
+| Light | 17 040 816 | 1 818,137 | 2 117,564 | +16,469 % |
+
+### Migration `bc1_import_measurement_lookup`
+
+Contenu : index B-tree non unique sur
+`measurement_points(project_id, capture_id, seq)`. Il sert les pages keyset de
+la finalisation dans l'ordre canonique et évite un tri plein à chaque tranche.
+Le downgrade supprime uniquement cet index.
+
+Replay base vide → head → retour :
+
+```text
+alembic upgrade head
+REV=bc1_import_measurement_lookup
+INDEX=CREATE INDEX ix_measurement_points_project_capture_seq ON public.measurement_points USING btree (project_id, capture_id, seq)
+alembic downgrade 0063_merge_import_superstream
+REV=0063_merge_import_superstream
+INDEX_COUNT=0
+ALEMBIC_REPLAY_EXIT=0
+```
+
+### Gardes post-rebase
+
+Le premier G42 Deep moyen a exposé l'écart puis le petit témoin a fermé le
+même chemin après réduction des pages Deep de 1 000 à 100 séquences :
+
+```text
+G42_MEDIUM_DEEP_AFTER_FIX_EXIT=1
+G42 elapsed_s=436.914 idle_in_transaction_max_s=1.289
+G42 VERDICT=FAIL
+
+G42 elapsed_s=193.816 files_running_max=1 child_processes_max=2
+rss_peak_kb=816484 idle_in_transaction_max_s=0.409
+G42 statuses=['done'] nmf_files=1 distinct_sha=1 duplicate_files=0
+G42 VERDICT=PASS
+G42_SMALL_DEEP_PAGE100_EXIT=0
+```
+
+G44 post-rebase :
+
+```text
+[G44] frozen captures (done, pas remises en file): 1 identifiées, 1 inchangées (snapshot + comptes + decoded_at)
+[G44] requeued captures (fichier remis en file): 1 identifiées, decoded_at vérifié avancé
+G44_VERDICT PASS frozen=1 new=0 fails=0
+G44_POST_REBASE_EXIT=0
+```
+
+Suite ciblée finale : la première exécution locale avec DSN volontairement
+invalide a correctement échoué sur les deux tests PostgreSQL (`exit=1`). La
+même sélection sur `bc4_bench` jetable ferme l'écart :
+
+```text
+pytest -q tests/test_import_admission.py tests/test_import_jobs.py \
+  tests/test_nmf_decoder.py tests/test_populate_atomic.py \
+  tests/test_reparse_capture_script.py \
+  tests/test_requeue_import_decoder_172_failures.py \
+  tests/test_requeue_import_schema_failures.py
+.................................... [100%]
+FINAL_INGEST_TEST_DB_EXIT=0
+```

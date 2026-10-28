@@ -9,6 +9,8 @@
   BC3 au merge.
 - G42 contrôle concurrence, RSS, transactions inactives, empreintes canoniques,
   doublons, erreur isolée et exécution sous limite mémoire cgroup.
+- Admission mémoire affine mesurée (`socle + k × taille`) et pagination Deep
+  bornée à 100 séquences pour fermer la transaction avant la phase Python.
 
 ## Incidents — Re-décodage non demandé de 22 captures Test_5 (Agent BC3, 2026-10-28)
 
