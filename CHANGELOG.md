@@ -39,6 +39,26 @@
 - Compare le schéma live à un replay Alembic vide via des dumps conservés et
   les catalogues PostgreSQL (tables, colonnes, types, contraintes et index),
   en listant séparément les partitions dynamiques et en échouant sur tout écart.
+## 0.90.3 (patch) — bc4-back 2026-10-28 — PLMN non catalogué toléré par ProjectSchema (Agent BC3)
+
+Hotfix après front v1.114.1 affichant « Impossible de charger les projets » à
+11:40 : `GET /projects` renvoyait 500 avec
+`pydantic_core.ValidationError: operators.3 Input should be 'Orange', 'SFR',
+'Bouygues' or 'Free' [input_value='PLMN 208-08 (non catalogué)']`.
+
+- `app/schemas/common.py` : les champs alimentés par l'ingestion
+  (`Project.operators` / `technologies` / `services`,
+  `MeasurementPoint.operator` / `tech` / `service`,
+  `OverviewRow.operator`, `FilterContext.op` / `tech` / `svc`) passent de
+  `Literal[...]` à `str` : un NMF peut contenir un opérateur, une
+  technologie ou un service hors catalogue — la valeur brute est transmise
+  sans être renommée ni supprimée, pour que le front puisse l'afficher
+  « non catalogué » (gris + tooltip).
+- Les Literal `Operator`/`Tech`/`Service` restent définis à titre
+  documentaire (OpenAPI) ; ils ne sont plus imposés en validation.
+- Zéro migration, zéro écriture en base, pas de renommage de donnée.
+  La valeur `PLMN 208-08 (non catalogué)` posée par l'ingest Test_5 reste
+  telle quelle dans `projects.operators`.
 
 ## Incidents (ajout 2026-10-27 22:30 UTC) — Base de données & API exposées en 0.0.0.0
 
