@@ -48,7 +48,7 @@ REF_PETITE_FORET (bump 0.33.0) :
 from __future__ import annotations
 
 import json
-import uuid
+import hashlib
 from typing import Any
 
 from sqlalchemy import text
@@ -167,9 +167,8 @@ def _last_sib1_plmn_before(
 # Fil des service_action / env : propagation ``(capture_id, seq)`` stricte.
 # ---------------------------------------------------------------------------
 
-def _iter_raw_events(db: Session, project_id: str, chunk_size: int = 5000):
-    """Itère les events ``stg_event_raw`` du projet, triés
-    ``(capture_id, seq)``. Jamais trié par ``ts``.
+def _iter_raw_event_chunks(db: Session, project_id: str, chunk_size: int = 5000):
+    """Lit des tranches ordonnées ``(capture_id, seq)``.
 
     0.39.0 — Pagination `OFFSET/LIMIT` : charger `.all()` sur ~400k
     events + raw_fields JSONB (parfois 300 colonnes) explosait la mémoire
@@ -215,12 +214,20 @@ def _iter_raw_events(db: Session, project_id: str, chunk_size: int = 5000):
                 {"pid": project_id, "lc": last_cap, "ls": last_seq, "lim": chunk_size},
             ).all()
         if not rows:
+            db.commit()
             return
-        for row in rows:
-            yield row
+        # Ferme la transaction de lecture AVANT tout calcul Python. La tranche
+        # reste en mémoire et la source canonique n'est jamais modifiée ici.
+        db.commit()
+        yield rows
         last_cap = rows[-1].capture_id
         last_seq = rows[-1].seq
-        del rows
+
+
+def _stable_mp_id(project_id: str, capture_id: str, seq: int) -> str:
+    """Identité stable de reprise pour l'empreinte métier demandée."""
+    raw = f"{project_id}\0{capture_id}\0{seq}".encode()
+    return "mp-nmf-" + hashlib.sha256(raw).hexdigest()[:24]
 
 
 # ---------------------------------------------------------------------------
@@ -321,6 +328,7 @@ def populate_measurement_points(
 
     from app.nmf_decoder.projection import observations
     decoded = observations(db, project_id)
+    db.commit()
     report['cellmeas_mapping'] = {'source':'nmf_decoder', 'decoder_version':'1.0.0'}
 
     file_meta = _file_meta_by_id(db, project_id)
@@ -341,11 +349,12 @@ def populate_measurement_points(
         {"pid": project_id},
     ).all()
     sib1_idx = _build_sib1_index(sib1_rows)
+    db.commit()
 
     # 0.39.0 — iterator streaming (yield_per 2000) : jamais `.all()` sur
     # ~400k events + raw_fields JSONB (OOM 9+ GB reproduit). Les flushs
     # UPDATE/INSERT se font pendant l'itération, pas en bloc final.
-    events = _iter_raw_events(db, project_id)
+    event_chunks = _iter_raw_event_chunks(db, project_id)
 
     # Index service_action courant par capture (propagation stricte).
     current_action_by_capture: dict[str, str | None] = {}
@@ -355,15 +364,12 @@ def populate_measurement_points(
 
     updates: list[dict] = []
     inserts: list[dict] = []
-    _FLUSH_EVERY = 5000  # réduit la pression mémoire ; tolère ~1 GB RSS
-
     def _flush_updates() -> None:
         nonlocal updates
         if not updates:
             return
-        for u in updates:
-            res = db.execute(
-                text(
+        db.execute(
+            text(
                     """
                     UPDATE measurement_points
                     SET operator = :operator,
@@ -391,10 +397,12 @@ def populate_measurement_points(
                       AND seq = :seq
                       AND event_code = :event_code
                     """
-                ),
-                u,
-            )
-            report["updated"] += res.rowcount or 0
+            ),
+            updates,
+        )
+        # rowcount executemany varie selon le driver ; le nombre tenté est
+        # déterministe et le détail métier est contrôlé par l'empreinte finale.
+        report["updated"] += len(updates)
         updates.clear()
         db.commit()
 
@@ -424,6 +432,31 @@ def populate_measurement_points(
                     :service_name, :service_action, :service_type,
                     :phase, :env, :rat, :earfcn
                 )
+                ON CONFLICT (id) DO UPDATE SET
+                    operator = EXCLUDED.operator,
+                    tech = EXCLUDED.tech,
+                    band = EXCLUDED.band,
+                    ts = EXCLUDED.ts,
+                    dl = EXCLUDED.dl,
+                    rsrp = EXCLUDED.rsrp,
+                    sinr = EXCLUDED.sinr,
+                    capture_id = EXCLUDED.capture_id,
+                    seq = EXCLUDED.seq,
+                    rsrq = EXCLUDED.rsrq,
+                    rssi = EXCLUDED.rssi,
+                    cqi = EXCLUDED.cqi,
+                    tx_power = EXCLUDED.tx_power,
+                    thrpt_ul = EXCLUDED.thrpt_ul,
+                    event_code = EXCLUDED.event_code,
+                    operator_source = EXCLUDED.operator_source,
+                    operator_mismatch = EXCLUDED.operator_mismatch,
+                    service_name = EXCLUDED.service_name,
+                    service_action = EXCLUDED.service_action,
+                    service_type = EXCLUDED.service_type,
+                    phase = EXCLUDED.phase,
+                    env = EXCLUDED.env,
+                    rat = EXCLUDED.rat,
+                    earfcn = EXCLUDED.earfcn
                 """
             ),
             inserts,
@@ -432,7 +465,8 @@ def populate_measurement_points(
         inserts.clear()
         db.commit()
 
-    for r in events:
+    for rows in event_chunks:
+      for r in rows:
         rfields = _raw(r.raw_fields)
         category = r.category
         report["by_category"][category] = report["by_category"].get(category, 0) + 1
@@ -505,7 +539,10 @@ def populate_measurement_points(
         # par le skeleton BC1 (ex. 'GSM') est **écrasé** par cette source.
         tech_value = rat or (r.system if r.system in ("LTE", "NR") else None)
 
-        updates.append(
+        # CELLMEAS et DSUMMARY ont déjà un skeleton issu de
+        # stg_measurement_raw : les enrichir, ne jamais les réinsérer.
+        if category in {"cellmeas", "data_summary"}:
+          updates.append(
             {
                 "pid": project_id,
                 "capture_id": str(r.capture_id),
@@ -542,7 +579,7 @@ def populate_measurement_points(
         # via l'index courant par capture, pas via une ligne mp).
         # ------------------------------------------------------------
         _MP_INSERT_CATS = {"cellmeas", "cqi", "tx_power", "data_summary"}
-        if category not in {"cellmeas"} and category in _MP_INSERT_CATS:
+        if category not in {"cellmeas", "data_summary"} and category in _MP_INSERT_CATS:
             # 0.47.3 — RÈGLE « jamais une mesure jetée ».
             #
             # Avant 0.47.3, les mesures sans fix GPS étaient skippées
@@ -570,7 +607,7 @@ def populate_measurement_points(
             )
             inserts.append(
                 {
-                    "id": f"mp-{uuid.uuid4().hex[:12]}",
+                    "id": _stable_mp_id(project_id, str(r.capture_id), int(r.seq)),
                     "project_id": project_id,
                     "lat": float(lat_v) if lat_v is not None else None,
                     "lng": float(lon_v) if lon_v is not None else None,
@@ -602,12 +639,10 @@ def populate_measurement_points(
                 }
             )
 
-        # 0.39.0 — flush incrémental : évite d'accumuler 400k dicts
-        # (~5 GB) en mémoire.
-        if len(updates) >= _FLUSH_EVERY:
-            _flush_updates()
-        if len(inserts) >= _FLUSH_EVERY:
-            _flush_inserts()
+      # Un commit réel par tranche. La lecture a déjà été commitée avant le
+      # calcul ; les écritures sont groupées en executemany, jamais ligne à ligne.
+      _flush_updates()
+      _flush_inserts()
 
     # Flush final de ce qui reste.
     _flush_updates()

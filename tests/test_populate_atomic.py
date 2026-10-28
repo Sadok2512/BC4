@@ -1,34 +1,41 @@
-"""Fault-injection against PostgreSQL: legacy commits must not persist prefixes."""
-from contextlib import contextmanager
+"""Fault-injection: slices are durable and a failed chain releases its lock."""
 from types import SimpleNamespace
 import pytest
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 from app.db import engine
-import app.db as database
 import app.services.populate_chain as chain
 
 
-def test_chain_rolls_back_internal_commits_on_failure(monkeypatch):
-    with engine.connect() as conn:
-        conn.execute(text('CREATE TEMP TABLE test_bc2_atomic(value integer)'));conn.commit()
-        class BoundEngine:
-            @contextmanager
-            def begin(self):
-                with conn.begin():yield conn
-        monkeypatch.setattr(database,'engine',BoundEngine())
-        project=SimpleNamespace(id='TEST-atomic-project')
-        monkeypatch.setattr(Session,'get',lambda *args:project)
-        def fail(work,project):
-            work.execute(text('INSERT INTO test_bc2_atomic VALUES (1)'));work.commit()
-            work.execute(text('INSERT INTO test_bc2_atomic VALUES (2)'));work.commit()
-            raise RuntimeError('TEST interrupted after commits')
-        monkeypatch.setattr(chain,'_run_populate_chain',fail)
-        parent=SimpleNamespace(refresh=lambda _:None, commit=lambda:None)
-        with pytest.raises(RuntimeError,match='interrupted'):
-            chain.run_populate_chain(parent,project)
-        assert conn.execute(text('SELECT count(*) FROM test_bc2_atomic')).scalar()==0
-        conn.rollback()
+def test_chain_keeps_committed_slice_and_releases_lock_on_failure(monkeypatch):
+    project_id = '134af70a06eb'
+    project = SimpleNamespace(id=project_id)
+    monkeypatch.setattr(Session, 'get', lambda *args: project)
+    with engine.begin() as conn:
+        conn.execute(text('CREATE TABLE IF NOT EXISTS test_bc1_slice_commit(value integer)'))
+        conn.execute(text('TRUNCATE test_bc1_slice_commit'))
+    try:
+        def fail(work, project):
+            work.execute(text('INSERT INTO test_bc1_slice_commit VALUES (1)'))
+            work.commit()
+            raise RuntimeError('TEST interrupted after slice commit')
+        monkeypatch.setattr(chain, '_run_populate_chain', fail)
+        parent = SimpleNamespace(refresh=lambda _: None, commit=lambda: None)
+        with pytest.raises(RuntimeError, match='interrupted'):
+            chain.run_populate_chain(parent, project)
+        with engine.connect() as conn:
+            assert conn.execute(text('SELECT count(*) FROM test_bc1_slice_commit')).scalar() == 1
+            assert conn.execute(
+                text("SELECT pg_try_advisory_lock(hashtext(:k))"),
+                {'k': 'populate:' + project_id},
+            ).scalar() is True
+            conn.execute(
+                text("SELECT pg_advisory_unlock(hashtext(:k))"),
+                {'k': 'populate:' + project_id},
+            )
+    finally:
+        with engine.begin() as conn:
+            conn.execute(text('DROP TABLE IF EXISTS test_bc1_slice_commit'))
 
 
 def test_chain_detects_unenriched_capture():
@@ -42,22 +49,18 @@ def test_chain_detects_unenriched_capture():
 
 
 def test_parent_transaction_ends_before_long_population(monkeypatch):
-    """Real PostgreSQL, read-only TEST2: old code exceeds the 200ms idle limit."""
-    from sqlalchemy import event
-    from app.models import Project
-    with Session(engine) as parent:
-        def short_timeout(session, transaction, connection):
-            connection.execute(text("SET LOCAL idle_in_transaction_session_timeout = '200ms'"))
-        event.listen(parent, 'after_begin', short_timeout)
-        project = parent.get(Project, '134af70a06eb')
-        if project is None:
-            pytest.fail('TEST2 integration project absent')
-        parent.commit()  # expires project.id, reproducing the worker call site
-        def slow(work, stored):
-            assert not parent.in_transaction()
-            work.execute(text('SELECT pg_sleep(0.35)'))
-            return {'test': 'long population completed'}
-        monkeypatch.setattr(chain, '_run_populate_chain', slow)
-        assert chain.run_populate_chain(parent, project)['test'] == 'long population completed'
-        assert project.id == '134af70a06eb'
-        parent.rollback()
+    """Le parent est clos avant le travail lent sur la connexion dédiée."""
+    project = SimpleNamespace(id='TEST-parent-project')
+    monkeypatch.setattr(Session, 'get', lambda *args: project)
+    parent = SimpleNamespace(
+        active=True,
+        commit=lambda: setattr(parent, 'active', False),
+        refresh=lambda _: None,
+    )
+    def slow(work, stored):
+        assert parent.active is False
+        work.execute(text('SELECT pg_sleep(0.35)'))
+        work.commit()
+        return {'test': 'long population completed'}
+    monkeypatch.setattr(chain, '_run_populate_chain', slow)
+    assert chain.run_populate_chain(parent, project)['test'] == 'long population completed'

@@ -76,12 +76,17 @@ def decode_capture(db,pid,cap,level,*,force=False,parsing_snapshot=None):
         'query-binning-v1' AS aggregation_contract_version
         FROM projects WHERE id=:pid'''),params).mappings().one()
     if old and old['decoder_version']==DECODER_VERSION and (old['decode_level']=='deep' or old['decode_level']==level) and not force:
+        db.commit()
         return dict(capture_id=cap,skipped=True,elapsed_s=0)
     file=db.execute(text('''SELECT DISTINCT n.id,n.source_path,n.sha256 FROM nmf_file n JOIN stg_event_raw r ON r.nmf_file_id=n.id
         WHERE n.project_id=:pid AND r.capture_id=:cap UNION SELECT DISTINCT n.id,n.source_path,n.sha256 FROM nmf_file n JOIN stg_event r ON r.nmf_file_id=n.id
         WHERE n.project_id=:pid AND r.capture_id=:cap'''),params).mappings().all()
     if len(file)!=1 or not file[0]['source_path'] or not Path(file[0]['source_path']).is_file():raise ValueError('capture_source_unavailable')
     file=file[0]
+    # Le parsing NMF est du calcul fichier pur et peut durer plusieurs minutes.
+    # Libère la transaction de métadonnées avant d'ouvrir le fichier ; le
+    # populate_chain conserve son verrou advisory de session entre les commits.
+    db.commit()
     if old and old['decode_level']=='deep':level='deep'  # Never downgrade or erase retained observations.
     if level=='deep':
         # Provision empty partitions in a short independent transaction. Holding the

@@ -722,6 +722,10 @@ def ingest_upload(
             # de populate ci-dessous soit déclenchée comme en 0.24.0 BC1.
             result.measurements = mirror_rows
 
+        # Staging complet et source_path doivent être visibles avant le parsing
+        # potentiellement long. decode_capture ferme ensuite sa propre lecture
+        # de métadonnées avant de parcourir le fichier.
+        db.commit()
         from app.nmf_decoder.store import decode_capture
         for cap in sorted({ev["capture_id"] for ev in result.raw_events}):
             decode_capture(

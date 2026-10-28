@@ -1,3 +1,19 @@
+## 0.90.4 (patch) — BC4 2026-10-28 — Finalisation reprise par tranches (Agent BC1)
+
+- `populate_chain` conserve la sérialisation par projet avec un verrou advisory
+  de session, tout en laissant chaque tranche effectuer un vrai `COMMIT`.
+- `measurement_points` lit par keyset `(capture_id, seq)`, ferme la transaction
+  avant le calcul Python, groupe les écritures et committe chaque tranche.
+- Le parsing NMF ferme sa transaction de métadonnées avant le parcours du
+  fichier ; le test réel mesure 1,098 s maximum en état `idle in transaction`.
+- Les lignes complémentaires ont un identifiant déterministe et un UPSERT : une
+  reprise après interruption converge sans doublon.
+- `DSUMMARY`, déjà présent dans le skeleton, est enrichi par UPDATE au lieu
+  d'être réinséré (12 doublons historiques reproduits puis fermés sur le témoin).
+- `populate_measurements` ferme aussi ses lectures avant calcul et committe ses
+  insertions par tranche. Aucun relèvement de
+  `idle_in_transaction_session_timeout` n'est requis.
+
 ## 0.90.3 (patch) — BC4 2026-10-28 — Agrégations Light typées / decoder 1.7.2 (Agent BC1)
 
 - Empêche toute arithmétique Light sur les agrégations non numériques et
