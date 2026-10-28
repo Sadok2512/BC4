@@ -75,9 +75,22 @@ def decode_capture(db,pid,cap,level,*,force=False,parsing_snapshot=None):
         parse_temporal_resolution AS temporal_resolution, parse_spatial_bin_m AS spatial_bin_m,
         'query-binning-v1' AS aggregation_contract_version
         FROM projects WHERE id=:pid'''),params).mappings().one()
-    if old and old['decoder_version']==DECODER_VERSION and (old['decode_level']=='deep' or old['decode_level']==level) and not force:
+    # Snapshot de capture immuable (prolongement du contrat 0061 import-snapshot) :
+    # une capture déjà présente dans `nmf_capture` est DONE et ne doit JAMAIS
+    # être re-décodée implicitement — même quand `DECODER_VERSION` live a
+    # évolué. Chaque capture conserve son décodeur d'origine (`old['decoder_version']`)
+    # tant qu'un re-parse n'est pas DEMANDÉ explicitement par la commande
+    # `app.scripts.reparse_capture` (force=True + trace du snapshot
+    # before/after). Historique : avant 2026-10-28, le skip conditionnait sur
+    # `old['decoder_version']==DECODER_VERSION`, ce qui déclenchait
+    # ensure_light → decode_capture sur TOUTES les captures du projet à
+    # chaque upgrade du décodeur (incident Test_5 2026-10-28 : 22 captures
+    # repassées 1.7.1→1.7.2 à l'insu de l'opérateur).
+    if old and not force:
         db.commit()
-        return dict(capture_id=cap,skipped=True,elapsed_s=0)
+        return dict(capture_id=cap, skipped=True, elapsed_s=0,
+                    reason='snapshot_immuable',
+                    kept_decoder_version=old['decoder_version'])
     file=db.execute(text('''SELECT DISTINCT n.id,n.source_path,n.sha256 FROM nmf_file n JOIN stg_event_raw r ON r.nmf_file_id=n.id
         WHERE n.project_id=:pid AND r.capture_id=:cap UNION SELECT DISTINCT n.id,n.source_path,n.sha256 FROM nmf_file n JOIN stg_event r ON r.nmf_file_id=n.id
         WHERE n.project_id=:pid AND r.capture_id=:cap'''),params).mappings().all()
