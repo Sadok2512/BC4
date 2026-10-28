@@ -48,6 +48,101 @@ STRUCTURAL_FIELDS = {
     "#Header params", "#Cells", "Scope", "PRB index", "RB ID",
     "#Params/Serving cell", "#Params/SCell", "#Params/Neighbour",
 }
+
+
+# 2.54.0 — Mapping event → enum NFF 2.50 qui s'applique à son champ
+# `Cell type`. Cité par le CONTENU du pack 2.50 (`nemo_file_format_2.50.txt`,
+# lignes vérifiées 2026-10-28).
+#
+# * `lte_scell` — « Serving cell type », standard RRC :
+#     0=PCell, 1-31=SCell 1-31.
+#   Appliqué aux events dont la section LTE porte « Serving cell type »
+#   (bloc "The value of this parameter is the same as the serving cell
+#    index in the RRC signaling.") :
+#     - DCI       (p.27683 Parameters for LTE, Cell type p.27687)
+#     - CQI       (p.28951, Cell type LTE p.29127)
+#     - CSI       (p.29305, Cell type LTE p.29329)
+#     - PMI       (p.29524, Cell type LTE p.29548)
+#     - PLAID     (p.27958, Cell type LTE p.28140)
+#     - PLAIU     (p.28465, Cell type LTE p.28633)
+#     - PHRATE    (p.27183, Cell type LTE p.27234)
+#     - PHRATEU   (p.27558, Cell type LTE p.27583)
+#     - MACRATE   (p.26528, Cell type LTE p.26693)
+#     - MACRATEU  (p.26876, Cell type LTE p.26937)
+#     - SCELL     (p.17114, Cell type p.17140)
+#     - SCELLMOD  (p.21024, Cell type p.21068)
+#     - TAD       (p.33557, Cell type LTE p.33602)
+#     - TXPC      (p.33964, Cell type LTE p.34156)
+#     - CI        (p.33753, Cell type LTE p.33818)
+#
+# * `lte_cellmeas` — « Cell type » (CELLMEAS LTE, p.30475) :
+#     0=Serving, 1=Listed, 2=Detected, 10-40=SCell 1-31.
+#   Appliqué uniquement à CELLMEAS (bloc "Parameters for LTE" p.30470).
+#   La valeur de PCell côté RRC s'y lit « Serving » (0) et NON « PCell ».
+#
+# * `lte_mimo` — « MIMO cell type » (MIMOMEAS LTE, p.31586) :
+#     0=Serving, 10-40=SCell 1-31 (pas de Listed/Detected).
+#   Appliqué uniquement à MIMOMEAS.
+#
+# Les events non listés ici qui restent cell_scoped (ex. CELLMEAS NR,
+# MIMOMEAS NR) relèvent de `cell_type_nr` de la spec (non détaillé ici,
+# traité par le bucket SCG SCell 100-131 dans `lte_scell` quand c'est
+# applicable, outsiders sinon).
+EVENT_CELL_TYPE_ENUM: dict[str, str] = {
+    "CELLMEAS": "lte_cellmeas",
+    "MIMOMEAS": "lte_mimo",
+    # Tous les autres cell_scoped → `lte_scell` par défaut (serving cell type).
+}
+
+
+# 2.54.0 — Variantes canoniques par enum NFF 2.50. Tuple (value, label_short,
+# label_long, tech_cell : 7=LTE / 9=NR). Les variantes « hors liste » (valeurs
+# observées en base mais hors enum) sortent runtime sous forme de feuilles
+# outsider dans `metrics_catalog_v4`, grises, avec tooltip spec.
+ENUM_VARIANTS: dict[str, list[tuple[int, str, str, int]]] = {
+    # Spec NFF 2.50 Serving cell type (0-31 = PCell + SCell 1-31). On garde
+    # les 5 serving LTE canoniques + le bucket SCG SCell NR 100-131 + PSCell
+    # (variantes NR portées par les events partagés LTE/NR via EN-DC).
+    "lte_scell": [
+        (0, "PCell", "PCell (0)", 7),
+        (1, "SCell 1", "SCell 1 (1)", 7),
+        (2, "SCell 2", "SCell 2 (2)", 7),
+        (3, "SCell 3", "SCell 3 (3)", 7),
+        (4, "SCell 4", "SCell 4 (4)", 7),
+        (199, "PSCell", "PSCell NR (199)", 9),
+        (100, "SCell NR 100+", "SCG SCell NR 100-131 (bucket cell_type_nr)", 9),
+    ],
+    # Spec NFF 2.50 CELLMEAS LTE p.30475. L'index SCell commence à 10
+    # (10=SCell 1), pas à 1 — c'est la DIFFERENCE clé avec `lte_scell`.
+    "lte_cellmeas": [
+        (0, "Serving", "Serving cell (0)", 7),
+        (1, "Listed", "Listed neighbour (1)", 7),
+        (2, "Detected", "Detected neighbour (2)", 7),
+        (10, "SCell 1", "SCell 1 (10)", 7),
+        (11, "SCell 2", "SCell 2 (11)", 7),
+        (12, "SCell 3", "SCell 3 (12)", 7),
+        (13, "SCell 4", "SCell 4 (13)", 7),
+    ],
+    # Spec NFF 2.50 MIMOMEAS LTE p.31586. Même décalage SCell que CELLMEAS
+    # mais SANS Listed / Detected (pas de voisins mesurés en MIMO).
+    "lte_mimo": [
+        (0, "Serving", "Serving cell (0)", 7),
+        (10, "SCell 1", "SCell 1 (10)", 7),
+        (11, "SCell 2", "SCell 2 (11)", 7),
+        (12, "SCell 3", "SCell 3 (12)", 7),
+        (13, "SCell 4", "SCell 4 (13)", 7),
+    ],
+}
+
+
+def event_enum_name(event: str) -> str:
+    """Retourne le nom d'enum NFF 2.50 pour un event cell_scoped."""
+    return EVENT_CELL_TYPE_ENUM.get(event, "lte_scell")
+
+
+def event_enum_variants(event: str) -> list[tuple[int, str, str, int]]:
+    """Retourne les variantes canoniques pour un event cell_scoped."""
+    return ENUM_VARIANTS[event_enum_name(event)]
 IDENTITY_FIELDS = {"IMSI", "IMEI", "TMSI", "GUTI", "#EI", "#SI"}
 MASKED_INDEX_FIELDS = {"cmd_index", "action_index", "req_index"}
 PAYLOAD_FIELDS = {"Payload", "payload_b64", "Message"}
@@ -225,12 +320,12 @@ def main():
     print(f"[build] enums={ {k: len(v) for k, v in enums.items()} }")
 
     # (D) corpus coverage — 2.51.1+ : SUPPRIMÉ du build pour garantir
-    # un sha reproductible. Les cell_types "observés" sont évalués
-    # RUNTIME dans `app/kpi/metrics_catalog_v4.py` (nmf_event_light_group).
-    # Toutes les 7 feuilles canoniques (@cell_type) sont marquées
-    # `displayed=True` dans le JSON ; le filtre selectable/grisé est
-    # produit par metrics_catalog_v4 à l'enveloppe /metrics.
-    cell_coverage: dict[str, set[int]] = {}
+    # un sha reproductible. 2.54.0 : plus consulté du tout dans le build
+    # (toutes les feuilles cellule applicables sortent avec
+    # `selectable=None` + `reason=None`, la décision est posée par
+    # `metrics_catalog_v4.build_catalog_v4()` à partir du corpus du
+    # projet servi — col décodée ET observation de CETTE cellule pour
+    # CET event dans CE projet).
 
     # (E) hiérarchie
     nodes = []
@@ -345,6 +440,11 @@ def main():
         event_nodes[ev] = {"node_type": "event", "label": ev, "event": ev,
                            "node_id": ev_nid, "parent_id": cat_nodes[cat_key]["node_id"],
                            "cell_scoped": cell_scoped,
+                           # 2.54.0 — enum NFF 2.50 appliqué au champ `Cell type`
+                           # de cet event. Serve-time `metrics_catalog_v4` s'en
+                           # sert pour délimiter les variantes canoniques du
+                           # dispatch outsider.
+                           "cell_type_enum": event_enum_name(ev) if cell_scoped else None,
                            "tech": tech}
         # leaves : one per field; cell-scoped events get per-cell_type leaves
         kept_fields = []
@@ -384,26 +484,22 @@ def main():
             deduped_fields.append(row)
         kept_fields = deduped_fields
         if cell_scoped:
-            cells_seen = sorted(cell_coverage.get(ev, set()))
-            # 2.51.0 — 7 feuilles cellule canoniques (PCell, SCell 1-4, PSCell,
-            # SCell NR 100+). Chaque feuille porte `cell_type` filtre dimension ;
-            # selectable=false + reason si cell_type jamais observé en base.
-            # Dédoublonnage des 32 feuilles spec par event : BC3 2026-10-25.
-            SEVEN = [
-                (0, "PCell", "PCell (0)", 7),
-                (1, "SCell 1", "SCell 1 (1)", 7),
-                (2, "SCell 2", "SCell 2 (2)", 7),
-                (3, "SCell 3", "SCell 3 (3)", 7),
-                (4, "SCell 4", "SCell 4 (4)", 7),
-                (199, "PSCell", "PSCell NR (199)", 9),
-                (100, "SCell NR 100+", "SCell NR 100+ (bucket cell_type≥100 hors PSCell)", 9),
-            ]
-            scell_nr_observed = any(c >= 100 and c != 199 for c in cells_seen)
-            for ct, label_short, label_long, tech_cell in SEVEN:
-                if ct == 100:
-                    observed = scell_nr_observed
-                else:
-                    observed = ct in cells_seen
+            # 2.54.0 — Structural-only bake : applicabilité technologique
+            # (LTE-only / NR-only) et champs non documentés (_fil / extra_)
+            # restent figés. `selectable` / `reason` pour les cas où un
+            # cell_type est applicable deviennent **None** : la décision
+            # par-projet (col décodée ET au moins une observation de
+            # CETTE cellule pour CET event dans CE projet) revient à
+            # `metrics_catalog_v4.build_catalog_v4()`.
+            # Dédup des 32 feuilles spec par event : BC3 2026-10-25.
+            # 2.54.0 — Variantes par enum de l'event (NFF 2.50) :
+            # CELLMEAS/MIMOMEAS utilisent `lte_cellmeas`/`lte_mimo`
+            # (SCell commence à 10), tous les autres `lte_scell`
+            # (SCell commence à 1 + bucket SCG 100-131 + PSCell 199).
+            # Cf. mapping EVENT_CELL_TYPE_ENUM supra, cité spec par ligne.
+            ev_enum = event_enum_name(ev)
+            variants = ENUM_VARIANTS[ev_enum]
+            for ct, label_short, label_long, tech_cell in variants:
                 # Évince PSCell + SCell NR 100+ pour un event LTE-only
                 # (tech=LTE) et SCell 1..4 pour un event NR-only (tech=NR).
                 applicable = (
@@ -411,23 +507,29 @@ def main():
                     or (tech == "LTE" and tech_cell == 7)
                     or (tech == "NR" and tech_cell == 9)
                 )
-                reason = None
-                selectable = observed
+                struct_reason = None
+                struct_selectable = None  # None = défère au serve-time
                 if not applicable:
-                    selectable = False
-                    reason = f"N/A — event {tech}-only (cell_type {ct} n'existe que côté {'NR' if tech_cell==9 else 'LTE'})"
-                elif not observed:
-                    reason = "cell_type jamais observé en base (BC3 2026-10-25)"
+                    struct_selectable = False
+                    struct_reason = f"N/A — event {tech}-only (cell_type {ct} n'existe que côté {'NR' if tech_cell==9 else 'LTE'})"
                 for row in kept_fields:
                     name = row["name"]
+                    # 2.54.0 — Retrait des feuilles « Cell type » du cell_scoped.
+                    # Le champ reste la dimension (dispatch @cell via
+                    # metrics_v3.parse_selection / cell_options). Aucune
+                    # donnée supprimée. Exception : events cell_scoped=false
+                    # (CHI, MACI, RACHI) exposent le champ en feuille bare,
+                    # géré plus bas.
+                    if name == "Cell type":
+                        continue
                     # Les champs *_fil et extra_N : FF 2.62 non documenté 2.50.
-                    extras_reason = None
-                    extras_selectable = selectable
+                    extras_reason = struct_reason
+                    extras_selectable = struct_selectable
                     if any(suffix in name.lower() for suffix in ("extra_", "_fil")):
                         extras_selectable = False
                         extras_reason = "FF 2.62 non documenté 2.50 — nommage par contenu BC3 2026-10-25"
                     row_slug = row.get("_slug") or slugify(row["name"])
-                    leaves_cell.append({
+                    leaf = {
                         "node_type": "leaf", "event": ev, "label": f"{row['name']} @ {label_short}",
                         "metric_id": f"{ev.lower()}_{row_slug}@{ct}",
                         # 2.51.1 — source_column tirée du YAML du décodeur, jamais
@@ -440,9 +542,17 @@ def main():
                         "unit": row.get("unit") or None, "range": row.get("range") or None,
                         "description": row.get("description") or None,
                         "proof": "documented-2.50",
-                        "selectable": bool(extras_selectable), "displayed": True,
-                        "reason": extras_reason or reason, "n": 0,
-                    })
+                        "displayed": True,
+                        "reason": extras_reason, "n": 0,
+                    }
+                    # 2.54.0 — Omettre `selectable` quand la bake-time ne
+                    # peut rien dire (None) ; metrics_catalog_v4 pose la
+                    # valeur par-projet. Garder une bake-time explicite
+                    # (bool) quand c'est structurel (applicable=False ou
+                    # extras _fil/extra_).
+                    if extras_selectable is not None:
+                        leaf["selectable"] = bool(extras_selectable)
+                    leaves_cell.append(leaf)
         else:
             for row in kept_fields:
                 row_slug = row.get("_slug") or slugify(row["name"])
