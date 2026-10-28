@@ -181,6 +181,7 @@ def main() -> None:
         fingerprints = {
             "stg_event_raw": fingerprint(db, project_id, "stg_event_raw"),
             "nmf_event_light": fingerprint(db, project_id, "nmf_event_light"),
+            "nmf_event_light_native": fingerprint(db, project_id, "nmf_event_light_native"),
             "nmf_event_deep": fingerprint(db, project_id, "nmf_event_deep"),
             "nmf_cell_second": fingerprint(db, project_id, "nmf_cell_second", "seq_first"),
         }

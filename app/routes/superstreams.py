@@ -21,9 +21,9 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError
@@ -32,6 +32,7 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.deps import get_current_user, get_accessible_project, require_project_write
 from app.models import AppUser, Project, Superstream, SuperstreamMember
+from app.kpi.nmf_bins import query_metric_bins
 
 
 router = APIRouter(
@@ -476,3 +477,36 @@ def get_project_superstream_stream(
         parse_snapshots_distinct=len(distinct_snaps) > 1,
         parse_snapshots=distinct_snaps,
     )
+
+
+@router.get("/{ss_id}/bins")
+def get_project_superstream_bins(
+    project_id: str,
+    ss_id: str,
+    source_column: str = Query(...),
+    binning_mode: Literal["temporal", "spatial"] | None = None,
+    temporal_resolution: Literal["native", "1ms", "10ms", "100ms", "1s"] | None = None,
+    spatial_bin_m: Literal[10, 25, 50, 100] | None = None,
+    db: Session = Depends(get_db),
+):
+    """Bin each member independently and preserve `(position, capture, seq)`."""
+    ss = db.get(Superstream, ss_id)
+    if ss is None or ss.project_id != project_id:
+        raise HTTPException(404, {"code": "NOT_FOUND"})
+    members = db.execute(text("""SELECT position,capture_id FROM superstream_member
+      WHERE superstream_id=:sid AND project_id=:pid ORDER BY position,capture_id"""),
+      {"sid": ss_id, "pid": project_id}).mappings().all()
+    output = []
+    try:
+        for member in members:
+            resolution, bins = query_metric_bins(
+                db, project_id, member["capture_id"], source_column,
+                mode=binning_mode, temporal=temporal_resolution, spatial=spatial_bin_m,
+            )
+            output.append({"position": member["position"],
+                           "capture_id": member["capture_id"],
+                           "resolution": resolution, "bins": bins})
+    except (ValueError, LookupError) as exc:
+        raise HTTPException(422, {"reason": str(exc)}) from exc
+    return {"project_id": project_id, "superstream_id": ss_id,
+            "order": "position,capture_id,seq", "members": output}

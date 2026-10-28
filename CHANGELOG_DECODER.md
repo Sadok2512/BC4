@@ -1,5 +1,21 @@
 # CHANGELOG_DECODER
 
+## 1.8.0 (minor) — 2026-10-28 — Light natif sparse et bins à la requête (Agent BC1)
+
+- Les captures Light stockent une ligne compacte par record source dans
+  `nmf_event_light_native`; aucune ligne Deep ni ancien bucket Light.
+- Les captures Deep restent la source directe des bins temporels/spatiaux ;
+  aucune copie Light native n'est créée.
+- Les positions exactes GPS/POSI peuvent être propagées au record suivant de
+  la même capture dans la limite `BC4_SPATIAL_FIX_MAX_GAP_S` (1,0 s par
+  défaut). La provenance et l'écart sont persistés ; aucune interpolation ni
+  propagation inter-captures.
+- Les bins temporels 1/10/100 ms et 1 s, et spatiaux 10/25/50/100 m en
+  EPSG:2154, sont calculés à la requête avec médiane, bornes `seq`,
+  `n_records`, `n_valid`, `n_exact` et `n_inherited`.
+- G38, G39 et G45 couvrent l'ordre natif, la conservation de population,
+  la limite d'héritage, les snapshots de résolution et les superstreams.
+
 ## 1.7.2 (patch) — 2026-10-28 — Agrégations Light typées (Agent BC1)
 
 - `Stat.add()` ne calcule `total`, `weight`, `lo` et `hi` que pour les

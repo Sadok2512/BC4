@@ -3,12 +3,14 @@ import time
 from dataclasses import asdict
 from pathlib import Path
 from sqlalchemy import text
+from psycopg.types.json import Jsonb
 from . import DECODER_VERSION
 from .schema import fields
 from .source import records
 from .light import Light
 from .cells import cell_rows
 from .pairs import Pairs
+from .native import NATIVE_COLUMNS, native_row
 
 HEADERS=sorted(k for k,v in fields().items() if v['group'] is None)
 GROUPS=sorted(k for k,v in fields().items() if v['group'] is not None)
@@ -93,28 +95,36 @@ def copy_rows(db,table,columns,rows):
     # duplicates while no transaction spans the next CPU-heavy batch build.
     db.commit()
 
-def write_light(db,pid,cap,light):
+def write_light(db,pid,cap,light,*,persist=True):
     db.execute(text('DELETE FROM nmf_event_light WHERE project_id=:pid AND capture_id=:cap'),{'pid':pid,'cap':cap})
     db.execute(text('DELETE FROM nmf_event_light_group WHERE project_id=:pid AND capture_id=:cap'),{'pid':pid,'cap':cap})
     db.commit()
-    rows=[];groups=[]
-    for r in light.rows():
-        for g in r.pop('groups'):
-            groups.append(dict(project_id=pid,capture_id=cap,seq=r['seq'],group_name=g['group_name'],identity=g['identity'],set_index=g['set_index'],n_records=g['n_records'],**g['values']))
-        if len(groups)>=10000:
-            copy_rows(db,'nmf_event_light_group',GROUP_BASE+['identity','n_records']+GROUPS,groups);groups=[]
-        values=r.pop('values');r.update(values,project_id=pid,capture_id=cap,decoder_version=DECODER_VERSION,schema_version=DECODER_VERSION,
-            decode_status='partial' if r['n_partial'] else 'ok')
-        rows.append(r)
-        if len(rows)>=1000:copy_rows(db,'nmf_event_light',LIGHT_BASE+ALL,rows);rows=[]
-    copy_rows(db,'nmf_event_light',LIGHT_BASE+ALL,rows)
-    copy_rows(db,'nmf_event_light_group',GROUP_BASE+['identity','n_records']+GROUPS,groups)
+    if persist:
+        rows=[];groups=[]
+        for r in light.rows():
+            for g in r.pop('groups'):
+                groups.append(dict(project_id=pid,capture_id=cap,seq=r['seq'],group_name=g['group_name'],identity=g['identity'],set_index=g['set_index'],n_records=g['n_records'],**g['values']))
+            if len(groups)>=10000:
+                copy_rows(db,'nmf_event_light_group',GROUP_BASE+['identity','n_records']+GROUPS,groups);groups=[]
+            values=r.pop('values');r.update(values,project_id=pid,capture_id=cap,decoder_version=DECODER_VERSION,schema_version=DECODER_VERSION,
+                decode_status='partial' if r['n_partial'] else 'ok')
+            rows.append(r)
+            if len(rows)>=1000:copy_rows(db,'nmf_event_light',LIGHT_BASE+ALL,rows);rows=[]
+        copy_rows(db,'nmf_event_light',LIGHT_BASE+ALL,rows)
+        copy_rows(db,'nmf_event_light_group',GROUP_BASE+['identity','n_records']+GROUPS,groups)
     cell_values=[dict(project_id=pid,capture_id=cap,decoder_version=DECODER_VERSION,**r) for r in cell_rows(light)]
     # Build the CPU-heavy projection before opening its replacement
     # transaction.  DELETE + COPY remain atomic and no transaction sits idle.
     db.execute(text('DELETE FROM nmf_cell_second WHERE project_id=:pid AND capture_id=:cap'),{'pid':pid,'cap':cap})
     if cell_values:copy_rows(db,'nmf_cell_second',list(cell_values[0]),cell_values)
     else:db.commit()
+
+def write_native_rows(db,pid,cap,rows):
+    if not rows:return
+    for row in rows:
+        if row.get('values') is not None:row['values']=Jsonb(row['values'])
+        if row.get('groups') is not None:row['groups']=Jsonb(row['groups'])
+    copy_rows(db,'nmf_event_light_native',NATIVE_COLUMNS,rows)
 
 def decode_capture(db,pid,cap,level,*,force=False,parsing_snapshot=None):
     start=time.perf_counter();params={'pid':pid,'cap':cap}
@@ -164,13 +174,20 @@ def decode_capture(db,pid,cap,level,*,force=False,parsing_snapshot=None):
         for table in ('nmf_event_group','nmf_event_deep'):
             db.execute(text('DELETE FROM '+table+' WHERE project_id=:pid AND capture_id=:cap'),params)
         db.commit()
-    light=Light();pairs=Pairs();deep_rows=[];group_rows=[];n=partial=0;version='unknown'
+    light=Light();pairs=Pairs();deep_rows=[];group_rows=[];native_rows=[];position_state={};n=partial=0;version='unknown'
+    if level=='light':
+        db.execute(text('DELETE FROM nmf_event_light_native WHERE project_id=:pid AND capture_id=:cap'),params)
+        db.commit()
     for r in records(file['source_path'],cap,file['sha256']):
         if r.excluded:continue
         n+=1;partial+=r.decode_status=='partial';version=r.format_version
         if level=='deep':normalize_for_stored_deep(r,float_fields)
         pairs.add(r)
         light.add(r)
+        if level=='light':
+            native_rows.append(native_row(pid,r,position_state))
+            if len(native_rows)>=1000:
+                write_native_rows(db,pid,cap,native_rows);native_rows=[]
         if level=='deep':
             deep_rows.append(dict(project_id=pid,**{k:getattr(r,k) for k in DEEP_BASE if k!='project_id'},**r.values))
             for g in r.groups:
@@ -179,7 +196,15 @@ def decode_capture(db,pid,cap,level,*,force=False,parsing_snapshot=None):
             if len(group_rows)>=10000:copy_rows(db,'nmf_event_group',GROUP_BASE+GROUPS,group_rows);group_rows=[]
     if level=='deep':
         copy_rows(db,'nmf_event_deep',DEEP_BASE+HEADERS,deep_rows);copy_rows(db,'nmf_event_group',GROUP_BASE+GROUPS,group_rows)
-    write_light(db,pid,cap,light)
+    else:
+        write_native_rows(db,pid,cap,native_rows)
+        db.execute(text("""UPDATE nmf_event_light_native SET
+          x_2154=ST_X(ST_Transform(ST_SetSRID(ST_Point(x_2154,y_2154),4326),2154)),
+          y_2154=ST_Y(ST_Transform(ST_SetSRID(ST_Point(x_2154,y_2154),4326),2154))
+          WHERE project_id=:pid AND capture_id=:cap
+            AND position_source IN ('exact','previous_fix')"""),params)
+        db.commit()
+    write_light(db,pid,cap,light,persist=level=='deep')
     pair_values=[dict(project_id=pid,capture_id=cap,decoder_version=DECODER_VERSION,**r) for r in pairs.rows()]
     db.execute(text('DELETE FROM nmf_event_pair WHERE project_id=:pid AND capture_id=:cap'),params)
     if pair_values:copy_rows(db,'nmf_event_pair',list(pair_values[0]),pair_values)
@@ -217,7 +242,8 @@ UE_CELL_SCOPED_EVENTS={'CELLMEAS','CI'}
 
 def classify_capture_kind(db,pid,cap):
     codes={r[0] for r in db.execute(text(
-        'SELECT DISTINCT event_code FROM nmf_event_light WHERE project_id=:pid AND capture_id=:cap'
+        '''SELECT event_code FROM nmf_event_light WHERE project_id=:pid AND capture_id=:cap
+           UNION SELECT event_code FROM nmf_event_light_native WHERE project_id=:pid AND capture_id=:cap'''
     ),{'pid':pid,'cap':cap}).all()}
     has_ue=bool(codes & UE_CELL_SCOPED_EVENTS)
     has_scan=bool(codes & SCANNER_EVENTS)

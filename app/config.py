@@ -70,6 +70,9 @@ class Settings(BaseSettings):
         "64 MiB / 4.2 GiB",
         alias="BC4_IMPORT_MEMORY_MODEL_SOURCE",
     )
+    spatial_fix_max_gap_s: float = Field(
+        1.0, ge=0.0, alias="BC4_SPATIAL_FIX_MAX_GAP_S"
+    )
 
     # LLM (0.16.0) — précédence : DB (settings_llm) > env ci-dessous.
     # BC4_LLM_SECRET_KEY : clé Fernet pour chiffrer l'api_key au repos.

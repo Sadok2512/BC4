@@ -117,3 +117,105 @@ Chaque agrégat inclut `capture_id` dans son `GROUP BY`; aucune fusion
 inter-captures. `seq_start=min(seq)` et `seq_end=max(seq)` sont calculés dans
 chaque bin. Les lignes sans position restent hors bin avec l'absence de
 `position_source`; aucune interpolation.
+
+## Héritage capture-local du fix précédent
+
+Configuration : `BC4_SPATIAL_FIX_MAX_GAP_S`, défaut 1,0 s. Le dernier fix
+est maintenu dans un état recréé pour chaque capture. Un fix porte
+`position_source=exact` et `position_gap_s=0`; un record dans la fenêtre
+porte `previous_fix` et l'écart absolu. Au-delà, aucune position n'est
+stockée et `position_reason=fix_gap_exceeded`.
+
+```text
+awk 'BEGIN{n=179178;before=1645;after=168311;
+printf "before_pct=%.3f after_pct=%.3f gain_points=%.3f outside_pct=%.3f\n",
+100*before/n,100*after/n,100*(after-before)/n,100*(n-after)/n}'
+before_pct=0.918 after_pct=93.935 gain_points=93.017 outside_pct=6.065
+```
+
+```text
+G39 spatial_50m={bad:0,binned:168311,gap_violations:0,
+ inheritance_without_same_capture_fix:0,n_exact:1645,n_inherited:166666,
+ outside:10867,population:179178}
+G39 inherited_gap_distribution_s={n:166666,p50:0.501,p90:0.911,
+ p95:0.956,p99:0.991,max_gap:1.0}
+G39 VERDICT=PASS
+G38_G39_EXIT=0
+```
+
+Le taux binné passe donc de 0,918 % à 93,935 %. Aucun record hérité ne
+dépasse le plafond et aucun ne précède le premier fix exact de sa capture.
+
+## Requêtes vues/KPI
+
+`app/kpi/nmf_bins.py` applique une projection unique :
+
+- Deep : valeur et fixes lus directement dans `nmf_event_deep`; une fenêtre
+  partitionnée par `(project_id,capture_id)` propage uniquement l'identifiant
+  du dernier fix ;
+- Light : valeur sparse et position lues dans `nmf_event_light_native`;
+- temporel : 1/10/100 ms ou 1 s, médiane des valeurs numériques ;
+- spatial : 10/25/50/100 m en EPSG:2154, médiane, `n_exact` et
+  `n_inherited` ;
+- paramètres absents : snapshot immuable de la capture.
+
+La route KPI est
+`/projects/{project}/captures/{capture}/kpi/{code}/bins`. La route
+superstream traite chaque membre séparément et renvoie l'ordre
+`(position,capture_id,seq)`; elle ne fusionne jamais deux captures.
+
+Le premier plan Deep utilisait un `LATERAL` rescannant les fixes pour chaque
+record. Le runner jetable a été arrêté (`exit=137`), puis l'écart a été fermé
+par la fenêtre capture-local en un passage.
+
+```text
+G45 light project=g45-light-ba34f4d0 capture=eebf5c3bef7b snapshot=temporal/10ms records=50318 bins=5099
+G45 deep project=g45-deep-ba34f4d0 snapshot=spatial/50m captures=[(b930aefc6bf8,43,25443),(eebf5c3bef7b,40,50318)]
+G45 superstream=g45-ss-ba34f4d0 members=[(0,b930aefc6bf8),(1,eebf5c3bef7b)] order=position,capture_id,seq
+G45 VERDICT=PASS
+G45_EXIT=0
+```
+
+G42 final sur le chemin applicatif Light natif :
+
+```text
+G42 elapsed_s=96.830 idle_in_transaction_max_s=0.000
+G42 statuses=['done'] nmf_files=1 distinct_sha=1 duplicate_files=0
+G42 table=stg_event_raw rows=50318
+G42 table=nmf_event_light rows=0
+G42 table=nmf_event_light_native rows=50318
+G42 table=nmf_event_deep rows=0
+G42 VERDICT=PASS
+G42_NATIVE_EXIT=0
+```
+
+Tests :
+
+```text
+pytest -q tests/test_nmf_native.py tests/test_nmf_decoder.py \
+ tests/test_import_jobs.py tests/test_reparse_capture_script.py
+.............................. [100%]
+PYTEST_DECODER_IMPORT_EXIT=0
+
+pytest -q tests/test_kpi_timeseries_unit.py tests/test_metrics_v3.py \
+ tests/test_kpi_operator_population.py
+............... [100%]
+PYTEST_KPI_EXIT=0
+```
+
+Type SemVer : **minor back**. Release décodeur : **1.8.0**, documentée
+dans `CHANGELOG_DECODER.md`. Le numéro de release applicative reste attribué
+au merge par BC3 ; `pyproject.toml` n'est pas modifié.
+
+Replay final Alembic : une première tentative de downgrade est restée en
+attente d'un verrou conservé par le plan `LATERAL` G45 interrompu ; la révision
+est restée à `bc1_light_native_sparse`. Sans kill de processus, seule la base
+jetable a été arrêtée/redémarrée. Le replay suivant ferme l'écart :
+
+```text
+alembic downgrade bc1_import_measurement_lookup
+exit=0
+alembic upgrade head
+Running upgrade bc1_import_measurement_lookup -> bc1_light_native_sparse
+exit=0
+```

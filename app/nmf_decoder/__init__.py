@@ -1,2 +1,2 @@
 """Non-RRC Nemo decoding. Version independent of the HTTP API."""
-DECODER_VERSION = '1.7.2'
+DECODER_VERSION = '1.8.0'

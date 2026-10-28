@@ -13,63 +13,14 @@ from sqlalchemy import text
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from app.db import SessionLocal
+from app.config import settings
+from app.nmf_decoder.native import NATIVE_COLUMNS, native_row
 from app.nmf_decoder.source import records
-
-
-REASON_BITS = {
-    reason: 1 << index for index, reason in enumerate((
-        "context_layout_unsupported", "csv_malformed", "event_undocumented",
-        "fields_truncated", "format_extensions_unproven", "format_unknown",
-        "format_unsupported", "identity_header_redacted",
-        "parameter_type_undocumented", "system_missing",
-        "system_undocumented", "time_missing", "time_regression",
-        "unknown_fields",
-    ))
-}
 
 
 def fail(label: str, reason: str, code: int = 1) -> None:
     print(f"{label} VERDICT=FAIL reason={reason}")
     raise SystemExit(code)
-
-
-def clean_values(values: dict) -> dict | None:
-    result = {key: value for key, value in values.items() if value is not None}
-    return result or None
-
-
-def clean_groups(groups: list[dict]) -> list[dict] | None:
-    result = []
-    for group in groups:
-        values = clean_values(group["values"])
-        if values:
-            result.append([group["group_name"], group["set_index"], values])
-    return result or None
-
-
-def measured_position(record) -> tuple[float | None, float | None, str | None]:
-    lon = record.values.get("gps_lon", record.values.get("posi_lon"))
-    lat = record.values.get("gps_lat", record.values.get("posi_lat"))
-    # GPS is deliberately inactive in the metric schema, but NFF 2.19 proves
-    # its physical longitude/latitude columns.  Position provenance is a
-    # storage concern, not a metric activation decision, so retain those two
-    # documented tokens without treating any neighbouring record as measured.
-    if (lon is None or lat is None) and record.event_code == "GPS" and len(record.tokens) >= 5:
-        try:
-            lon, lat = float(record.tokens[3]), float(record.tokens[4])
-        except (TypeError, ValueError):
-            lon = lat = None
-    if (lon is None or lat is None) and record.event_code == "POSI" and len(record.tokens) >= 8:
-        try:
-            lon, lat = float(record.tokens[6]), float(record.tokens[7])
-        except (TypeError, ValueError):
-            lon = lat = None
-    if lon is None or lat is None:
-        return None, None, None
-    lon, lat = float(lon), float(lat)
-    if not (-180 <= lon <= 180 and -90 <= lat <= 90) or (lon == 0 and lat == 0):
-        return None, None, None
-    return lon, lat, "measured"
 
 
 def main() -> None:
@@ -90,40 +41,23 @@ def main() -> None:
         db.execute(text("DELETE FROM nmf_event_light_native WHERE project_id=:pid"), {"pid": project_id})
         db.commit()
         raw = db.connection().connection.dbapi_connection
-        columns = (
-            "project_id,capture_id,seq,event_code,system,t_rel_s,partial,reason_mask,"
-            "reason_extra,unknown_cols,context_id,context_ids,values,groups,"
-            "x_2154,y_2154,position_source"
-        )
+        columns = ",".join(NATIVE_COLUMNS)
         with raw.cursor() as cursor, cursor.copy(
             f"COPY nmf_event_light_native ({columns}) FROM STDIN"
         ) as copy:
             for path in paths:
                 capture_id = hashlib.sha256(path.name.encode()).hexdigest()[:12]
                 digest = hashlib.sha256(); count = 0
+                position_state = {}
                 for record in records(path, capture_id):
                     if record.excluded:
                         continue
                     count += 1
                     digest.update(f"{capture_id}\x1f{record.seq}\n".encode())
-                    lon, lat, source = measured_position(record)
-                    unknown = [
-                        int(code.rsplit("_", 1)[1]) for code in record.field_codes
-                        if code.startswith("unk_") and code.rsplit("_", 1)[1].isdigit()
-                    ] or None
-                    reason_mask = sum(REASON_BITS.get(reason, 0) for reason in record.reasons)
-                    reason_extra = [reason for reason in record.reasons if reason not in REASON_BITS] or None
-                    values = clean_values(record.values)
-                    groups = clean_groups(record.groups)
-                    copy.write_row((
-                        project_id, capture_id, record.seq, record.event_code,
-                        record.system, record.t_rel_s,
-                        record.decode_status == "partial", reason_mask, reason_extra,
-                        unknown, record.context_id, record.context_ids or None,
-                        Jsonb(values) if values else None,
-                        Jsonb(groups) if groups else None,
-                        lon, lat, source,
-                    ))
+                    row = native_row(project_id, record, position_state)
+                    row["values"] = Jsonb(row["values"]) if row["values"] else None
+                    row["groups"] = Jsonb(row["groups"]) if row["groups"] else None
+                    copy.write_row(tuple(row.get(column) for column in NATIVE_COLUMNS))
                 expected[capture_id] = (count, digest.hexdigest())
         # The COPY temporarily carries measured WGS84 lon/lat in x/y.  Convert
         # them in-place with PostGIS before any spatial bin is evaluated.
@@ -131,7 +65,7 @@ def main() -> None:
             UPDATE nmf_event_light_native
             SET x_2154=ST_X(ST_Transform(ST_SetSRID(ST_Point(x_2154,y_2154),4326),2154)),
                 y_2154=ST_Y(ST_Transform(ST_SetSRID(ST_Point(x_2154,y_2154),4326),2154))
-            WHERE project_id=:pid AND position_source='measured'
+            WHERE project_id=:pid AND position_source IN ('exact','previous_fix')
         """), {"pid": project_id})
         db.commit()
 
@@ -195,7 +129,7 @@ def main() -> None:
               SELECT capture_id,floor(x_2154/50) bx,floor(y_2154/50) by,
                      count(*) n,min(seq) seq_start,max(seq) seq_end
               FROM nmf_event_light_native
-              WHERE project_id=:pid AND position_source='measured'
+              WHERE project_id=:pid AND position_source IN ('exact','previous_fix')
               GROUP BY capture_id,floor(x_2154/50),floor(y_2154/50)
             ), outside AS (
               SELECT capture_id,count(*) n FROM nmf_event_light_native
@@ -203,14 +137,30 @@ def main() -> None:
             )
             SELECT count(*) FILTER (WHERE coalesce(b.n,0)+coalesce(o.n,0)<>p.n) bad,
                    sum(p.n) population,sum(coalesce(b.n,0)) binned,
-                   sum(coalesce(o.n,0)) outside
+                   sum(coalesce(o.n,0)) outside,
+                   (SELECT count(*) FROM nmf_event_light_native WHERE project_id=:pid AND position_source='exact') n_exact,
+                   (SELECT count(*) FROM nmf_event_light_native WHERE project_id=:pid AND position_source='previous_fix') n_inherited,
+                   (SELECT count(*) FROM nmf_event_light_native WHERE project_id=:pid AND position_source='previous_fix' AND position_gap_s>:max_gap) gap_violations,
+                   (SELECT count(*) FROM nmf_event_light_native n WHERE project_id=:pid AND position_source='previous_fix'
+                    AND NOT EXISTS (SELECT 1 FROM nmf_event_light_native f WHERE f.project_id=n.project_id AND f.capture_id=n.capture_id
+                      AND f.position_source='exact' AND f.seq<n.seq)) inheritance_without_same_capture_fix
             FROM population p
             LEFT JOIN (SELECT capture_id,sum(n) n FROM binned GROUP BY capture_id) b USING(capture_id)
             LEFT JOIN outside o USING(capture_id)
-        """), {"pid": project_id}).mappings().one()
+        """), {"pid": project_id, "max_gap": settings.spatial_fix_max_gap_s}).mappings().one()
         print("G39 spatial_50m=" + json.dumps(dict(spatial), sort_keys=True, default=str))
-        if spatial["bad"] or not spatial["binned"]:
+        if (spatial["bad"] or not spatial["binned"] or spatial["gap_violations"]
+                or spatial["inheritance_without_same_capture_fix"]):
             fail("G39", "spatial_population_or_positive_witness")
+        gaps = db.execute(text("""SELECT count(*) n,
+          percentile_cont(.5) WITHIN GROUP(ORDER BY position_gap_s) p50,
+          percentile_cont(.9) WITHIN GROUP(ORDER BY position_gap_s) p90,
+          percentile_cont(.95) WITHIN GROUP(ORDER BY position_gap_s) p95,
+          percentile_cont(.99) WITHIN GROUP(ORDER BY position_gap_s) p99,
+          max(position_gap_s) max_gap
+          FROM nmf_event_light_native WHERE project_id=:pid
+            AND position_source='previous_fix'"""), {"pid": project_id}).mappings().one()
+        print("G39 inherited_gap_distribution_s=" + json.dumps(dict(gaps), sort_keys=True, default=str))
         print("G39 VERDICT=PASS")
 
 

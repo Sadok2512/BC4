@@ -38,11 +38,14 @@ def upgrade() -> None:
         sa.Column("groups", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
         sa.Column("x_2154", sa.Float(), nullable=True),
         sa.Column("y_2154", sa.Float(), nullable=True),
-        sa.Column("position_source", sa.String(length=12), nullable=True),
+        sa.Column("position_source", sa.String(length=16), nullable=True),
+        sa.Column("position_gap_s", sa.Float(), nullable=True),
+        sa.Column("position_reason", sa.String(length=24), nullable=True),
         sa.PrimaryKeyConstraint("project_id", "capture_id", "seq", name="pk_nmf_event_light_native"),
         sa.CheckConstraint(
-            "(x_2154 IS NULL AND y_2154 IS NULL AND position_source IS NULL) OR "
-            "(x_2154 IS NOT NULL AND y_2154 IS NOT NULL AND position_source='measured')",
+            "(x_2154 IS NULL AND y_2154 IS NULL AND position_source IS NULL AND position_gap_s IS NULL) OR "
+            "(x_2154 IS NOT NULL AND y_2154 IS NOT NULL AND position_source='exact' AND position_gap_s=0) OR "
+            "(x_2154 IS NOT NULL AND y_2154 IS NOT NULL AND position_source='previous_fix' AND position_gap_s>=0)",
             name="ck_light_native_position_proof",
         ),
     )
