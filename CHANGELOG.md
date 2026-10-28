@@ -1,3 +1,19 @@
+## 0.90.4 (patch) — BC4 2026-10-28 — Finalisation reprise par tranches (Agent BC1)
+
+- `populate_chain` conserve la sérialisation par projet avec un verrou advisory
+  de session, tout en laissant chaque tranche effectuer un vrai `COMMIT`.
+- `measurement_points` lit par keyset `(capture_id, seq)`, ferme la transaction
+  avant le calcul Python, groupe les écritures et committe chaque tranche.
+- Le parsing NMF ferme sa transaction de métadonnées avant le parcours du
+  fichier ; le test réel mesure 1,098 s maximum en état `idle in transaction`.
+- Les lignes complémentaires ont un identifiant déterministe et un UPSERT : une
+  reprise après interruption converge sans doublon.
+- `DSUMMARY`, déjà présent dans le skeleton, est enrichi par UPDATE au lieu
+  d'être réinséré (12 doublons historiques reproduits puis fermés sur le témoin).
+- `populate_measurements` ferme aussi ses lectures avant calcul et committe ses
+  insertions par tranche. Aucun relèvement de
+  `idle_in_transaction_session_timeout` n'est requis.
+
 ## 0.90.3 (patch) — BC4 2026-10-28 — Agrégations Light typées / decoder 1.7.2 (Agent BC1)
 
 - Empêche toute arithmétique Light sur les agrégations non numériques et
@@ -23,6 +39,26 @@
 - Compare le schéma live à un replay Alembic vide via des dumps conservés et
   les catalogues PostgreSQL (tables, colonnes, types, contraintes et index),
   en listant séparément les partitions dynamiques et en échouant sur tout écart.
+## 0.90.3 (patch) — bc4-back 2026-10-28 — PLMN non catalogué toléré par ProjectSchema (Agent BC3)
+
+Hotfix après front v1.114.1 affichant « Impossible de charger les projets » à
+11:40 : `GET /projects` renvoyait 500 avec
+`pydantic_core.ValidationError: operators.3 Input should be 'Orange', 'SFR',
+'Bouygues' or 'Free' [input_value='PLMN 208-08 (non catalogué)']`.
+
+- `app/schemas/common.py` : les champs alimentés par l'ingestion
+  (`Project.operators` / `technologies` / `services`,
+  `MeasurementPoint.operator` / `tech` / `service`,
+  `OverviewRow.operator`, `FilterContext.op` / `tech` / `svc`) passent de
+  `Literal[...]` à `str` : un NMF peut contenir un opérateur, une
+  technologie ou un service hors catalogue — la valeur brute est transmise
+  sans être renommée ni supprimée, pour que le front puisse l'afficher
+  « non catalogué » (gris + tooltip).
+- Les Literal `Operator`/`Tech`/`Service` restent définis à titre
+  documentaire (OpenAPI) ; ils ne sont plus imposés en validation.
+- Zéro migration, zéro écriture en base, pas de renommage de donnée.
+  La valeur `PLMN 208-08 (non catalogué)` posée par l'ingest Test_5 reste
+  telle quelle dans `projects.operators`.
 
 ## Incidents (ajout 2026-10-27 22:30 UTC) — Base de données & API exposées en 0.0.0.0
 

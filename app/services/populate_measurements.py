@@ -55,6 +55,7 @@ def populate_measurements(db: Session, project_id: str, *, purge: bool = True) -
         {"pid": project_id},
     ).all()
     sib1_idx = _build_sib1_index(sib1_rows)
+    db.commit()
 
     # 2) Purge des lignes mesure existantes (préserve seeds B0).
     if purge:
@@ -65,6 +66,7 @@ def populate_measurements(db: Session, project_id: str, *, purge: bool = True) -
             ),
             {"pid": project_id},
         )
+        db.commit()
 
     # 3) Itère les events mesure. Les colonnes `freq`/`pci` ne sont pas
     #    dans stg_measurement_raw (elles vivraient dans raw_fields —
@@ -82,6 +84,9 @@ def populate_measurements(db: Session, project_id: str, *, purge: bool = True) -
         ),
         {"pid": project_id},
     ).all()
+    # La transformation Python ne doit jamais conserver une transaction de
+    # lecture inactive. Les sources staging sont immuables pendant ce populate.
+    db.commit()
 
     inserted = 0
     by_code: dict[str, int] = {}
@@ -170,7 +175,9 @@ def populate_measurements(db: Session, project_id: str, *, purge: bool = True) -
             ),
             batch,
         )
-    db.commit()
+        # Vrai commit par tranche : une interruption laisse un préfixe valide,
+        # et la relance avec purge reconstruit sans doublon.
+        db.commit()
 
     return {
         "inserted": inserted,

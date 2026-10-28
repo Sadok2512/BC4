@@ -3,6 +3,15 @@ from typing import Literal
 from pydantic import BaseModel, Field
 from app.schemas.ingest import NmfImportJobView
 
+# Les Literal ci-dessous décrivent le CATALOGUE des opérateurs/technos/services
+# connus. Ils restent utiles pour la documentation OpenAPI et pour les filtres
+# applicatifs internes, mais ils NE DOIVENT PAS valider les champs alimentés
+# par l'ingestion : un NMF réel peut contenir un PLMN non catalogué (ex.
+# "PLMN 208-08"), un service encore inconnu, une techno hors liste. Dans ce
+# cas la valeur brute passe par la chaîne, est affichée en gris côté front
+# avec tooltip "détecté dans les logs, non présent dans le catalogue" — rien
+# n'est renommé ni supprimé. Les champs listés dans Project/MeasurementPoint/
+# OverviewRow/FilterContext utilisent donc `str` au lieu de ces Literal.
 Operator = Literal["Orange", "SFR", "Bouygues", "Free"]
 Tech = Literal["LTE", "NR", "EN-DC"]
 Service = Literal["Data", "SMS", "Voice"]
@@ -28,9 +37,12 @@ class Project(BaseModel):
     name: str
     geography: str
     center: tuple[float, float]
-    operators: list[Operator]
-    technologies: list[Tech]
-    services: list[Service]
+    # Alimentés par l'ingestion. `str` ouvert : un NMF peut contenir une
+    # valeur hors catalogue (ex. "PLMN 208-08"), auquel cas elle est
+    # transmise brute sans être renommée ni supprimée.
+    operators: list[str]
+    technologies: list[str]
+    services: list[str]
     bands: list[str]
     departements: list[str]
     periodStart: str
@@ -51,9 +63,11 @@ class Project(BaseModel):
 
 class FilterContext(BaseModel):
     project: str | None = None
-    op: list[Operator] | None = None
-    tech: list[Tech] | None = None
-    svc: list[Service] | None = None
+    # Mêmes règles que Project : le filtre peut viser un opérateur/techno/
+    # service non catalogué (découvert à l'ingestion). Pas de rejet 422.
+    op: list[str] | None = None
+    tech: list[str] | None = None
+    svc: list[str] | None = None
     band: list[str] | None = None
     dep: list[str] | None = None
     metric: MetricKey | None = None
@@ -80,9 +94,10 @@ class MeasurementPoint(BaseModel):
     id: str
     lat: float | None
     lng: float | None
-    operator: Operator | None
-    tech: Tech | None
-    service: Service | None
+    # Alimentés par l'ingestion → str ouvert, cf. Project.operators.
+    operator: str | None
+    tech: str | None
+    service: str | None
     band: str | None
     dep: str | None
     site: str | None
@@ -94,7 +109,8 @@ class MeasurementPoint(BaseModel):
 
 
 class OverviewRow(BaseModel):
-    operator: Operator
+    # Alimenté par l'agrégation issue de l'ingestion → str ouvert, cf. Project.
+    operator: str
     samples: int
     dl: float | None
     rsrp: float | None

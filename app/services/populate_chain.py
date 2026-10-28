@@ -2,8 +2,8 @@
 populate_measurement_points → populate_ecgi_for_project.
 
 Appelé à la fin de ``upload_nmf`` dans la MÊME requête HTTP, sous un
-``pg_advisory_xact_lock`` par ``project_id`` : jamais deux populate
-concurrents sur le même projet (règle « séquentiel par projet »).
+``pg_advisory_lock`` de session par ``project_id`` : jamais deux populate
+concurrents sur le même projet, même si chaque tranche est commitée.
 
 Garantit la **cohérence** : un projet qui a reçu des NMF se retrouve avec
 ``last_populate_at`` et ``n_points`` à jour avant le retour HTTP, sinon
@@ -32,26 +32,6 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-
-def _project_lock_key(project_id: str) -> int:
-    """Clé bigint stable pour pg_advisory_xact_lock : hashtext('populate:'||id).
-    PostgreSQL hashtext → int32 ; on l'étend à bigint via cast implicite.
-    """
-    # On fait le hash côté SQL (Postgres hashtext) pour cohérence inter-processus.
-    # Retourne un placeholder utilisé en SELECT pg_advisory_xact_lock(hashtext(:k)).
-    return 0  # non utilisé ; cf. acquire_project_lock
-
-
-def acquire_project_lock(db: "Session", project_id: str) -> None:
-    """Pose un advisory_xact_lock sur ``populate:{project_id}``. Bloquant.
-    Auto-release à la fin de la transaction (COMMIT ou ROLLBACK).
-    """
-    db.execute(
-        text("SELECT pg_advisory_xact_lock(hashtext(:k))"),
-        {"k": f"populate:{project_id}"},
-    )
-
-
 def _run_populate_chain(db: "Session", project: "Project") -> dict:
     """Enchaîne les 3 étapes populate pour `project` et met à jour les
     colonnes de suivi (`last_populate_at`, `n_points`).
@@ -60,7 +40,6 @@ def _run_populate_chain(db: "Session", project: "Project") -> dict:
     N'avale JAMAIS une exception : laisse remonter si une étape plante.
     """
     t0 = datetime.now(timezone.utc)
-    acquire_project_lock(db, project.id)
     report: dict = {}
 
     from app.nmf_decoder.store import ensure_light
@@ -151,10 +130,12 @@ def _run_populate_chain(db: "Session", project: "Project") -> dict:
 
 
 def run_populate_chain(db, project):
-    """All stages commit together; legacy internal commits only release savepoints.
+    """Exécute la finalisation avec de vrais commits bornés et reprise sûre.
 
-    A failed/killed enrichment cannot persist a prefix of captures. The advisory
-    transaction lock is held by the outer transaction across every stage.
+    Le verrou advisory est attaché à la connexion, pas à une transaction : il
+    sérialise un projet pendant que les commits de tranches libèrent réellement
+    MVCC. Un arrêt peut laisser un préfixe valide ; la relance idempotente
+    converge sans doublon.
     """
     from sqlalchemy.orm import Session
     from app.models import Project
@@ -165,10 +146,22 @@ def run_populate_chain(db, project):
     # the expired caller object again until the population commit completes.
     project_id = project.id
     db.commit()
-    with engine.begin() as connection:
-        with Session(bind=connection, join_transaction_mode='create_savepoint') as work:
-            connection.execute(text('SELECT pg_advisory_xact_lock(hashtext(:k))'),{'k':'populate:'+project_id})
-            stored=work.get(Project,project_id)
-            report=_run_populate_chain(work,stored)
+    lock_key = 'populate:' + project_id
+    with engine.connect() as connection:
+        with Session(bind=connection, expire_on_commit=False) as work:
+            work.execute(text('SELECT pg_advisory_lock(hashtext(:k))'), {'k': lock_key})
+            work.commit()
+            try:
+                stored = work.get(Project, project_id)
+                if stored is None:
+                    raise LookupError(f'project_not_found:{project_id}')
+                report = _run_populate_chain(work, stored)
+            finally:
+                work.rollback()
+                work.execute(
+                    text('SELECT pg_advisory_unlock(hashtext(:k))'),
+                    {'k': lock_key},
+                )
+                work.commit()
     db.refresh(project)
     return report
