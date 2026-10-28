@@ -40,6 +40,7 @@ from typing import IO, Any, Iterable
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.models import NmfFile, Project
 from app.services.task_privacy import redact_command
 from app.nmf_decoder.privacy import redact_raw
@@ -50,7 +51,7 @@ from app.nmf_decoder.privacy import redact_raw
 
 MAX_FILE_BYTES = 2 * 1024 * 1024 * 1024  # 2 GiB par fichier NMF
 SPOOL_THRESHOLD = 32 * 1024 * 1024       # bascule disque au-delà de 32 MiB
-BATCH_SIZE = 1000
+BATCH_SIZE = settings.import_batch_size
 
 # 0.30.0 — Dossier persistant du .nmf source. Volume Docker nommé
 # `bc4_nmf_source` monté sur `/var/lib/bc4/nmf-source` (défaut), surchargeable
@@ -63,6 +64,18 @@ IDENTITY_KEYS: set[str] = {
     "imsi", "msisdn", "imei", "imeisv", "tmsi", "s_tmsi", "stmsi",
     "guti", "mtmsi", "m_tmsi", "ptmsi", "p_tmsi", "subscriber_id",
 }
+
+
+def _copy_rows(db: Session, table: str, columns: list[str], rows: list[dict]) -> None:
+    """COPY a bounded batch; table/columns are internal constants only."""
+    if not rows:
+        return
+    connection = db.connection().connection.dbapi_connection
+    with connection.cursor() as cursor:
+        with cursor.copy(f"COPY {table} ({','.join(columns)}) FROM STDIN") as copy:
+            for row in rows:
+                copy.write_row(tuple(row.get(column) for column in columns))
+    db.commit()
 
 # Chemins candidats pour le décodeur NMF. On essaie dans l'ordre.
 # `BC4_NMF_DECODER_PATH` peut pointer vers un dossier qui expose
@@ -479,6 +492,8 @@ def ingest_upload(
             os.unlink(tmp_path)
             raise
 
+    previous_expire_on_commit = db.expire_on_commit
+    db.expire_on_commit = False
     try:
         # Idempotence : si (project_id, sha256) existe déjà, on renvoie l'existant.
         existing = (
@@ -486,7 +501,7 @@ def ingest_upload(
             .filter(NmfFile.project_id == project.id, NmfFile.sha256 == sha)
             .one_or_none()
         )
-        if existing is not None:
+        if existing is not None and existing.status == "done":
             # Idempotent uploads also upgrade missing Light data, without re-ingesting RRC/staging.
             from app.nmf_decoder.store import decode_capture
             caps=db.execute(text('SELECT DISTINCT capture_id FROM stg_event_raw WHERE project_id=:pid AND nmf_file_id=:fid'),{'pid':project.id,'fid':existing.id}).scalars().all()
@@ -499,29 +514,31 @@ def ingest_upload(
             db.commit()
             return existing
 
-        nmf_id = uuid.uuid4().hex[:16]
-        # 0.30.0 — persiste le .nmf source AVANT de fermer le tempfile.
-        # Jamais fatal : si l'écriture échoue, on continue sans source_path
-        # (déclaré via `error_msg`, pas inventé).
-        source_path = _persist_source_file(tmp_path, project.id, nmf_id)
-
-        nmf = NmfFile(
-            id=nmf_id,
-            project_id=project.id,
-            filename=filename,
-            size_bytes=size,
-            sha256=sha,
-            uploaded_at=datetime.now(timezone.utc),
-            status="decoding",
-            decoder_version=handle.version if handle.available else "unavailable",
-            error_msg=None if source_path else "source_path_write_failed",
-            n_captures=0,
-            n_events=0,
-            n_gps=0,
-            source_path=source_path,
-        )
-        db.add(nmf)
-        db.flush()  # pour disposer de nmf.id en FK avant les inserts stg_event
+        if existing is None:
+            nmf_id = uuid.uuid4().hex[:16]
+            source_path = _persist_source_file(tmp_path, project.id, nmf_id)
+            nmf = NmfFile(
+                id=nmf_id, project_id=project.id, filename=filename,
+                size_bytes=size, sha256=sha, uploaded_at=datetime.now(timezone.utc),
+                status="decoding",
+                decoder_version=handle.version if handle.available else "unavailable",
+                error_msg=None if source_path else "source_path_write_failed",
+                n_captures=0, n_events=0, n_gps=0, source_path=source_path,
+            )
+            db.add(nmf)
+        else:
+            # A killed process leaves this durable marker. Replay the source
+            # under the same nmf_file id; the staging replacement below is
+            # atomic, so a retry cannot append duplicates.
+            nmf = existing
+            nmf.status = "decoding"
+            nmf.error_msg = None
+            if not nmf.source_path:
+                nmf.source_path = _persist_source_file(tmp_path, project.id, nmf.id)
+        db.flush()
+        # Never keep a transaction idle while the CPU-only decoder walks the
+        # file.  The durable `decoding` marker makes this interruption-safe.
+        db.commit()
 
         result = decode_nmf_file(tmp_path, handle)
 
@@ -576,6 +593,15 @@ def ingest_upload(
             db.commit()
             return nmf
 
+        # Atomic replay boundary.  If a previous process died after staging
+        # but before the manifest update, replace its rows instead of
+        # appending.  The canonical identity remains (project,capture,seq).
+        for table in ("stg_event", "stg_event_raw", "stg_measurement_raw"):
+            db.execute(
+                text(f"DELETE FROM {table} WHERE project_id=:pid AND nmf_file_id=:fid"),
+                {"pid": project.id, "fid": nmf.id},
+            )
+
         if result.events:
             # Insertion par lots. `project_id` est copié explicitement sur
             # chaque event ; `nmf_file_id` idem — scoping dur par projet.
@@ -602,22 +628,11 @@ def ingest_upload(
                 )
             for i in range(0, len(rows), BATCH_SIZE):
                 batch = rows[i : i + BATCH_SIZE]
-                db.execute(
-                    text(
-                        """
-                        INSERT INTO stg_event (
-                            project_id, nmf_file_id, capture_id, seq, ts,
-                            event_code, system, channel, direction, message,
-                            freq, pci, payload_hex, lat, lon
-                        ) VALUES (
-                            :project_id, :nmf_file_id, :capture_id, :seq, :ts,
-                            :event_code, :system, :channel, :direction, :message,
-                            :freq, :pci, :payload_hex, :lat, :lon
-                        )
-                        """
-                    ),
-                    batch,
-                )
+                _copy_rows(db, "stg_event", [
+                    "project_id", "nmf_file_id", "capture_id", "seq", "ts",
+                    "event_code", "system", "channel", "direction", "message",
+                    "freq", "pci", "payload_hex", "lat", "lon",
+                ], batch)
 
         # 0.30.0 — Stream TOUT ce qui n'est pas signalling dans `stg_event_raw`
         # avec `raw_fields` **dict** nommé (fallback cN sur les positions
@@ -686,38 +701,16 @@ def ingest_upload(
                     )
             for i in range(0, len(raw_rows), BATCH_SIZE):
                 batch = raw_rows[i : i + BATCH_SIZE]
-                db.execute(
-                    text(
-                        """
-                        INSERT INTO stg_event_raw (
-                            project_id, nmf_file_id, capture_id, seq,
-                            category, event_code, ts, system, lat, lon, raw_fields
-                        ) VALUES (
-                            :project_id, :nmf_file_id, :capture_id, :seq,
-                            :category, :event_code, :ts, :system, :lat, :lon,
-                            CAST(:raw_fields AS JSONB)
-                        )
-                        """
-                    ),
-                    batch,
-                )
+                _copy_rows(db, "stg_event_raw", [
+                    "project_id", "nmf_file_id", "capture_id", "seq", "category",
+                    "event_code", "ts", "system", "lat", "lon", "raw_fields",
+                ], batch)
             for i in range(0, len(mirror_rows), BATCH_SIZE):
                 batch = mirror_rows[i : i + BATCH_SIZE]
-                db.execute(
-                    text(
-                        """
-                        INSERT INTO stg_measurement_raw (
-                            project_id, nmf_file_id, capture_id, seq, ts,
-                            event_code, category, system, lat, lon, raw_fields
-                        ) VALUES (
-                            :project_id, :nmf_file_id, :capture_id, :seq, :ts,
-                            :event_code, :category, :system, :lat, :lon,
-                            CAST(:raw_fields AS JSONB)
-                        )
-                        """
-                    ),
-                    batch,
-                )
+                _copy_rows(db, "stg_measurement_raw", [
+                    "project_id", "nmf_file_id", "capture_id", "seq", "ts",
+                    "event_code", "category", "system", "lat", "lon", "raw_fields",
+                ], batch)
             # Alimente le flag "measurements" du résultat pour que la logique
             # de populate ci-dessous soit déclenchée comme en 0.24.0 BC1.
             result.measurements = mirror_rows
@@ -781,6 +774,7 @@ def ingest_upload(
                 db.commit()
         return nmf
     finally:
+        db.expire_on_commit = previous_expire_on_commit
         try:
             os.unlink(tmp_path)
         except FileNotFoundError:
@@ -926,6 +920,7 @@ def _detect_enrich_context(db: Session, project_id: str) -> dict:
         ),
         {"pid": project_id},
     ).all()
+    db.commit()
     events = [
         {"system": r.system, "message": r.message, "freq": r.freq, "payload_hex": r.payload_hex}
         for r in rows

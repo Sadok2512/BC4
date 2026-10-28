@@ -209,6 +209,7 @@ def _extract_sib1_cells(db: Session, project_id: str) -> list[dict[str, Any]]:
             "pat_mnc": "systemInformationBlockType1/cellAccessRelatedInfo/plmn-IdentityList/%plmn-Identity/mnc",
         },
     ).fetchall()
+    db.commit()
     return [
         {
             "stg_event_id":  r[0],
@@ -273,6 +274,10 @@ def _attach_pci_earfcn(db: Session, project_id: str, sib1: list[dict]) -> None:
         ),
         {"pid": project_id, "caps": list(capture_ids)},
     ).fetchall()
+    # Both result sets are fully materialized.  End the read transaction before
+    # the Python-only selection/build phase; later writes open their own short
+    # transaction.
+    db.commit()
     # Keep for each capture, the pci with the latest seq.
     pci_by_cap: dict[str, int] = {}
     seen_last: dict[str, int] = {}
@@ -431,7 +436,7 @@ def _upsert_cell_ref(db: Session, cells: list[EcgiCell]) -> int:
         if c.ecgi not in by_ecgi:
             by_ecgi[c.ecgi] = c
     affected = 0
-    for c in by_ecgi.values():
+    for index, c in enumerate(by_ecgi.values(), 1):
         exists = db.execute(
             text("SELECT 1 FROM cell_ref WHERE eci = :e LIMIT 1"),
             {"e": c.ecgi},
@@ -479,6 +484,9 @@ def _upsert_cell_ref(db: Session, cells: list[EcgiCell]) -> int:
                 },
             )
         affected += 1
+        if index % 500 == 0:
+            db.commit()
+    db.commit()
     return affected
 
 
@@ -508,6 +516,7 @@ def _plmn_mismatch_scan(
         ),
         {"pid": project_id},
     ).fetchall()
+    db.commit()
     dl_by_cap: dict[str, str] = {}
     for r in rows:
         dl_raw = (r[1] or "").strip()
@@ -560,6 +569,7 @@ def populate_ecgi_for_project(
     updated = _propagate_to_mp(db, project_id, cells)
     report.mp_with_ecgi = updated
     report.mp_pct_with_ecgi = (100.0 * updated / mp_total) if mp_total else 0.0
+    db.commit()
 
     _upsert_cell_ref(db, cells)
 

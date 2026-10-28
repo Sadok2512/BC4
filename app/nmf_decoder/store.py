@@ -34,23 +34,51 @@ def copy_rows(db,table,columns,rows):
                         v=None
                     vals.append(v)
                 copy.write_row(tuple(vals))
+    # A completed COPY batch is a resumability checkpoint.  Callers delete
+    # the capture before replay, so an interrupted sequence is rebuilt without
+    # duplicates while no transaction spans the next CPU-heavy batch build.
+    db.commit()
 
 def read_deep(db,pid,cap):
     params={'pid':pid,'cap':cap}
-    gs=iter(db.execute(text('SELECT * FROM nmf_event_group WHERE project_id=:pid AND capture_id=:cap ORDER BY seq,group_name,set_index'),params,execution_options={'stream_results':True}).mappings())
-    next_g=next(gs,None)
-    rows=db.execute(text('SELECT * FROM nmf_event_deep WHERE project_id=:pid AND capture_id=:cap ORDER BY seq'),params,execution_options={'stream_results':True}).mappings()
-    for row in rows:
-        d={k:row[k] for k in DEEP_BASE if k!='project_id'}
-        r=Record(**d);r.values={k:row[k] for k in HEADERS if row[k] is not None}
-        while next_g is not None and next_g['seq']==r.seq:
-            r.groups.append(dict(group_name=next_g['group_name'],set_index=next_g['set_index'],values={k:next_g[k] for k in GROUPS if next_g[k] is not None}))
-            next_g=next(gs,None)
-        yield r
+    last_seq = -1
+    while True:
+        page_rows = db.execute(text('''
+            SELECT * FROM nmf_event_deep
+            WHERE project_id=:pid AND capture_id=:cap AND seq>:last_seq
+            ORDER BY seq LIMIT 100
+        '''), dict(params, last_seq=last_seq)).mappings().all()
+        if not page_rows:
+            db.commit()
+            return
+        page_last_seq = int(page_rows[-1]['seq'])
+        group_rows = db.execute(text('''
+            SELECT * FROM nmf_event_group
+            WHERE project_id=:pid AND capture_id=:cap
+              AND seq>:last_seq AND seq<=:page_last_seq
+            ORDER BY seq,group_name,set_index
+        '''), dict(params, last_seq=last_seq, page_last_seq=page_last_seq)).mappings().all()
+        # Rows are materialized.  Close the read transaction before the CPU-only
+        # mapping conversion and Light aggregation; the next page opens a new
+        # bounded transaction.
+        db.commit()
+        page = [dict(row) for row in page_rows]
+        grouped = [dict(row) for row in group_rows]
+        groups_by_seq = {}
+        for group in grouped:
+            groups_by_seq.setdefault(group['seq'], []).append(group)
+        for row in page:
+            d={k:row[k] for k in DEEP_BASE if k!='project_id'}
+            r=Record(**d);r.values={k:row[k] for k in HEADERS if row[k] is not None}
+            for group in groups_by_seq.get(r.seq, ()):
+                r.groups.append(dict(group_name=group['group_name'],set_index=group['set_index'],values={k:group[k] for k in GROUPS if group[k] is not None}))
+            yield r
+        last_seq = page_last_seq
 
 def write_light(db,pid,cap,light):
     db.execute(text('DELETE FROM nmf_event_light WHERE project_id=:pid AND capture_id=:cap'),{'pid':pid,'cap':cap})
     db.execute(text('DELETE FROM nmf_event_light_group WHERE project_id=:pid AND capture_id=:cap'),{'pid':pid,'cap':cap})
+    db.commit()
     rows=[];groups=[]
     for r in light.rows():
         for g in r.pop('groups'):
@@ -63,9 +91,12 @@ def write_light(db,pid,cap,light):
         if len(rows)>=1000:copy_rows(db,'nmf_event_light',LIGHT_BASE+ALL,rows);rows=[]
     copy_rows(db,'nmf_event_light',LIGHT_BASE+ALL,rows)
     copy_rows(db,'nmf_event_light_group',GROUP_BASE+['identity','n_records']+GROUPS,groups)
-    db.execute(text('DELETE FROM nmf_cell_second WHERE project_id=:pid AND capture_id=:cap'),{'pid':pid,'cap':cap})
     cell_values=[dict(project_id=pid,capture_id=cap,decoder_version=DECODER_VERSION,**r) for r in cell_rows(light)]
+    # Build the CPU-heavy projection before opening its replacement
+    # transaction.  DELETE + COPY remain atomic and no transaction sits idle.
+    db.execute(text('DELETE FROM nmf_cell_second WHERE project_id=:pid AND capture_id=:cap'),{'pid':pid,'cap':cap})
     if cell_values:copy_rows(db,'nmf_cell_second',list(cell_values[0]),cell_values)
+    else:db.commit()
 
 def decode_capture(db,pid,cap,level,*,force=False,parsing_snapshot=None):
     start=time.perf_counter();params={'pid':pid,'cap':cap}
@@ -75,9 +106,22 @@ def decode_capture(db,pid,cap,level,*,force=False,parsing_snapshot=None):
         parse_temporal_resolution AS temporal_resolution, parse_spatial_bin_m AS spatial_bin_m,
         'query-binning-v1' AS aggregation_contract_version
         FROM projects WHERE id=:pid'''),params).mappings().one()
-    if old and old['decoder_version']==DECODER_VERSION and (old['decode_level']=='deep' or old['decode_level']==level) and not force:
+    # Snapshot de capture immuable (prolongement du contrat 0061 import-snapshot) :
+    # une capture déjà présente dans `nmf_capture` est DONE et ne doit JAMAIS
+    # être re-décodée implicitement — même quand `DECODER_VERSION` live a
+    # évolué. Chaque capture conserve son décodeur d'origine (`old['decoder_version']`)
+    # tant qu'un re-parse n'est pas DEMANDÉ explicitement par la commande
+    # `app.scripts.reparse_capture` (force=True + trace du snapshot
+    # before/after). Historique : avant 2026-10-28, le skip conditionnait sur
+    # `old['decoder_version']==DECODER_VERSION`, ce qui déclenchait
+    # ensure_light → decode_capture sur TOUTES les captures du projet à
+    # chaque upgrade du décodeur (incident Test_5 2026-10-28 : 22 captures
+    # repassées 1.7.1→1.7.2 à l'insu de l'opérateur).
+    if old and not force:
         db.commit()
-        return dict(capture_id=cap,skipped=True,elapsed_s=0)
+        return dict(capture_id=cap, skipped=True, elapsed_s=0,
+                    reason='snapshot_immuable',
+                    kept_decoder_version=old['decoder_version'])
     file=db.execute(text('''SELECT DISTINCT n.id,n.source_path,n.sha256 FROM nmf_file n JOIN stg_event_raw r ON r.nmf_file_id=n.id
         WHERE n.project_id=:pid AND r.capture_id=:cap UNION SELECT DISTINCT n.id,n.source_path,n.sha256 FROM nmf_file n JOIN stg_event r ON r.nmf_file_id=n.id
         WHERE n.project_id=:pid AND r.capture_id=:cap'''),params).mappings().all()
@@ -96,6 +140,7 @@ def decode_capture(db,pid,cap,level,*,force=False,parsing_snapshot=None):
             ddl.execute(text('SELECT nmf_decoder_partition(:cap)'),{'cap':cap})
         for table in ('nmf_event_group','nmf_event_deep'):
             db.execute(text('DELETE FROM '+table+' WHERE project_id=:pid AND capture_id=:cap'),params)
+        db.commit()
     light=Light();pairs=Pairs();deep_rows=[];group_rows=[];n=partial=0;version='unknown'
     for r in records(file['source_path'],cap,file['sha256']):
         if r.excluded:continue
@@ -113,9 +158,10 @@ def decode_capture(db,pid,cap,level,*,force=False,parsing_snapshot=None):
         # Deep is the sole stored truth. Light is rebuilt from the rows just written.
         for r in read_deep(db,pid,cap):light.add(r)
     write_light(db,pid,cap,light)
-    db.execute(text('DELETE FROM nmf_event_pair WHERE project_id=:pid AND capture_id=:cap'),params)
     pair_values=[dict(project_id=pid,capture_id=cap,decoder_version=DECODER_VERSION,**r) for r in pairs.rows()]
+    db.execute(text('DELETE FROM nmf_event_pair WHERE project_id=:pid AND capture_id=:cap'),params)
     if pair_values:copy_rows(db,'nmf_event_pair',list(pair_values[0]),pair_values)
+    else:db.commit()
     elapsed=time.perf_counter()-start
     # 0.76.0 — kind detection by content (jamais inventé) :
     # 'scanner' = events SCAN* présents ET aucun event cell-scoped UE (CELLMEAS,CI).
@@ -132,6 +178,10 @@ def decode_capture(db,pid,cap,level,*,force=False,parsing_snapshot=None):
         dict(params,fid=file['id'],level=level,version=DECODER_VERSION,format=version,n=n,partial=partial,elapsed=elapsed,kind=kind,
              binning_mode=parsing['binning_mode'],temporal_resolution=parsing['temporal_resolution'],spatial_bin_m=parsing['spatial_bin_m'],
              aggregation_contract_version=parsing.get('aggregation_contract_version') or 'query-binning-v1'))
+    # The capture replacement is the atomic resumability boundary.  Commit it
+    # here rather than relying on each caller to do so after arbitrary Python
+    # work (ensure_light, import ingestion, or manual decode jobs).
+    db.commit()
     return dict(capture_id=cap,level=level,n_records=n,n_partial=partial,elapsed_s=elapsed,kind=kind)
 
 

@@ -570,6 +570,8 @@ def populate_measurement_points(
                 "thrpt_ul": thrpt_ul,
             }
         )
+          if len(updates) >= BATCH_SIZE:
+              _flush_updates()
 
         # ------------------------------------------------------------
         # INSERT pour les catégories jamais vues par le skeleton.
@@ -638,6 +640,8 @@ def populate_measurement_points(
                     "earfcn": None,
                 }
             )
+            if len(inserts) >= BATCH_SIZE:
+                _flush_inserts()
 
       # Un commit réel par tranche. La lecture a déjà été commitée avant le
       # calcul ; les écritures sont groupées en executemany, jamais ligne à ligne.

@@ -1,0 +1,7 @@
+services:
+  runner:
+    mem_limit: 1g
+    environment:
+      BC4_IMPORT_WORKERS_MAX: 6
+      BC4_IMPORT_RESERVED_MB: 4096
+      BC4_IMPORT_MEMORY_MARGIN_MB: 512

@@ -41,6 +41,36 @@ class Settings(BaseSettings):
     # restent gatés par leur propre BC4_DEMO_EMAIL/PASSWORD).
     seed_demo: bool = Field(default=False, alias="BC4_SEED_DEMO")
 
+    # Import queue (0.92.0 candidate).  Processes are required here: NMF
+    # parsing is CPU-bound Python and therefore does not benefit from threads.
+    import_workers_max: int = Field(6, ge=1, le=6, alias="BC4_IMPORT_WORKERS_MAX")
+    import_reserved_mb: int = Field(4096, ge=0, alias="BC4_IMPORT_RESERVED_MB")
+    import_memory_margin_mb: int = Field(512, ge=1, alias="BC4_IMPORT_MEMORY_MARGIN_MB")
+    import_batch_size: int = Field(5000, ge=100, le=50000, alias="BC4_IMPORT_BATCH_SIZE")
+    import_finalize_batch_size: int = Field(
+        500, ge=100, le=5000, alias="BC4_IMPORT_FINALIZE_BATCH_SIZE"
+    )
+    # Affine RSS estimate: base_mb + slope_mb_per_mib * file_size_mib.
+    # A fixed base avoids the severe over-reservation caused by a pure ratio.
+    import_memory_base_mb_deep: float = Field(
+        1370.0, ge=0, alias="BC4_IMPORT_MEMORY_BASE_MB_DEEP"
+    )
+    import_memory_slope_mb_per_mib_deep: float = Field(
+        46.0, gt=0, alias="BC4_IMPORT_MEMORY_SLOPE_MB_PER_MIB_DEEP"
+    )
+    import_memory_base_mb_light: float = Field(
+        1370.0, ge=0, alias="BC4_IMPORT_MEMORY_BASE_MB_LIGHT"
+    )
+    import_memory_slope_mb_per_mib_light: float = Field(
+        46.0, gt=0, alias="BC4_IMPORT_MEMORY_SLOPE_MB_PER_MIB_LIGHT"
+    )
+    import_memory_model_source: str = Field(
+        "BC1 2026-10-28 disposable Deep/Light NMF 5078863..17040816 bytes; "
+        "conservative envelope checked against supplied production reference "
+        "64 MiB / 4.2 GiB",
+        alias="BC4_IMPORT_MEMORY_MODEL_SOURCE",
+    )
+
     # LLM (0.16.0) — précédence : DB (settings_llm) > env ci-dessous.
     # BC4_LLM_SECRET_KEY : clé Fernet pour chiffrer l'api_key au repos.
     # Si absente, GET fonctionne (api_key_set reflète la DB), mais PUT

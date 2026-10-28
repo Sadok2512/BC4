@@ -1,0 +1,44 @@
+{
+  "80b959132315": {
+    "capture_id": "80b959132315",
+    "decode_level": "deep",
+    "decoder_version": "1.7.2",
+    "schema_version": "1.7.2",
+    "format_version": "2.59",
+    "binning_mode": "temporal",
+    "temporal_resolution": "native",
+    "spatial_bin_m": null,
+    "aggregation_contract_version": "query-binning-v1",
+    "n_records": 13063,
+    "n_partial": 13063,
+    "decoded_at": "2026-10-28 16:29:10.430075+00:00",
+    "deep_decoded_at": "2026-10-28 16:29:10.430075+00:00",
+    "counts": {
+      "stg_event_raw": 13063,
+      "nmf_event_deep": 13063,
+      "nmf_event_light": 7404,
+      "nmf_event_pair": 16
+    }
+  },
+  "e74f696a9e54": {
+    "capture_id": "e74f696a9e54",
+    "decode_level": "deep",
+    "decoder_version": "1.7.2",
+    "schema_version": "1.7.2",
+    "format_version": "2.59",
+    "binning_mode": "temporal",
+    "temporal_resolution": "native",
+    "spatial_bin_m": null,
+    "aggregation_contract_version": "query-binning-v1",
+    "n_records": 11957,
+    "n_partial": 11957,
+    "decoded_at": "2026-10-28 16:28:23.514066+00:00",
+    "deep_decoded_at": "2026-10-28 16:28:23.514066+00:00",
+    "counts": {
+      "stg_event_raw": 11957,
+      "nmf_event_deep": 11957,
+      "nmf_event_light": 6718,
+      "nmf_event_pair": 15
+    }
+  }
+}

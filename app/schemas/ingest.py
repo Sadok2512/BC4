@@ -107,6 +107,8 @@ class ProjectIngestView(BaseModel):
 
 class NmfFileEntry(BaseModel):
     filename: str
+    size_bytes: int | None = None
+    sha256: str | None = None
     status: NmfFileStatus
     n_captures: int
     n_events: int
