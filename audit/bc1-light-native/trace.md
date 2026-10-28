@@ -1,5 +1,10 @@
 # BC1 — Light natif et bins à la requête (2026-10-28)
 
+> Cette première estimation est **supersédée** par la conception sans copie
+> Light pour les captures Deep et par la mesure sparse de
+> `redesign.md`. Le FAIL ci-dessous reste la preuve expliquant l'abandon de la
+> conception initiale, pas le verdict de la nouvelle conception.
+
 Périmètre : branche `feat/import-throughput`, projet Docker jetable
 `bc1-lot-b-estimate`, aucune lecture ni écriture en production.
 
