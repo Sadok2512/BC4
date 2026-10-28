@@ -16,6 +16,16 @@
 - G38, G39 et G45 couvrent l'ordre natif, la conservation de population,
   la limite d'héritage, les snapshots de résolution et les superstreams.
 
+### Incidents
+
+- Corrige la régression introduite en 1.7.2 dans `Stat.add()` : les votes
+  `dominant` alimentaient encore `freq`, mais plus `weight`, puis
+  `Stat.value()` renvoyait `None`. Les dimensions NR `phrate_cell_type`,
+  `txpc_cell_type` et `tad_cell_type` (ainsi que toute autre colonne
+  `agg: dominant`) restent désormais renseignées.
+- G46 compare, sur le même fichier NMF, les colonnes non nulles produites par
+  l'agrégation 1.7.1 et la version courante ; toute colonne vidée est un FAIL.
+
 ## 1.7.2 (patch) — 2026-10-28 — Agrégations Light typées (Agent BC1)
 
 - `Stat.add()` ne calcule `total`, `weight`, `lo` et `hi` que pour les
