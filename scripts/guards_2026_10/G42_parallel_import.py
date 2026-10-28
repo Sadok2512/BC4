@@ -150,18 +150,27 @@ def main() -> None:
 
     if profiler:
         stream = io.StringIO()
-        stats = pstats.Stats(profiler, stream=stream).strip_dirs().sort_stats("cumulative")
-        stats.print_stats(15)
+        raw_stats = pstats.Stats(profiler)
+        display_stats = pstats.Stats(
+            profiler, stream=stream
+        ).strip_dirs().sort_stats("cumulative")
+        display_stats.print_stats(20)
         database_tottime = sum(
-            values[2] for func, values in stats.stats.items()
+            values[2] for func, values in raw_stats.stats.items()
             if any(term in " ".join(map(str, func)).lower()
                    for term in ("psycopg", "sqlalchemy", "select.poll", "cursor"))
         )
-        total = stats.total_tt
+        total = raw_stats.total_tt
         database_pct = 100.0 * database_tottime / total if total else 0.0
         print(f"PROFILE PARENT total_s={total:.3f} postgresql_exclusive_s={database_tottime:.3f} "
               f"postgresql_pct={database_pct:.2f} python_other_pct={100.0-database_pct:.2f}")
-        print("PROFILE PARENT TOP15\n" + stream.getvalue())
+        from app.services.import_worker import _profile_stages
+        stages = _profile_stages(raw_stats)
+        print("PROFILE PARENT STAGES " + " ".join(
+            f"{name}={seconds:.3f}s({100.0 * seconds / total if total else 0.0:.2f}%)"
+            for name, seconds in stages.items()
+        ))
+        print("PROFILE PARENT TOP20\n" + stream.getvalue())
 
     with SessionLocal() as db:
         job = db.get(NmfImportJob, job_id)

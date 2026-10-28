@@ -309,6 +309,16 @@ G44_VERDICT PASS frozen=1 new=0 fails=0
 G44_POST_REBASE_EXIT=0
 ```
 
+La sélection pytest lancée par erreur depuis le shell hôte a échoué en
+collecte faute de configuration (`BC4_DSN`, `BC4_JWT_SECRET`, exit 2). Le même
+appel dans le runner jetable ferme l'écart :
+
+```text
+pytest -q tests/test_nmf_decoder.py tests/test_import_jobs.py tests/test_reparse_capture_script.py
+............................. [100%]
+PYTEST_POST_REBASE_EXIT=0
+```
+
 Suite ciblée finale : la première exécution locale avec DSN volontairement
 invalide a correctement échoué sur les deux tests PostgreSQL (`exit=1`). La
 même sélection sur `bc4_bench` jetable ferme l'écart :
@@ -321,4 +331,135 @@ pytest -q tests/test_import_admission.py tests/test_import_jobs.py \
   tests/test_requeue_import_schema_failures.py
 .................................... [100%]
 FINAL_INGEST_TEST_DB_EXIT=0
+```
+
+## Lot A — accélération d'un fichier Deep (suite 2026-10-28)
+
+Témoin moyen unique :
+`BCNE 26S24_VD_T_MESURE-BENCH-CENTRE-COMMERCIAL-PETITE-FORET_incar_26Jun11_103519.3.nmf`,
+17 040 816 octets et 56 054 records. Commande identique à chaque étape :
+
+```text
+docker compose -p bc1-lot-a-profile -f docker-compose.bench.yml run --rm --no-deps \
+  -e G42_EPHEMERAL_DB=YES -e G42_LEVEL=deep -e G42_IDLE_MAX_S=1.0 \
+  -e BC4_IMPORT_WORKERS_MAX=1 -e G42_NMF_PATHS=<témoin-moyen> \
+  runner python scripts/guards_2026_10/G42_parallel_import.py
+```
+
+| étape | temps s | records/s | delta vs témoin | verdict |
+|---|---:|---:|---:|---|
+| témoin branche | 446,753 | 125,472 | — | FAIL idle 1,180 s |
+| COPY : recherches de colonnes via `map` | 395,050 | 141,892 | +13,09 % | FAIL idle 1,301 s |
+| Light directement depuis la projection Deep mémoire | 325,662 | 172,122 | +37,18 % | PASS, idle 0,000 s |
+| cache local `fields()` (rejeté et retiré) | 354,684 | 158,039 | +25,95 % | PASS mais -8,18 % vs étape précédente |
+
+Calcul collé :
+
+```text
+awk 'BEGIN{base=56054/446.753;s1=56054/395.050;s2=56054/325.662;s3=56054/354.684;
+printf "base=%.3f step1=%.3f step2=%.3f step3=%.3f gain_final=%.2f%% step3_vs_step2=%.2f%%\n",
+base,s1,s2,s3,(s2/base-1)*100,(s3/s2-1)*100}'
+base=125.472 step1=141.892 step2=172.122 step3=158.039 gain_final=37.18% step3_vs_step2=-8.18%
+```
+
+Empreinte canonique complète, projet jetable normalisé et ordre
+`(capture_id, seq)` avec clés de départage de table : staging, Deep, groupes
+Deep, Light, groupes Light, cellules et paires sont identiques au témoin.
+
+```text
+G42_CONTENT mismatches=[]
+G42_CONTENT VERDICT=PASS
+LOT_A_STEP2_SQL_TYPE_CONTENT_EXIT=0
+```
+
+Le profil final cProfile du worker donne 625,586 s instrumentées : PostgreSQL
+exclusif 177,051 s (28,30 %) et Python/autre 71,70 %. Répartition exclusive :
+lecture/découpage 3,00 %, conversion 11,67 %, construction 2,46 %, Light
+15,01 %, écriture 8,50 %, ASN.1 0,00 %, builtins/autre 59,35 %. L'ASN.1 est
+dans la finalisation parent : 3,144 s (0,43 %). Le découpage + conversion
+explicitement attribués vaut 14,67 % : inférieur au seuil de 50 %, donc
+extension Rust non justifiée.
+
+Top cumulatif worker : `copy_rows` 261,905 s ; psycopg `write_row` 203,267 s ;
+array dump 144,206 s ; `Light.add` 142,242 s ; `source.records` 122,186 s ;
+`decoder.decode` 117,435 s ; `write_light` 59,899 s.
+
+La référence production fournie (529 339 records, 1 152 s) appliquée au gain
+mono-fichier mesuré donne une estimation conditionnelle de 839,8 s par fichier
+équivalent. Pour onze fichiers identiques et six workers, deux vagues donnent
+1 679,6 s (28,0 min), hors finalisation. Les tailles réelles Test_5 et le chemin
+du parcours 64 Mo n'ont pas été fournis à BC1 : cet écart reste ouvert et
+l'estimation n'est pas déclarée ferme.
+
+```text
+awk 'BEGIN{gain=(56054/325.662)/(56054/446.753); one=1152/gain;
+printf "gain=%.4f reference_after_s=%.1f eleven_equal_six_workers_s=%.1f minutes=%.1f\n",
+gain,one,2*one,2*one/60}'
+gain=1.3718 reference_after_s=839.8 eleven_equal_six_workers_s=1679.6 minutes=28.0
+```
+
+Le G44 à deux fichiers a d'abord exposé un deadlock entre DDL de partition et
+DELETE parent (exit 2). La section courte DDL + nettoyage est maintenant
+sérialisée par verrou advisory transactionnel, libéré avant le calcul. Après
+correction :
+
+```text
+G44_VERDICT PASS frozen=1 new=0 fails=0
+LOT_A_G44_AFTER_LOCK_EXIT=0
+G42 elapsed_s=154.416 files_running_max=2 child_processes_max=3
+G42 statuses=['done', 'done'] nmf_files=2 distinct_sha=2 duplicate_files=0
+G42 table=stg_event_raw rows=75761
+G42 table=nmf_event_light rows=39454
+G42 table=nmf_event_deep rows=75761
+G42 table=nmf_cell_second rows=237046
+G42 VERDICT=PASS
+LOT_A_FINAL_G42_EXIT=0
+```
+
+Autres gardes finales : G29 PASS (1 capture, 73 codes, 0 divergence), G32
+PASS (3 captures, aucun différentiel/orphelin), G40 PASS (snapshot job/capture
+Light temporal 10 ms malgré projet courant Deep spatial 50 m).
+
+Type SemVer déclaré : **patch back**. Aucun changement de release décodeur ni
+de `pyproject.toml`; le numéro sera attribué au merge par BC3.
+
+### Validation finale après rebase sur `origin/main` 9e60739
+
+G36 avant création du banc :
+
+```text
+free_gib=39.29
+G36 VERDICT=PASS
+G36_EXIT=0
+```
+
+G42, deux vrais NMF en Deep, deux processus :
+
+```text
+G42 elapsed_s=151.732 files_running_max=2 child_processes_max=3 rss_peak_kb=1594708 idle_in_transaction_max_s=0.000
+G42 statuses=['done', 'done'] nmf_files=2 distinct_sha=2 duplicate_files=0
+G42 table=stg_event_raw rows=75761
+G42 table=nmf_event_light rows=39454
+G42 table=nmf_event_deep rows=75761
+G42 table=nmf_cell_second rows=237046
+G42 VERDICT=PASS
+G42_POST_REBASE_EXIT=0
+```
+
+Le premier appel G44 a utilisé `DATABASE_URL` au lieu de `BC4_DSN` ; le garde
+a refusé le DSN compose `db:5432/bc4_bench`, comme attendu :
+
+```text
+G44 PRECONDITION FAIL: refusing non-ephemeral DSN host=db port=5432 db=/bc4_bench
+G44_WRONG_ENV_EXIT=2
+```
+
+L'écart est fermé en passant explicitement le DSN du conteneur jetable dont
+le nom commence par `bc1-` :
+
+```text
+[G44] frozen captures (done, pas remises en file): 1 identifiées, 1 inchangées (snapshot + comptes + decoded_at)
+[G44] requeued captures (fichier remis en file): 1 identifiées, decoded_at vérifié avancé
+G44_VERDICT PASS frozen=1 new=0 fails=0
+G44_POST_REBASE_EXIT=0
 ```

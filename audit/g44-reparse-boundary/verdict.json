@@ -3,6 +3,6 @@
   "fails": [],
   "frozen_captures": 1,
   "new_captures": [],
-  "ephemeral_dsn": "postgresql+psycopg://bc4_g44:TEST-G44-EPHEMERAL-DB@127.0.0.1:55442/bc4_g44",
-  "ran_at": "2026-10-28T16:31:56.150913+00:00"
+  "ephemeral_dsn": "bc1-lot-a-postrebase-db-1:5432/bc4_bench",
+  "ran_at": "2026-10-28T21:57:08.616657+00:00"
 }

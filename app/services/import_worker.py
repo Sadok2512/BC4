@@ -62,20 +62,65 @@ def _file_sha256(path: Path) -> str:
 
 def _print_profile(profile: cProfile.Profile, label: str) -> None:
     stream = io.StringIO()
-    stats = pstats.Stats(profile, stream=stream).strip_dirs().sort_stats('cumulative')
-    stats.print_stats(15)
+    raw_stats = pstats.Stats(profile)
+    display_stats = pstats.Stats(profile, stream=stream).strip_dirs().sort_stats('cumulative')
+    display_stats.print_stats(20)
     database_tottime = sum(
-        values[2] for func, values in stats.stats.items()
+        values[2] for func, values in raw_stats.stats.items()
         if any(term in ' '.join(map(str, func)).lower()
                for term in ('psycopg', 'sqlalchemy', 'select.poll', 'cursor'))
     )
-    total = stats.total_tt
+    total = raw_stats.total_tt
     database_pct = 100.0 * database_tottime / total if total else 0.0
     print(f'PROFILE {label} total_s={total:.3f} '
           f'postgresql_exclusive_s={database_tottime:.3f} '
           f'postgresql_pct={database_pct:.2f} '
           f'python_other_pct={100.0-database_pct:.2f}', flush=True)
-    print(f'PROFILE {label} TOP15\n{stream.getvalue()}', flush=True)
+    stages = _profile_stages(raw_stats)
+    print('PROFILE ' + label + ' STAGES ' + ' '.join(
+        f'{name}={seconds:.3f}s({100.0 * seconds / total if total else 0.0:.2f}%)'
+        for name, seconds in stages.items()
+    ), flush=True)
+    print(f'PROFILE {label} TOP20\n{stream.getvalue()}', flush=True)
+
+
+def _profile_stages(stats: pstats.Stats) -> dict[str, float]:
+    """Partition cProfile exclusive time into decoder pipeline stages."""
+    out = {
+        'read_split': 0.0,
+        'field_conversion': 0.0,
+        'asn1_pycrate': 0.0,
+        'row_construction': 0.0,
+        'light_aggregation': 0.0,
+        'writing': 0.0,
+        'other': 0.0,
+    }
+    for (filename, _line, function), values in stats.stats.items():
+        own = values[2]
+        path = filename.replace('\\', '/').lower()
+        ident = f'{path}:{function.lower()}'
+        if 'pycrate' in ident or '/app/dict/decode.py' in path:
+            stage = 'asn1_pycrate'
+        elif path.endswith('/nmf_decoder/source.py') or (
+            path.endswith('/bc4_decoder.py')
+            and function in {'_fields', '_iter_events', '_parse_meta', 'decode_nmf_file_full'}
+        ) or (path.endswith('/nmf_decoder/decoder.py') and function == 'tokenize'):
+            stage = 'read_split'
+        elif path.endswith('/bc4_decoder.py') or path.endswith('/nmf_decoder/decoder.py'):
+            stage = 'field_conversion'
+        elif path.endswith('/nmf_decoder/light.py'):
+            stage = 'light_aggregation'
+        elif (
+            (path.endswith('/nmf_decoder/store.py') and function == 'copy_rows')
+            or 'psycopg' in path and ('copy' in ident or 'write_row' in ident)
+        ):
+            stage = 'writing'
+        elif path.endswith('/nmf_decoder/store.py'):
+            stage = 'row_construction'
+        else:
+            stage = 'other'
+        out[stage] += own
+    return out
 
 
 def _process_file(job_id, index):
