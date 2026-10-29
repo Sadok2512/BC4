@@ -12,6 +12,8 @@ router=APIRouter(tags=['metrics'],dependencies=[Depends(get_current_user)])
 Scalar=float|str|None
 class Column(BaseModel):
     code:str;label:str;unit:str;kind:Literal['numeric','categorical','event'];cell:str
+    cell_label:str|None=None;cell_system:Literal['LTE','NR']|None=None
+    cell_internal_index:int|None=None
 class TableRow(BaseModel):
     second:int;t_rel_s:float;seq_first:int;seq_last:int;time_label:str
     # 0.75.0 — temps absolu + GPS par ligne (previous-or-same seq, jamais interpolé).
@@ -19,6 +21,9 @@ class TableRow(BaseModel):
     lat:float|None=None;lon:float|None=None
     gps_source:Literal['exact','previous_fix']|None=None
     gps_age_s:float|None=None
+    cell_label:str|None=None;cell_system:Literal['LTE','NR']|None=None
+    cell_pci:float|None=None;cell_arfcn:float|None=None
+    cell_internal_index:int|None=None
     reason:str|None=None
     values:dict[str,Scalar];counts:dict[str,int]
     # 0.82.2 — colonne Task : CMDREQ → CMDCOMP par (capture_id, seq ≤).
@@ -50,6 +55,7 @@ class Analysis(BaseModel):
     utc_offset_min:int|None=None  # #UT col 1, signe local-UTC (null si absent)
     aggregation:str;time_policy:str;pairing:str
     columns:list[Column];rows:list[TableRow];series:list[MetricSeries]
+    page:int;page_size:int;total_rows:int;total_pages:int
     histogram:list[Histogram];scatter:list[Scatter];map_points:list[MapPoint]
     connected_seconds:float|None;connected_reason:str|None;pair_rates:list[PairRate];gaps:list[str];csv:str
 @router.get('/projects/{project_id}/metrics/table',response_model=Analysis)
@@ -57,10 +63,12 @@ class Analysis(BaseModel):
 def analysis(project_id:str,capture_id:str,codes:str,cell:str='all',attr:str|None=None,
              x:str|None=None,include_map:bool=False,group_by:Literal['none','operator','band','operator_band']='operator',
              from_seq:int|None=Query(None,ge=0),to_seq:int|None=Query(None,ge=0),max_points:int=Query(5000,ge=2,le=100000),
+             page:int=Query(1,ge=1),page_size:int=Query(1000,ge=25,le=5000),
+             table_only:bool=False,
              f:dict=Depends(filters),db:Session=Depends(get_db)):
     project(db,project_id)
     if from_seq is not None and to_seq is not None and from_seq>to_seq:raise HTTPException(422,'from_seq_after_to_seq')
     tokens=list(dict.fromkeys(codes.split(',')))
     if len(tokens)>64:raise HTTPException(422,'too_many_metrics')
     selected=[parse_selection(c,definitions(),cell,attr) for c in tokens]
-    return Dataset(db,project_id,capture_id,f,from_seq,to_seq).response(selected,max_points,group_by,x,include_map)
+    return Dataset(db,project_id,capture_id,f,from_seq,to_seq).response(selected,max_points,group_by,x,include_map,page,page_size,table_only)

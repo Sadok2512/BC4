@@ -10,7 +10,11 @@ def test_closed_selectors_and_unproven_cells():
     assert parse_selection('evt_RRD~rrd_rrc_rel_cause',d)['kind']=='categorical'
     assert d['cell_rsrp']['cell_scoped']
     assert parse_selection('cell_rsrp@1',d)['cell']=='1'
-    for token in ['cell_rsrp@10','plaid_mcs0@10','evt_CAA~caa_phone_number','evt_SEI~sei_m_tmsi','unk_CAA','rsrp; DROP TABLE capture']:
+    # Decoder 1.8.2 cell indices are non-negative injective storage keys;
+    # 10 is therefore a valid legacy key, while malformed/private selectors
+    # remain closed.
+    assert parse_selection('cell_rsrp@1003',d)['label'].endswith('Serving · LTE')
+    for token in ['evt_CAA~caa_phone_number','evt_SEI~sei_m_tmsi','unk_CAA','rsrp; DROP TABLE capture']:
         with pytest.raises(HTTPException) as error:parse_selection(token,d)
         assert error.value.status_code==422
 

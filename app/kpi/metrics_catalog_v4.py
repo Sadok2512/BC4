@@ -117,6 +117,23 @@ def _cell_label(event: str, system: int | None, cell_index: int) -> str:
     return with_occurrence(label)
 
 
+def cell_display(event: str, cell_index: int) -> dict[str, Any]:
+    """Stable public display metadata for a projected cell.
+
+    The numeric ``cell_index`` is a storage key only.  Its 1.8.2 inverse is
+    authoritative for the radio system and raw NFF enum value.
+    """
+    source = cell_source_for_index(cell_index)
+    system, raw, occurrence = source if source is not None else (None, cell_index, 0)
+    return {
+        "label": _cell_label(event, system, cell_index),
+        "system": {7: "LTE", 9: "NR"}.get(system),
+        "raw_cell_type": raw,
+        "occurrence": occurrence,
+        "internal_index": cell_index,
+    }
+
+
 _KIND_MAP = {
     "Float": "numeric",
     "Integer": "numeric",
@@ -683,7 +700,7 @@ def build_catalog_v4(
     # 2026-10-28 point 3 : les feuilles outsider doivent afficher le
     # libellé humain (« UL grants @ SCell 6 »), pas le nom de colonne
     # brut (« dci_ul_grants @ SCell 6 »).
-    human_field_by_col: dict[tuple[str, str], str] = {}
+    human_field_by_col: dict[tuple[str, int | None, str], str] = {}
     for lf in displayed_leaves:
         # 2.54.0 — Résout aussi la col par fallback metric_id pour les
         # feuilles 2.51.0+ dont le baked source_column est vide
@@ -698,10 +715,14 @@ def build_catalog_v4(
         else:
             field_name = lab
         ev_lf = (lf.get("event") or "").lstrip("#")
-        human_field_by_col.setdefault((ev_lf, sc), field_name)
+        field_system = lf.get("field_system")
+        human_field_by_col.setdefault((ev_lf, field_system, sc), field_name)
 
-    def _field_name_for(ev: str, col: str) -> str:
-        return human_field_by_col.get((ev, col), col)
+    def _field_name_for(ev: str, ct: int, col: str) -> str:
+        source = cell_source_for_index(ct)
+        system = source[0] if source is not None else None
+        return (human_field_by_col.get((ev, system, col))
+                or human_field_by_col.get((ev, None, col)) or col)
 
     baked_cells = {
         ((lf.get("event") or "").lstrip("#"), int(lf["cell_type"]),
@@ -720,7 +741,7 @@ def build_catalog_v4(
         ev_nid = event_node_by_code.get(ev)
         if not ev_nid:
             continue
-        field_name = _field_name_for(ev, col)
+        field_name = _field_name_for(ev, ct, col)
         label_from_enum = _label_per_cell(ev, ct, col, f"cell_index={ct}")
         label_full = f"{field_name} @ {label_from_enum}"
         node_id = f"lf_observed_{ev.lower()}_{ct}_{col}"

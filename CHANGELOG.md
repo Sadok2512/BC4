@@ -7066,3 +7066,11 @@ du front `franco-focus-forge` et lancer **front + back** de bout en bout.
 - Documented string fields are retained as strings; only undocumented strings
   are hashed. Metrics projections therefore expose the same values as the NMF
   source and preserve zero-valued measurements.
+## 0.97.2 (patch, proposé) — BC1 2026-10-29 — Contrat table KPI lean
+
+- `/metrics/table` expose une pagination serveur bornée, les métadonnées de
+  cellule NFF (libellé, système, PCI/ARFCN si présents) et conserve l'index
+  décodeur uniquement comme donnée technique.
+- Le CSV embarqué correspond à la page renvoyée et ne duplique plus la table
+  complète dans chaque réponse paginée.
+- Type SemVer : **patch**. Numéro proposé ; BC3 attribue le numéro final.
