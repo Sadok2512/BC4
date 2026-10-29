@@ -476,7 +476,11 @@ def series(project_id: str,capture_id: str,codes: str,cell: str|None=None,attr: 
     definitions=metric_catalog(db)
     selected=list(dict.fromkeys(codes.split(',')))
     def reject_metric():
-        allowed=sorted(m['code'] for m in catalog(project_id,db))
+        # 0.99.2 (hotfix) : `catalog(project_id, db)` renvoie le payload JSON
+        # (dict avec clés 'metrics', 'nodes', …). Itérer directement donnait
+        # les clés top-level (str) → m['code'] plantait avec TypeError.
+        # Fix : extraire explicitement la liste 'metrics'.
+        allowed=sorted(m['code'] for m in catalog(project_id,db).get('metrics',[]))
         raise HTTPException(422,dict(reason='unknown_metric',allowed=allowed))
     if any(c not in definitions for c in selected):reject_metric()
     if from_seq is not None and to_seq is not None and from_seq>to_seq:raise HTTPException(422,'from_seq_after_to_seq')
@@ -514,10 +518,20 @@ def series(project_id: str,capture_id: str,codes: str,cell: str|None=None,attr: 
         for p in points:all_values.setdefault(p['seq'],{})[code]=p['value']
         out,sampling=sample(points,max_points,m.kind)
         segments=[dict(start_s=p['t_rel_s'],end_s=out[i+1]['t_rel_s'] if i+1<len(out) else points[-1]['t_rel_s'],value=p['value']) for i,p in enumerate(out)] if m.kind=='categorical' else []
-        results.append(dict(segments=segments,code=code,label=m.label,unit=m.unit,kind=m.kind,n_total=len(points),n_returned=len(out),sampling=sampling,states=list(dict.fromkeys(p['value'] for p in points)) if m.kind=='categorical' else [],points=out))
+        # 0.99.2 (hotfix) : certains metrics ont m.unit=None et/ou m.label=None
+        # (maci_cell_type, maci_cell_state, plaisum_total_prb_usage) → la
+        # réponse Pydantic ResponseModel exigeait str → ResponseValidationError
+        # → 500. Fix : fallback '' ; cohérent avec le tooltip déjà protégé plus
+        # bas.
+        results.append(dict(segments=segments,code=code,label=m.label or code,unit=m.unit or '',kind=m.kind,n_total=len(points),n_returned=len(out),sampling=sampling,states=list(dict.fromkeys(p['value'] for p in points)) if m.kind=='categorical' else [],points=out))
     for result in results:
         for p in result['points']:
-            p['tooltip']='seq '+str(p['seq'])+' · '+str(p['t_rel_s'])+' s\n'+'\n'.join(definitions[c].label+': '+str(all_values[p['seq']].get(c,'N/D'))+' '+definitions[c].unit for c in selected)
+            # 0.99.2 (hotfix) : certains metrics (cap_script_*, maci_*,
+            # plaisum_*) exposent label=None et/ou unit=None dans
+            # `definitions`. Avant le fix, la concat `None + str` plantait
+            # avec TypeError can only concatenate str (not "NoneType") to str.
+            # Fix : fallback '' pour label et unit si absents.
+            p['tooltip']='seq '+str(p['seq'])+' · '+str(p['t_rel_s'])+' s\n'+'\n'.join((definitions[c].label or c)+': '+str(all_values[p['seq']].get(c,'N/D'))+' '+(definitions[c].unit or '') for c in selected)
     rid=evidence(db,project_id,';\n'.join([TIME_SQL,*sqls]),{**params,'applied_filters':f,'codes':selected,'max_points':max_points},{'series':[{k:r[k] for k in ('code','n_total','n_returned','sampling')} for r in results]})
     output=io.StringIO();writer=csv.writer(output);writer.writerow(['result_id','capture_id','code','unit','seq','t_rel_s','value'])
     for r in results:
