@@ -4,6 +4,9 @@
   feuille, calculé depuis le champ catalogue `nature` côté serveur.
 - `/projects/{id}/metrics` expose `analytics_tab=metrics` depuis la release
   catalogue mineure, y compris sur les feuilles cellule découvertes au runtime.
+- Le code peut précéder l'activation catalogue : les releases antérieures,
+  dont la route ne contient que des feuilles Metrics, reçoivent la même valeur
+  pendant la fenêtre de livraison ordonnée.
 - `bootstrap_catalog_release.py` prépare de façon déterministe le MINOR suivant
   depuis 2.56.2 ; `--prepare-only` garantit qu'aucune base n'est activée durant
   la livraison.

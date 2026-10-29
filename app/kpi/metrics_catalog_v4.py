@@ -670,7 +670,11 @@ def build_catalog_v4(
                 note=node.get("description"),
                 source=None,
                 node_type=node.get("node_type"),
-                analytics_tab=node.get("analytics_tab") if is_leaf else None,
+                # Compatibilité de livraison ordonnée : le code back est
+                # déployable avant l'activation 2.57.0. Les releases plus
+                # anciennes n'exposent que des feuilles Metrics sur cette
+                # route ; 2.57.0 devient ensuite la source explicite.
+                analytics_tab=(node.get("analytics_tab") or "metrics") if is_leaf else None,
                 metric_id=(selection if ct_node is not None and selection else metric_id),
                 selection=selection,
                 event=(node.get("event") or "").lstrip("#") if is_leaf else None,
