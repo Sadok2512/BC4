@@ -2,7 +2,6 @@ import logging
 
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.gzip import GZipMiddleware
 from sqlalchemy import text
 
 from app.config import settings
@@ -30,7 +29,7 @@ from app.routes import (
 logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(name)s:%(message)s")
 logging.getLogger("app").setLevel(logging.INFO)
 
-app = FastAPI(title="bc4-back", version="0.99.0")
+app = FastAPI(title="bc4-back", version="0.99.1")
 
 # CORS (B2 / P1-1) : origines PILOTÉES par `BC4_CORS_ORIGINS` (jamais en
 # dur), méthodes/en-têtes explicites pour les uploads multipart
@@ -47,12 +46,16 @@ app.add_middleware(
     expose_headers=["Content-Length", "Content-Type"],
     max_age=600,
 )
-# 0.97.4 (audit perf 2026-10-29) : compression gzip des réponses > 1 KB.
-# Avant : payloads /signaling/events 15 MB, /signaling/points 4,3 MB,
-# /metrics 3,4 MB servis en clair → bande passante gaspillée et UI lente.
-# minimum_size=1024 : les petites réponses (/health, /projects/{id}/ingest)
-# restent non compressées pour éviter l'overhead CPU inutile.
-app.add_middleware(GZipMiddleware, minimum_size=1024)
+# 0.99.1 (incident 2026-10-29 21:35Z) : GZipMiddleware RETIRÉ.
+# Introduit en 0.97.4, il provoquait ERR_CONTENT_DECODING_FAILED côté
+# navigateur quand les requêtes passent par le proxy Nitro :5174/api :
+# Nitro décompresse automatiquement la réponse upstream gzippée (via
+# son client HTTP) mais ne nettoie pas les en-têtes content-encoding
+# ni content-length → le navigateur voit « content-encoding: gzip »
+# sur un body ASCII tronqué à l'ancienne content-length. La compression
+# HTTP reste assurée au niveau du proxy et des assets statiques côté
+# front (nitro.compressPublicAssets gzip+brotli, 1.117.2). Pas de perte
+# nette sur la bande passante utilisateur.
 
 
 @app.get("/health")
@@ -74,7 +77,7 @@ def health() -> dict:
     return {
         "status": status,
         "env": settings.env,
-        "version": "0.99.0",
+        "version": "0.99.1",
         "decoder_version": DECODER_VERSION,
         "catalog": gc1,
     }

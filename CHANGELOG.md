@@ -1,3 +1,49 @@
+## 0.99.1 (patch) — BC4 2026-10-29 — INCIDENT PROD : retrait GZipMiddleware (double décodage via proxy Nitro) (Agent BC3)
+
+### Incident
+
+- **Début** : 2026-10-29 **21:20Z** (déploiement 0.99.0 remarqué par
+  Codex67 sur navigateur). Origine réelle **2026-10-29 19:17Z** avec
+  l'introduction de GZipMiddleware en 0.97.4 — resté masqué 2 h parce
+  que nos mesures d'audit perf attaquaient `127.0.0.1:8000` en direct,
+  jamais `127.0.0.1:5174/api/...` avec `Accept-Encoding: gzip`.
+- **Fin** : 2026-10-29 **21:40Z** (déploiement 0.99.1).
+- **Symptôme** : navigateur affiche `net::ERR_CONTENT_DECODING_FAILED`
+  sur TOUTES les requêtes `/api/*` via le front :5174, HTTP 200 OK.
+- **Impact** : UI inutilisable pendant la fenêtre 21:20Z-21:40Z.
+- **Cause mesurée** : via `127.0.0.1:5174/api` le header dit
+  `content-encoding: gzip`, `content-length: 936`, mais le body est
+  en ASCII (`gunzip: not in gzip format`). Via `127.0.0.1:8000` même
+  URL, le body est bien gzip valide (3052 bytes JSON décompressé).
+  Diagnostic : le proxy Nitro décompresse automatiquement l'upstream
+  gzippé (`$fetch` auto-decompress) mais ne nettoie pas les en-têtes
+  `content-encoding` et `content-length` → navigateur voit un header
+  gzip sur un body ASCII tronqué à l'ancienne content-length → double
+  decoding fail.
+
+### Correctif
+
+- `app/main.py` : `app.add_middleware(GZipMiddleware, …)` **retiré**.
+  `from fastapi.middleware.gzip import GZipMiddleware` également. Un
+  seul endroit compresse désormais : le proxy Nitro / l'infra.
+  Les assets statiques front restent compressés en gzip + brotli
+  (nitro.compressPublicAssets 1.117.2).
+- Pas de modification base. Pas de rollback alembic.
+
+### Nouveau garde — « mesure déploiement via :5174 avec Accept-Encoding »
+
+Toute mesure post-déploiement DOIT :
+1. Tester au moins une fois `curl -sSD - -H "Accept-Encoding: gzip,
+   deflate, br" http://127.0.0.1:5174/api/<route>` sur une route JSON.
+2. Vérifier que `file` du body décompressé par `gunzip -c` est du JSON
+   valide, OU que le body non-décompressé est du JSON (si pas de
+   `content-encoding` dans la réponse).
+3. Statut 200 + `jq .` du body avec Accept-Encoding activé.
+
+Mesures d'audit perf précédentes (toutes via `localhost:8000` direct)
+n'ont jamais déclenché le proxy — garde manquant ajouté à partir de
+0.99.1.
+
 ## 0.99.0 (minor) — BC4 2026-10-29 — Signaling matérialisé à l'import (Agent BC1, numérotation BC3)
 
 Merge `bc1/signaling-materialized` (`1a3b71f`). Résout l'écart cold
