@@ -123,6 +123,9 @@ class NmfFileEntry(BaseModel):
     # (= `nmf_capture.n_records`). Complément à `n_events` qui compte
     # UNIQUEMENT les messages L3 décodés (RRCSM/SIPSM/L3SM).
     n_records: int | None = None
+    # Identités réelles des captures du fichier. La suppression se fait
+    # toujours avec (project_id, capture_id), jamais depuis le nom du fichier.
+    capture_ids: list[str] = Field(default_factory=list)
 
 
 class NmfImportReport(BaseModel):

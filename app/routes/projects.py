@@ -40,6 +40,12 @@ from app.services.import_report import (
 )
 from app.services.overview import compute_overview, project_to_schema
 from app.services.populate_chain import run_populate_chain
+from app.services.capture_delete import (
+    CaptureDeleteBusy,
+    CaptureDeleteFinalizationError,
+    CaptureNotFound,
+    delete_capture as delete_capture_service,
+)
 
 # Auth minimum « lecteur » exigée pour TOUTES les routes de ce routeur :
 # lecture et écriture passent par la même porte, la différentiation
@@ -284,6 +290,46 @@ def delete_project(
     return Response(status_code=204)
 
 
+@router.delete(
+    "/{project_id}/captures/{capture_id}",
+    status_code=204,
+    response_class=Response,
+)
+def delete_capture(
+    project_id: str,
+    capture_id: str,
+    reason: str = Query(min_length=10, description="Justification tracée dans le journal JSON"),
+    db: Session = Depends(get_db),
+) -> Response:
+    """Supprime une capture strictement dans le projet accessible.
+
+    ``require_project_write`` est appliqué globalement à ce routeur dans
+    ``app.main`` : un projet absent, privé ou non possédé renvoie toujours
+    404 avant d'atteindre le service.
+    """
+    try:
+        report = delete_capture_service(db, project_id, capture_id, reason=reason)
+    except CaptureNotFound as exc:
+        raise HTTPException(
+            404, {"code": "NOT_FOUND", "message": "Capture introuvable"}
+        ) from exc
+    except CaptureDeleteBusy as exc:
+        raise HTTPException(
+            409,
+            {"code": "IMPORT_ACTIVE", "message": "Un import est en cours pour ce projet."},
+        ) from exc
+    except CaptureDeleteFinalizationError as exc:
+        raise HTTPException(
+            500,
+            {
+                "code": "FINALIZATION_FAILED",
+                "message": "Capture supprimée, mais finalisation du projet en échec.",
+                "audit": str(exc),
+            },
+        ) from exc
+    return Response(status_code=204, headers={"X-BC4-Audit-Id": report["op_id"]})
+
+
 @router.get("/{project_id}/ingest", response_model=ProjectIngestView)
 def get_project_ingest(project_id: str, db: Session = Depends(get_db)) -> ProjectIngestView:
     """Vue projet côté ingestion : status draft/importing/ready/error +
@@ -330,6 +376,12 @@ def get_import_report(
         "SELECT nmf_file_id, SUM(n_records) FROM nmf_capture "
         "WHERE project_id=:pid GROUP BY nmf_file_id"
     ), {"pid": project.id}).all())
+    cap_ids: dict[str, list[str]] = {}
+    for file_id, capture_id in db.execute(text(
+        "SELECT nmf_file_id, capture_id FROM nmf_capture "
+        "WHERE project_id=:pid ORDER BY nmf_file_id, capture_id"
+    ), {"pid": project.id}).all():
+        cap_ids.setdefault(str(file_id), []).append(str(capture_id))
     entries = [
         NmfFileEntry(
             filename=f.filename,
@@ -341,6 +393,7 @@ def get_import_report(
             error_msg=f.error_msg,
             imported_at=f.uploaded_at.isoformat().replace("+00:00", "Z"),
             n_records=int(cap_n_records.get(f.id) or 0),
+            capture_ids=cap_ids.get(f.id, []),
         )
         for f in files
     ]

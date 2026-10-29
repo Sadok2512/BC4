@@ -31,10 +31,11 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
 
 
-EXPECTED_OPERATIONS = 66
+EXPECTED_OPERATIONS = 75
 PROJECT_ID = ""
 CAPTURE_ID = ""
 RESULT_ID = ""
+SUPERSTREAM_ID = ""
 JOB_ID = ""
 PARAM_KEY = ""
 TEMPLATE_CATEGORY = ""
@@ -115,10 +116,10 @@ def login(client: TestClient, email: str, password: str) -> str:
 
 def prepare_real_fixture(client: TestClient, token_a: str) -> None:
     """Create every tested resource through the same HTTP/worker path as production."""
-    global PROJECT_ID, CAPTURE_ID, RESULT_ID, JOB_ID, PARAM_KEY, TEMPLATE_CATEGORY, MESSAGE_SEQ
-    source = Path(os.environ.get("G34_NMF_PATH", ""))
-    if not source.is_file():
-        fail("G34_NMF_PATH must point to a real corpus .nmf")
+    global PROJECT_ID, CAPTURE_ID, RESULT_ID, SUPERSTREAM_ID, JOB_ID, PARAM_KEY, TEMPLATE_CATEGORY, MESSAGE_SEQ
+    sources = [Path(value) for value in os.environ.get("G34_NMF_PATHS", "").split("::") if value]
+    if len(sources) != 2 or any(not source.is_file() for source in sources):
+        fail("G34_NMF_PATHS must contain exactly two real corpus .nmf paths separated by ::")
 
     created = client.post(
         "/projects",
@@ -129,12 +130,19 @@ def prepare_real_fixture(client: TestClient, token_a: str) -> None:
         fail(f"POST /projects returned {created.status_code}: {created.text[:300]}")
     PROJECT_ID = created.json()["id"]
 
-    with source.open("rb") as stream:
+    streams = [source.open("rb") for source in sources]
+    try:
         uploaded = client.post(
             f"/projects/{PROJECT_ID}/nmf",
             headers={"Authorization": f"Bearer {token_a}"},
-            files=[("files", (source.name, stream, "application/octet-stream"))],
+            files=[
+                ("files", (source.name, stream, "application/octet-stream"))
+                for source, stream in zip(sources, streams)
+            ],
         )
+    finally:
+        for stream in streams:
+            stream.close()
     if uploaded.status_code != 202:
         fail(f"POST /nmf returned {uploaded.status_code}: {uploaded.text[:300]}")
     JOB_ID = uploaded.json()["id"]
@@ -155,9 +163,18 @@ def prepare_real_fixture(client: TestClient, token_a: str) -> None:
         f"/projects/{PROJECT_ID}/signaling/captures",
         headers={"Authorization": f"Bearer {token_a}"},
     )
-    if captures.status_code != 200 or not captures.json()["captures"]:
-        fail(f"real import produced no capture: {captures.status_code} {captures.text[:300]}")
+    if captures.status_code != 200 or len(captures.json()["captures"]) != 2:
+        fail(f"real import did not produce exactly two captures: {captures.status_code} {captures.text[:300]}")
     CAPTURE_ID = captures.json()["captures"][0]["capture_id"]
+
+    superstream = client.post(
+        f"/projects/{PROJECT_ID}/superstreams",
+        headers={"Authorization": f"Bearer {token_a}"},
+        json={"name": "TEST-G34 real fixture", "logIds": [source.name for source in sources]},
+    )
+    if superstream.status_code != 201:
+        fail(f"real superstream fixture returned {superstream.status_code}: {superstream.text[:300]}")
+    SUPERSTREAM_ID = superstream.json()["id"]
 
     decoded = client.post(
         f"/projects/{PROJECT_ID}/decode",
@@ -224,6 +241,7 @@ def concrete_path(path: str) -> str:
         "result_id": RESULT_ID,
         "job_id": JOB_ID,
         "user_id": USER_B_ID,
+        "ss_id": SUPERSTREAM_ID,
         "code": "THR_DL_APP",
         "category": TEMPLATE_CATEGORY,
         "param_key:path": PARAM_KEY,
@@ -235,6 +253,7 @@ def concrete_path(path: str) -> str:
 
 def query_for(route: str) -> dict[str, Any]:
     query: dict[str, dict[str, Any]] = {
+    "/projects/{project_id}/captures/{capture_id}": {"reason": "TEST-G34 access isolation"},
     "/projects/{project_id}/captures/{capture_id}/events": {"types": "rrc"},
     "/projects/{project_id}/captures/{capture_id}/kpi/{code}/time-series": {},
     "/projects/{project_id}/dict/param": {"param_key": PARAM_KEY},
@@ -289,7 +308,7 @@ class Row:
 def call(client: TestClient, token: str, method: str, route: str):
     json_body, files = body_for(method, route)
     if method == "POST" and route.endswith("/nmf"):
-        source = Path(os.environ["G34_NMF_PATH"])
+        source = Path(os.environ["G34_NMF_PATHS"].split("::")[0])
         with source.open("rb") as stream:
             return client.request(
                 method,
