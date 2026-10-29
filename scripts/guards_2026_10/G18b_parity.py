@@ -15,12 +15,13 @@ Divergences détectées :
   - éléments présents dans A pas dans B           → divergent (only_cache)
   - éléments présents dans B pas dans A           → divergent (only_fresh)
 """
-import sys
+import argparse, sys
 from collections import Counter
 sys.path.insert(0, "/app")
 from sqlalchemy import text
 from app.db import SessionLocal
 from app.kpi.catalog_release.registry import current_catalog
+from scope_args import add_scope_args, resolve_scope
 
 
 def _leaves_list(nodes):
@@ -29,8 +30,17 @@ def _leaves_list(nodes):
 
 
 def main():
+    ap = argparse.ArgumentParser()
+    add_scope_args(ap)
+    args = ap.parse_args()
     db = SessionLocal()
     try:
+        try:
+            project_id, capture_ids = resolve_scope(db, args)
+        except ValueError as exc:
+            print(f"G18b_VERDICT FAIL scope_error={exc}")
+            sys.exit(1)
+        print(f"G18b scope: project_id={project_id} captures={capture_ids}")
         cur = current_catalog(db)
         if cur:
             from app.kpi.metrics_catalog_v4 import build_catalog_v4
@@ -46,8 +56,9 @@ def main():
         print(f"G18b mode: {mode}")
 
         pids = [r[0] for r in db.execute(text(
-            "SELECT project_id FROM metrics_catalog_cache ORDER BY project_id"
-        )).all()]
+            "SELECT project_id FROM metrics_catalog_cache "
+            "WHERE project_id=:pid ORDER BY project_id"
+        ), {"pid": project_id}).all()]
         divergent = 0
         print(f"{'project_id':<20} {'cached':>7} {'fresh':>7} {'dup_cache':>10} "
               f"{'dup_fresh':>10} {'only_cache':>11} {'only_fresh':>11}")

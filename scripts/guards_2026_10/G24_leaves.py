@@ -3,8 +3,7 @@
 Phase 3b préalable (BC3, 2026-10-25) — version remise à zéro après
 critique "mode trust = ne vérifie rien" (G24 lot 0.80.0 avait sauté la
 re-count). Ici on **RECOMPTE** vraiment, depuis `nmf_event_light`, sur
-un **projet témoin** par défaut : `134af70a06eb` (le plus riche en Light,
-391/786 leaves selectable avec n>0 en cache).
+un **projet témoin** explicite, ou par défaut le projet nommé `Test_6`.
 
 Pour chaque leaf de la cache avec `n=0` ET `source_column` non vide :
   SELECT COUNT(*) FROM nmf_event_light
@@ -15,9 +14,9 @@ Pour éviter de scanner `nmf_event_light` N fois, on BATCH la projection
 en une seule requête par chunk de 50 colonnes (COUNT FILTER WHERE col IS
 NOT NULL), même technique que `app.kpi.metrics_catalog_v4._n_per_column`.
 
-Usage (défaut = 134af70a06eb) :
+Usage (défaut = projet Test_6 et ses trois captures) :
   python scripts/guards_2026_10/G24_leaves.py
-  python scripts/guards_2026_10/G24_leaves.py --pid <project_id>
+  python scripts/guards_2026_10/G24_leaves.py --project-id <project_id>
   python scripts/guards_2026_10/G24_leaves.py --pid <pid> --limit 0  # tous
 """
 import argparse, sys
@@ -25,25 +24,25 @@ from collections import defaultdict
 sys.path.insert(0, "/app")
 from sqlalchemy import text
 from app.db import SessionLocal
+from scope_args import add_scope_args, resolve_scope
 
 CHUNK = 50
 
 
 def main():
     ap = argparse.ArgumentParser()
-    # --pid OBLIGATOIRE. Pas de défaut hardcodé (ex. "134af70a06eb") : après
-    # reset DB, un défaut pointerait vers un projet absent et G24 ferait
-    # VERDICT FAIL silencieux. Ici l'omission du flag → argparse exit=2
-    # avec message clair, pas de SKIP, pas de FAIL muet.
-    ap.add_argument("--pid", required=True,
-                    help="project_id témoin à recompter (OBLIGATOIRE)")
+    add_scope_args(ap)
     ap.add_argument("--limit", type=int, default=0,
                     help="limite de candidats re-comptés (0 = tous)")
     args = ap.parse_args()
-    pid = args.pid
-
     db = SessionLocal()
     try:
+        try:
+            pid, capture_ids = resolve_scope(db, args)
+        except ValueError as exc:
+            print(f"G24_VERDICT FAIL scope_error={exc}")
+            sys.exit(1)
+        print(f"G24 scope: project_id={pid} captures={capture_ids}")
         # 1) Stats globales par projet
         pids = [r[0] for r in db.execute(text(
             "SELECT project_id FROM metrics_catalog_cache ORDER BY project_id"
