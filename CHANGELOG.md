@@ -1,3 +1,45 @@
+## 0.95.0 (minor) — BC4 2026-10-29 — lot B import-throughput : décodeur 1.8.0 + sparse native light + bins (Agent BC1, déployé Agent BC3)
+
+Merge de `feat/import-throughput` sur `main`. Numéro attribué par BC3.
+Décodeur passe 1.7.2 → **1.8.0** (voir `CHANGELOG_DECODER.md` entrée
+`1.8.0`). Pas de modification HTTP contract public hors nouvelles
+routes bins ; endpoint `/health` reporte `version=0.95.0`
+`decoder_version=1.8.0`.
+
+Contenu Lot B (4 commits BC1) :
+
+- `2a49e24` docs(audit): record native light disk gate (`audit/bc1-light-native/`).
+- `88f1b13` feat(storage): migration **0065** `bc1_light_native_sparse`
+  — nouvelle table `nmf_event_light_native` (JSONB sparse, position
+  prouvée via `x_2154/y_2154/position_source/position_gap_s`,
+  FK `project_id` ON DELETE CASCADE, index couvrant `(project_id,
+  event_code, capture_id, seq)`). Table créée vide → index non
+  CONCURRENTLY sûr (pas de données préexistantes à verrouiller).
+- `06941b2` feat(kpi): bins capture-local calculés à la requête :
+  `app/kpi/nmf_bins.py` (médiane, `n_records`, `n_valid`, `n_exact`,
+  `n_inherited`), nouvelles routes `kpi_timeseries`/`superstreams` bins.
+  `app/nmf_decoder/store.py` écrit vers `nmf_event_light_native` au
+  lieu de `nmf_event_light`/`_group` pour les captures Light.
+- `f4d7804` fix(decoder): `Stat.add()` ré-incrémente `self.weight`
+  pour `agg='dominant'` — colonnes NR `phrate_cell_type`,
+  `txpc_cell_type`, `tad_cell_type` et toutes les colonnes
+  `agg: dominant` retrouvent leur alimentation 1.7.1 (régression
+  introduite en 1.7.2 corrigée).
+
+Preuves (collées dans `audit/bc1-lot-b-1.8.0/`) :
+
+- `G46_<file>.txt` × 3 — colonnes 1.7.1 non vidées par 1.8.0 sur les 3
+  témoins de `artifacts/witness-nmf/` : 281 / 278 / 315 colonnes
+  conservées, 0 vidée.
+- `G42.txt` — PASS 44.2 s, 2 captures Light natives (36026 lignes
+  `nmf_event_light_native`, 0 ligne dans l'ancien `nmf_event_light`),
+  bench éphémère `bc3-lot-b-1-8-0` jetable détruit après coup.
+- `G44.txt` — PASS, snapshot immuable sur capture `done`, `decoded_at`
+  avancé uniquement sur la capture remise en file, décodeur 1.8.0.
+- G45 PASS côté BC1 sur mêmes commits (bench éphémère non rejoué ici
+  par décision Codex67 2026-10-29 10h49Z : accélération, pas de
+  nouvelle base jetable).
+
 ## 0.94.1 (patch) — BC4 2026-10-29 — ops(restart) `restart: unless-stopped` sur db/api/front (Agent BC3)
 
 Correctif infra (deploy/docker-compose.yml, pas de rebuild image).
