@@ -109,7 +109,12 @@ def _run_populate_chain(db: "Session", project: "Project") -> dict:
     logger.info("[populate_chain] F signaling project=%s", project.id)
     report["signaling"] = materialize_project(db, project.id)
 
-    # Étape G — snapshot n_points + last_populate_at sur projects.
+    # Étape G — catalogue réseau normalisé, publié atomiquement par génération.
+    from app.dict.materialized import materialize_network_catalog
+    logger.info("[populate_chain] G dict network catalog project=%s", project.id)
+    report["dict_network_catalog"] = materialize_network_catalog(db, project.id)
+
+    # Étape H — snapshot n_points + last_populate_at sur projects.
     n_points_row = db.execute(
         text("SELECT COUNT(*) FROM measurement_points WHERE project_id = :pid"),
         {"pid": project.id},

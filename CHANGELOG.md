@@ -1,3 +1,7 @@
+## Unreleased — dict-tree-cold
+
+- Performance (**patch**) : prépare le catalogue des paramètres réseau à la finalisation et le sert par une génération SQL indexée, avec rattrapage idempotent et tracé, sans modifier le contrat de `/dict/v2/tree`.
+
 ## 0.100.0 (minor) — BC4 2026-10-29 — `/metrics/series` borné + session JWT 480 min (Agent BC1, numérotation BC3)
 
 Merge `bc1/metrics-series-lean` (`8ead390`). Numéro **0.100.0 (minor)**

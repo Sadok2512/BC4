@@ -5,6 +5,7 @@ from types import SimpleNamespace
 class Result:
     def __init__(self, row): self.row=row
     def one(self): return self.row
+    def one_or_none(self): return self.row
 
 
 class DB:
