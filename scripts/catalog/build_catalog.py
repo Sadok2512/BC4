@@ -16,7 +16,7 @@ Usage :
     --txt /specs/nemo_file_format_2.50.txt \
     --categories scripts/catalog/categories.yaml \
     --version 2.50.2 --decoder-min 1.6.0 \
-    --out app/kpi/catalog_release/catalog_2.50.2.json --commit
+    --out app/kpi/catalog_release/catalog_2.50.2.json
 """
 from __future__ import annotations
 import argparse, csv, hashlib, json, re, sys
@@ -28,7 +28,6 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 import yaml  # noqa: E402
 from sqlalchemy import text  # noqa: E402
-from app.db import SessionLocal  # noqa: E402
 # 2.51.1 — source_column tirée des YAMLs du décodeur, jamais inventée.
 from app.nmf_decoder.schema import schemas, column as _dec_column  # noqa: E402
 
@@ -50,7 +49,7 @@ STRUCTURAL_FIELDS = {
 }
 
 
-# 2.54.0 — Mapping event → enum NFF 2.50 qui s'applique à son champ
+# 2.56.0 — Le choix d'enum se fait par (event, system), jamais par event seul.
 # `Cell type`. Cité par le CONTENU du pack 2.50 (`nemo_file_format_2.50.txt`,
 # lignes vérifiées 2026-10-28).
 #
@@ -88,11 +87,11 @@ STRUCTURAL_FIELDS = {
 # MIMOMEAS NR) relèvent de `cell_type_nr` de la spec (non détaillé ici,
 # traité par le bucket SCG SCell 100-131 dans `lte_scell` quand c'est
 # applicable, outsiders sinon).
-EVENT_CELL_TYPE_ENUM: dict[str, str] = {
-    "CELLMEAS": "lte_cellmeas",
-    "MIMOMEAS": "lte_mimo",
-    # Tous les autres cell_scoped → `lte_scell` par défaut (serving cell type).
+EVENT_SYSTEM_CELL_TYPE_ENUM: dict[str, dict[int, str]] = {
+    "CELLMEAS": {7: "lte_cellmeas", 9: "nr_cell"},
+    "MIMOMEAS": {7: "lte_mimo", 9: "nr_cell"},
 }
+DEFAULT_SYSTEM_CELL_TYPE_ENUM: dict[int, str] = {7: "lte_scell", 9: "nr_cell"}
 
 
 # 2.54.0 — Variantes canoniques par enum NFF 2.50. Tuple (value, label_short,
@@ -100,49 +99,61 @@ EVENT_CELL_TYPE_ENUM: dict[str, str] = {
 # observées en base mais hors enum) sortent runtime sous forme de feuilles
 # outsider dans `metrics_catalog_v4`, grises, avec tooltip spec.
 ENUM_VARIANTS: dict[str, list[tuple[int, str, str, int]]] = {
-    # Spec NFF 2.50 Serving cell type (0-31 = PCell + SCell 1-31). On garde
-    # les 5 serving LTE canoniques + le bucket SCG SCell NR 100-131 + PSCell
-    # (variantes NR portées par les events partagés LTE/NR via EN-DC).
-    "lte_scell": [
-        (0, "PCell", "PCell (0)", 7),
-        (1, "SCell 1", "SCell 1 (1)", 7),
-        (2, "SCell 2", "SCell 2 (2)", 7),
-        (3, "SCell 3", "SCell 3 (3)", 7),
-        (4, "SCell 4", "SCell 4 (4)", 7),
-        (199, "PSCell", "PSCell NR (199)", 9),
-        (100, "SCell NR 100+", "SCG SCell NR 100-131 (bucket cell_type_nr)", 9),
+    "lte_scell": [(0, "PCell", "PCell (0)", 7)] + [
+        (i, f"SCell {i}", f"SCell {i} ({i})", 7) for i in range(1, 32)
     ],
-    # Spec NFF 2.50 CELLMEAS LTE p.30475. L'index SCell commence à 10
-    # (10=SCell 1), pas à 1 — c'est la DIFFERENCE clé avec `lte_scell`.
-    "lte_cellmeas": [
-        (0, "Serving", "Serving cell (0)", 7),
-        (1, "Listed", "Listed neighbour (1)", 7),
-        (2, "Detected", "Detected neighbour (2)", 7),
-        (10, "SCell 1", "SCell 1 (10)", 7),
-        (11, "SCell 2", "SCell 2 (11)", 7),
-        (12, "SCell 3", "SCell 3 (12)", 7),
-        (13, "SCell 4", "SCell 4 (13)", 7),
+    # nmf_cell_second normalise CELLMEAS LTE 10..40 en cell_index 1..31.
+    # Listed/Detected (raw 1/2) ne sont pas projetées comme serving cells.
+    "lte_cellmeas": [(0, "Serving", "Serving cell (raw 0)", 7)] + [
+        (i, f"SCell {i}", f"SCell {i} (raw {i + 9})", 7)
+        for i in range(1, 32)
     ],
-    # Spec NFF 2.50 MIMOMEAS LTE p.31586. Même décalage SCell que CELLMEAS
-    # mais SANS Listed / Detected (pas de voisins mesurés en MIMO).
-    "lte_mimo": [
-        (0, "Serving", "Serving cell (0)", 7),
-        (10, "SCell 1", "SCell 1 (10)", 7),
-        (11, "SCell 2", "SCell 2 (11)", 7),
-        (12, "SCell 3", "SCell 3 (12)", 7),
-        (13, "SCell 4", "SCell 4 (13)", 7),
+    # MIMOMEAS conserve actuellement la valeur NFF brute comme cell_index.
+    "lte_mimo": [(0, "Serving", "Serving cell (0)", 7)] + [
+        (raw, f"SCell {raw - 9}", f"SCell {raw - 9} ({raw})", 7)
+        for raw in range(10, 41)
     ],
+    "nr_cell": (
+        [(0, "PCell", "PCell (0)", 9)]
+        + [(i, f"SCell {i}", f"SCell {i} ({i})", 9) for i in range(1, 32)]
+        + [(i, f"SCG SCell {i - 100}", f"SCG SCell {i - 100} ({i})", 9)
+           for i in range(100, 132)]
+        + [(199, "SCG PSCell", "SCG PSCell (199)", 9)]
+        + [(1000, "Listed NR neighbour", "Listed NR neighbour (1000)", 9),
+           (1001, "Detected NR neighbour", "Detected NR neighbour (1001)", 9),
+           (1002, "Scanner NR neighbour", "Scanner NR neighbour (1002)", 9)]
+    ),
+}
+
+# Noyau stable baké. Les autres valeurs documentées sont ajoutées au runtime
+# uniquement quand nmf_cell_second les contient ; l'artefact ne duplique donc
+# pas tout l'enum pour chaque champ de chaque événement.
+BAKED_CELL_INDICES: dict[str, frozenset[int]] = {
+    "lte_scell": frozenset(range(5)),
+    "lte_cellmeas": frozenset(range(5)),
+    "lte_mimo": frozenset({0, 10, 11, 12, 13}),
+    "nr_cell": frozenset({0, 1, 2, 3, 4, 100, 199, 1000, 1001, 1002}),
 }
 
 
-def event_enum_name(event: str) -> str:
-    """Retourne le nom d'enum NFF 2.50 pour un event cell_scoped."""
-    return EVENT_CELL_TYPE_ENUM.get(event, "lte_scell")
+def event_enum_names(event: str) -> dict[int, str]:
+    """Retourne les enums NFF 2.50 par système pour un event cell_scoped."""
+    return EVENT_SYSTEM_CELL_TYPE_ENUM.get(event, DEFAULT_SYSTEM_CELL_TYPE_ENUM)
 
 
 def event_enum_variants(event: str) -> list[tuple[int, str, str, int]]:
-    """Retourne les variantes canoniques pour un event cell_scoped."""
-    return ENUM_VARIANTS[event_enum_name(event)]
+    """Union déterministe des cell_index applicables, avec labels bake-time.
+
+    Le libellé final est recalculé serve-time depuis nmf_event_light.system.
+    Une valeur commune LTE/NR n'est émise qu'une fois dans le JSON.
+    """
+    by_index: dict[int, tuple[int, str, str, int]] = {}
+    for system, enum_name in event_enum_names(event).items():
+        for ct, short, long, _tech in ENUM_VARIANTS[enum_name]:
+            if ct not in BAKED_CELL_INDICES[enum_name]:
+                continue
+            by_index.setdefault(ct, (ct, short, long, system))
+    return [by_index[ct] for ct in sorted(by_index)]
 IDENTITY_FIELDS = {"IMSI", "IMEI", "TMSI", "GUTI", "#EI", "#SI"}
 MASKED_INDEX_FIELDS = {"cmd_index", "action_index", "req_index"}
 PAYLOAD_FIELDS = {"Payload", "payload_b64", "Message"}
@@ -300,7 +311,6 @@ def main():
     ap.add_argument("--decoder-min", required=True)
     ap.add_argument("--out", required=True)
     ap.add_argument("--spec-version", default=None)
-    ap.add_argument("--commit", action="store_true")
     args = ap.parse_args()
     spec_v = args.spec_version or ".".join(args.version.split(".")[:2])
 
@@ -449,11 +459,11 @@ def main():
                            # de cet event. Serve-time `metrics_catalog_v4` s'en
                            # sert pour délimiter les variantes canoniques du
                            # dispatch outsider.
-                           "cell_type_enum": event_enum_name(ev) if cell_scoped else None,
-                           # 2.55.0 — Écart déclaré au décodeur (ex. PLAIU
-                           # cell_type non décodé car schéma 2.19). Repris
-                           # par metrics_catalog_v4 dans le tooltip NULL
-                           # du dispatch cellule.
+                           "cell_type_enums": (
+                               {str(k): v for k, v in event_enum_names(ev).items()}
+                               if cell_scoped else None
+                           ),
+                           # Conservé pour documenter les écarts non-cellule.
                            "decoder_gap": decoder_gap,
                            "tech": tech}
         # leaves : one per field; cell-scoped events get per-cell_type leaves
@@ -547,8 +557,7 @@ def main():
             # (SCell commence à 10), tous les autres `lte_scell`
             # (SCell commence à 1 + bucket SCG 100-131 + PSCell 199).
             # Cf. mapping EVENT_CELL_TYPE_ENUM supra, cité spec par ligne.
-            ev_enum = event_enum_name(ev)
-            variants = ENUM_VARIANTS[ev_enum]
+            variants = event_enum_variants(ev)
             for ct, label_short, label_long, tech_cell in variants:
                 # 2.55.1 (BC4 2026-10-28) — Correctif prod G25.3 stale_false_grey.
                 # L'ancien filtre `applicable = (tech=="LTE" AND tech_cell==7)` évinçait
@@ -681,25 +690,6 @@ def main():
     }, sort_keys=True, indent=2))
     print(f"[build] out={out_path} sha256={sha}")
     print(f"[build] meta={meta_path} (sidecar, non versionné)")
-
-    if args.commit:
-        db = SessionLocal()
-        try:
-            db.execute(text("UPDATE catalog_release SET is_current=FALSE WHERE is_current=TRUE"))
-            db.execute(text(
-                "INSERT INTO catalog_release(version, spec_version, decoder_min_version, "
-                "sha256, n_categories, n_metrics, n_leaves, changelog, is_current) "
-                "VALUES(:v,:s,:d,:sha,:nc,:nm,:nl,:cl,TRUE) "
-                "ON CONFLICT(version) DO UPDATE SET sha256=excluded.sha256, "
-                "n_categories=excluded.n_categories, n_metrics=excluded.n_metrics, "
-                "n_leaves=excluded.n_leaves, is_current=TRUE"
-            ), {"v": args.version, "s": spec_v, "d": args.decoder_min, "sha": sha,
-                "nc": n_categories_total, "nm": n_metrics, "nl": n_leaves,
-                "cl": f"gen from {Path(args.csv).name}; unclassified={len(unclassified_events)}; excluded={len(excluded_events)}; capture_leaves={capture_leaves_count}"})
-            db.commit()
-            print(f"[build] catalog_release row v={args.version} is_current=TRUE")
-        finally:
-            db.close()
 
 if __name__ == "__main__":
     main()

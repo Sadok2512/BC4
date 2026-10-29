@@ -86,31 +86,22 @@ def _event_fields_yaml():
 
 def _event_col_total(db, project_id: str, event_code: str, col: str,
                      avail_light_cols: set[str], avail_group_cols: set[str]) -> int:
-    """COUNT global de `col` pour `(project_id, event_code)` sans filtre
-    cellule. Choisit `nmf_event_light` ou `nmf_event_light_group` selon
-    où vit la colonne. Utilisé par G25.4 (conservation).
+    """COUNT des valeurs réellement projetées dans nmf_cell_second.
+
+    Depuis le catalogue 2.56.0, la sélection par cellule est définie par
+    `(metric_code, cell_index)` ; comparer aux colonnes Light brutes
+    mélangerait l'enum source et le cell_index normalisé.
     """
     if not col:
         return 0
     if not col.replace("_", "").isalnum():
         return 0
-    if col in avail_light_cols:
-        sql = (
-            f'SELECT COUNT(*) FROM nmf_event_light '
-            f'WHERE project_id=:pid AND event_code=:ev AND "{col}" IS NOT NULL'
-        )
-        return int(db.execute(text(sql), {"pid": project_id, "ev": event_code}).scalar() or 0)
-    if col in avail_group_cols:
-        sql = (
-            f'SELECT COUNT(*) FROM nmf_event_light_group g '
-            f'JOIN nmf_event_light l '
-            f'  ON l.project_id=g.project_id '
-            f' AND l.capture_id=g.capture_id '
-            f' AND l.seq=g.seq '
-            f'WHERE l.project_id=:pid AND l.event_code=:ev AND g."{col}" IS NOT NULL'
-        )
-        return int(db.execute(text(sql), {"pid": project_id, "ev": event_code}).scalar() or 0)
-    return 0
+    return int(db.execute(text("""
+        SELECT COUNT(DISTINCT (capture_id, second, cell_index))
+        FROM nmf_cell_second
+        WHERE project_id=:pid AND event_code=:ev AND metric_code=:col
+          AND value IS NOT NULL AND cell_index >= 0
+    """), {"pid": project_id, "ev": event_code, "col": col}).scalar() or 0)
 
 
 def main():

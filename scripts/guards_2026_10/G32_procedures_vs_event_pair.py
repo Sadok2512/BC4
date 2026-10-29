@@ -16,23 +16,30 @@ Verdict G32:
 - differ > 0        : seq_end ou duration mismatch → FAIL
 - else PASS.
 """
-import sys
+import argparse, sys
 sys.path.insert(0, "/app")
 from app.db import SessionLocal
 from app.signaling.service import population
 from sqlalchemy import text
+from scope_args import add_scope_args, resolve_scope
 
 
 _PAIR_TYPES = {'attach','bearer','call','data_session','ho','rrc_connection'}
 
 
 def main():
+    ap = argparse.ArgumentParser()
+    add_scope_args(ap)
+    args = ap.parse_args()
     db = SessionLocal()
     try:
-        caps = db.execute(text(
-            "SELECT project_id, capture_id FROM nmf_capture ORDER BY capture_id"
-        )).all()
-        print(f"G32 witnesses: {len(caps)} captures (full perimeter)")
+        try:
+            project_id, capture_ids = resolve_scope(db, args)
+        except ValueError as exc:
+            print(f"G32_VERDICT FAIL scope_error={exc}")
+            sys.exit(1)
+        caps = [(project_id, capture_id) for capture_id in capture_ids]
+        print(f"G32 witnesses: {len(caps)} captures project_id={project_id}")
         total_diff = 0
         total_orphans_pair = 0
         total_orphans_proc = 0

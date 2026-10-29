@@ -38,27 +38,58 @@ from app.kpi.catalog_release.registry import (
 )
 from app.nmf_decoder import DECODER_VERSION
 
-# 2.54.0 — Variantes canoniques couvertes par le build **par enum NFF 2.50**.
-# `cell_type_enum` est porté sur chaque event node par
-# `scripts/catalog/build_catalog.py` (clé EVENT_CELL_TYPE_ENUM, citée spec
-# ligne par ligne). Toute valeur `cell_type` observée en base hors du jeu
-# canonique d'une event (SCell 5, 6 en CA LTE pour un event lte_scell,
-# SCell NR 1000+ listed neighbour pour un lte_cellmeas) est émise au
-# serve-time comme feuille grise « cellule non cataloguée » avec tooltip.
-# Jamais un rejet silencieux (règle Codex67 2026-10-28).
+# 2.56.0 — Variantes canoniques par enum NFF 2.50. La disponibilité vient
+# exclusivement de nmf_cell_second.cell_index ; nmf_event_light.system choisit
+# le libellé de l'enum pour le même événement.
 CANONICAL_CTS_PER_ENUM: dict[str, frozenset[int]] = {
-    # Serving cell type (RRC) : 0 PCell, 1-4 SCell 1-4 + bucket SCG 100-131 +
-    # PSCell 199 (via EN-DC pour les events partagés LTE/NR).
-    "lte_scell": frozenset({0, 1, 2, 3, 4, 199} | set(range(100, 132))),
-    # Spec NFF 2.50 CELLMEAS LTE (p.30475) : 0 Serving, 1 Listed, 2 Detected,
-    # 10-13 SCell 1-4.
-    "lte_cellmeas": frozenset({0, 1, 2, 10, 11, 12, 13}),
-    # Spec NFF 2.50 MIMOMEAS LTE (p.31586) : 0 Serving, 10-13 SCell 1-4.
-    "lte_mimo": frozenset({0, 10, 11, 12, 13}),
+    "lte_scell": frozenset(range(32)),
+    # CELLMEAS LTE raw 10..40 est normalisé en cell_index 1..31.
+    "lte_cellmeas": frozenset(range(32)),
+    "lte_mimo": frozenset({0} | set(range(10, 41))),
+    "nr_cell": frozenset(
+        {0, 199, 1000, 1001, 1002}
+        | set(range(1, 32)) | set(range(100, 132))
+    ),
 }
 # Fallback utilisé quand un event cell_scoped n'a pas de `cell_type_enum`
 # baké (anciens JSON 2.53.0 et antérieurs).
 _DEFAULT_ENUM = "lte_scell"
+
+
+def _enum_name(event: str, system: int | None) -> str:
+    if system == 9:
+        return "nr_cell"
+    if event == "CELLMEAS":
+        return "lte_cellmeas"
+    if event == "MIMOMEAS":
+        return "lte_mimo"
+    return "lte_scell"
+
+
+def _cell_label(event: str, system: int | None, cell_index: int) -> str:
+    """Libellé NFF 2.50 du cell_index projeté, par (event, system)."""
+    if system == 9:
+        if cell_index == 0:
+            return "PCell"
+        if 1 <= cell_index <= 31:
+            return f"SCell {cell_index}"
+        if 100 <= cell_index <= 131:
+            return f"SCG SCell {cell_index - 100}"
+        if cell_index == 199:
+            return "SCG PSCell"
+        return {
+            1000: "Listed NR neighbour",
+            1001: "Detected NR neighbour",
+            1002: "Scanner NR neighbour",
+        }.get(cell_index, f"cell_index={cell_index}")
+    if event == "CELLMEAS":
+        return "Serving" if cell_index == 0 else f"SCell {cell_index}"
+    if event == "MIMOMEAS":
+        if cell_index == 0:
+            return "Serving"
+        if 10 <= cell_index <= 40:
+            return f"SCell {cell_index - 9}"
+    return "PCell" if cell_index == 0 else f"SCell {cell_index}"
 
 
 _KIND_MAP = {
@@ -191,116 +222,49 @@ def _n_per_column(
     return out
 
 
-def _cell_type_counts_per_project(
+def _cell_index_counts_per_project(
     db: Session,
     project_id: str,
-    event_cols_light: dict[str, set[str]],
-    event_cols_group: dict[str, set[str]],
-    avail_light_cols: set[str],
-    avail_group_cols: set[str],
-) -> dict[tuple[str, int, str], int]:
-    """2.54.0 — Comptage ligne par ligne par (event, cell_type, source_column).
+    event_columns: dict[str, set[str]],
+) -> dict[tuple[str, int | None, int, str], int]:
+    """Compte les projections réellement sélectionnables.
 
-    Deux sources distinctes agrégées :
-
-    (A) **dimension header** (CI/CQI/DCI/MACRATE/.../TXPC) : la cellule
-        vit dans `nmf_event_light.<event_lower>_cell_type`. Un GROUP BY
-        sur cette colonne, avec `COUNT(*) FILTER` par source_column, est
-        exécuté par événement.
-
-    (B) **groupes** (CELLMEAS LTE+NR, MIMOMEAS) : la cellule vit dans
-        `nmf_event_light_group.cell_type`. Un JOIN sur
-        `(project_id, capture_id, seq)` + GROUP BY `g.cell_type`.
-
-    Appelé une fois par requête `/metrics`. Si l'event n'a aucune
-    source_column cell_scoped à compter, aucun SQL n'est émis.
-
-    Codex67 2026-10-28 — contrat de comptage : une feuille `@<cellule>`
-    compte UNIQUEMENT les lignes de CETTE cellule pour CET event dans CE
-    projet, filtrées `source_column IS NOT NULL`.
+    `nmf_cell_second` est l'autorité pour `(metric_code, cell_index)`. Le
+    système est repris du bucket Light ayant le même `(project_id,
+    capture_id, seq_first, event_code)`. `nmf_event_light_native` est inclus
+    comme stockage physique du mode Light sparse. La jointure ne dépend
+    jamais de `ts`.
     """
-    out: dict[tuple[str, int, str], int] = {}
-    # (A) dimension header — un GROUP BY par event
-    for ev, cols in event_cols_light.items():
-        if not cols:
+    out: dict[tuple[str, int | None, int, str], int] = {}
+    for event, columns in event_columns.items():
+        safe = sorted(c for c in columns if c.replace("_", "").isalnum())
+        if not safe:
             continue
-        ct_col = f"{ev.lower()}_cell_type"
-        if ct_col not in avail_light_cols:
-            continue
-        safe_cols = [c for c in cols if c.replace("_", "").isalnum()]
-        if not safe_cols:
-            continue
-        count_exprs = ", ".join(
-            f'COUNT(*) FILTER (WHERE "{c}" IS NOT NULL) AS "cnt_{idx}"'
-            for idx, c in enumerate(safe_cols)
-        )
-        sql = (
-            f'SELECT "{ct_col}" AS ct, {count_exprs} '
-            f"FROM nmf_event_light "
-            f"WHERE project_id=:pid AND event_code=:ev "
-            f'GROUP BY "{ct_col}"'
-        )
-        for row in db.execute(text(sql), {"pid": project_id, "ev": ev}).mappings():
-            ct = row["ct"]
-            if ct is None:
-                # 2.54.0 — Les lignes `cell_type IS NULL` sont rangées
-                # sous un bucket sentinelle `-1`, émis en feuille grise
-                # « cellule non renseignée » par le découvreur uncatalogued
-                # (point 4 Codex67 : jamais un rejet silencieux).
-                ct_int = -1
-            else:
-                try:
-                    ct_int = int(ct)
-                except (TypeError, ValueError):
-                    continue
-            for idx, c in enumerate(safe_cols):
-                nn = int(row[f"cnt_{idx}"] or 0)
-                if nn > 0:
-                    out[(ev, ct_int, c)] = nn
-    # (B) groupes — un GROUP BY par event. Pour les colonnes qui existent
-    # dans nmf_event_light ET nmf_event_light_group (ex cell_rsrp), on
-    # qualifie `g.<col>` quand la col est côté groupe, `l.<col>` sinon.
-    for ev, cols in event_cols_group.items():
-        if not cols:
-            continue
-        safe_cols = [c for c in cols if c.replace("_", "").isalnum()]
-        if not safe_cols:
-            continue
-        exprs = []
-        for idx, c in enumerate(safe_cols):
-            qual = "g" if c in avail_group_cols else "l"
-            exprs.append(
-                f'COUNT(*) FILTER (WHERE {qual}."{c}" IS NOT NULL) AS "cnt_{idx}"'
+        rows = db.execute(text("""
+            WITH light_system AS (
+                SELECT project_id, capture_id, seq, event_code, system
+                FROM nmf_event_light
+                UNION
+                SELECT project_id, capture_id, seq, event_code, system
+                FROM nmf_event_light_native
             )
-        count_exprs = ", ".join(exprs)
-        sql = (
-            f"SELECT g.cell_type AS ct, {count_exprs} "
-            f"FROM nmf_event_light_group g "
-            f"JOIN nmf_event_light l "
-            f"  ON l.project_id=g.project_id "
-            f" AND l.capture_id=g.capture_id "
-            f" AND l.seq=g.seq "
-            f"WHERE l.project_id=:pid AND l.event_code=:ev "
-            f"  AND g.group_name IN ('cells','measurements') "
-            f"GROUP BY g.cell_type"
-        )
-        for row in db.execute(text(sql), {"pid": project_id, "ev": ev}).mappings():
-            ct = row["ct"]
-            if ct is None:
-                # 2.54.0 — Les lignes `cell_type IS NULL` sont rangées
-                # sous un bucket sentinelle `-1`, émis en feuille grise
-                # « cellule non renseignée » par le découvreur uncatalogued
-                # (point 4 Codex67 : jamais un rejet silencieux).
-                ct_int = -1
-            else:
-                try:
-                    ct_int = int(ct)
-                except (TypeError, ValueError):
-                    continue
-            for idx, c in enumerate(safe_cols):
-                nn = int(row[f"cnt_{idx}"] or 0)
-                if nn > 0:
-                    out[(ev, ct_int, c)] = nn
+            SELECT s.event_code, l.system, s.cell_index, s.metric_code,
+                   COUNT(DISTINCT (s.capture_id, s.second)) AS n
+            FROM nmf_cell_second s
+            LEFT JOIN light_system l
+              ON l.project_id=s.project_id
+             AND l.capture_id=s.capture_id
+             AND l.seq=s.seq_first
+             AND l.event_code=s.event_code
+            WHERE s.project_id=:pid AND s.event_code=:event
+              AND s.metric_code=ANY(:columns) AND s.value IS NOT NULL
+              AND s.cell_index >= 0
+            GROUP BY s.event_code, l.system, s.cell_index, s.metric_code
+        """), {"pid": project_id, "event": event, "columns": safe}).mappings()
+        for row in rows:
+            system = int(row["system"]) if row["system"] is not None else None
+            out[(row["event_code"], system, int(row["cell_index"]),
+                 row["metric_code"])] = int(row["n"] or 0)
     return out
 
 
@@ -312,33 +276,19 @@ def _event_col_total(
     avail_light_cols: set[str],
     avail_group_cols: set[str],
 ) -> int:
-    """2.54.0 — COUNT global de `col IS NOT NULL` pour un (project, event)
-    sans filtre cellule. Sert à la conservation (ct=-1 bucket). Choisit la
-    table où `col` existe réellement.
+    """Nombre de secondes projetées pour `(event, metric_code)`.
+
+    Une feuille cellule n'est consommable que via `nmf_cell_second`; sa
+    conservation se vérifie donc sur cette table, pas sur le champ Light brut.
     """
     if not col or not col.replace("_", "").isalnum():
         return 0
-    if col in avail_light_cols:
-        sql = (
-            f'SELECT COUNT(*) FROM nmf_event_light '
-            f'WHERE project_id=:pid AND event_code=:ev AND "{col}" IS NOT NULL'
-        )
-        return int(
-            db.execute(text(sql), {"pid": project_id, "ev": event_code}).scalar() or 0
-        )
-    if col in avail_group_cols:
-        sql = (
-            f'SELECT COUNT(*) FROM nmf_event_light_group g '
-            f'JOIN nmf_event_light l '
-            f'  ON l.project_id=g.project_id '
-            f' AND l.capture_id=g.capture_id '
-            f' AND l.seq=g.seq '
-            f'WHERE l.project_id=:pid AND l.event_code=:ev AND g."{col}" IS NOT NULL'
-        )
-        return int(
-            db.execute(text(sql), {"pid": project_id, "ev": event_code}).scalar() or 0
-        )
-    return 0
+    return int(db.execute(text("""
+        SELECT COUNT(DISTINCT (capture_id, second, cell_index))
+        FROM nmf_cell_second
+        WHERE project_id=:pid AND event_code=:ev AND metric_code=:col
+          AND value IS NOT NULL AND cell_index >= 0
+    """), {"pid": project_id, "ev": event_code, "col": col}).scalar() or 0)
 
 
 def _bucket_ct_lte_scell(ct: int) -> int:
@@ -408,41 +358,15 @@ def build_catalog_v4(
             candidate_cols.add(col)
     counts = _n_per_column(db, project_id, candidate_cols)
 
-    # 1.a) 2.54.0 — Comptage par (event, cell_type, source_column).
-    # Pour les feuilles cell_scoped (`cell_type` présent dans le node),
-    # `n` doit être le nombre d'observations de CETTE cellule pour CET
-    # event dans CE projet (Codex67 2026-10-28, point 3). Les events
-    # sont scindés entre dimension-header (`<ev>_cell_type` colonne) et
-    # groupes (`nmf_event_light_group.cell_type`).
+    # 1.a) 2.56.0 — disponibilité par cell_index projeté. Le champ Light
+    # brut sert à documenter l'événement ; la sélection est consommée dans
+    # nmf_cell_second et doit donc être comptée dans cette même table.
     cell_scoped_events: set[str] = {
         (n.get("event") or "").lstrip("#")
         for n in nodes_in
         if n.get("node_type") == "event" and n.get("cell_scoped")
     }
-    # 2.54.0 — Enum NFF 2.50 par event (baké par build_catalog.py).
-    # Fallback `lte_scell` pour les anciens JSON (compat 2.53.0−).
-    event_ct_enum: dict[str, str] = {}
-    # 2.55.0 — Écart décodeur par event (baké depuis categories.yaml
-    # `decoder_gap`). Repris dans le tooltip des feuilles outsider NULL
-    # pour expliciter la cause (ex. PLAIU 2.19 vs spec 2.50).
-    event_decoder_gap: dict[str, str] = {}
-    for n in nodes_in:
-        if n.get("node_type") != "event":
-            continue
-        ev = (n.get("event") or "").lstrip("#")
-        event_ct_enum[ev] = n.get("cell_type_enum") or _DEFAULT_ENUM
-        if n.get("decoder_gap"):
-            event_decoder_gap[ev] = n["decoder_gap"]
-    # Un event est dispatché par CELL_TYPE soit en header (colonne
-    # `<ev_lower>_cell_type` dans nmf_event_light, cas CI/CQI/DCI/…), soit
-    # en groupe (nmf_event_light_group.cell_type, cas CELLMEAS/MIMOMEAS).
-    # On range chaque source_column observée côté leaves dans le bucket
-    # qui correspond au cell_type de son event, pas à l'endroit où vit la
-    # colonne : certaines colonnes de groupe sont propagées dans
-    # `nmf_event_light` (ex. cell_rsrp) et il faut quand même grouper
-    # par `g.cell_type` pour l'event CELLMEAS.
-    event_cols_light: dict[str, set[str]] = defaultdict(set)
-    event_cols_group: dict[str, set[str]] = defaultdict(set)
+    event_columns: dict[str, set[str]] = defaultdict(set)
     for lf in displayed_leaves:
         if lf.get("cell_type") is None:
             continue
@@ -452,64 +376,26 @@ def build_catalog_v4(
         col = _column_for_leaf(lf)
         if not col or col not in avail_cols:
             continue
-        if f"{ev.lower()}_cell_type" in avail_light_cols:
-            event_cols_light[ev].add(col)
-        else:
-            event_cols_group[ev].add(col)
-    cell_type_counts = _cell_type_counts_per_project(
-        db,
-        project_id,
-        event_cols_light,
-        event_cols_group,
-        avail_light_cols,
-        avail_group_cols,
-    )
-    # 1.b) 2.54.0 — Conservation : pour chaque (event, source_column)
-    # cell_scoped, la somme des per-ct comptés doit atteindre le COUNT
-    # global de la colonne. Toute différence tombe dans le bucket ct=-1
-    # (`cell_type non renseigné / dispatch inconnu`). Cela attrape :
-    #   • les lignes où la colonne de dispatch (`<ev>_cell_type` ou
-    #     `g.cell_type`) est NULL ;
-    #   • les events `cell_scoped=true` dans categories.yaml dont le
-    #     décodeur n'alimente ni colonne ni groupe de cell_type (ex.
-    #     PLAIU — observé 2026-10-28, à retravailler côté catégorisation).
-    # Garantit G25.4 par construction, sans jamais inventer de dispatch.
-    for ev in set(event_cols_light.keys()) | set(event_cols_group.keys()):
-        cols_for_ev = (
-            event_cols_light.get(ev, set()) | event_cols_group.get(ev, set())
-        )
-        for col in cols_for_ev:
-            total = _event_col_total(
-                db, project_id, ev, col, avail_light_cols, avail_group_cols
-            )
-            if total <= 0:
-                continue
-            current_sum = sum(
-                nn
-                for (e, c, co), nn in cell_type_counts.items()
-                if e == ev and co == col
-            )
-            delta = total - current_sum
-            if delta > 0:
-                prev = cell_type_counts.get((ev, -1, col), 0)
-                cell_type_counts[(ev, -1, col)] = prev + delta
-    # Bucket SCG SCell NR 100-131 → résumé sous la variante `cell_type=100`
-    # du catalogue (« SCell NR 100+ »). N'est appliqué qu'aux events qui
-    # ont effectivement une variante bucketée dans leur enum (`lte_scell`).
-    scg_bucket_counts: dict[tuple[str, str], int] = defaultdict(int)
-    for (ev, ct, col), nn in cell_type_counts.items():
-        if 100 <= ct <= 131 and event_ct_enum.get(ev) == "lte_scell":
-            scg_bucket_counts[(ev, col)] += nn
+        event_columns[ev].add(col)
+    cell_index_counts = _cell_index_counts_per_project(db, project_id, event_columns)
 
     def _n_per_cell(ev: str, ct: int, col: str) -> int:
-        """Lookup n for a cell_scoped leaf. ct=100 agrège le bucket
-        SCG SCell NR 100-131 **uniquement** pour les events d'enum
-        `lte_scell` (standard RRC). Les autres canoniques et uncatalogued
-        s'auto-renvoient par leur valeur exacte.
-        """
-        if ct == 100 and event_ct_enum.get(ev) == "lte_scell":
-            return int(scg_bucket_counts.get((ev, col), 0))
-        return int(cell_type_counts.get((ev, ct, col), 0))
+        return sum(
+            nn for (event, _system, cell, metric), nn in cell_index_counts.items()
+            if event == ev and cell == ct and metric == col
+        )
+
+    def _systems_per_cell(ev: str, ct: int, col: str) -> list[int | None]:
+        return sorted(
+            (system for (event, system, cell, metric), nn in cell_index_counts.items()
+             if event == ev and cell == ct and metric == col and nn > 0),
+            key=lambda value: (value is None, value if value is not None else 0),
+        )
+
+    def _label_per_cell(ev: str, ct: int, col: str, fallback: str) -> str:
+        systems = _systems_per_cell(ev, ct, col)
+        labels = list(dict.fromkeys(_cell_label(ev, system, ct) for system in systems))
+        return " / ".join(labels) if labels else fallback
 
     def _per_cell_reason(ev: str, ct: int, col: str, cell_label: str | None) -> str:
         """Reason honnête quand n_per_cell=0 pour une col décodée. Pas de
@@ -582,16 +468,32 @@ def build_catalog_v4(
             continue
         seen_codes.add(code)
         event = (lf.get("event") or "").lstrip("#")
+        metric_label = lf.get("label") or metric_id
+        metric_cells: list[int] = []
+        metric_cell_options: list[dict] = []
+        is_cell_metric = lf.get("cell_type") is not None
+        if is_cell_metric:
+            field_name = metric_label.split(" @ ", 1)[0]
+            cell_index = int(lf["cell_type"])
+            cell_label = _label_per_cell(
+                event, cell_index, col, lf.get("cell_label") or str(cell_index)
+            )
+            metric_label = f"{field_name} @ {cell_label}"
+            metric_cells = [cell_index]
+            metric_cell_options = [{
+                "cell": str(cell_index), "label": cell_label,
+                "n_in_project": n, "available": True, "reason": None,
+            }]
         cat_label = (
             _category_label(nodes_by_id, lf.get("parent_id")) or "Undocumented"
         )
         metrics_out.append(
             dict(
                 code=code,
-                label=lf.get("label") or metric_id,
+                label=metric_label,
                 unit=lf.get("unit") or "",
-                source_table="nmf_event_light",
-                source_tables=["nmf_event_light"],
+                source_table="nmf_cell_second" if is_cell_metric else "nmf_event_light",
+                source_tables=["nmf_cell_second"] if is_cell_metric else ["nmf_event_light"],
                 source_column=col if has_col else "",
                 tech="BOTH",
                 kind=_kind_from_type(lf.get("type")),
@@ -599,9 +501,9 @@ def build_catalog_v4(
                 decoder_version=DECODER_VERSION,
                 event=event,
                 category_label=cat_label,
-                cell_scoped=False,
-                cells=[],
-                cell_options=[],
+                cell_scoped=is_cell_metric,
+                cells=metric_cells,
+                cell_options=metric_cell_options,
                 attributes=[],
                 proof=lf.get("proof") or "none",
                 available=has_col and n > 0,
@@ -709,12 +611,20 @@ def build_catalog_v4(
             )
         else:
             reason_val = "No observations in project"
+        label_val = node.get("label") or ""
+        if is_leaf and ct_node is not None:
+            field_name = label_val.split(" @ ", 1)[0]
+            ev_lf = (node.get("event") or "").lstrip("#")
+            cell_label = _label_per_cell(
+                ev_lf, int(ct_node), col or "", node.get("cell_label") or str(ct_node)
+            )
+            label_val = f"{field_name} @ {cell_label}"
         nodes_out.append(
             dict(
                 node_id=node["node_id"],
                 parent_id=parent_id,
                 order=order,
-                label=node.get("label") or "",
+                label=label_val,
                 note=node.get("description"),
                 source=None,
                 node_type=node.get("node_type"),
@@ -768,79 +678,28 @@ def build_catalog_v4(
     def _field_name_for(ev: str, col: str) -> str:
         return human_field_by_col.get((ev, col), col)
 
-    uncatalogued_entries: list[tuple[str, int, str, int]] = []
-    for (ev, ct, col), nn in cell_type_counts.items():
-        enum_name = event_ct_enum.get(ev, _DEFAULT_ENUM)
-        canonical = CANONICAL_CTS_PER_ENUM.get(enum_name, frozenset())
-        if ct in canonical:
-            continue
-        if nn <= 0:
-            continue
-        uncatalogued_entries.append((ev, ct, col, nn))
-    uncatalogued_entries.sort()
-    for ev, ct, col, nn in uncatalogued_entries:
+    baked_cells = {
+        ((lf.get("event") or "").lstrip("#"), int(lf["cell_type"]),
+         _column_for_leaf(lf))
+        for lf in displayed_leaves if lf.get("cell_type") is not None
+    }
+    observed_cells: dict[tuple[str, int, str], int] = defaultdict(int)
+    for (ev, _system, ct, col), nn in cell_index_counts.items():
+        observed_cells[(ev, ct, col)] += nn
+    dynamic_entries = sorted(
+        (ev, ct, col, nn)
+        for (ev, ct, col), nn in observed_cells.items()
+        if nn > 0 and (ev, ct, col) not in baked_cells
+    )
+    for ev, ct, col, nn in dynamic_entries:
         ev_nid = event_node_by_code.get(ev)
         if not ev_nid:
             continue
         field_name = _field_name_for(ev, col)
-        enum_name = event_ct_enum.get(ev, _DEFAULT_ENUM)
-        # Nom d'enum NFF 2.50 pour tooltip (lte_scell / lte_cellmeas /
-        # lte_mimo / lte_mesure / nr).
-        spec_enum_name = (
-            {"lte_scell": "cell_type_lte_scell",
-             "lte_cellmeas": "cell_type_lte_cellmeas",
-             "lte_mimo": "cell_type_lte_mimo",
-             }.get(enum_name, enum_name)
-        )
-        if ct == -1:
-            # cell_type NULL sur la ligne de dispatch (header ou group).
-            label_full = f"{field_name} @ cell_type non renseigné (NULL)"
-            gap = event_decoder_gap.get(ev)
-            if gap:
-                # 2.55.0 — Écart décodeur déclaré en categories.yaml → tooltip
-                # explicite plutôt que message générique.
-                reason_outsider = (
-                    f"{gap} ({nn} observations dans ce projet)"
-                )
-            else:
-                reason_outsider = (
-                    f"La ligne n'était pas rattachée à une cellule au décodage "
-                    f"(nmf_event_light.{ev.lower()}_cell_type / "
-                    f"nmf_event_light_group.cell_type IS NULL). "
-                    f"{nn} observations."
-                )
-            node_id = f"lf_outsider_{ev.lower()}_null_{col}"
-            proof_tag = "observed-no-cell-type"
-        else:
-            # Libellé humain de la valeur : on cherche d'abord dans l'enum
-            # standard générique du catalog JSON (ex. `cell_type_lte_scell`
-            # pour SCell 5, SCell 6 observés hors des 7 canoniques), puis
-            # on retombe sur `cell_type_nr` pour les valeurs NR hautes
-            # (bucket neighbours 1000+).
-            label_from_enum = None
-            for enum_name_json in (
-                "cell_type_lte_scell",
-                "cell_type_nr",
-                "cell_type_lte_mesure",
-            ):
-                for entry in (catalog.get("enums") or {}).get(enum_name_json, []):
-                    if entry.get("value") == ct:
-                        label_from_enum = entry.get("label")
-                        break
-                if label_from_enum:
-                    break
-            spec_hint = f"NFF 2.50 {spec_enum_name}:{ct}"
-            label_full = (
-                f"{field_name} @ {label_from_enum} (cellule non cataloguée)"
-                if label_from_enum
-                else f"{field_name} @ cell_type={ct} (cellule non cataloguée)"
-            )
-            node_id = f"lf_outsider_{ev.lower()}_{ct}_{col}"
-            reason_outsider = (
-                f"cell_type={ct} observée dans ce projet mais hors arbre "
-                f"canonique ({spec_hint}). {nn} observations."
-            )
-            proof_tag = "observed-no-catalog"
+        label_from_enum = _label_per_cell(ev, ct, col, f"cell_index={ct}")
+        label_full = f"{field_name} @ {label_from_enum}"
+        node_id = f"lf_observed_{ev.lower()}_{ct}_{col}"
+        selection = f"{col}@{ct}"
         parent_id = ev_nid
         order = siblings_counter.get(parent_id, 0)
         siblings_counter[parent_id] = order + 1
@@ -850,22 +709,40 @@ def build_catalog_v4(
                 parent_id=parent_id,
                 order=order,
                 label=label_full,
-                note=reason_outsider,
+                note="Cellule observée dans nmf_cell_second",
                 source=None,
                 node_type="leaf",
-                metric_id=None,
-                selection=None,
+                metric_id=selection,
+                selection=selection,
                 event=ev,
                 field_idx=None,
                 source_column=col,
                 unit="",
                 cell=None,
                 n=int(nn),
-                proof=proof_tag,
-                selectable=False,
-                reason=reason_outsider,
+                proof="observed-cell-second",
+                selectable=True,
+                reason=None,
             )
         )
+        if selection not in seen_codes:
+            seen_codes.add(selection)
+            cat_label = _category_label(nodes_by_id, ev_nid) or "Undocumented"
+            metrics_out.append(dict(
+                code=selection, label=label_full, unit="",
+                source_table="nmf_cell_second", source_tables=["nmf_cell_second"],
+                source_column=col, tech="BOTH", kind="numeric",
+                n_in_project=int(nn), decoder_version=DECODER_VERSION,
+                event=ev, category_label=cat_label, cell_scoped=True,
+                cells=[ct], cell_options=[{
+                    "cell": str(ct), "label": label_from_enum,
+                    "n_in_project": int(nn), "available": True, "reason": None,
+                }], attributes=[], proof="observed-cell-second", available=True,
+                reason=None, alias_of=None, event_group=None,
+                unproven_cells=[], root_notices=[], event_code=ev,
+                proof_ref="nmf_cell_second + nmf_event_light.system",
+                category=cat_label.lower().replace(" ", "_"),
+            ))
 
     return dict(
         catalogue_version=current.version,

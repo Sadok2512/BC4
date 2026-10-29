@@ -29,6 +29,29 @@ Chaque build écrit une ligne dans `catalog_release` (sha256, counts) ;
 
 ## Versions
 
+## 2.56.0 — 2026-10-29 — Dispatch enum par événement/système et cellules projetées sélectionnables (BC1)
+
+Type SemVer : **minor**. Numéro proposé ; BC3 attribue le numéro final au merge.
+
+- Le choix de l'enum NFF 2.50 est porté par `(event, system)` :
+  `CELLMEAS` LTE utilise l'enum de la p.30475, `MIMOMEAS` LTE celui de
+  la p.31586, et le système NR utilise l'enum de la p.30654 (PCell,
+  SCell, SCG SCell, SCG PSCell, Listed/Detected/Scanner NR).
+- La disponibilité et la sélection d'une cellule reposent désormais sur
+  `nmf_cell_second.cell_index`. `nmf_event_light.system` (ou son stockage
+  sparse `nmf_event_light_native`), joint par `(project_id, capture_id,
+  seq_first=seq, event_code)`, choisit uniquement le libellé ; aucun
+  appariement temporel n'est utilisé.
+- Les `cell_index` observés hors de l'arbre baké sont ajoutés au runtime
+  comme feuilles sélectionnables. Le libellé « cellule non cataloguée »
+  disparaît dès qu'une projection existe.
+- Les gardes G18b, G24, G24b et G32 acceptent `--project-id`/`--capture-id`
+  ou les variables `BC4_PROJECT_ID`/`BC4_CAPTURE_IDS` (alias génériques
+  également acceptés). Sans argument, elles résolvent le projet `Test_6`
+  et exigent ses trois captures.
+- La bascule de release reste exclusivement effectuée par
+  `scripts/catalog/bootstrap_catalog_release.py`.
+
 ## 2.55.0 — 2026-10-28 — Spec-fidèle + hotfix PSCell stale_false_grey (Agent BC4)
 
 **Hotfix 2.55.0 (correctif sur 2.54.0 déployé en prod, remonté par Codex67

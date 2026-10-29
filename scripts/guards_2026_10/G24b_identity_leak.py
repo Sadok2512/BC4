@@ -24,10 +24,11 @@ La liste des substrings interdits est volontairement conservatrice :
 project_id est accepté (c'est l'identifiant du projet lui-même, déjà
 exposé partout) mais tracé en WARN.
 """
-import sys
+import argparse, sys
 sys.path.insert(0, "/app")
 from sqlalchemy import text
 from app.db import SessionLocal
+from scope_args import add_scope_args, resolve_scope
 
 FORBIDDEN = (
     "identity", "subscriber", "device_name", "log_file_name",
@@ -38,16 +39,26 @@ WARN_ONLY = ("project_id",)
 
 
 def main():
+    ap = argparse.ArgumentParser()
+    add_scope_args(ap)
+    args = ap.parse_args()
     db = SessionLocal()
     try:
+        try:
+            project_id, capture_ids = resolve_scope(db, args)
+        except ValueError as exc:
+            print(f"G24b_VERDICT FAIL scope_error={exc}")
+            sys.exit(1)
+        print(f"G24b scope: project_id={project_id} captures={capture_ids}")
         rows = db.execute(text("""
             SELECT c.project_id, m->>'node_id' AS nid, m->>'label' AS lbl,
                    m->>'source_column' AS col, (m->>'selectable')::bool AS sel
             FROM metrics_catalog_cache c, jsonb_array_elements(c.payload->'nodes') m
             WHERE m->>'node_type'='leaf'
               AND m->>'source_column' LIKE 'cap\\_%' ESCAPE '\\'
+              AND c.project_id=:pid
             ORDER BY c.project_id, nid
-        """)).mappings().all()
+        """), {"pid": project_id}).mappings().all()
         fails, warns = [], []
         for r in rows:
             col = r["col"] or ""
