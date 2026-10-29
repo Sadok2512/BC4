@@ -1,3 +1,28 @@
+## 0.94.1 (patch) — BC4 2026-10-29 — ops(restart) `restart: unless-stopped` sur db/api/front (Agent BC3)
+
+Correctif infra (deploy/docker-compose.yml, pas de rebuild image).
+
+- Avant : seul `import-worker` avait `restart: unless-stopped`. Après
+  le reboot hôte quotidien ~08:37Z (observé 2026-10-28 et 2026-10-29
+  par `last -F -x` / `journalctl --list-boots` ; cause externe, PAS
+  `apt`/`unattended-upgrades` dont la dernière exécution date du
+  2026-10-27 06:49), `bc4-db-1`, `bc4-api-1` et `bc4-front-1`
+  restaient `Exited(255)` jusqu'à redémarrage manuel. Front down
+  entre 08:37Z et 10:07Z le 2026-10-29 → impact Codex67 sur
+  `http://185.248.33.125:5174/kpi`.
+- Après : les 3 services remontent automatiquement avec le daemon
+  docker après chaque reboot ; `import-worker` déjà couvert reste
+  inchangé.
+- Pas d'image rebuild (contenu `bc4-api:latest` inchangé).
+  Déploiement : `docker compose up -d` recréera les conteneurs avec
+  la nouvelle policy. `/health` renverra 0.94.1.
+- Observation annexe (hors scope du patch) : si l'OS continue à
+  rebooter quotidiennement et que l'opérateur veut couper l'`Auto
+  reboot` d'unattended-upgrades (non prouvé coupable mais utile par
+  prudence), réglage proposé : `Unattended-Upgrade::Automatic-Reboot
+  "false";` dans `/etc/apt/apt.conf.d/50unattended-upgrades`.
+  **Non appliqué** (modif système hors scope lot).
+
 ## 0.93.1 (patch) — BC4 2026-10-28 — perf(import) +37 % records/s sur deep decode (Agent BC1, déployé Agent BC3)
 
 Lot A isolé (commit `7b81a05` seul, les commits `2a49e24`/`88f1b13` de

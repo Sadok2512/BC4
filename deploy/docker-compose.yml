@@ -1,6 +1,7 @@
 services:
   db:
     image: postgis/postgis:16-3.4
+    restart: unless-stopped
     environment:
       POSTGRES_USER: bc4
       # Durcissement 2026-10-27 : plus de défaut "bc4", obligatoire via .env.
@@ -24,6 +25,7 @@ services:
   api:
     image: bc4-api:latest
     build: ./bc4-back
+    restart: unless-stopped
     environment:
       # Durcissement 2026-10-27 : DSN construit depuis .env (plus de "bc4:bc4").
       BC4_DSN: postgresql+psycopg://bc4:${BC4_PGPW:?BC4_PGPW required in .env}@db:5432/bc4
@@ -132,6 +134,7 @@ services:
     # franco-focus-forge/ `docker build -f Dockerfile.v2 -t bc4-front-v2:<ver>
     # --build-arg VCS_REF=<sha> --build-arg APP_VERSION=<ver> .`
     image: bc4-front-v2:1.115.0
+    restart: unless-stopped
     # Host port 5174 → container 5173. Port historique du handover
     # Codex67 ; ne pas changer sans prévenir.
     ports:
