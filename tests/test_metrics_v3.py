@@ -14,6 +14,11 @@ def test_closed_selectors_and_unproven_cells():
     # 10 is therefore a valid legacy key, while malformed/private selectors
     # remain closed.
     assert parse_selection('cell_rsrp@1003',d)['label'].endswith('Serving · LTE')
+    assert parse_selection('cell_rsrp@1172',d)['legacy_occurrence']==7
+    detected=parse_selection('cell_rsrp@lte-type-2',d)
+    assert detected['cell_type_filter']=={'system':7,'raw_cell_type':2}
+    assert detected['label'].endswith('Detected LTE neighbour · LTE')
+    assert 'internal_index' not in detected['cell_display']
     for token in ['evt_CAA~caa_phone_number','evt_SEI~sei_m_tmsi','unk_CAA','rsrp; DROP TABLE capture']:
         with pytest.raises(HTTPException) as error:parse_selection(token,d)
         assert error.value.status_code==422

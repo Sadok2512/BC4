@@ -183,7 +183,12 @@ def parse_selection(token,defs,cell='all',attr=None):
     #     ici on produit un libellé minimal « cell N » / « cell NULL »
     #     seulement en fallback (les clients canoniques utilisent la
     #     feuille du catalogue qui porte déjà le libellé de l'enum).
-    if cell != 'all' and cell != 'null':
+    from app.kpi.metrics_catalog_v4 import (
+        cell_type_display,
+        parse_cell_type_selector,
+    )
+    semantic_cell = parse_cell_type_selector(cell) if isinstance(cell, str) else None
+    if cell != 'all' and cell != 'null' and semantic_cell is None:
         try:
             _cell_int = int(cell)
             if _cell_int < 0 or _cell_int > 10000:
@@ -206,8 +211,23 @@ def parse_selection(token,defs,cell='all',attr=None):
         elif cell == 'null':
             cell_label = 'cell_type NULL'
         else:
-            from app.kpi.metrics_catalog_v4 import cell_display
-            display = cell_display(m['event'], int(cell))
+            if semantic_cell is not None:
+                system, raw_cell_type = semantic_cell
+                display = cell_type_display(m['event'], system, raw_cell_type)
+                m['cell_type_filter'] = {
+                    'system': system,
+                    'raw_cell_type': raw_cell_type,
+                }
+            else:
+                from app.nmf_decoder.cells import cell_source_for_index
+                internal_index = int(cell)
+                source = cell_source_for_index(internal_index)
+                system, raw_cell_type, occurrence = (
+                    source if source is not None else (7, internal_index, 0)
+                )
+                display = cell_type_display(m['event'], system, raw_cell_type)
+                m['legacy_internal_index'] = internal_index
+                m['legacy_occurrence'] = occurrence
             cell_label = display['label'] + (f" · {display['system']}" if display['system'] else '')
             m['cell_display'] = display
         m['label'] += ' · ' + cell_label
@@ -235,21 +255,42 @@ def aggregate_values(rows,agg):
 
 
 class Dataset:
-    def __init__(self,db,pid,cap,f,lo=None,hi=None):
+    def __init__(self,db,pid,cap,f,lo=None,hi=None,lean_table=False):
         from app.routes.metrics import clock
-        validate_operators(db,pid,f)
         self.db=db;self.pid=pid;self.cap=cap;self.f=f;self.lo=lo;self.hi=hi;self.sqls=[]
         self.params={'pid':pid,'cap':cap,'ctx_cap':cap}
-        self.times,self.origin_seq,self.origin_ts=clock(db,pid,cap)
+        condition,params=predicate(f);self.params.update(params)
+        if condition != 'TRUE':validate_operators(db,pid,f)
+        self.lean_table=bool(lean_table and condition=='TRUE')
+        if self.lean_table:
+            origins=[row for row in (
+                self.query("""SELECT seq,ts FROM stg_event_raw
+                    WHERE project_id=:pid AND capture_id=:cap
+                    ORDER BY seq LIMIT 1""").first(),
+                self.query("""SELECT seq,ts FROM stg_event
+                    WHERE project_id=:pid AND capture_id=:cap
+                    ORDER BY seq LIMIT 1""").first(),
+            ) if row]
+            origin=min(origins,key=lambda row:row['seq']) if origins else None
+            if not origin:raise HTTPException(404,'capture_not_found_in_project')
+            self.times={};self.origin_seq=origin['seq'];self.origin_ts=origin['ts']
+            duration=self.query("""
+                SELECT t_rel_s AS duration_s FROM nmf_event_light
+                WHERE project_id=:pid AND capture_id=:cap
+                ORDER BY seq DESC LIMIT 1
+            """).first()
+            self.duration_s=float(duration['duration_s'] or 0)
+        else:
+            self.times,self.origin_seq,self.origin_ts=clock(db,pid,cap)
+            self.duration_s=max(self.times.values())
         self.state=self.query('SELECT decoder_version,schema_version,decode_level FROM nmf_capture WHERE project_id=:pid AND capture_id=:cap').first()
         if not self.state:raise HTTPException(409,'capture_requires_decode')
         # 0.75.0 — meta temporelle du fichier source joint via nmf_capture.
         # Lecture read-only ; jamais inventé (NULL si absent).
         self.file_meta=self.query('SELECT f.start_at AS start_at, f.utc_offset_min AS utc_offset_min FROM nmf_capture c JOIN nmf_file f ON f.id=c.nmf_file_id WHERE c.project_id=:pid AND c.capture_id=:cap').first() or {'start_at':None,'utc_offset_min':None}
-        self.context={r['seq']:dict(r) for r in self.query(context_sql())}
-        condition,params=predicate(f);self.params.update(params)
+        self.context={} if self.lean_table else {r['seq']:dict(r) for r in self.query(context_sql())}
         self.allowed=None if condition=='TRUE' else {r['seq'] for r in self.query('SELECT seq FROM ('+context_sql()+') c WHERE '+condition)}
-        self.pairs=list(self.query('SELECT * FROM nmf_event_pair WHERE project_id=:pid AND capture_id=:cap ORDER BY seq_start'))
+        self.pairs=[] if self.lean_table else list(self.query('SELECT * FROM nmf_event_pair WHERE project_id=:pid AND capture_id=:cap ORDER BY seq_start'))
 
     def query(self,sql,extra=None):
         params={**self.params,**(extra or {})};self.sqls.append(dict(sql=sql,params=params))
@@ -258,7 +299,90 @@ class Dataset:
     def admissible(self,seq):
         return (self.lo is None or seq>=self.lo) and (self.hi is None or seq<=self.hi) and (self.allowed is None or seq in self.allowed)
 
-    def load(self,m):
+    def _load_semantic_cell(self, m, *, page=None, page_size=None,
+                            cell_pci=None, cell_arfcn=None):
+        """Load one enum leaf as physical cells, with SQL pagination.
+
+        Storage occurrences are joined back to the exact CELLMEAS repeated
+        group by `(project_id, capture_id, seq, raw type, occurrence)`. Rows
+        are then reduced to `(seq, system, ARFCN, PCI)`; duplicate samples of
+        the same physical cell retain their count and use their documented
+        weights for the displayed mean.
+        """
+        from app.nmf_decoder.cells import cell_index_bounds
+        spec = m['cell_type_filter']
+        bounds = cell_index_bounds(spec['system'], spec['raw_cell_type'])
+        if bounds is None:
+            return [], 0
+        first_index, last_index = bounds
+        params = {
+            'metric': m['source_column'], 'event': m['event'],
+            'system': spec['system'], 'raw': spec['raw_cell_type'],
+            'first_index': first_index, 'last_index': last_index,
+            'cell_pci': cell_pci, 'cell_arfcn': cell_arfcn,
+        }
+        identity_filters = ""
+        if cell_pci is not None:
+            identity_filters += " AND r.cell_pci=:cell_pci"
+        if cell_arfcn is not None:
+            identity_filters += " AND r.cell_ch=:cell_arfcn"
+        grouped = f"""
+            WITH ranked AS (
+              SELECT g.seq,g.cell_pci,g.cell_ch,l.t_rel_s,
+                     row_number() OVER (
+                       PARTITION BY g.project_id,g.capture_id,g.seq,g.cell_type
+                       ORDER BY g.identity
+                     )-1 AS occurrence
+              FROM nmf_event_light_group g
+              JOIN nmf_event_light l
+                ON l.project_id=g.project_id AND l.capture_id=g.capture_id
+               AND l.seq=g.seq AND l.event_code=:event
+              WHERE g.project_id=:pid AND g.capture_id=:cap
+                AND g.group_name='cells' AND g.cell_type=:raw
+                AND l.system=:system
+            ), physical AS (
+              SELECT s.seq_first AS seq,MAX(s.seq_last) AS seq_last,s.second,
+                     MAX(r.t_rel_s) AS exact_t_rel_s,
+                     r.cell_pci,r.cell_ch AS cell_arfcn,
+                     CASE WHEN SUM(s.weight) FILTER (WHERE s.weight>0)>0
+                       THEN SUM(s.value*s.weight) FILTER (WHERE s.weight>0)
+                            / SUM(s.weight) FILTER (WHERE s.weight>0)
+                       ELSE AVG(s.value) END AS value,
+                     COUNT(*)::int AS observation_count,
+                     MIN(s.cell_index)::int AS storage_order
+              FROM nmf_cell_second s
+              LEFT JOIN ranked r
+                ON r.seq=s.seq_first
+               AND r.occurrence=s.cell_index-:first_index
+              WHERE s.project_id=:pid AND s.capture_id=:cap
+                AND s.event_code=:event AND s.metric_code=:metric
+                AND s.cell_index BETWEEN :first_index AND :last_index
+                {identity_filters}
+              GROUP BY s.seq_first,s.second,r.cell_pci,r.cell_ch,
+                       CASE WHEN r.cell_pci IS NULL OR r.cell_ch IS NULL
+                            THEN s.cell_index ELSE NULL END
+            )
+        """
+        sql = grouped + """
+            SELECT seq,seq_last,second,exact_t_rel_s,cell_pci,cell_arfcn,value,
+                   observation_count,COUNT(*) OVER()::int AS total_rows
+            FROM physical
+            ORDER BY seq,cell_arfcn NULLS LAST,cell_pci NULLS LAST,storage_order
+        """
+        if page is not None and page_size is not None:
+            sql += " LIMIT :limit OFFSET :offset"
+            params.update(limit=page_size, offset=(page-1)*page_size)
+        result = [dict(r) for r in self.query(sql, params)]
+        if result:
+            total = int(result[0].pop('total_rows'))
+            for row in result[1:]:row.pop('total_rows',None)
+        else:
+            # Only an out-of-range page needs the extra count query.
+            count_row = self.query(grouped + "SELECT COUNT(*) AS n FROM physical", params).first()
+            total = int(count_row['n'] if count_row else 0)
+        return result, total
+
+    def load(self,m,*,page=None,page_size=None,cell_pci=None,cell_arfcn=None):
         code=m['source_column'];cell=m['cell'];attr=m['attr'];event=m['event'];rows=[]
         # 2.53.0 — CAPTURE dispatcher (prefix `cap_`). Résolveurs :
         # CONST (nmf_file/nmf_capture) · SERIES_DEVI (stg_event_raw c{col})
@@ -277,9 +401,25 @@ class Dataset:
                 if r['value'] is not None and m['kind']=='categorical':r['value']=str(r['value'])
                 out.append(r)
             return out
-        if m['cell_scoped'] or m['base_code'] in DERIVED:
+        if m.get('cell_type_filter') and event == 'CELLMEAS':
+            rows, total = self._load_semantic_cell(
+                m, page=page, page_size=page_size,
+                cell_pci=cell_pci, cell_arfcn=cell_arfcn,
+            )
+            m['_total_rows'] = total
+            display=m['cell_display']
+            for r in rows:
+                r['cell_label']=display['label']
+                r['cell_system']=display['system']
+                if r.get('exact_t_rel_s') is not None:
+                    self.times[r['seq']]=float(r['exact_t_rel_s'])
+            scale=1e-6 if fields().get(code,{}).get('unit')=='bit/s' else 100 if code=='scell_throughput_share' else 1
+            for r in rows:
+                if r['value'] is not None:r['value']*=scale
+        elif m['cell_scoped'] or m['base_code'] in DERIVED:
             sql='SELECT seq_first seq,seq_last,value,reason,second FROM nmf_cell_second WHERE project_id=:pid AND capture_id=:cap AND metric_code=:metric AND cell_index=:cell ORDER BY seq_first'
-            rows=[dict(r) for r in self.query(sql,{'metric':code,'cell':-1 if cell=='all' else int(cell)})]
+            internal_cell = m.get('legacy_internal_index', -1 if cell=='all' else int(cell))
+            rows=[dict(r) for r in self.query(sql,{'metric':code,'cell':internal_cell})]
             # CELLMEAS radio identity is carried by the exact repeated group.
             # Resolve it by (project, capture, seq, raw cell_type, occurrence),
             # never by timestamp. Native-light captures simply have no typed
@@ -305,7 +445,8 @@ class Dataset:
                     WHERE system=:system AND cell_type=:raw
                       AND occurrence=:occurrence
                 """,{'event':event,'system':7 if display['system']=='LTE' else 9,
-                       'raw':display['raw_cell_type'],'occurrence':display['occurrence']})}
+                       'raw':display['raw_cell_type'],
+                       'occurrence':m.get('legacy_occurrence',0)})}
                 for r in rows:
                     identity=identities.get(r['seq'],{})
                     r['cell_pci']=identity.get('cell_pci')
@@ -377,10 +518,26 @@ class Dataset:
             result[key]=sum(b-a for a,b in merged)
         return result
 
-    def response(self,selections,limit=5000,group_by='operator',x=None,include_map=False,page=1,page_size=1000,table_only=False):
+    def response(self,selections,limit=5000,group_by='operator',x=None,include_map=False,
+                 page=1,page_size=1000,table_only=False,cell_pci=None,cell_arfcn=None):
         from app.routes.metrics import sample
         from app.routes.tasks import evidence
-        defs=definitions();loaded=[(m,self.load(m)) for m in selections]
+        defs=definitions()
+        sql_paginated = (
+            table_only and len(selections)==1
+            and bool(selections[0].get('cell_type_filter'))
+            and selections[0].get('event')=='CELLMEAS'
+        )
+        loaded=[(
+            m,
+            self.load(
+                m,
+                page=page if sql_paginated else None,
+                page_size=page_size if sql_paginated else None,
+                cell_pci=cell_pci,
+                cell_arfcn=cell_arfcn,
+            ),
+        ) for m in selections]
         table={};series=[];hist=[];map_points=[];gaps=[]
         for m,rows in loaded:
             points=[];buckets=defaultdict(list)
@@ -396,20 +553,29 @@ class Dataset:
                 if m['kind']=='event' and len(points)>limit:raise HTTPException(422,dict(reason='event_occurrences_exceed_max_points',required=len(points)))
                 series.append(dict(code=m['selection'],label=m['label'],unit=m['unit'],kind=m['kind'],cell=m['cell'],source_table='nmf_cell_second' if m['cell_scoped'] else m['source_table'],source_column=m['source_column'],n_total=len(points),n_returned=len(out),sampling=sampling,states=list(dict.fromkeys(str(p['value']) for p in points)) if m['kind']=='categorical' else [],segments=[],points=out))
             for second,rs in buckets.items():
-                row=table.setdefault(second,dict(second=second,t_rel_s=float(second),seq_first=rs[0]['seq'],seq_last=rs[-1]['seq'],values={},counts={}))
-                row['seq_first']=min(row['seq_first'],rs[0]['seq']);row['seq_last']=max(row['seq_last'],rs[-1]['seq'])
-                value=1 if m['kind']=='event' else aggregate_values(rs,'last' if m.get('attr') or m['cell_scoped'] else m.get('agg','last'))
-                if m.get('weighted') and not m['cell_scoped'] and len([r for r in rs if r['value'] is not None])>1:
-                    # Projection preserves weighted per-seq values but does not expose their denominators.
-                    # Never average those means again to manufacture a second-level statistic.
-                    value=None;gaps.append(m['selection']+': missing inter-sample weights; per-second aggregate unavailable, per-seq series preserved')
-                row['values'][m['selection']]=value;row['counts'][m['selection']]=sum(r.get('count',1) for r in rs)
-                if m.get('cell_display'):
-                    row['cell_label']=m['cell_display']['label']
-                    row['cell_system']=m['cell_display']['system']
-                    row['cell_internal_index']=m['cell_display']['internal_index']
-                    row['cell_pci']=next((r.get('cell_pci') for r in reversed(rs) if r.get('cell_pci') is not None),None)
-                    row['cell_arfcn']=next((r.get('cell_arfcn') for r in reversed(rs) if r.get('cell_arfcn') is not None),None)
+                physical = bool(m.get('cell_type_filter')) and m.get('event') == 'CELLMEAS'
+                groups = defaultdict(list)
+                if physical:
+                    for item in rs:
+                        groups[(item['seq'], item.get('cell_arfcn'), item.get('cell_pci'))].append(item)
+                else:
+                    groups[second] = rs
+                for physical_key, physical_rows in groups.items():
+                    rs = physical_rows
+                    table_key = physical_key if physical else second
+                    row=table.setdefault(table_key,dict(second=second,t_rel_s=self.times.get(rs[0]['seq'],float(second)),seq_first=rs[0]['seq'],seq_last=rs[-1]['seq'],values={},counts={}))
+                    row['seq_first']=min(row['seq_first'],rs[0]['seq']);row['seq_last']=max(row['seq_last'],rs[-1]['seq'])
+                    value=1 if m['kind']=='event' else aggregate_values(rs,'last' if m.get('attr') or m['cell_scoped'] else m.get('agg','last'))
+                    if m.get('weighted') and not m['cell_scoped'] and len([r for r in rs if r['value'] is not None])>1:
+                        # Projection preserves weighted per-seq values but does not expose their denominators.
+                        # Never average those means again to manufacture a second-level statistic.
+                        value=None;gaps.append(m['selection']+': missing inter-sample weights; per-second aggregate unavailable, per-seq series preserved')
+                    row['values'][m['selection']]=value;row['counts'][m['selection']]=sum(r.get('observation_count',r.get('count',1)) for r in rs)
+                    if m.get('cell_display'):
+                        row['cell_label']=m['cell_display']['label']
+                        row['cell_system']=m['cell_display']['system']
+                        row['cell_pci']=next((r.get('cell_pci') for r in reversed(rs) if r.get('cell_pci') is not None),None)
+                        row['cell_arfcn']=next((r.get('cell_arfcn') for r in reversed(rs) if r.get('cell_arfcn') is not None),None)
             if not table_only:
                 groups=defaultdict(list)
                 for r in rows:
@@ -592,10 +758,10 @@ class Dataset:
                 cur_t=self.times[row['seq_first']]
                 row['gps_age_s']=float(cur_t-prev_t) if prev_t is not None else None
                 row['reason']=None
-        total_rows=len(ordered)
+        total_rows=(int(selections[0].get('_total_rows', len(ordered))) if sql_paginated else len(ordered))
         total_pages=max(1,math.ceil(total_rows/page_size))
         if page>total_pages:raise HTTPException(422,dict(reason='page_out_of_range',total_pages=total_pages))
-        page_rows=ordered[(page-1)*page_size:page*page_size]
+        page_rows=ordered if sql_paginated else ordered[(page-1)*page_size:page*page_size]
         # CSV = exactement la page renvoyée par la table UI.
         output=io.StringIO();writer=csv.writer(output);keys=[m['selection'] for m in selections]
         writer.writerow(['result_id','capture_id','second','seq_first','seq_last','time_local','time_utc','lat','lon','gps_source','gps_age_s','reason',*keys])
@@ -605,5 +771,5 @@ class Dataset:
             display=m.get('cell_display') or {}
             columns.append(dict(code=m['selection'],label=m['label'],unit=m['unit'],kind=m['kind'],cell=m['cell'],
                 cell_label=display.get('label'),cell_system=display.get('system'),
-                cell_internal_index=display.get('internal_index')))
-        return dict(**dict(self.state),project_id=self.pid,capture_id=self.cap,result_id=rid,origin_seq=self.origin_seq,origin_ts=self.origin_ts,nmf_start_at=nmf_start_at,capture_date=capture_date,utc_offset_min=utc_offset_min,duration_s=max(self.times.values()),aggregation='cell: schema-weighted capture-second; other numeric: schema aggregate; event: presence + count / last attribute',time_policy='capture-local source clock in seq order; no interpolation',columns=columns,series=series,rows=page_rows,page=page,page_size=page_size,total_rows=total_rows,total_pages=total_pages,histogram=hist,scatter=scatter,map_points=map_points,connected_seconds=connected,connected_reason=None if connected else 'No proven complete eligible RRC → RRD interval',pair_rates=pair_rates,gaps=sorted(set(gaps)),csv=output.getvalue(),pairing='previous-or-same seq, same capture and same cell; no interpolation')
+                cell_internal_index=None))
+        return dict(**dict(self.state),project_id=self.pid,capture_id=self.cap,result_id=rid,origin_seq=self.origin_seq,origin_ts=self.origin_ts,nmf_start_at=nmf_start_at,capture_date=capture_date,utc_offset_min=utc_offset_min,duration_s=self.duration_s,aggregation='cell: schema-weighted capture-second; other numeric: schema aggregate; event: presence + count / last attribute',time_policy='capture-local source clock in seq order; no interpolation',columns=columns,series=series,rows=page_rows,page=page,page_size=page_size,total_rows=total_rows,total_pages=total_pages,histogram=hist,scatter=scatter,map_points=map_points,connected_seconds=connected,connected_reason=None if connected else 'No proven complete eligible RRC → RRD interval',pair_rates=pair_rates,gaps=sorted(set(gaps)),csv=output.getvalue(),pairing='previous-or-same seq, same capture and same cell; no interpolation')

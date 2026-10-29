@@ -29,6 +29,18 @@ Chaque build écrit une ligne dans `catalog_release` (sha256, counts) ;
 
 ## Versions
 
+## 2.56.2 — 2026-10-29 — Feuilles cellule par enum, sans index interne (BC1)
+
+Type SemVer : **patch**. Numéro proposé ; BC3 attribue le numéro final.
+
+- Une feuille est définie par `(événement, métrique, système, cell_type NFF)`.
+  Les occurrences encodées du décodeur 1.8.2 sont additionnées dans cette
+  feuille et ne produisent plus de variantes `#2`, `#3`, etc.
+- Les sélections publiques sont sémantiques (`lte-type-2`, `nr-type-1000`) ;
+  aucun `cell_index` de stockage n'est exposé par le catalogue.
+- Artefact généré `catalog_2.56.2.json`, bascule uniquement via
+  `scripts/catalog/bootstrap_catalog_release.py --version 2.56.2`.
+
 ## 2.56.1 — 2026-10-29 — Sections CELLMEAS/MIMOMEAS par système (BC1)
 
 Type SemVer : **patch**. Numéro final attribué par BC3 : `2.56.1`.

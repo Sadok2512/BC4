@@ -43,6 +43,14 @@ def cell_source_for_index(cell_index):
     return system,raw,occurrence
 
 
+def cell_index_bounds(system, cell_type):
+    """Inclusive bounds for every storage occurrence of one NFF cell type."""
+    first = _cell_index_for(cell_type, system, 0)
+    if first is None:
+        return None
+    return first, first + CELL_INDEX_STRIDE - 1
+
+
 def cell_rows(light):
     grouped=defaultdict(list)
     for b in light.buckets.values():

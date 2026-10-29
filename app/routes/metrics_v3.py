@@ -64,11 +64,20 @@ def analysis(project_id:str,capture_id:str,codes:str,cell:str='all',attr:str|Non
              x:str|None=None,include_map:bool=False,group_by:Literal['none','operator','band','operator_band']='operator',
              from_seq:int|None=Query(None,ge=0),to_seq:int|None=Query(None,ge=0),max_points:int=Query(5000,ge=2,le=100000),
              page:int=Query(1,ge=1),page_size:int=Query(1000,ge=25,le=5000),
-             table_only:bool=False,
+             table_only:bool=False,cell_pci:int|None=Query(None,ge=0),
+             cell_arfcn:int|None=Query(None,ge=0),
              f:dict=Depends(filters),db:Session=Depends(get_db)):
     project(db,project_id)
     if from_seq is not None and to_seq is not None and from_seq>to_seq:raise HTTPException(422,'from_seq_after_to_seq')
     tokens=list(dict.fromkeys(codes.split(',')))
     if len(tokens)>64:raise HTTPException(422,'too_many_metrics')
     selected=[parse_selection(c,definitions(),cell,attr) for c in tokens]
-    return Dataset(db,project_id,capture_id,f,from_seq,to_seq).response(selected,max_points,group_by,x,include_map,page,page_size,table_only)
+    lean_table=(
+        table_only and len(selected)==1
+        and bool(selected[0].get('cell_type_filter'))
+        and selected[0].get('event')=='CELLMEAS'
+    )
+    return Dataset(db,project_id,capture_id,f,from_seq,to_seq,lean_table=lean_table).response(
+        selected,max_points,group_by,x,include_map,page,page_size,table_only,
+        cell_pci,cell_arfcn,
+    )
