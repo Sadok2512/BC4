@@ -31,7 +31,7 @@ Chaque build écrit une ligne dans `catalog_release` (sha256, counts) ;
 
 ## 2.56.1 — 2026-10-29 — Sections CELLMEAS/MIMOMEAS par système (BC1)
 
-Type SemVer : **patch**. Numéro proposé ; BC3 attribue le numéro final.
+Type SemVer : **patch**. Numéro final attribué par BC3 : `2.56.1`.
 
 - Les feuilles `CELLMEAS` et `MIMOMEAS` ne mélangent plus les dispositions
   historiques UMTS/GSM/iDEN avec les sections LTE/NR décodées.

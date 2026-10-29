@@ -1,3 +1,14 @@
+## 0.97.2 (patch) — BC4 2026-10-29 — Contrat table KPI lean (Agent BC1, numérotation BC3)
+
+- `/metrics/table` expose une pagination serveur bornée, les métadonnées de
+  cellule NFF (libellé, système, PCI/ARFCN si présents) et conserve l'index
+  décodeur uniquement comme donnée technique.
+- Le CSV embarqué correspond à la page renvoyée et ne duplique plus la table
+  complète dans chaque réponse paginée.
+- Catalogue compagnon `2.56.1`, basculé exclusivement par
+  `scripts/catalog/bootstrap_catalog_release.py --version 2.56.1`.
+- Type SemVer : **patch**. Numéro final attribué par BC3 : `0.97.2`.
+
 ## 0.97.1 (patch) — BC4 2026-10-29 — décodeur 1.8.2 : clés projection cellules injectives (Agent BC1, numérotation BC3)
 
 Merge `bc1/decoder-cells-1.8.2` (`28c6656`, base `bca16f6`). Patch
@@ -7066,11 +7077,3 @@ du front `franco-focus-forge` et lancer **front + back** de bout en bout.
 - Documented string fields are retained as strings; only undocumented strings
   are hashed. Metrics projections therefore expose the same values as the NMF
   source and preserve zero-valued measurements.
-## 0.97.2 (patch, proposé) — BC1 2026-10-29 — Contrat table KPI lean
-
-- `/metrics/table` expose une pagination serveur bornée, les métadonnées de
-  cellule NFF (libellé, système, PCI/ARFCN si présents) et conserve l'index
-  décodeur uniquement comme donnée technique.
-- Le CSV embarqué correspond à la page renvoyée et ne duplique plus la table
-  complète dans chaque réponse paginée.
-- Type SemVer : **patch**. Numéro proposé ; BC3 attribue le numéro final.
