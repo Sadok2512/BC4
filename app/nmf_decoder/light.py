@@ -32,7 +32,13 @@ class Stat:
                 raise TypeError(f'{self.agg} aggregation requires a numeric value')
             self.total+=value*weight;self.weight+=weight
             self.lo=value if self.lo is None else min(self.lo,value);self.hi=value if self.hi is None else max(self.hi,value)
-        if self.agg=='dominant':self.freq[value]=self.freq.get(value,0)+weight
+        if self.agg=='dominant':
+            # ``weight`` is the denominator/validity marker used by value(),
+            # as well as the vote carried by each observation.  Decoder 1.7.2
+            # stopped updating it while separating textual ``last`` from
+            # numeric arithmetic, which emptied every dominant dimension.
+            self.weight+=weight
+            self.freq[value]=self.freq.get(value,0)+weight
     def value(self):
         if not self.n or (self.agg in ("mean","dominant") and self.weight==0):return None
         return {'sum':lambda:self.total,'mean':lambda:self.total/self.weight if self.weight else None,

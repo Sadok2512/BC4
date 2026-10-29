@@ -41,9 +41,11 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.db import get_db
+from app.config import settings
 from app.deps import get_current_user, with_statement_timeout_60s
 from app.kpi.catalog_v2 import get as catalog_v2_get, resolve as catalog_v2_resolve
 from app.kpi.metrics import metric_catalog
+from app.kpi.nmf_bins import query_metric_bins
 from app.models import Project
 from app.routes.metrics import clock, sample
 from app.routes.tasks import evidence
@@ -55,6 +57,45 @@ router = APIRouter(
 )
 
 VERSION = "0.59.0"
+
+
+@router.get("/projects/{project_id}/captures/{capture_id}/kpi/{code}/bins")
+def kpi_bins(
+    project_id: str,
+    capture_id: str,
+    code: str,
+    binning_mode: Literal["temporal", "spatial"] | None = None,
+    temporal_resolution: Literal["native", "1ms", "10ms", "100ms", "1s"] | None = None,
+    spatial_bin_m: Literal[10, 25, 50, 100] | None = None,
+    db: Session = Depends(get_db),
+):
+    """Median query-time bins; omitted resolution uses capture snapshot."""
+    _require_project(db, project_id)
+    canonical = catalog_v2_resolve(code)
+    entry = catalog_v2_get(canonical) if canonical else None
+    check = (entry or {}).get("available_check") or {}
+    if check.get("kind") != "nmf_metric":
+        raise HTTPException(422, {"reason": "no_direct_metric_mapping"})
+    metric_code = check.get("arg") or ""
+    metric = metric_catalog(db).get(metric_code)
+    if metric is None or metric.kind == "categorical":
+        raise HTTPException(422, {"reason": "metric_not_numeric"})
+    try:
+        resolution, rows = query_metric_bins(
+            db, project_id, capture_id, metric.source_column,
+            mode=binning_mode, temporal=temporal_resolution, spatial=spatial_bin_m,
+        )
+    except (ValueError, LookupError) as exc:
+        raise HTTPException(422, {"reason": str(exc)}) from exc
+    return {
+        "project_id": project_id, "capture_id": capture_id,
+        "metric_code": canonical, "source_column": metric.source_column,
+        "resolution": resolution, "bins": rows,
+        "position_policy": {
+            "max_previous_fix_gap_s": settings.spatial_fix_max_gap_s,
+            "capture_local": True, "interpolation": False,
+        },
+    }
 
 
 # ---------------------------------------------------------------------------

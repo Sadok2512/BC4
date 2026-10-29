@@ -122,3 +122,10 @@ def test_stat_non_numeric_aggregation_never_performs_arithmetic():
 def test_stat_numeric_aggregation_rejects_text_without_coercion():
     with pytest.raises(TypeError,match='requires a numeric value'):
         Stat('mean').add('1E4')
+
+def test_stat_dominant_retains_value_and_vote_weight():
+    stat=Stat('dominant')
+    stat.add(199);stat.add(101);stat.add(199)
+    assert stat.value()==199
+    assert stat.n==3 and stat.weight==3
+    assert stat.total==0
