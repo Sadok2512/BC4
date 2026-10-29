@@ -1,3 +1,15 @@
+## 0.98.1 (patch, proposé) — BC1 2026-10-29 — API capture et dictionnaire lean
+
+- Index capture/ordre et catalogue couvrant posés exclusivement en
+  `CONCURRENTLY` par la migration `0069_api_lean_indexes`.
+- L'horloge conserve l'ordre `(project_id, capture_id, seq)` ; l'endpoint
+  événements ne résout plus que l'origine et les `seq` de ses marqueurs,
+  avec des lectures `UNION ALL` strictement bornées à la capture.
+- L'arbre dictionnaire catalogue complet est construit une fois et mis en
+  cache par `(project_id, version)` ; un changement de population invalide
+  l'entrée sans servir de contenu périmé.
+- Type SemVer proposé : **patch** (`0.98.1`) ; numérotation finale par BC3.
+
 ## 0.98.0 (minor) — BC4 2026-10-29 — Signaling progressif et borné (Agent BC1, numérotation BC3)
 
 Merge `bc1/signaling-lean` (`b2523b9`). Résout l'écart « matérialisation
