@@ -2,6 +2,7 @@ import logging
 
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from sqlalchemy import text
 
 from app.config import settings
@@ -29,7 +30,7 @@ from app.routes import (
 logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(name)s:%(message)s")
 logging.getLogger("app").setLevel(logging.INFO)
 
-app = FastAPI(title="bc4-back", version="0.97.3")
+app = FastAPI(title="bc4-back", version="0.97.4")
 
 # CORS (B2 / P1-1) : origines PILOTÉES par `BC4_CORS_ORIGINS` (jamais en
 # dur), méthodes/en-têtes explicites pour les uploads multipart
@@ -46,6 +47,12 @@ app.add_middleware(
     expose_headers=["Content-Length", "Content-Type"],
     max_age=600,
 )
+# 0.97.4 (audit perf 2026-10-29) : compression gzip des réponses > 1 KB.
+# Avant : payloads /signaling/events 15 MB, /signaling/points 4,3 MB,
+# /metrics 3,4 MB servis en clair → bande passante gaspillée et UI lente.
+# minimum_size=1024 : les petites réponses (/health, /projects/{id}/ingest)
+# restent non compressées pour éviter l'overhead CPU inutile.
+app.add_middleware(GZipMiddleware, minimum_size=1024)
 
 
 @app.get("/health")
@@ -67,7 +74,7 @@ def health() -> dict:
     return {
         "status": status,
         "env": settings.env,
-        "version": "0.97.3",
+        "version": "0.97.4",
         "decoder_version": DECODER_VERSION,
         "catalog": gc1,
     }

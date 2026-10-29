@@ -1,3 +1,39 @@
+## 0.97.4 (patch) — BC4 2026-10-29 — Perf serveur : uvicorn 4 workers + PG tuning 16 GB + GZip (Agent BC3)
+
+Lot d'infrastructure sans changement applicatif. Causes 1-3 du rapport
+audit perf 2026-10-29 adressées.
+
+- **uvicorn --workers 4** (`Dockerfile` CMD). Avant : 1 worker →
+  3 requêtes parallèles sérialisées (`req1 20.3s · req2 20.5s ·
+  req3 21.5s` sur 10 CPU). Après : 4 workers process (chacun ~900 MB,
+  ~3,6 GB total), 4 req parallèles simultanées. Chaque worker a son
+  propre `_POPULATION_CACHE` et son propre `catalog_cache` : pas d'état
+  partagé supposé par le code (`app/signaling/service.py:82-96`,
+  `app/kpi/catalog_cache.py`) → OK.
+- **PG tuning** (`deploy/docker-compose.yml` db.command) :
+  `shared_buffers=4GB`, `work_mem=64MB`, `maintenance_work_mem=1GB`,
+  `effective_cache_size=12GB`, `random_page_cost=2.0`,
+  `pg_stat_statements` chargé (`shared_preload_libraries` +
+  `pg_stat_statements.max=5000, track=all`). `shm_size: 1g` sur le
+  service `db` pour les hash joins qui débordaient de /dev/shm Docker
+  (64 MB défaut).
+- Migration **0068** `pg_stat_statements_extension` :
+  `CREATE EXTENSION IF NOT EXISTS pg_stat_statements` (jamais en
+  `psql` manuel, versionné).
+- **GZipMiddleware** FastAPI sur toutes les réponses > 1 KB
+  (`app/main.py`). Payloads type (avant → après compression) :
+  `/signaling/events` 15 MB → ~1 MB, `/signaling/points` 4,3 MB →
+  ~400 KB, `/metrics` catalog 3,4 MB → ~400 KB. CPU négligeable
+  (gzip rapide, 100 Mio/s par cœur).
+- `random_page_cost=2.0` (compromis) car `lsblk sda ROTA=1` (QEMU
+  virtuel) mais `iowait < 3 %` observé. **Pas 1.1** (optimisé SSD)
+  tant que le stockage sous-jacent n'est pas confirmé SSD.
+
+Infirmation du 114 % CPU au repos observé pendant l'audit : py-spy
+dump × 2 (threads idle), CPU au vrai repos = 0,2 % (seuls les
+healthchecks curl toutes les 5 s produisent un pic à 8 %). Les 114 %
+étaient un artefact de ma campagne de mesure (curl parallèles).
+
 ## 0.97.3 (patch) — BC4 2026-10-29 — Cellules physiques + latence table KPI 7 s → 0,77 s (Agent BC1, numérotation BC3)
 
 Merge `bc1/kpi-table-latency` (`9df792b`). Patch. Numéro `0.97.3` et

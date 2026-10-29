@@ -2,6 +2,35 @@ services:
   db:
     image: postgis/postgis:16-3.4
     restart: unless-stopped
+    # 0.97.4 (audit perf 2026-10-29) : tuning PG pour 16 GB RAM.
+    # Avant : défauts PostgreSQL (shared_buffers=128MB, work_mem=4MB) → clock()
+    # UNION spillait 10 MB sur disque, nmf_cell_second scanne 371 MB hors cache.
+    # Après : shared_buffers=4GB (25 % RAM), work_mem=64MB (sorts/hash en RAM),
+    # effective_cache_size=12GB (hint planner), random_page_cost=2.0 (disque QEMU
+    # ROTA=1 mais iowait < 3 %, compromis conservateur).
+    # pg_stat_statements activé via shared_preload_libraries ; l'extension sera
+    # créée par la migration alembic 0068 (jamais en psql manuel).
+    # shm_size=1g : nécessaire pour les hash joins volumineux en parallèle qui
+    # débordent de /dev/shm en défaut Docker (64 MB).
+    command:
+      - postgres
+      - -c
+      - shared_buffers=4GB
+      - -c
+      - work_mem=64MB
+      - -c
+      - maintenance_work_mem=1GB
+      - -c
+      - effective_cache_size=12GB
+      - -c
+      - random_page_cost=2.0
+      - -c
+      - shared_preload_libraries=pg_stat_statements
+      - -c
+      - pg_stat_statements.max=5000
+      - -c
+      - pg_stat_statements.track=all
+    shm_size: 1g
     environment:
       POSTGRES_USER: bc4
       # Durcissement 2026-10-27 : plus de défaut "bc4", obligatoire via .env.
