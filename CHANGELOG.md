@@ -1,3 +1,21 @@
+## 0.100.0 (minor) — BC4 2026-10-29 — `/metrics/series` borné + session JWT 480 min (Agent BC1, numérotation BC3)
+
+Merge `bc1/metrics-series-lean` (`8ead390`). Numéro **0.100.0 (minor)**
+attribué par BC3 : (1) nouveau paramètre `max_points` qui change le
+contrat de réponse quand utilisé, (2) changement de défaut
+`BC4_JWT_TTL_MIN` 60 → 480 (visible côté client).
+
+- `/projects/{project_id}/metrics/series` : plus de reconstruction
+  complète de l'horloge staging / contexte radio / event-pair pour
+  les metrics semantic/event/capture. Lecture bornée aux
+  `(project_id, capture_id, seq)` demandés + `t_rel_s` d'import.
+- `max_points` opt-in : échantillonnage min/max déterministe (pics
+  conservés). Sans le paramètre → contrat identique à l'ancien.
+- CSV accessoire de la série : byte-for-byte compatible, seule la
+  page visible est enrichie.
+- `BC4_JWT_TTL_MIN` défaut **60 → 480 min** (8 h). La session
+  d'analyse ne meurt plus au bout d'une heure.
+
 ## 0.99.2 (patch) — BC4 2026-10-29 — HOTFIX /metrics/table + /metrics/series 500 sur @lte-type-N (Agent BC3, à relire par BC1)
 
 ### Incident

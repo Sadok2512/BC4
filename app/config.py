@@ -22,7 +22,10 @@ class Settings(BaseSettings):
     # Auth (B2). Le secret est OBLIGATOIRE — l'app refuse de démarrer sans.
     # Un garde qui s'auto-skippe sans secret ne garde rien.
     jwt_secret: str = Field(..., alias="BC4_JWT_SECRET")
-    jwt_ttl_min: int = Field(60, alias="BC4_JWT_TTL_MIN")
+    # Analytics sessions routinely exceed one hour.  Keep the deployment
+    # override available, but make the operational default a workday so
+    # an active KPI exploration does not fail midway with an avoidable 401.
+    jwt_ttl_min: int = Field(480, alias="BC4_JWT_TTL_MIN")
     # Compte admin seedé idempotent au premier démarrage (idempotent sur email).
     # Si l'un des deux est absent, le seed admin est sauté — pas d'invention.
     admin_email: str | None = Field(default=None, alias="BC4_ADMIN_EMAIL")
