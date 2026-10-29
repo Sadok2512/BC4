@@ -20,7 +20,7 @@ re-dérive l'ensemble depuis `stg_measurement_raw`, en PURGE les lignes
 
 from __future__ import annotations
 
-import uuid
+import hashlib
 from typing import Iterable
 
 from sqlalchemy import text
@@ -30,6 +30,12 @@ from app.dict.populate import _build_sib1_index, _resolve_context
 
 
 BATCH_SIZE = 1000
+
+
+def stable_measurement_id(project_id: str, capture_id: str, seq: int) -> str:
+    """Identité de reprise canonique, sans ``ts`` ni aléa."""
+    raw = f"{project_id}\0{capture_id}\0{seq}".encode()
+    return "mp-nmf-" + hashlib.sha256(raw).hexdigest()[:24]
 
 
 def populate_measurements(db: Session, project_id: str, *, purge: bool = True) -> dict:
@@ -125,7 +131,7 @@ def populate_measurements(db: Session, project_id: str, *, purge: bool = True) -
         has_gps = r.lat is not None and r.lon is not None and not (r.lat == 0.0 and r.lon == 0.0)
         rows_batch.append(
             {
-                "id": f"mp-{uuid.uuid4().hex[:12]}",
+                "id": stable_measurement_id(project_id, str(r.capture_id), int(r.seq)),
                 "project_id": project_id,
                 "lat": float(r.lat) if has_gps else None,
                 "lng": float(r.lon) if has_gps else None,

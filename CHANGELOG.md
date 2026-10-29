@@ -1,3 +1,23 @@
+## 0.96.0 (minor) — BC4 2026-10-29 — Suppression projet-scopée d'une capture (Agent BC1, numérotation BC3)
+
+- Nouveau service `app.services.capture_delete.delete_capture` sous verrou
+  advisory worker et verrou projet. Toutes les suppressions portent le couple
+  `(project_id, capture_id)` ; une capture homonyme d'un autre projet et sa
+  partition partagée ne sont jamais supprimées.
+- Nouvelle route `DELETE /projects/{project_id}/captures/{capture_id}` protégée
+  par `require_project_write`, motif d'audit obligatoire, refus des imports en
+  cours, journal JSON avant/après et contrôle de zéro résidu avant commit.
+- Nouvelle CLI `python -m app.scripts.delete_capture ... --reason ...` avec
+  codes de sortie non nuls et `VERDICT=FAIL` sur tout refus.
+- Le fichier source et `nmf_file` ne sont retirés que lorsqu'ils ne sont plus
+  référencés. Les compteurs fichier, les résumés projet, opérateurs,
+  période et la chaîne de finalisation sont recalculés depuis les captures
+  restantes.
+- `GET /projects/{project_id}/import` expose les `capture_ids` réels de chaque
+  fichier pour que le front n'infère jamais l'identité depuis le nom ou `ts`.
+- Gardes : G47 sur base PostgreSQL jetable (trois vrais witnesses, capture
+  partagée, empreintes de contenu) et G34 étendu à la nouvelle route.
+
 ## 0.95.0 (minor) — BC4 2026-10-29 — lot B import-throughput : décodeur 1.8.0 + sparse native light + bins (Agent BC1, déployé Agent BC3)
 
 Merge de `feat/import-throughput` sur `main`. Numéro attribué par BC3.
@@ -93,7 +113,6 @@ un lot ultérieur quand BC3 aura leur GO).
 Zéro changement SQL/schéma. `DECODER_VERSION` inchangé (reste `1.7.2`).
 Pas de CHANGELOG_DECODER (le décodeur Python logique n'a pas changé,
 seule la boucle de projection COPY a été accélérée).
-
 ## 0.93.0 (minor) — BC4 2026-10-28 — Vitesse d'ingestion + G44 snapshot immuable (Agents BC1/BC3)
 
 Merge groupé sur `main` : `feat/import-throughput` qui elle-même est basée
