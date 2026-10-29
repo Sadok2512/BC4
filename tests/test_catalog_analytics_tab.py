@@ -4,6 +4,7 @@ import pytest
 
 from app.schemas.project_kpi import KpiCatalogItem
 from app.kpi.catalog_v2 import ENTRIES, analytics_tab_for_nature
+from app.routes.metrics import _with_analytics_tabs
 from scripts.catalog import bootstrap_catalog_release as bootstrap
 
 
@@ -67,3 +68,18 @@ def test_every_kpi_catalog_nature_has_an_explicit_tab():
     assert set(classified) == {"kpi", "metrics"}
     with pytest.raises(ValueError, match="sans analytics_tab"):
         analytics_tab_for_nature("future nature")
+
+
+def test_cached_metrics_payload_gets_the_rolling_contract_in_memory():
+    payload = {
+        "nodes": [
+            {"node_type": "category", "node_id": "c"},
+            {"node_type": "leaf", "node_id": "old"},
+            {"node_type": "leaf", "node_id": "new", "analytics_tab": "metrics"},
+        ]
+    }
+    assert _with_analytics_tabs(payload)["nodes"] == [
+        {"node_type": "category", "node_id": "c"},
+        {"node_type": "leaf", "node_id": "old", "analytics_tab": "metrics"},
+        {"node_type": "leaf", "node_id": "new", "analytics_tab": "metrics"},
+    ]
