@@ -1,3 +1,38 @@
+## 0.97.1 (patch) — BC4 2026-10-29 — décodeur 1.8.2 : clés projection cellules injectives (Agent BC1, numérotation BC3)
+
+Merge `bc1/decoder-cells-1.8.2` (`28c6656`, base `bca16f6`). Patch
+décodeur. Numéro `0.97.1` attribué par BC3. Voir `CHANGELOG_DECODER.md`
+entrée `1.8.2`.
+
+- Résout l'incident `UniqueViolation nmf_cell_second_pkey second=22
+  CELLMEAS cell_rssi cell_index=0` observé lors du reparse 1.8.1 de
+  `43e81a34a073 / a4b0c321c52e` (parcours 363 423 records). `cell_rows`
+  rendait deux dimensions distinctes LTE après normalisation
+  `10–40 → SCell 1–31` sur le même `cell_index` → collision pkey.
+  `app/nmf_decoder/cells.py` 1.8.2 injective + `app/nmf_decoder/store.py`
+  dédup défensif.
+- Nouveau garde **G48** `cell_second_uniqueness` sur base jetable
+  (BC1 PASS sur 3 fichiers complets dont parcours).
+- `CHANGELOG_CATALOG.md` 2.56.0 mis à jour (dispatch catalog aligné sur
+  le nouvel index cellule). Sha256 catalog *inchangé* : la correction
+  est purement décodeur, pas de nouveau fichier `catalog_2.56.x.json`.
+- Preuves BC1 : G48 + G46 + G25 + GC1 PASS.
+- Preuves BC3 (ce déploiement) :
+  - `/health` → `decoder_version=1.8.2`, `catalog_version=2.56.0` GC1 ok.
+  - Reparse `43e81a34a073` × 3 captures (a4b0c321c52e, ecffb18dbd7f,
+    daa2b1df250d) tous en 1.8.2.
+  - G25 PASS sur Test_6 live, `status_ingest=ready` après
+    `run_populate_chain` final.
+
+### Écarts ouverts (à adresser dans un lot ultérieur, non bloquants pour ce déploiement)
+
+- **Identité des cellules voisines** : actuellement indexées par ordre
+  d'apparition au lieu de `(PCI, ARFCN)` dans certaines projections ;
+  à aligner sur le contrat d'identité stable.
+- **`tests/test_metrics_v3.py`** : garde une attente historique
+  « `cell_rsrp@10` rejeté » qui doit être mise à jour pour refléter
+  l'enum `cell_index` étendu (SCell 10 est désormais une valeur valide).
+
 ## 0.97.0 (minor) — BC4 2026-10-29 — catalogue 2.56.0 dispatch cells par (event, system) (Agent BC1, numérotation BC3)
 
 Merge `bc1/catalog-dispatch` (`9fc7b90`, rebasé sur `5ca2d59`). Numéro
