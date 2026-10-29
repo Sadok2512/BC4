@@ -1,3 +1,23 @@
+## 0.101.0 (minor) — BC4 2026-10-29 — Catalogue dict matérialisé à l'import (Agent BC1, numérotation BC3)
+
+Merge `bc1/dict-tree-cold` (`9f7bd44`). Résout l'écart `/dict/v2/tree`
+5,4 s cold (dominant `network_catalog` 3,5 s moyen dans
+`catalog_v22.py:63`) du rapport audit perf 2026-10-29. Numéro
+**0.101.0 (minor)** attribué par BC3 : migration 0071 crée 3 nouvelles
+tables (`dict_network_catalog_state`, `dict_network_catalog_entry`,
+`dict_catalog_group_entry`) + 2 index + nouvelle CLI
+`backfill_dict_network_catalog` + hook populate_chain.
+
+- Pré-calcul du catalogue à la finalisation (`app/dict/materialized.py`
+  + `app/services/populate_chain.py`). `/dict/v2/tree?view=catalog` lit
+  les tables matérialisées (plus de `regexp_replace(path)` +
+  `LEFT JOIN stg_event` + `array_agg(DISTINCT capture_id)` sur 60k rows).
+- Migration **0071** `dict_network_catalog` : 2 index en `CONCURRENTLY`
+  (`ix_dict_network_catalog_read`, `ix_dict_catalog_group_read`).
+- CLI `python -m app.scripts.backfill_dict_network_catalog <PID>
+  --reason "…"` idempotente.
+- Contrat HTTP `/dict/v2/tree` byte-for-byte compatible.
+
 ## 0.100.0 (minor) — BC4 2026-10-29 — `/metrics/series` borné + session JWT 480 min (Agent BC1, numérotation BC3)
 
 Merge `bc1/metrics-series-lean` (`8ead390`). Numéro **0.100.0 (minor)**

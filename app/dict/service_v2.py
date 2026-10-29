@@ -52,25 +52,13 @@ def build_dict_tree(db: Session, project_id: str, view: str, message: str | None
     assert view in ("catalog", "raw")
 
     if view == "catalog":
-        rows = db.execute(
-            text(
-                """
-                SELECT system, origin, message, functional_group,
-                       param_key, display_name, choice_of,
-                       discriminators, unit_converted, is_identifier,
-                       COUNT(*) AS n
-                FROM param_occurrence
-                WHERE project_id = :pid
-                  AND param_key IS NOT NULL
-                  AND COALESCE(is_identifier, false) = false
-                GROUP BY system, origin, message, functional_group,
-                         param_key, display_name, choice_of,
-                         discriminators, unit_converted, is_identifier
-                ORDER BY system, origin, message, functional_group, param_key
-                """
-            ),
-            {"pid": project_id},
-        ).fetchall()
+        rows = db.execute(text("""SELECT system,origin,message,functional_group,
+          param_key,display_name,choice_of,discriminators,unit_converted,
+          is_identifier,n FROM dict_catalog_group_entry e
+          JOIN dict_network_catalog_state s USING(project_id)
+          WHERE e.project_id=:pid AND e.generation=s.generation
+          ORDER BY system,origin,message,functional_group,param_key"""),
+          {"pid": project_id}).fetchall()
     else:  # raw
         rows = db.execute(
             text(
@@ -92,18 +80,35 @@ def build_dict_tree(db: Session, project_id: str, view: str, message: str | None
             {"pid": project_id},
         ).fetchall()
 
-    # Compte global
-    total_rows = db.execute(
-        text("SELECT COUNT(*) FROM param_occurrence WHERE project_id = :pid"),
-        {"pid": project_id},
-    ).scalar() or 0
-    distinct_param_keys = db.execute(
-        text(
-            "SELECT COUNT(DISTINCT param_key) FROM param_occurrence "
-            "WHERE project_id = :pid AND param_key IS NOT NULL"
-        ),
-        {"pid": project_id},
-    ).scalar() or 0
+    if view == "catalog":
+        catalog_state = db.execute(text("""SELECT total_occurrences,
+          distinct_param_keys,available_messages,group_by_options
+          FROM dict_network_catalog_state WHERE project_id=:pid"""),
+          {"pid": project_id}).mappings().one_or_none()
+        if catalog_state is None:
+            from fastapi import HTTPException
+            raise HTTPException(409, detail={
+                "reason": "dict_network_catalog_materialization_required",
+                "project_id": project_id,
+            })
+        total_rows = int(catalog_state["total_occurrences"])
+        distinct_param_keys = int(catalog_state["distinct_param_keys"])
+        available_messages = list(catalog_state["available_messages"])
+        group_by_options = catalog_state["group_by_options"]
+    else:
+        total_rows = db.execute(
+            text("SELECT COUNT(*) FROM param_occurrence WHERE project_id = :pid"),
+            {"pid": project_id},
+        ).scalar() or 0
+        distinct_param_keys = db.execute(
+            text("SELECT COUNT(DISTINCT param_key) FROM param_occurrence "
+                 "WHERE project_id = :pid AND param_key IS NOT NULL"),
+            {"pid": project_id},
+        ).scalar() or 0
+        available_messages = db.execute(text("""SELECT DISTINCT message
+          FROM param_occurrence WHERE project_id=:pid AND message IS NOT NULL
+          ORDER BY message"""), {"pid": project_id}).scalars().all()
+        group_by_options = build_group_by_options(db, project_id)
 
     from app.dict.templates import category_maps, classify
     maps = category_maps(db) if view == "catalog" else []
@@ -159,7 +164,6 @@ def build_dict_tree(db: Session, project_id: str, view: str, message: str | None
             if bucket is None:
                 bucket={'techno':techno,'origins':[]};tree_out.append(bucket)
             bucket['origins'].insert(0,{'origin':'network_config','categories':categories})
-    available_messages = db.execute(text('SELECT DISTINCT message FROM param_occurrence WHERE project_id=:pid AND message IS NOT NULL ORDER BY message'),{'pid':project_id}).scalars().all()
     return {
         "project_id":         project_id,
         "view":               view,
@@ -168,7 +172,7 @@ def build_dict_tree(db: Session, project_id: str, view: str, message: str | None
         "distinct_param_keys": int(distinct_param_keys),
         "tree":               tree_out,
         # 0.47.0 — group_by utilisables pour ce projet.
-        "group_by_options":   build_group_by_options(db, project_id),
+        "group_by_options":   group_by_options,
     }
 
 

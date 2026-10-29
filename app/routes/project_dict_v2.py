@@ -16,6 +16,7 @@ from copy import deepcopy
 from threading import Lock
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 
@@ -56,10 +57,13 @@ _TREE_BUILD_LOCK = Lock()
 
 
 def _tree_stamp(db: Session, project_id: str) -> tuple:
-    row = db.execute(text("""SELECT count(*) AS n, COALESCE(max(id),0) AS max_id,
-      COALESCE(max(stg_event_id),0) AS max_event_id
-      FROM param_occurrence WHERE project_id=:pid"""), {"pid": project_id}).one()
-    return tuple(row)
+    # Every import finalization publishes a new dictionary generation after all
+    # param_occurrence writes. Reading this single PK row replaces the former
+    # COUNT/MAX scan on the whole project.
+    row = db.execute(text("""SELECT generation,total_occurrences,
+      distinct_param_keys,summary_rows FROM dict_network_catalog_state
+      WHERE project_id=:pid"""), {"pid": project_id}).one_or_none()
+    return tuple(row) if row is not None else ("not-materialized",)
 
 
 def _catalog_tree(db: Session, project_id: str) -> dict:
@@ -111,9 +115,12 @@ def dict_tree(
                 "message": "view attendu ∈ {catalog, raw}",
             },
         )
-    value = (_catalog_tree(db, project_id)
-             if view == "catalog" and message is None
-             else build_dict_tree(db, project_id, view, message))
+    if view == "catalog" and message is None:
+        # build_dict_tree already emits the DictTreeResponse contract and the
+        # cached object is immutable to callers (deep-copied by _catalog_tree).
+        # Returning a Response skips a second full Pydantic walk over ~1 MB.
+        return JSONResponse(content=_catalog_tree(db, project_id))
+    value = build_dict_tree(db, project_id, view, message)
     return DictTreeResponse(**value)
 
 
