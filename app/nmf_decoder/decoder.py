@@ -185,8 +185,9 @@ def decode(line,system=None,format_version='unknown',*,capture_id='',seq=0,line_
     elif not active:r.partial('system_undocumented')
     try:
         ver=tuple(int(p) for p in format_version.split('.'))
-        if ver<(2,19):active=False;r.partial('format_unsupported')
-        elif ver>(2,19):r.partial('format_extensions_unproven')
+        minimum=tuple(int(p) for p in (schema.get('min_format','2.19') if schema else '2.19').split('.'))
+        if ver<minimum:active=False;r.partial('format_unsupported')
+        elif ver>minimum:r.partial('format_extensions_unproven')
     except ValueError:active=False;r.partial('format_unknown')
     def read(f,idx,dest):
         name=column(f['code'])

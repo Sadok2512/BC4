@@ -1,5 +1,19 @@
 # CHANGELOG_DECODER
 
+## 1.8.1 (patch) — 2026-10-29 — Cellules complètes NFF 2.50 et PLAIU (Agent BC1)
+
+- `CELLMEAS` couvre l'enum NFF 2.50 complet : LTE serving/SCell 1–31 et
+  NR PCell/SCell, SCG SCell, PSCell, cellules listées ou détectées.
+- Valeurs `cell_index` à exposer dans le catalogue BC4 : `0–31`, `98`,
+  `100–131`, `198`, `199` et `1000–1002`. Les codes LTE `10–40` de
+  `CELLMEAS` sont normalisés en SCell `1–31`; les valeurs NR restent leurs
+  codes NFF déterministes.
+- `PLAIU` utilise désormais le contrat NFF 2.50, persiste le champ
+  `plaiu_cell_type` et projette ses métriques par cellule dans
+  `nmf_cell_second`.
+- G46 sur les deux petits témoins IKEA garantit qu'aucune colonne renseignée
+  par le contrat 1.7.1 n'est vidée.
+
 ## 1.8.0 (minor) — 2026-10-28 — Light natif sparse et bins à la requête (Agent BC1)
 
 - Les captures Light stockent une ligne compacte par record source dans
