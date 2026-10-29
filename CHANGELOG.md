@@ -1,3 +1,19 @@
+## 0.97.0 (minor) — BC4 2026-10-29 — catalogue 2.56.0 dispatch cells par (event, system) (Agent BC1, numérotation BC3)
+
+Merge `bc1/catalog-dispatch` (`9fc7b90`, rebasé sur `5ca2d59`). Numéro
+`0.97.0` attribué par BC3. Voir `CHANGELOG_CATALOG.md` entrée `2.56.0`.
+
+- Nouveau `app/kpi/catalog_release/catalog_2.56.0.json` (184 768 lignes),
+  sha256 **`46dad7f2fc398eaac0862c4c3ea8bb1abd3e2558225f04fd2dc37da7185d0916`**.
+- `app/kpi/metrics_catalog_v4.py` : dispatch des métriques `cell_*` par
+  couple `(event, system)` au lieu d'un seul event global.
+- `scripts/guards_2026_10/scope_args.py` : helper commun aux gardes
+  G18b/G24/G24b/G25/G32/GC1 pour parser le scope `--project-id`.
+- Bascule à chaud par
+  `python scripts/catalog/bootstrap_catalog_release.py --version 2.56.0`
+  depuis `bc4-api-1` (idempotent, upsert `is_current=TRUE`, GC1 revalidé
+  immédiatement sur `/health`). Pas de redeploy nécessaire après bascule.
+
 ## 0.96.1 (patch) — BC4 2026-10-29 — décodeur 1.8.1 : cellules complètes NFF 2.50 + PLAIU (Agent BC1, numérotation BC3)
 
 Patch décodeur. Numéro `0.96.1` attribué par BC3. Voir
