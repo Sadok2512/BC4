@@ -1,3 +1,66 @@
+## 0.99.2 (patch) — BC4 2026-10-29 — HOTFIX /metrics/table + /metrics/series 500 sur @lte-type-N (Agent BC3, à relire par BC1)
+
+### Incident
+
+- **Symptôme** : HTTP 500 sur `/metrics/table` et `/metrics/series` dès
+  que le code `@lte-type-N` est utilisé sur un metric dont l'`event`
+  n'est pas CELLMEAS (ex. `dci_ul_grants`, `txpc_*`, `pdcp_*`), ou
+  quand on combine `@int` et `@lte-type-N` dans un même appel.
+- **Fenêtre d'exposition** : 2026-10-29 **16:14Z** (déploiement 0.97.3
+  qui bascule le catalog en 2.56.2 et introduit les codes
+  `@lte-type-N`) → 2026-10-29 **22:00Z** (ce patch). Masqué 5 h 45
+  parce que le path serving (`@lte-type-0`) est CELLMEAS → branche
+  physical OK, et les anciens codes `@int` seuls → branche legacy OK.
+  Codex67 a cliqué sur les voisins non-CELLMEAS après son relogin.
+- **Pas lié à 0.99.0 ni à 0.99.1 (GZip)**. Pas lié aux lots BC1
+  signaling-materialized ou kpi-table-lean/latency aux niveaux
+  signaling / query timing — c'est bien ici le mapping cell_type →
+  cell_index qui a été laissé incomplet.
+
+### Causes mesurées (du traceback live)
+
+1. `app/kpi/metrics_v3.py:421`
+   ```python
+   internal_cell = m.get('legacy_internal_index', -1 if cell=='all' else int(cell))
+   ```
+   `legacy_internal_index` n'est posé par `parse_selection` **que** pour
+   les codes `@int` (legacy numéric). Pour `@lte-type-N`
+   `cell_type_filter` est posé à la place, et la branche 1 (CELLMEAS
+   `_load_semantic_cell`) est la seule qui consomme ce filtre →
+   `dci_ul_grants@lte-type-1` tombe en branche 2 → `int('lte-type-1')`
+   → **ValueError**.
+2. `app/kpi/metrics_v3.py:680`
+   ```python
+   ordered = [table[k] for k in sorted(table)]
+   ```
+   La branche "physical" (CELLMEAS + cell_type_filter) crée des clés
+   `(seq, arfcn, pci)` (tuple), la branche "legacy" des clés
+   `int(second)`. Dict `table` partagé entre metrics d'un même appel →
+   mix de types → `sorted` compare `tuple < int` → **TypeError**.
+
+### Correctif
+
+- `metrics_v3.py:419-456` — étend la branche nmf_cell_second non-CELLMEAS
+  pour consommer `m['cell_type_filter']` via la projection injective
+  `app.nmf_decoder.cells.cell_index_bounds(system, raw_cell_type)` →
+  range query `cell_index BETWEEN :lo AND :hi` qui couvre toutes les
+  occurrences stockées (serving = 1 occurrence, Listed/Detected =
+  plusieurs par seconde). Si bounds `None` → **HTTPException 422**
+  explicite `cell_type_not_supported_in_enum`, jamais de 500.
+- `metrics_v3.py:555-568` — clés de bucket uniformément 3-tuple
+  `(seq_or_second, cell_arfcn_or_None, cell_pci_or_None)`.
+- `metrics_v3.py:682` — tri explicite qui ordonne les `None` avant les
+  int, jamais de comparaison `None < int`.
+- 0 modification base, 0 modification contrat API.
+
+### Garde — G51 `metrics_catalog_regression`
+
+Nouveau garde. Pour **chaque feuille sélectionnable** de l'arbre
+catalogue 2.56.2 sur Test_6 (capture `a4b0c321c52e`), vérifie que
+`/metrics/table` et `/metrics/series` renvoient `200` ou `422`
+(déclaré). **500 = FAIL**. Plus 3 combinaisons mixtes `@int` +
+`@lte-type-N`. Exit ≠ 0 si une seule route sort 500.
+
 ## 0.99.1 (patch) — BC4 2026-10-29 — INCIDENT PROD : retrait GZipMiddleware (double décodage via proxy Nitro) (Agent BC3)
 
 ### Incident

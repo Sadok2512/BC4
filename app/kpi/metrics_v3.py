@@ -235,7 +235,15 @@ def parse_selection(token,defs,cell='all',attr=None):
 
 
 def percentile(values,p):
-    a=sorted(values)
+    # 0.99.2 (hotfix) : certains metrics marqués kind='numeric' dans
+    # `definitions()` renvoient parfois des valeurs textuelles (ex. enum
+    # categorical mal typé — cap_script_*, maci_cell_type, maci_cell_state,
+    # plaisum_total_prb_usage). Avant le fix : `a[hi]-a[lo]` sur str → TypeError
+    # → 500 sur /metrics/table en groupe KPI (histogrammes). Fix défensif :
+    # ne garder que les valeurs numériques pour calculer le percentile ; le
+    # typage upstream (metrics_catalog) sera à corriger par BC1 dans un lot
+    # suivant.
+    a=sorted(v for v in values if isinstance(v,(int,float)) and not isinstance(v,bool))
     if not a:return None
     pos=(len(a)-1)*p;lo=math.floor(pos);hi=math.ceil(pos)
     return a[lo]+(a[hi]-a[lo])*(pos-lo)
@@ -417,9 +425,40 @@ class Dataset:
             for r in rows:
                 if r['value'] is not None:r['value']*=scale
         elif m['cell_scoped'] or m['base_code'] in DERIVED:
-            sql='SELECT seq_first seq,seq_last,value,reason,second FROM nmf_cell_second WHERE project_id=:pid AND capture_id=:cap AND metric_code=:metric AND cell_index=:cell ORDER BY seq_first'
-            internal_cell = m.get('legacy_internal_index', -1 if cell=='all' else int(cell))
-            rows=[dict(r) for r in self.query(sql,{'metric':code,'cell':internal_cell})]
+            # 0.99.2 (hotfix 2026-10-29 22:00Z, régression 0.97.3 catalog 2.56.2) :
+            # cette branche gère TOUT metric cell_scoped qui n'est pas CELLMEAS
+            # (dci_ul_grants, txpc, pdcp, …). Avant le hotfix, elle faisait
+            # `int(cell)` → ValueError sur les codes `@lte-type-N` / `@nr-type-N`
+            # introduits par le catalog 2.56.2. Fix : si `cell_type_filter` est
+            # posé par `parse_selection` (semantic enum), traduire en plage
+            # `[lo, hi]` dans `nmf_cell_second.cell_index` via la projection
+            # injective `cells.cell_index_bounds` (couvre toutes les
+            # occurrences stockées pour un même (system, raw_cell_type)).
+            cell_type_filter = m.get('cell_type_filter')
+            if cell_type_filter is not None:
+                from app.nmf_decoder.cells import cell_index_bounds
+                bounds = cell_index_bounds(cell_type_filter['system'],
+                                           cell_type_filter['raw_cell_type'])
+                if bounds is None:
+                    raise HTTPException(422, dict(
+                        reason='cell_type_not_supported_in_enum',
+                        system=cell_type_filter['system'],
+                        raw_cell_type=cell_type_filter['raw_cell_type']))
+                lo, hi = bounds
+                sql = ('SELECT seq_first seq, seq_last, value, reason, second '
+                       'FROM nmf_cell_second WHERE project_id=:pid AND capture_id=:cap '
+                       'AND metric_code=:metric AND cell_index BETWEEN :lo AND :hi '
+                       'ORDER BY seq_first')
+                rows = [dict(r) for r in self.query(sql, {'metric': code,
+                                                          'lo': lo, 'hi': hi})]
+            else:
+                sql = ('SELECT seq_first seq,seq_last,value,reason,second '
+                       'FROM nmf_cell_second WHERE project_id=:pid AND capture_id=:cap '
+                       'AND metric_code=:metric AND cell_index=:cell ORDER BY seq_first')
+                internal_cell = m.get('legacy_internal_index',
+                                      -1 if cell == 'all' else int(cell))
+                rows = [dict(r) for r in self.query(sql, {'metric': code,
+                                                          'cell': internal_cell})]
             # CELLMEAS radio identity is carried by the exact repeated group.
             # Resolve it by (project, capture, seq, raw cell_type, occurrence),
             # never by timestamp. Native-light captures simply have no typed
@@ -553,16 +592,22 @@ class Dataset:
                 if m['kind']=='event' and len(points)>limit:raise HTTPException(422,dict(reason='event_occurrences_exceed_max_points',required=len(points)))
                 series.append(dict(code=m['selection'],label=m['label'],unit=m['unit'],kind=m['kind'],cell=m['cell'],source_table='nmf_cell_second' if m['cell_scoped'] else m['source_table'],source_column=m['source_column'],n_total=len(points),n_returned=len(out),sampling=sampling,states=list(dict.fromkeys(str(p['value']) for p in points)) if m['kind']=='categorical' else [],segments=[],points=out))
             for second,rs in buckets.items():
+                # 0.99.2 (hotfix) : clé de bucket homogène en 3-tuple pour que
+                # `sorted(table)` fonctionne même quand plusieurs metrics
+                # mélangent le path "physical" (une ligne par (seq, arfcn, pci))
+                # et le path "legacy" (une ligne par second). Avant le hotfix,
+                # les clés `int(second)` et `tuple` cohabitaient dans le même
+                # dict → TypeError sur `sorted` ligne ordered=…
                 physical = bool(m.get('cell_type_filter')) and m.get('event') == 'CELLMEAS'
                 groups = defaultdict(list)
                 if physical:
                     for item in rs:
                         groups[(item['seq'], item.get('cell_arfcn'), item.get('cell_pci'))].append(item)
                 else:
-                    groups[second] = rs
+                    groups[(second, None, None)] = rs
                 for physical_key, physical_rows in groups.items():
                     rs = physical_rows
-                    table_key = physical_key if physical else second
+                    table_key = physical_key
                     row=table.setdefault(table_key,dict(second=second,t_rel_s=self.times.get(rs[0]['seq'],float(second)),seq_first=rs[0]['seq'],seq_last=rs[-1]['seq'],values={},counts={}))
                     row['seq_first']=min(row['seq_first'],rs[0]['seq']);row['seq_last']=max(row['seq_last'],rs[-1]['seq'])
                     value=1 if m['kind']=='event' else aggregate_values(rs,'last' if m.get('attr') or m['cell_scoped'] else m.get('agg','last'))
@@ -677,7 +722,14 @@ class Dataset:
             ps=[p for p in pair_rows if p['type']==kind];known=[p for p in ps if p['outcome'] in ('ok','fail')]
             pair_rates.append(dict(type=kind,attempts=len(ps),completed=sum(p['seq_end'] is not None for p in ps),success=sum(p['outcome']=='ok' for p in ps),known_outcomes=len(known),success_pct=100*sum(p['outcome']=='ok' for p in known)/len(known) if known else None))
         rid=evidence(self.db,self.pid,';\n'.join(q['sql'] for q in self.sqls),{'queries':self.sqls,'capture_id':self.cap,'selections':[m['selection'] for m in selections],'filters':self.f},dict(rows=len(table),series=len(series)))
-        ordered=[table[k] for k in sorted(table)]
+        # 0.99.2 (hotfix) : clés `table` toujours en 3-tuple (seq_or_second,
+        # cell_arfcn|None, cell_pci|None). None trié EN PREMIER via la clé de
+        # tri explicite (Python 3 ne compare pas None à int directement).
+        def _table_sort_key(k):
+            return (k[0],
+                    (k[1] is None, 0 if k[1] is None else k[1]),
+                    (k[2] is None, 0 if k[2] is None else k[2]))
+        ordered=[table[k] for k in sorted(table, key=_table_sort_key)]
         from decimal import Decimal
         # 0.75.0 — time_local (= ancien time_label), time_utc (local - offset)
         # et join GPS previous-or-same seq (sur seq_first).
