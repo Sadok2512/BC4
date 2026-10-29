@@ -12,7 +12,7 @@ manuel). Idempotent : `CREATE EXTENSION IF NOT EXISTS`.
 from alembic import op
 
 
-revision = "0068_pg_stat_statements_extension"
+revision = "0068_pg_stat_statements"
 down_revision = "0067_kpi_physical_cell_indexes"
 branch_labels = None
 depends_on = None
