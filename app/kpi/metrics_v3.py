@@ -205,10 +205,11 @@ def parse_selection(token,defs,cell='all',attr=None):
             cell_label = 'Total CA'
         elif cell == 'null':
             cell_label = 'cell_type NULL'
-        elif cell == '0':
-            cell_label = 'PCell'
         else:
-            cell_label = f'cell {cell}'
+            from app.kpi.metrics_catalog_v4 import cell_display
+            display = cell_display(m['event'], int(cell))
+            cell_label = display['label'] + (f" · {display['system']}" if display['system'] else '')
+            m['cell_display'] = display
         m['label'] += ' · ' + cell_label
     return m
 
@@ -279,6 +280,36 @@ class Dataset:
         if m['cell_scoped'] or m['base_code'] in DERIVED:
             sql='SELECT seq_first seq,seq_last,value,reason,second FROM nmf_cell_second WHERE project_id=:pid AND capture_id=:cap AND metric_code=:metric AND cell_index=:cell ORDER BY seq_first'
             rows=[dict(r) for r in self.query(sql,{'metric':code,'cell':-1 if cell=='all' else int(cell)})]
+            # CELLMEAS radio identity is carried by the exact repeated group.
+            # Resolve it by (project, capture, seq, raw cell_type, occurrence),
+            # never by timestamp. Native-light captures simply have no typed
+            # group row and therefore expose null PCI/ARFCN.
+            display=m.get('cell_display')
+            if event=='CELLMEAS' and display:
+                identities={r['seq']:dict(r) for r in self.query("""
+                    WITH ranked AS (
+                      SELECT g.seq,g.cell_pci,g.cell_ch,g.cell_type,l.system,
+                             row_number() OVER (
+                               PARTITION BY g.seq,g.cell_type
+                               ORDER BY g.identity
+                             )-1 AS occurrence
+                      FROM nmf_event_light_group g
+                      JOIN nmf_event_light l
+                        ON l.project_id=g.project_id AND l.capture_id=g.capture_id
+                       AND l.seq=g.seq AND l.event_code=:event
+                      WHERE g.project_id=:pid AND g.capture_id=:cap
+                        AND g.group_name='cells'
+                        AND g.cell_type=:raw AND l.system=:system
+                    )
+                    SELECT seq,cell_pci,cell_ch FROM ranked
+                    WHERE system=:system AND cell_type=:raw
+                      AND occurrence=:occurrence
+                """,{'event':event,'system':7 if display['system']=='LTE' else 9,
+                       'raw':display['raw_cell_type'],'occurrence':display['occurrence']})}
+                for r in rows:
+                    identity=identities.get(r['seq'],{})
+                    r['cell_pci']=identity.get('cell_pci')
+                    r['cell_arfcn']=identity.get('cell_ch')
             scale=1e-6 if fields().get(code,{}).get('unit')=='bit/s' else 100 if code=='scell_throughput_share' else 1
             for r in rows:
                 if r['value'] is not None:r['value']*=scale
@@ -346,7 +377,7 @@ class Dataset:
             result[key]=sum(b-a for a,b in merged)
         return result
 
-    def response(self,selections,limit=5000,group_by='operator',x=None,include_map=False):
+    def response(self,selections,limit=5000,group_by='operator',x=None,include_map=False,page=1,page_size=1000,table_only=False):
         from app.routes.metrics import sample
         from app.routes.tasks import evidence
         defs=definitions();loaded=[(m,self.load(m)) for m in selections]
@@ -356,13 +387,14 @@ class Dataset:
             if any(r['t_rel_s'] is None for r in rows):gaps.append(m['selection']+': Missing timestamp; observations excluded from temporal views')
             for r in rows:
                 if r['second'] is not None:buckets[r['second']].append(r)
-                if r['value'] is not None and r['t_rel_s'] is not None:
+                if not table_only and r['value'] is not None and r['t_rel_s'] is not None:
                     tip=f"{m['label']} : {r['value']} {m['unit']} · seq {r['seq']}"+(' · '+str(r.get('attributes')) if r.get('attributes') else '')
                     points.append(dict(seq=r['seq'],t_rel_s=r['t_rel_s'],value=r['value'],tooltip=tip,attributes=r.get('attributes',{})))
                 if r.get('reason'):gaps.append(r['reason'])
-            out,sampling=sample(points,limit,m['kind']) if m['kind']!='event' else (points,dict(method='all_occurrences',factor=1,seq_bucket_width=None))
-            if m['kind']=='event' and len(points)>limit:raise HTTPException(422,dict(reason='event_occurrences_exceed_max_points',required=len(points)))
-            series.append(dict(code=m['selection'],label=m['label'],unit=m['unit'],kind=m['kind'],cell=m['cell'],source_table='nmf_cell_second' if m['cell_scoped'] else m['source_table'],source_column=m['source_column'],n_total=len(points),n_returned=len(out),sampling=sampling,states=list(dict.fromkeys(str(p['value']) for p in points)) if m['kind']=='categorical' else [],segments=[],points=out))
+            if not table_only:
+                out,sampling=sample(points,limit,m['kind']) if m['kind']!='event' else (points,dict(method='all_occurrences',factor=1,seq_bucket_width=None))
+                if m['kind']=='event' and len(points)>limit:raise HTTPException(422,dict(reason='event_occurrences_exceed_max_points',required=len(points)))
+                series.append(dict(code=m['selection'],label=m['label'],unit=m['unit'],kind=m['kind'],cell=m['cell'],source_table='nmf_cell_second' if m['cell_scoped'] else m['source_table'],source_column=m['source_column'],n_total=len(points),n_returned=len(out),sampling=sampling,states=list(dict.fromkeys(str(p['value']) for p in points)) if m['kind']=='categorical' else [],segments=[],points=out))
             for second,rs in buckets.items():
                 row=table.setdefault(second,dict(second=second,t_rel_s=float(second),seq_first=rs[0]['seq'],seq_last=rs[-1]['seq'],values={},counts={}))
                 row['seq_first']=min(row['seq_first'],rs[0]['seq']);row['seq_last']=max(row['seq_last'],rs[-1]['seq'])
@@ -372,20 +404,27 @@ class Dataset:
                     # Never average those means again to manufacture a second-level statistic.
                     value=None;gaps.append(m['selection']+': missing inter-sample weights; per-second aggregate unavailable, per-seq series preserved')
                 row['values'][m['selection']]=value;row['counts'][m['selection']]=sum(r.get('count',1) for r in rs)
-            groups=defaultdict(list)
-            for r in rows:
-                if r['value'] is None:continue
-                groups[(r.get('operator') if 'operator' in group_by else None,r.get('band') if 'band' in group_by else None)].append(r)
-            for (op,band),rs in groups.items():
-                vals=[r['value'] for r in rs];numeric=m['kind']=='numeric'
-                hist.append(dict(code=m['selection'],label=m['label'],operator=op,band=band,cell=m['cell'],n=sum(r.get('count',1) for r in rs),p10=percentile(vals,.1) if numeric else None,p50=percentile(vals,.5) if numeric else None,p90=percentile(vals,.9) if numeric else None,distribution=[dict(value=v,n=n) for v,n in Counter(vals).items()] if not numeric else []))
-        durations=self.connected_seconds(group_by) if any(m['kind']=='event' for m in selections) else {}
+                if m.get('cell_display'):
+                    row['cell_label']=m['cell_display']['label']
+                    row['cell_system']=m['cell_display']['system']
+                    row['cell_internal_index']=m['cell_display']['internal_index']
+                    row['cell_pci']=next((r.get('cell_pci') for r in reversed(rs) if r.get('cell_pci') is not None),None)
+                    row['cell_arfcn']=next((r.get('cell_arfcn') for r in reversed(rs) if r.get('cell_arfcn') is not None),None)
+            if not table_only:
+                groups=defaultdict(list)
+                for r in rows:
+                    if r['value'] is None:continue
+                    groups[(r.get('operator') if 'operator' in group_by else None,r.get('band') if 'band' in group_by else None)].append(r)
+                for (op,band),rs in groups.items():
+                    vals=[r['value'] for r in rs];numeric=m['kind']=='numeric'
+                    hist.append(dict(code=m['selection'],label=m['label'],operator=op,band=band,cell=m['cell'],n=sum(r.get('count',1) for r in rs),p10=percentile(vals,.1) if numeric else None,p50=percentile(vals,.5) if numeric else None,p90=percentile(vals,.9) if numeric else None,distribution=[dict(value=v,n=n) for v,n in Counter(vals).items()] if not numeric else []))
+        durations=self.connected_seconds(group_by) if not table_only and any(m['kind']=='event' for m in selections) else {}
         connected=sum(durations.values()) if durations else None
         for h in hist:
             duration=durations.get((h['operator'],h['band']))
             h['per_connected_hour']=h['n']*3600/duration if duration and next(m for m in selections if m['selection']==h['code'])['kind']=='event' else None
         scatter=[]
-        if x:
+        if x and not table_only:
             xm=parse_selection(x,defs);xr=self.load(xm)
             for m,yr in loaded:
                 if m['cell']!=xm['cell'] or m['cell_scoped']!=xm['cell_scoped']:
@@ -553,8 +592,18 @@ class Dataset:
                 cur_t=self.times[row['seq_first']]
                 row['gps_age_s']=float(cur_t-prev_t) if prev_t is not None else None
                 row['reason']=None
-        # CSV = exactement les colonnes de la table UI (0.75.0).
+        total_rows=len(ordered)
+        total_pages=max(1,math.ceil(total_rows/page_size))
+        if page>total_pages:raise HTTPException(422,dict(reason='page_out_of_range',total_pages=total_pages))
+        page_rows=ordered[(page-1)*page_size:page*page_size]
+        # CSV = exactement la page renvoyée par la table UI.
         output=io.StringIO();writer=csv.writer(output);keys=[m['selection'] for m in selections]
         writer.writerow(['result_id','capture_id','second','seq_first','seq_last','time_local','time_utc','lat','lon','gps_source','gps_age_s','reason',*keys])
-        for row in ordered:writer.writerow([rid,self.cap,row['second'],row['seq_first'],row['seq_last'],row['time_local'],row['time_utc'],row['lat'],row['lon'],row['gps_source'],row['gps_age_s'],row['reason'],*[row['values'].get(k) for k in keys]])
-        return dict(**dict(self.state),project_id=self.pid,capture_id=self.cap,result_id=rid,origin_seq=self.origin_seq,origin_ts=self.origin_ts,nmf_start_at=nmf_start_at,capture_date=capture_date,utc_offset_min=utc_offset_min,duration_s=max(self.times.values()),aggregation='cell: schema-weighted capture-second; other numeric: schema aggregate; event: presence + count / last attribute',time_policy='capture-local source clock in seq order; no interpolation',columns=[dict(code=m['selection'],label=m['label'],unit=m['unit'],kind=m['kind'],cell=m['cell']) for m in selections],series=series,rows=ordered,histogram=hist,scatter=scatter,map_points=map_points,connected_seconds=connected,connected_reason=None if connected else 'No proven complete eligible RRC → RRD interval',pair_rates=pair_rates,gaps=sorted(set(gaps)),csv=output.getvalue(),pairing='previous-or-same seq, same capture and same cell; no interpolation')
+        for row in page_rows:writer.writerow([rid,self.cap,row['second'],row['seq_first'],row['seq_last'],row['time_local'],row['time_utc'],row['lat'],row['lon'],row['gps_source'],row['gps_age_s'],row['reason'],*[row['values'].get(k) for k in keys]])
+        columns=[]
+        for m in selections:
+            display=m.get('cell_display') or {}
+            columns.append(dict(code=m['selection'],label=m['label'],unit=m['unit'],kind=m['kind'],cell=m['cell'],
+                cell_label=display.get('label'),cell_system=display.get('system'),
+                cell_internal_index=display.get('internal_index')))
+        return dict(**dict(self.state),project_id=self.pid,capture_id=self.cap,result_id=rid,origin_seq=self.origin_seq,origin_ts=self.origin_ts,nmf_start_at=nmf_start_at,capture_date=capture_date,utc_offset_min=utc_offset_min,duration_s=max(self.times.values()),aggregation='cell: schema-weighted capture-second; other numeric: schema aggregate; event: presence + count / last attribute',time_policy='capture-local source clock in seq order; no interpolation',columns=columns,series=series,rows=page_rows,page=page,page_size=page_size,total_rows=total_rows,total_pages=total_pages,histogram=hist,scatter=scatter,map_points=map_points,connected_seconds=connected,connected_reason=None if connected else 'No proven complete eligible RRC → RRD interval',pair_rates=pair_rates,gaps=sorted(set(gaps)),csv=output.getvalue(),pairing='previous-or-same seq, same capture and same cell; no interpolation')

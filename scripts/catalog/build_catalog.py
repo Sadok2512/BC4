@@ -474,6 +474,20 @@ def main():
                name in MASKED_INDEX_FIELDS or name in PAYLOAD_FIELDS:
                 exclude_fields_total += 1
                 continue
+            # 2.56.1 — CELLMEAS/MIMOMEAS are decoded only for LTE/NR.  The
+            # NFF event chapter also lists legacy per-system layouts (UMTS,
+            # GSM, iDEN, ...); those fields must never be exposed below the
+            # LTE/NR event node.  Keep the exact LTE/NR section in the label
+            # so equal names cannot be attributed to another technology.
+            if ev in {"CELLMEAS", "MIMOMEAS"}:
+                section = (row.get("section") or "").strip()
+                if section.lower().startswith("parameters for "):
+                    section_system = section[len("Parameters for "):]
+                    if not (section_system.startswith("LTE") or section_system.startswith("NR")):
+                        exclude_fields_total += 1
+                        continue
+                    row = dict(row)
+                    row["_force_section_suffix"] = True
             kept_fields.append(row)
         # 2.52.0 — Dédoublonnage des node_ids à l'intérieur d'un event.
         # Deux cas distincts :
@@ -518,7 +532,7 @@ def main():
             # Disambiguation de LABEL : si le nom apparaît > 1 fois dans
             # l'event, on suffixe par la section CSV (ex. "Parameters for
             # NR") ou par le field_no en cas de collision intra-section.
-            if name_total_count.get(row["name"], 0) > 1:
+            if name_total_count.get(row["name"], 0) > 1 or row.get("_force_section_suffix"):
                 section = (row.get("section") or "").strip()
                 sect_key = (row["name"], section)
                 sect_cnt = name_section_count.get(sect_key, 0)
@@ -575,6 +589,11 @@ def main():
                 struct_reason = None
                 struct_selectable = None  # None = défère au serve-time
                 for row in kept_fields:
+                    if row.get("_force_section_suffix"):
+                        section = (row.get("section") or "").removeprefix("Parameters for ")
+                        row_system = 7 if section.startswith("LTE") else 9
+                        if row_system != tech_cell:
+                            continue
                     name = row["name"]
                     # 2.54.0 — Retrait des feuilles « Cell type » du cell_scoped.
                     # Le champ reste la dimension (dispatch @cell via
@@ -599,6 +618,7 @@ def main():
                         # inventée depuis le label CSV. Chaîne vide si pas de
                         # mapping YAML (événement hors corpus décodé).
                         "source_column": source_column_for(ev, row["name"]),
+                        "field_system": tech_cell if row.get("_force_section_suffix") else None,
                         "cell_type": ct, "cell_label": label_long, "parent_id": ev_nid,
                         "node_id": f"lf_{slugify(ev)}_{row_slug}_c{ct}",
                         "field_no": row.get("field_no"), "type": row.get("type"),

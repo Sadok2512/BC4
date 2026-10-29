@@ -29,6 +29,18 @@ Chaque build écrit une ligne dans `catalog_release` (sha256, counts) ;
 
 ## Versions
 
+## 2.56.1 — 2026-10-29 — Sections CELLMEAS/MIMOMEAS par système (BC1)
+
+Type SemVer : **patch**. Numéro proposé ; BC3 attribue le numéro final.
+
+- Les feuilles `CELLMEAS` et `MIMOMEAS` ne mélangent plus les dispositions
+  historiques UMTS/GSM/iDEN avec les sections LTE/NR décodées.
+- Le suffixe visible vient de la section NFF 2.50 exacte (`bloc LTE` ou
+  `bloc NR`). Exemple : `Pathloss (bloc UMTS FDD)` devient
+  `Pathloss (bloc LTE)` ; `RxLev (bloc iDEN)` est retiré du bloc LTE/NR.
+- Artefact généré par `scripts/catalog/build_catalog.py`; bascule autorisée
+  uniquement via `scripts/catalog/bootstrap_catalog_release.py`.
+
 ## 2.56.0 — 2026-10-29 — Dispatch enum par événement/système et cellules projetées sélectionnables (BC1)
 
 Type SemVer : **minor**. Numéro proposé ; BC3 attribue le numéro final au merge.
