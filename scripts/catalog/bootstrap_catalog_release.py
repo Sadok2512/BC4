@@ -11,6 +11,11 @@ Usage (idempotent, upsert sur `version`) :
   python scripts/catalog/bootstrap_catalog_release.py --version 2.53.0
   python scripts/catalog/bootstrap_catalog_release.py --version 2.53.0 --activate
 
+Préparer une release mineure qui ajoute le classement KPI Analytics sans
+activer la base (la bascule reste une commande séparée et explicite) :
+  python scripts/catalog/bootstrap_catalog_release.py --version 2.57.0 \
+    --from-version 2.56.2 --prepare-only
+
 Variables :
   --version <X.Y.Z> : nom du fichier catalog_<X.Y.Z>.json (requis)
   --changelog "..." : commentaire (défaut : "bootstrap post-reset")
@@ -23,6 +28,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -39,9 +45,58 @@ from app.kpi.catalog_release.registry import (  # noqa: E402
 )
 
 
+SEMVER_RE = re.compile(r"^(\d+)\.(\d+)\.(\d+)$")
+
+
+def prepare_analytics_minor(source_version: str, target_version: str) -> Path:
+    """Clone a catalog release and add the explicit Analytics tab contract.
+
+    Catalog 2.56.2 exposes only raw NFF measurement leaves, so every leaf is
+    classified as ``metrics``.  The target must be the next MINOR release;
+    labels, event names and units are deliberately ignored.
+    """
+    source_match = SEMVER_RE.fullmatch(source_version)
+    target_match = SEMVER_RE.fullmatch(target_version)
+    if not source_match or not target_match:
+        raise ValueError("versions attendues au format X.Y.Z")
+    source_semver = tuple(map(int, source_match.groups()))
+    target_semver = tuple(map(int, target_match.groups()))
+    if target_semver != (source_semver[0], source_semver[1] + 1, 0):
+        raise ValueError(
+            f"la cible doit être le MINOR suivant : "
+            f"{source_semver[0]}.{source_semver[1] + 1}.0"
+        )
+
+    source_path = catalog_file_path(source_version)
+    if not source_path.exists():
+        raise FileNotFoundError(f"catalogue source absent : {source_path}")
+    payload = json.loads(source_path.read_text(encoding="utf-8"))
+    leaves = [node for node in payload.get("nodes", []) if node.get("node_type") == "leaf"]
+    if not leaves:
+        raise ValueError("catalogue source sans feuille")
+    for leaf in leaves:
+        leaf["analytics_tab"] = "metrics"
+    payload["catalog_version"] = target_version
+
+    target_path = catalog_file_path(target_version)
+    rendered = json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+    if target_path.exists() and target_path.read_text(encoding="utf-8") != rendered:
+        raise ValueError(f"artefact cible existant différent : {target_path}")
+    target_path.write_text(rendered, encoding="utf-8")
+    print(
+        f"[bootstrap] prepared catalog v={target_version} from={source_version} "
+        f"analytics_tab=metrics leaves={len(leaves)} sha256={sha256_file(target_path)}"
+    )
+    return target_path
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--version", required=True, help="ex. 2.53.0")
+    ap.add_argument("--version", "--to", dest="version", required=True, help="ex. 2.53.0")
+    ap.add_argument(
+        "--from-version", "--from", dest="from_version",
+        help="clone cette release vers le MINOR suivant et ajoute analytics_tab",
+    )
     ap.add_argument("--changelog", default="bootstrap post-reset")
     mode = ap.add_mutually_exclusive_group()
     mode.add_argument("--prepare-only", action="store_true",
@@ -50,6 +105,12 @@ def main(argv: list[str] | None = None) -> int:
                       help="active la release ; exige un DEPLOY_LOCK holder=BC3")
     args = ap.parse_args(argv)
 
+    if args.from_version:
+        try:
+            prepare_analytics_minor(args.from_version, args.version)
+        except (FileNotFoundError, ValueError) as exc:
+            print(f"[bootstrap] FAIL — {exc}", file=sys.stderr)
+            return 2
     path = catalog_file_path(args.version)
     if not path.exists():
         print(f"[bootstrap] FAIL — fichier absent : {path}", file=sys.stderr)

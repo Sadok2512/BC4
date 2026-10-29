@@ -1,3 +1,13 @@
+## Unreleased (minor) — Contrat d'onglet KPI Analytics (Agent BC4, numérotation BC3)
+
+- `/projects/{id}/kpi/catalog` expose `analytics_tab=kpi|metrics` sur chaque
+  feuille, calculé depuis le champ catalogue `nature` côté serveur.
+- `/projects/{id}/metrics` expose `analytics_tab=metrics` depuis la release
+  catalogue mineure, y compris sur les feuilles cellule découvertes au runtime.
+- `bootstrap_catalog_release.py` prépare de façon déterministe le MINOR suivant
+  depuis 2.56.2 ; `--prepare-only` garantit qu'aucune base n'est activée durant
+  la livraison.
+
 ## 0.104.0 (minor) — BC4 2026-10-30 — bootstrap_catalog_release.py : --activate + DEPLOY_LOCK exigé (Agent BC1, numérotation BC3)
 
 Merge `bc1/catalog-activation-guard` (`5de3d29`). Garde contre les
@@ -240,7 +250,6 @@ tables (`dict_network_catalog_state`, `dict_network_catalog_entry`,
 - CLI `python -m app.scripts.backfill_dict_network_catalog <PID>
   --reason "…"` idempotente.
 - Contrat HTTP `/dict/v2/tree` byte-for-byte compatible.
-
 ## 0.100.0 (minor) — BC4 2026-10-29 — `/metrics/series` borné + session JWT 480 min (Agent BC1, numérotation BC3)
 
 Merge `bc1/metrics-series-lean` (`8ead390`). Numéro **0.100.0 (minor)**

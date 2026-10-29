@@ -28,6 +28,10 @@ class KpiCatalogItem(BaseModel):
     code: str = Field(..., description="code canonique du KPI (catalogue v2)")
     name: str
     nature: str
+    analytics_tab: Literal["kpi", "metrics"] = Field(
+        ...,
+        description="onglet KPI Analytics, décidé par le catalogue",
+    )
     unit: Optional[str] = Field(..., description="unité physique ou null si N/A")
     source: Optional[str] = Field(
         ...,

@@ -58,6 +58,7 @@ class MetricCatalogNode(BaseModel):
     # 0.80.1 — ajout "tech"/"event" pour catalog 2.50.5 (4 niveaux
     # Technology → Catégorie → Métrique → Feuilles cellule).
     node_type: Literal['tech','category','group','metric','event','leaf']
+    analytics_tab: Literal['metrics'] | None = None
     metric_id: str | None = None
     selection: str | None = None
     event: str | None = None

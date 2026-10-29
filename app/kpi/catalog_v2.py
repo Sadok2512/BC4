@@ -57,6 +57,21 @@ CATALOG_V2: dict[str, dict[str, Any]] = {e["code"]: e for e in ENTRIES}
 
 Status = Literal["AVAILABLE", "PENDING", "UNVALIDATED", "UNAVAILABLE", "NOT_APPLICABLE"]
 Techno = Literal["LTE", "NR", "ENDC", "AGGREGATE", "UNKNOWN"]
+AnalyticsTab = Literal["kpi", "metrics"]
+
+ANALYTICS_TAB_BY_NATURE: dict[str, AnalyticsTab] = {
+    "KPI calculé": "kpi",
+    "Compteur": "kpi",
+    "Métrique mesurée": "metrics",
+}
+
+
+def analytics_tab_for_nature(nature: str) -> AnalyticsTab:
+    """Return the catalog-owned tab and fail closed on an unknown nature."""
+    try:
+        return ANALYTICS_TAB_BY_NATURE[nature]
+    except KeyError as exc:
+        raise ValueError(f"nature KPI sans analytics_tab : {nature!r}") from exc
 
 
 def resolve(code: str) -> str | None:
