@@ -1,3 +1,16 @@
+## 0.98.0 (minor, proposé) — BC1 2026-10-29 — Signaling progressif et borné
+
+- Nouveau résumé léger `/signaling/events/summary` : pistes, comptages et
+  bornes de capture sans sérialiser les événements.
+- `/signaling/events` accepte une fenêtre capture-locale `from_s`/`to_s`, un
+  curseur `after_seq` et une limite explicite ; l'ordre reste strictement
+  `(project_id, capture_id, seq)` et la troncature est déclarée.
+- Le cache d'horloge est partagé par `population()` et `clock()` sous la clé
+  `(project_id, capture_id, decoder_version)`. Le marqueur `decoded_at` et les
+  cardinalités source invalident aussi un reparse à version identique.
+- Type SemVer proposé : **minor** (`0.98.0`) pour le contrat API additif ;
+  numérotation finale par BC3.
+
 ## 0.97.3 (patch) — BC4 2026-10-29 — Cellules physiques + latence table KPI 7 s → 0,77 s (Agent BC1, numérotation BC3)
 
 Merge `bc1/kpi-table-latency` (`9df792b`). Patch. Numéro `0.97.3` et

@@ -14,6 +14,7 @@ from app.routes.metrics import clock
 from app.routes.tasks import project
 from app.dict.decode import DENY, resolve_pdu
 from .procedures import reconstruct, RULES
+from .capture_cache import capture_stamp
 
 PROTOCOLS = ('RRC LTE', 'RRC NR', 'NAS', 'Événements Nemo', 'MAC-RACH')
 # 0.67.0 — layer slugs added alongside the human protocol labels (dual field).
@@ -22,7 +23,7 @@ LAYER_FOR_PROTOCOL = dict(zip(PROTOCOLS, LAYERS))
 MARKERS = ('RRA','RRC','RRD','HOA','HOS','HOI','CAA','CAC','CAD','DAA','DAC','DAD','RACHI','CREL','MEI','PBA','PBC','PBD','GAA','GAC','GAD','LOCK','MARK','SCELLMOD')
 SENSITIVE = re.compile(r'rnti|guti|tmsi|imsi|imei|msisdn|phone|subscriber|ue.identity|randomValue|dedicated.*nas', re.I)
 PDU_LOCK = Lock()
-_POPULATION_CACHE: dict[tuple[str, str], tuple[tuple, float, tuple]] = {}
+_POPULATION_CACHE: dict[tuple[str, str, str], tuple[tuple, float, tuple]] = {}
 _POPULATION_CACHE_LOCK = Lock()
 _POPULATION_BUILD_LOCK = Lock()
 SOURCE_SQL = '''SELECT s.seq,s.id AS event_id,s.event_code,s.system AS technology,s.direction,s.message AS message_name,
@@ -67,19 +68,14 @@ def _population_stamp(db, pid, cap) -> tuple:
     The stamp changes when staged rows or the capture decode state changes, so
     cached values never cross a source mutation or a Deep/Light upgrade.
     """
-    row = db.execute(text("""SELECT
-        (SELECT count(*) FROM stg_event WHERE project_id=:pid AND capture_id=:cap) AS event_count,
-        (SELECT COALESCE(max(seq),-1) FROM stg_event WHERE project_id=:pid AND capture_id=:cap) AS max_seq,
-        (SELECT count(*) FROM stg_event_raw WHERE project_id=:pid AND capture_id=:cap) AS raw_count,
-        (SELECT decode_level FROM nmf_capture WHERE project_id=:pid AND capture_id=:cap) AS decode_level,
-        (SELECT decoder_version FROM nmf_capture WHERE project_id=:pid AND capture_id=:cap) AS decoder_version
-    """), {"pid": pid, "cap": cap}).mappings().one()
-    return tuple(row.values())
+    stamp = capture_stamp(db, pid, cap)
+    return (stamp.decoder_version, stamp.decoded_at, stamp.event_count,
+            stamp.raw_count, stamp.max_seq)
 
 
 def population(db,pid,cap, persist=True):
     stamp = _population_stamp(db, pid, cap)
-    key = (pid, cap)
+    key = (pid, cap, stamp[0])
     with _POPULATION_CACHE_LOCK:
         cached = _POPULATION_CACHE.get(key)
         if cached is not None and cached[0] == stamp:
