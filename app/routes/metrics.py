@@ -467,10 +467,13 @@ def series(project_id: str,capture_id: str,codes: str,cell: str|None=None,attr: 
     if cell is not None or attr is not None or any(c in DERIVED or c.startswith('evt_') or c.startswith('cap_') or '@' in c or '~' in c for c in codes.split(',')):
         project(db,project_id)
         if from_seq is not None and to_seq is not None and from_seq>to_seq:raise HTTPException(422,'from_seq_after_to_seq')
-        ds=Dataset(db,project_id,capture_id,f,from_seq,to_seq)
+        # /metrics/series needs only the selected rows and their canonical
+        # capture-relative timestamps.  Rebuilding the complete capture clock,
+        # context and event-pair population here dominated cold response time.
+        ds=Dataset(db,project_id,capture_id,f,from_seq,to_seq,lean_series=True)
         selected=[parse_selection(c,definitions(),cell or 'all',attr) for c in dict.fromkeys(codes.split(','))]
         if len(selected)>64:raise HTTPException(422,'too_many_metrics')
-        return ds.response(selected,max_points)
+        return ds.response(selected,max_points,series_only=True)
     project(db,project_id)
     validate_operators(db,project_id,f)
     definitions=metric_catalog(db)
@@ -484,7 +487,10 @@ def series(project_id: str,capture_id: str,codes: str,cell: str|None=None,attr: 
         raise HTTPException(422,dict(reason='unknown_metric',allowed=allowed))
     if any(c not in definitions for c in selected):reject_metric()
     if from_seq is not None and to_seq is not None and from_seq>to_seq:raise HTTPException(422,'from_seq_after_to_seq')
-    times,origin_seq,origin_ts=clock(db,project_id,capture_id)
+    # Resolve the capture origin once; selected metric seq values are resolved
+    # in bounded batches below.  Never materialize the complete staging clock
+    # for a series request.
+    times,origin_seq,origin_ts=clock_subset(db,project_id,capture_id,[])
     params={'pid':project_id,'cap':capture_id,'ctx_cap':capture_id,'lo':from_seq,'hi':to_seq}
     sqls=[];results=[];all_values={}
     state=db.execute(text('SELECT decoder_version,schema_version,decode_level FROM nmf_capture WHERE project_id=:pid AND capture_id=:cap'),params).mappings().first()
@@ -513,6 +519,10 @@ def series(project_id: str,capture_id: str,codes: str,cell: str|None=None,attr: 
         # check project availability in that case, without recounting all fields.
         if not rows and not db.execute(text('SELECT EXISTS(SELECT 1 FROM ('+m.sql+') available LIMIT 1)'),{'pid':project_id}).scalar_one():
             reject_metric()
+        missing=sorted({r['seq'] for r in rows if r['seq'] not in times})
+        if missing:
+            resolved,_,_=clock_subset(db,project_id,capture_id,missing)
+            times.update(resolved)
         if any(r['seq'] not in times for r in rows):raise HTTPException(409,dict(reason='metric_timestamp_missing',code=code))
         points=[dict(seq=r['seq'],t_rel_s=times[r['seq']],value=str(r['value']) if m.kind=='categorical' else float(r['value'])) for r in rows]
         for p in points:all_values.setdefault(p['seq'],{})[code]=p['value']
@@ -546,7 +556,13 @@ def series(project_id: str,capture_id: str,codes: str,cell: str|None=None,attr: 
         'WHERE c.project_id=:pid AND c.capture_id=:cap'
     ),{'pid':project_id,'cap':capture_id}).mappings().first() or {'start_at':None,'utc_offset_min':None}
     from app.kpi.service import date_from_start_at_py
-    return dict(**state,aggregation='schema per capture-second' if state['decode_level']=='light' else 'none',project_id=project_id,capture_id=capture_id,result_id=rid,origin_seq=origin_seq,origin_ts=origin_ts,nmf_start_at=file_meta['start_at'],capture_date=date_from_start_at_py(file_meta['start_at']),utc_offset_min=file_meta['utc_offset_min'],duration_s=max(times.values()),series=results,csv=output.getvalue(),time_policy='ts - premier ts valide en ordre seq ; égalités conservées ; régression rejetée ; aucune interpolation')
+    duration=db.execute(text(
+        'SELECT MAX(t_rel_s) FROM nmf_event_light '
+        'WHERE project_id=:pid AND capture_id=:cap'
+    ),{'pid':project_id,'cap':capture_id}).scalar()
+    if duration is None:
+        duration=max(times.values(),default=0)
+    return dict(**state,aggregation='schema per capture-second' if state['decode_level']=='light' else 'none',project_id=project_id,capture_id=capture_id,result_id=rid,origin_seq=origin_seq,origin_ts=origin_ts,nmf_start_at=file_meta['start_at'],capture_date=date_from_start_at_py(file_meta['start_at']),utc_offset_min=file_meta['utc_offset_min'],duration_s=float(duration),series=results,csv=output.getvalue(),time_policy='ts - premier ts valide en ordre seq ; égalités conservées ; régression rejetée ; aucune interpolation')
 
 EVENT_SQL = '''SELECT e.seq,e.message, EXISTS(SELECT 1 FROM param_occurrence p WHERE p.project_id=:pid AND p.stg_event_id=e.id AND p.path LIKE '%mobilityControlInfo%') mobility
  FROM stg_event e WHERE e.project_id=:pid AND e.capture_id=:cap AND e.message IN

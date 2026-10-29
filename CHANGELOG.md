@@ -1,3 +1,20 @@
+## Unreleased (patch) — `/metrics/series` bounded to the selected capture rows
+
+- `/projects/{project_id}/metrics/series` no longer rebuilds the complete
+  staging clock, radio context and event-pair population for semantic/event/
+  capture metrics. It reads only the requested `(project_id, capture_id, seq)`
+  rows and their import-time `t_rel_s` values.
+- Numeric min/max sampling remains deterministic and opt-in through the
+  existing `max_points` query parameter. Omitting it preserves the previous
+  response contract and default.
+- The accidental table CSV carried by the existing series contract is kept
+  byte-for-byte compatible; only its visible page is enriched during a series
+  request.
+- Authentication sessions default to 480 minutes (still overridden by
+  `BC4_JWT_TTL_MIN`) so an active analytics session does not expire after one
+  hour. This is the selected session-renewal mitigation for this back-only lot.
+- SemVer type: **back patch**. BC3 assigns the final release number.
+
 ## 0.99.2 (patch) — BC4 2026-10-29 — HOTFIX /metrics/table + /metrics/series 500 sur @lte-type-N (Agent BC3, à relire par BC1)
 
 ### Incident

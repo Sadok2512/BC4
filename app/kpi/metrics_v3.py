@@ -6,6 +6,7 @@ import json
 import io
 import math
 import time
+from functools import lru_cache
 from threading import Lock
 from fastapi import HTTPException
 from sqlalchemy import text
@@ -82,6 +83,7 @@ _cache={}
 _catalog_lock=Lock()
 
 
+@lru_cache(maxsize=1)
 def definitions():
     result={}; fs=fields(); ss=schemas()
     for code,m in metric_catalog(None).items():
@@ -122,6 +124,11 @@ def definitions():
     from app.kpi.metrics_v3_capture import capture_definitions
     result.update(capture_definitions())
     return result
+
+
+# Static decoder/catalog definitions are immutable at runtime.  Build them
+# once while workers start instead of charging the first analytics request.
+definitions()
 
 
 def catalog(db,pid):
@@ -263,42 +270,53 @@ def aggregate_values(rows,agg):
 
 
 class Dataset:
-    def __init__(self,db,pid,cap,f,lo=None,hi=None,lean_table=False):
+    def __init__(self,db,pid,cap,f,lo=None,hi=None,lean_table=False,
+                 lean_series=False):
         from app.routes.metrics import clock
         self.db=db;self.pid=pid;self.cap=cap;self.f=f;self.lo=lo;self.hi=hi;self.sqls=[]
         self.params={'pid':pid,'cap':cap,'ctx_cap':cap}
         condition,params=predicate(f);self.params.update(params)
         if condition != 'TRUE':validate_operators(db,pid,f)
         self.lean_table=bool(lean_table and condition=='TRUE')
-        if self.lean_table:
-            origins=[row for row in (
-                self.query("""SELECT seq,ts FROM stg_event_raw
-                    WHERE project_id=:pid AND capture_id=:cap
-                    ORDER BY seq LIMIT 1""").first(),
-                self.query("""SELECT seq,ts FROM stg_event
-                    WHERE project_id=:pid AND capture_id=:cap
-                    ORDER BY seq LIMIT 1""").first(),
-            ) if row]
-            origin=min(origins,key=lambda row:row['seq']) if origins else None
-            if not origin:raise HTTPException(404,'capture_not_found_in_project')
-            self.times={};self.origin_seq=origin['seq'];self.origin_ts=origin['ts']
-            duration=self.query("""
-                SELECT t_rel_s AS duration_s FROM nmf_event_light
-                WHERE project_id=:pid AND capture_id=:cap
-                ORDER BY seq DESC LIMIT 1
+        self.lean_series=bool(lean_series and condition=='TRUE')
+        if self.lean_table or self.lean_series:
+            meta=self.query("""
+                WITH origin AS (
+                  SELECT seq,ts FROM (
+                    (SELECT seq,ts FROM stg_event_raw
+                     WHERE project_id=:pid AND capture_id=:cap ORDER BY seq LIMIT 1)
+                    UNION ALL
+                    (SELECT seq,ts FROM stg_event
+                     WHERE project_id=:pid AND capture_id=:cap ORDER BY seq LIMIT 1)
+                  ) candidates ORDER BY seq LIMIT 1
+                )
+                SELECT o.seq AS origin_seq,o.ts AS origin_ts,
+                       (SELECT t_rel_s FROM nmf_event_light
+                        WHERE project_id=:pid AND capture_id=:cap
+                        ORDER BY seq DESC LIMIT 1) AS duration_s,
+                       c.decoder_version,c.schema_version,c.decode_level,
+                       f.start_at,f.utc_offset_min
+                FROM nmf_capture c
+                JOIN nmf_file f ON f.id=c.nmf_file_id
+                CROSS JOIN origin o
+                WHERE c.project_id=:pid AND c.capture_id=:cap
             """).first()
-            self.duration_s=float(duration['duration_s'] or 0)
+            if not meta:raise HTTPException(404,'capture_not_found_in_project')
+            self.times={};self.origin_seq=meta['origin_seq'];self.origin_ts=meta['origin_ts']
+            self.duration_s=float(meta['duration_s'] or 0)
+            self.state={k:meta[k] for k in ('decoder_version','schema_version','decode_level')}
+            self.file_meta={k:meta[k] for k in ('start_at','utc_offset_min')}
         else:
             self.times,self.origin_seq,self.origin_ts=clock(db,pid,cap)
             self.duration_s=max(self.times.values())
-        self.state=self.query('SELECT decoder_version,schema_version,decode_level FROM nmf_capture WHERE project_id=:pid AND capture_id=:cap').first()
-        if not self.state:raise HTTPException(409,'capture_requires_decode')
-        # 0.75.0 — meta temporelle du fichier source joint via nmf_capture.
-        # Lecture read-only ; jamais inventé (NULL si absent).
-        self.file_meta=self.query('SELECT f.start_at AS start_at, f.utc_offset_min AS utc_offset_min FROM nmf_capture c JOIN nmf_file f ON f.id=c.nmf_file_id WHERE c.project_id=:pid AND c.capture_id=:cap').first() or {'start_at':None,'utc_offset_min':None}
-        self.context={} if self.lean_table else {r['seq']:dict(r) for r in self.query(context_sql())}
+            self.state=self.query('SELECT decoder_version,schema_version,decode_level FROM nmf_capture WHERE project_id=:pid AND capture_id=:cap').first()
+            if not self.state:raise HTTPException(409,'capture_requires_decode')
+            # 0.75.0 — meta temporelle du fichier source joint via nmf_capture.
+            # Lecture read-only ; jamais inventé (NULL si absent).
+            self.file_meta=self.query('SELECT f.start_at AS start_at, f.utc_offset_min AS utc_offset_min FROM nmf_capture c JOIN nmf_file f ON f.id=c.nmf_file_id WHERE c.project_id=:pid AND c.capture_id=:cap').first() or {'start_at':None,'utc_offset_min':None}
+        self.context={} if (self.lean_table or self.lean_series) else {r['seq']:dict(r) for r in self.query(context_sql())}
         self.allowed=None if condition=='TRUE' else {r['seq'] for r in self.query('SELECT seq FROM ('+context_sql()+') c WHERE '+condition)}
-        self.pairs=[] if self.lean_table else list(self.query('SELECT * FROM nmf_event_pair WHERE project_id=:pid AND capture_id=:cap ORDER BY seq_start'))
+        self.pairs=[] if (self.lean_table or self.lean_series) else list(self.query('SELECT * FROM nmf_event_pair WHERE project_id=:pid AND capture_id=:cap ORDER BY seq_start'))
 
     def query(self,sql,extra=None):
         params={**self.params,**(extra or {})};self.sqls.append(dict(sql=sql,params=params))
@@ -306,6 +324,30 @@ class Dataset:
 
     def admissible(self,seq):
         return (self.lo is None or seq>=self.lo) and (self.hi is None or seq<=self.hi) and (self.allowed is None or seq in self.allowed)
+
+    def _ensure_times(self, seqs):
+        """Load only requested capture timestamps for the lean series path.
+
+        ``nmf_event_light.t_rel_s`` is produced in canonical seq order at
+        import.  It avoids rebuilding the complete staging clock for every
+        graph request.  Deep-only fallback remains bounded to the requested
+        seq values and never joins captures by timestamp.
+        """
+        missing=sorted({int(seq) for seq in seqs if seq not in self.times})
+        if not missing:return
+        rows=self.query("""
+            SELECT seq,MIN(t_rel_s) AS t_rel_s
+            FROM nmf_event_light
+            WHERE project_id=:pid AND capture_id=:cap AND seq=ANY(:wanted_seqs)
+            GROUP BY seq ORDER BY seq
+        """,{'wanted_seqs':missing})
+        for row in rows:
+            if row['t_rel_s'] is not None:self.times[row['seq']]=float(row['t_rel_s'])
+        remaining=[seq for seq in missing if seq not in self.times]
+        if remaining:
+            from app.routes.metrics import clock_subset
+            subset,_,_=clock_subset(self.db,self.pid,self.cap,remaining)
+            self.times.update(subset)
 
     def _load_semantic_cell(self, m, *, page=None, page_size=None,
                             cell_pci=None, cell_arfcn=None):
@@ -336,21 +378,17 @@ class Dataset:
             identity_filters += " AND r.cell_ch=:cell_arfcn"
         grouped = f"""
             WITH ranked AS (
-              SELECT g.seq,g.cell_pci,g.cell_ch,l.t_rel_s,
+              SELECT g.seq,g.cell_pci,g.cell_ch,
                      row_number() OVER (
                        PARTITION BY g.project_id,g.capture_id,g.seq,g.cell_type
                        ORDER BY g.identity
                      )-1 AS occurrence
               FROM nmf_event_light_group g
-              JOIN nmf_event_light l
-                ON l.project_id=g.project_id AND l.capture_id=g.capture_id
-               AND l.seq=g.seq AND l.event_code=:event
               WHERE g.project_id=:pid AND g.capture_id=:cap
                 AND g.group_name='cells' AND g.cell_type=:raw
-                AND l.system=:system
             ), physical AS (
               SELECT s.seq_first AS seq,MAX(s.seq_last) AS seq_last,s.second,
-                     MAX(r.t_rel_s) AS exact_t_rel_s,
+                     NULL::double precision AS exact_t_rel_s,
                      r.cell_pci,r.cell_ch AS cell_arfcn,
                      CASE WHEN SUM(s.weight) FILTER (WHERE s.weight>0)>0
                        THEN SUM(s.value*s.weight) FILTER (WHERE s.weight>0)
@@ -398,6 +436,8 @@ class Dataset:
         if m['base_code'].startswith('cap_'):
             from app.kpi.metrics_v3_capture import load_capture
             raw_rows = load_capture(self, m)
+            if self.lean_series:
+                self._ensure_times(r['seq'] for r in raw_rows)
             out=[]
             for r in raw_rows:
                 seq=r['seq']
@@ -514,6 +554,8 @@ class Dataset:
         else:
             sql='SELECT seq,value FROM ('+m['sql']+') v WHERE capture_id=:cap ORDER BY seq'
             rows=[dict(r) for r in self.query(sql)]
+        if self.lean_series:
+            self._ensure_times(r['seq'] for r in rows)
         out=[]
         for r in rows:
             seq=r['seq']
@@ -558,10 +600,11 @@ class Dataset:
         return result
 
     def response(self,selections,limit=5000,group_by='operator',x=None,include_map=False,
-                 page=1,page_size=1000,table_only=False,cell_pci=None,cell_arfcn=None):
+                 page=1,page_size=1000,table_only=False,cell_pci=None,cell_arfcn=None,
+                 series_only=False):
         from app.routes.metrics import sample
         from app.routes.tasks import evidence
-        defs=definitions()
+        defs=definitions() if x else None
         sql_paginated = (
             table_only and len(selections)==1
             and bool(selections[0].get('cell_type_filter'))
@@ -577,6 +620,22 @@ class Dataset:
                 cell_arfcn=cell_arfcn,
             ),
         ) for m in selections]
+        series_table_keys=None
+        if series_only:
+            candidate_keys=set()
+            for metric,metric_rows in loaded:
+                physical=bool(metric.get('cell_type_filter')) and metric.get('event')=='CELLMEAS'
+                for item in metric_rows:
+                    if item['second'] is None:continue
+                    candidate_keys.add(
+                        (item['seq'],item.get('cell_arfcn'),item.get('cell_pci'))
+                        if physical else (item['second'],None,None)
+                    )
+            def _series_key(k):
+                return (k[0],
+                        (k[1] is None,0 if k[1] is None else k[1]),
+                        (k[2] is None,0 if k[2] is None else k[2]))
+            series_table_keys=set(sorted(candidate_keys,key=_series_key)[:page_size])
         table={};series=[];hist=[];map_points=[];gaps=[]
         for m,rows in loaded:
             points=[];buckets=defaultdict(list)
@@ -590,7 +649,7 @@ class Dataset:
             if not table_only:
                 out,sampling=sample(points,limit,m['kind']) if m['kind']!='event' else (points,dict(method='all_occurrences',factor=1,seq_bucket_width=None))
                 if m['kind']=='event' and len(points)>limit:raise HTTPException(422,dict(reason='event_occurrences_exceed_max_points',required=len(points)))
-                series.append(dict(code=m['selection'],label=m['label'],unit=m['unit'],kind=m['kind'],cell=m['cell'],source_table='nmf_cell_second' if m['cell_scoped'] else m['source_table'],source_column=m['source_column'],n_total=len(points),n_returned=len(out),sampling=sampling,states=list(dict.fromkeys(str(p['value']) for p in points)) if m['kind']=='categorical' else [],segments=[],points=out))
+                series.append(dict(code=m['selection'],label=m['label'] or m['selection'],unit=m['unit'] or '',kind=m['kind'],cell=m['cell'],source_table='nmf_cell_second' if m['cell_scoped'] else m['source_table'],source_column=m['source_column'],n_total=len(points),n_returned=len(out),sampling=sampling,states=list(dict.fromkeys(str(p['value']) for p in points)) if m['kind']=='categorical' else [],segments=[],points=out))
             for second,rs in buckets.items():
                 # 0.99.2 (hotfix) : clé de bucket homogène en 3-tuple pour que
                 # `sorted(table)` fonctionne même quand plusieurs metrics
@@ -608,6 +667,8 @@ class Dataset:
                 for physical_key, physical_rows in groups.items():
                     rs = physical_rows
                     table_key = physical_key
+                    if series_table_keys is not None and table_key not in series_table_keys:
+                        continue
                     row=table.setdefault(table_key,dict(second=second,t_rel_s=self.times.get(rs[0]['seq'],float(second)),seq_first=rs[0]['seq'],seq_last=rs[-1]['seq'],values={},counts={}))
                     row['seq_first']=min(row['seq_first'],rs[0]['seq']);row['seq_last']=max(row['seq_last'],rs[-1]['seq'])
                     value=1 if m['kind']=='event' else aggregate_values(rs,'last' if m.get('attr') or m['cell_scoped'] else m.get('agg','last'))
@@ -621,7 +682,7 @@ class Dataset:
                         row['cell_system']=m['cell_display']['system']
                         row['cell_pci']=next((r.get('cell_pci') for r in reversed(rs) if r.get('cell_pci') is not None),None)
                         row['cell_arfcn']=next((r.get('cell_arfcn') for r in reversed(rs) if r.get('cell_arfcn') is not None),None)
-            if not table_only:
+            if not table_only and not series_only:
                 groups=defaultdict(list)
                 for r in rows:
                     if r['value'] is None:continue
@@ -629,13 +690,13 @@ class Dataset:
                 for (op,band),rs in groups.items():
                     vals=[r['value'] for r in rs];numeric=m['kind']=='numeric'
                     hist.append(dict(code=m['selection'],label=m['label'],operator=op,band=band,cell=m['cell'],n=sum(r.get('count',1) for r in rs),p10=percentile(vals,.1) if numeric else None,p50=percentile(vals,.5) if numeric else None,p90=percentile(vals,.9) if numeric else None,distribution=[dict(value=v,n=n) for v,n in Counter(vals).items()] if not numeric else []))
-        durations=self.connected_seconds(group_by) if not table_only and any(m['kind']=='event' for m in selections) else {}
+        durations=self.connected_seconds(group_by) if not table_only and not series_only and any(m['kind']=='event' for m in selections) else {}
         connected=sum(durations.values()) if durations else None
         for h in hist:
             duration=durations.get((h['operator'],h['band']))
             h['per_connected_hour']=h['n']*3600/duration if duration and next(m for m in selections if m['selection']==h['code'])['kind']=='event' else None
         scatter=[]
-        if x and not table_only:
+        if x and not table_only and not series_only:
             xm=parse_selection(x,defs);xr=self.load(xm)
             for m,yr in loaded:
                 if m['cell']!=xm['cell'] or m['cell_scoped']!=xm['cell_scoped']:
@@ -651,9 +712,43 @@ class Dataset:
         # majoritairement des positions ré-utilisées. Désormais seuls les
         # events GPS vrais peuplent `gps_exact` ; `_pair_previous_or_same`
         # produit explicitement `previous_fix` + `delta_seq`.
-        gps_fixes=sorted(({'seq':r['seq'],'lat':r['lat'],'lon':r['lon']} for r in self.query("SELECT seq,lat,lon FROM stg_event_raw WHERE project_id=:pid AND capture_id=:cap AND event_code='GPS' AND lat IS NOT NULL AND lon IS NOT NULL AND NOT(lat=0 AND lon=0) ORDER BY seq")), key=lambda f: f['seq'])
+        gps_hi=None
+        if series_only and table:
+            def _early_sort_key(k):
+                return (k[0],
+                        (k[1] is None, 0 if k[1] is None else k[1]),
+                        (k[2] is None, 0 if k[2] is None else k[2]))
+            csv_keys=sorted(table,key=_early_sort_key)[:page_size]
+            gps_hi=max(table[k]['seq_first'] for k in csv_keys)
+        gps_fixes=[]
+        if self.lean_series and table:
+            gps_sql="""
+                SELECT r.seq,r.lat,r.lon,MIN(l.t_rel_s) AS t_rel_s
+                FROM stg_event_raw r
+                LEFT JOIN nmf_event_light l
+                  ON l.project_id=r.project_id AND l.capture_id=r.capture_id
+                 AND l.seq=r.seq AND l.event_code='GPS'
+                WHERE r.project_id=:pid AND r.capture_id=:cap
+                  AND r.event_code='GPS' AND r.lat IS NOT NULL AND r.lon IS NOT NULL
+                  AND NOT(r.lat=0 AND r.lon=0) AND r.seq<=:gps_hi
+                GROUP BY r.seq,r.lat,r.lon ORDER BY r.seq
+            """
+            for raw_fix in self.query(gps_sql,{'gps_hi':gps_hi}):
+                fix=dict(raw_fix)
+                t_rel_s=fix.pop('t_rel_s')
+                if t_rel_s is not None:self.times[fix['seq']]=float(t_rel_s)
+                gps_fixes.append(fix)
+        elif not self.lean_series:
+            gps_fixes=[dict(r) for r in self.query("""
+                SELECT seq,lat,lon FROM stg_event_raw
+                WHERE project_id=:pid AND capture_id=:cap AND event_code='GPS'
+                  AND lat IS NOT NULL AND lon IS NOT NULL AND NOT(lat=0 AND lon=0)
+                ORDER BY seq
+            """)]
+        if self.lean_series:
+            self._ensure_times(f['seq'] for f in gps_fixes)
         gps_exact={f['seq']:(f['lat'],f['lon']) for f in gps_fixes}
-        if include_map:
+        if include_map and not series_only:
             # Serving-cell proof for map links. CHI #6 is the documented LTE
             # Cell ID. Its state is carried forward only inside this capture
             # in canonical seq order, then joined by exact ECI to cell_ref.
@@ -716,7 +811,7 @@ class Dataset:
                     serving_cell_lng=ref['lng'] if ref else None,
                     serving_cell_source='chi_previous_seq_cell_ref_exact' if ref else None,
                 ))
-        pair_rows=[dict(p) for p in self.pairs if self.admissible(p['seq_start']) and (p['seq_end'] is None or self.admissible(p['seq_end']))]
+        pair_rows=[] if series_only else [dict(p) for p in self.pairs if self.admissible(p['seq_start']) and (p['seq_end'] is None or self.admissible(p['seq_end']))]
         pair_rates=[]
         for kind in sorted({p['type'] for p in pair_rows}):
             ps=[p for p in pair_rows if p['type']==kind];known=[p for p in ps if p['outcome'] in ('ok','fail')]
@@ -730,6 +825,11 @@ class Dataset:
                     (k[1] is None, 0 if k[1] is None else k[1]),
                     (k[2] is None, 0 if k[2] is None else k[2]))
         ordered=[table[k] for k in sorted(table, key=_table_sort_key)]
+        total_rows=(int(selections[0].get('_total_rows', len(ordered))) if sql_paginated else len(ordered))
+        total_pages=max(1,math.ceil(total_rows/page_size))
+        if page>total_pages:raise HTTPException(422,dict(reason='page_out_of_range',total_pages=total_pages))
+        page_rows=ordered if sql_paginated else ordered[(page-1)*page_size:page*page_size]
+        rows_to_enrich=page_rows if series_only else ordered
         from decimal import Decimal
         # 0.75.0 — time_local (= ancien time_label), time_utc (local - offset)
         # et join GPS previous-or-same seq (sur seq_first).
@@ -738,7 +838,7 @@ class Dataset:
         capture_date=date_from_start_at_py(nmf_start_at)
         utc_offset_min=self.file_meta['utc_offset_min']
         # t_rel_s de chaque row (sur capture_id, seq_first) : identique à self.times[seq_first]
-        for row in ordered:
+        for row in rows_to_enrich:
             actual=origin+Decimal(str(self.times[row['seq_first']]))
             hh=int(actual//3600);mm=int((actual%3600)//60);ss=actual%60
             row['time_label']=f'{hh:02d}:{mm:02d}:{ss:06.3f}'
@@ -758,7 +858,7 @@ class Dataset:
         # (capture_id, seq ≤). task_name = action, task_index = cmd_index
         # (si présent dans CMDREQ), null hors tâche. Jamais inventé.
         import bisect as _bs
-        task_rows=list(self.db.execute(text(
+        task_rows=[] if series_only else list(self.db.execute(text(
             "SELECT seq, event_code, raw_fields->>'service_action' AS action, "
             "raw_fields->>'cmd_index' AS cmd_index FROM stg_event_raw "
             "WHERE project_id=:pid AND capture_id=:cap "
@@ -782,14 +882,14 @@ class Dataset:
             end=t['seq_comp'] if t['seq_comp'] is not None else 10**12
             if seq_last < end: return (t['action'], t['cmd_index'])
             return (None, None)
-        for row in ordered:
+        for row in rows_to_enrich:
             tn, ti = _task_at(row['seq_last'])
             row['task_name']=tn; row['task_index']=ti
         # GPS enrichment par ligne — previous-or-same seq, zero fabrication.
         gps_source=self.state['decode_level']
         no_gps_reason='no_gps_in_capture' if not gps_fixes else None
         # yr pour le join = ordered rows avec clé seq=seq_first
-        yr=[{'seq':row['seq_first'],'_row':row} for row in ordered]
+        yr=[{'seq':row['seq_first'],'_row':row} for row in rows_to_enrich]
         for y, prev in _pair_previous_or_same(gps_fixes, yr):
             row=y['_row']
             if prev is None:
@@ -810,10 +910,6 @@ class Dataset:
                 cur_t=self.times[row['seq_first']]
                 row['gps_age_s']=float(cur_t-prev_t) if prev_t is not None else None
                 row['reason']=None
-        total_rows=(int(selections[0].get('_total_rows', len(ordered))) if sql_paginated else len(ordered))
-        total_pages=max(1,math.ceil(total_rows/page_size))
-        if page>total_pages:raise HTTPException(422,dict(reason='page_out_of_range',total_pages=total_pages))
-        page_rows=ordered if sql_paginated else ordered[(page-1)*page_size:page*page_size]
         # CSV = exactement la page renvoyée par la table UI.
         output=io.StringIO();writer=csv.writer(output);keys=[m['selection'] for m in selections]
         writer.writerow(['result_id','capture_id','second','seq_first','seq_last','time_local','time_utc','lat','lon','gps_source','gps_age_s','reason',*keys])
@@ -821,7 +917,7 @@ class Dataset:
         columns=[]
         for m in selections:
             display=m.get('cell_display') or {}
-            columns.append(dict(code=m['selection'],label=m['label'],unit=m['unit'],kind=m['kind'],cell=m['cell'],
+            columns.append(dict(code=m['selection'],label=m['label'] or m['selection'],unit=m['unit'] or '',kind=m['kind'],cell=m['cell'],
                 cell_label=display.get('label'),cell_system=display.get('system'),
                 cell_internal_index=None))
         return dict(**dict(self.state),project_id=self.pid,capture_id=self.cap,result_id=rid,origin_seq=self.origin_seq,origin_ts=self.origin_ts,nmf_start_at=nmf_start_at,capture_date=capture_date,utc_offset_min=utc_offset_min,duration_s=self.duration_s,aggregation='cell: schema-weighted capture-second; other numeric: schema aggregate; event: presence + count / last attribute',time_policy='capture-local source clock in seq order; no interpolation',columns=columns,series=series,rows=page_rows,page=page,page_size=page_size,total_rows=total_rows,total_pages=total_pages,histogram=hist,scatter=scatter,map_points=map_points,connected_seconds=connected,connected_reason=None if connected else 'No proven complete eligible RRC → RRD interval',pair_rates=pair_rates,gaps=sorted(set(gaps)),csv=output.getvalue(),pairing='previous-or-same seq, same capture and same cell; no interpolation')
