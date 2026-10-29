@@ -337,8 +337,13 @@ def details(db,pid,cap,seq):
 from .links import EVENT_RULES, EVENT_LANE, PROCEDURE_LANE, LANES, LinkContext
 
 
-def events(db, pid, cap, lanes=None, failures_only=False):
-    rows, procedures, meta, _times = population(db, pid, cap, persist=False)
+def project_legacy_events(db, pid, cap, rows, procedures, meta, times,
+                          lanes=None, failures_only=False):
+    """Pure-ish legacy projection over an already loaded capture population.
+
+    Link rules may perform capture-scoped lookups through ``db``.  Loading the
+    expensive population is deliberately left to the import materializer.
+    """
     rows_by_seq = {r['seq']: r for r in rows}
     seqs = sorted(rows_by_seq)
     ctx = LinkContext(project_id=pid, capture_id=cap, rows_by_seq=rows_by_seq, seqs=seqs, db=db)
@@ -414,6 +419,14 @@ def events(db, pid, cap, lanes=None, failures_only=False):
         ))
     out.sort(key=lambda e: (e['seq'], e['type']))
     return out, meta
+
+
+def events(db, pid, cap, lanes=None, failures_only=False):
+    rows, procedures, meta, times = population(db, pid, cap, persist=False)
+    return project_legacy_events(
+        db, pid, cap, rows, procedures, meta, times,
+        lanes=lanes, failures_only=failures_only,
+    )
 
 
 def _times_for_seq(rows_by_seq, seq):

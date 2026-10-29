@@ -103,7 +103,13 @@ def _run_populate_chain(db: "Session", project: "Project") -> dict:
     report["metrics"] = populate_metric_samples(db, project.id)
     db.commit()
 
-    # Étape F — snapshot n_points + last_populate_at sur projects.
+    # Étape F — projection Signaling immuable par génération. Les écritures
+    # sont commit-tées par tranches et l'activation n'arrive qu'à la fin.
+    from app.signaling.materialized import materialize_project
+    logger.info("[populate_chain] F signaling project=%s", project.id)
+    report["signaling"] = materialize_project(db, project.id)
+
+    # Étape G — snapshot n_points + last_populate_at sur projects.
     n_points_row = db.execute(
         text("SELECT COUNT(*) FROM measurement_points WHERE project_id = :pid"),
         {"pid": project.id},

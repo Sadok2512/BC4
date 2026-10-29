@@ -30,6 +30,9 @@ _CAPTURE_ID = re.compile(r"^[a-f0-9]{12,64}$")
 # Tables possédant directement les deux colonnes de scope. L'ordre est celui
 # des dépendances : enfants d'abord, staging et snapshot en dernier.
 CAPTURE_TABLES = (
+    "signaling_materialized_event",
+    "signaling_materialized_point",
+    "signaling_materialized_capture",
     "task_run",
     "superstream_member",
     "signaling_procedure",

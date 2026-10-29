@@ -1,3 +1,32 @@
+## 0.99.0 (minor) — BC4 2026-10-29 — Signaling matérialisé à l'import (Agent BC1, numérotation BC3)
+
+Merge `bc1/signaling-materialized` (`1a3b71f`). Résout l'écart cold
+first-window Signaling 21 s + `/signaling/points` 13 s du rapport
+audit perf 2026-10-29. Numéro `0.99.0` (minor) attribué par BC3 :
+migration 0070 crée 3 nouvelles tables (`signaling_materialized_capture`,
+`signaling_materialized_event`, `signaling_materialized_point`) +
+4 index + nouvelle CLI `backfill_signaling_materialized`.
+
+- Les événements `legacy`/`rf`, leurs résumés et les points GPS
+  Signaling sont **calculés à la finalisation** (`populate_chain`)
+  puis activés par génération atomique.
+- `/signaling/events`, `/signaling/events/summary` et
+  `/signaling/points` lisent **uniquement** les tables matérialisées,
+  dans l'ordre `(project_id, capture_id, seq)` et avec fenêtrage SQL
+  natif (plus de populate complet au premier call).
+- Migration **0070** `signaling_materialized` : 3 tables (FK CASCADE
+  vers `nmf_capture`) + 4 index posés en `CONCURRENTLY` via
+  `op.get_context().autocommit_block()` :
+  `ix_signaling_event_window`, `ix_signaling_event_time_window`,
+  `ix_signaling_point_window`, `ix_signaling_point_time_window`.
+- Nouvelle CLI `python -m app.scripts.backfill_signaling_materialized
+  <PROJECT_ID> [--capture-id CAP] --reason "…"`. Idempotente, ne
+  re-décode jamais, journalise avant/après dans
+  `audit/signaling_materialized/<ts>_<project_id>.json`.
+- Garde **G50** `signaling_materialized` (bench jetable).
+- `app/services/capture_delete.py` étendu pour aussi purger les 3
+  nouvelles tables lors d'un `delete_capture`.
+
 ## 0.98.1 (patch) — BC4 2026-10-29 — API capture et dictionnaire lean (Agent BC1, numérotation BC3)
 
 Merge `bc1/api-lean` (`2b0a31d`). Résout les écarts /captures/events
