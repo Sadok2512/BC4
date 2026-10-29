@@ -51,6 +51,11 @@ Type SemVer : **minor**. Numéro proposé ; BC3 attribue le numéro final au mer
   et exigent ses trois captures.
 - La bascule de release reste exclusivement effectuée par
   `scripts/catalog/bootstrap_catalog_release.py`.
+- Compatibilité runtime du correctif décodeur 1.8.2 : le catalogue inverse
+  le `cell_index` injectif pour retrouver `(system, cell_type brut,
+  occurrence)` et suffixe les cellules répétées (`#2`, `#3`, …). Les
+  captures 1.8.1 restent libellées avec leur ancienne normalisation LTE ;
+  l'artefact JSON 2.56.0 et son SHA ne changent pas.
 
 ## 2.55.0 — 2026-10-28 — Spec-fidèle + hotfix PSCell stale_false_grey (Agent BC4)
 

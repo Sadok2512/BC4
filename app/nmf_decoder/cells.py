@@ -8,47 +8,68 @@ configured-carrier state or an interpolation across missing seconds.
 from collections import defaultdict
 from .schema import schemas,schema_for,fields,column
 
-# NFF 2.50 CELLMEAS LTE: 0=serving, 10..40=SCell 1..31.
-CELL_MAP_LTE={0:0,**{raw:raw-9 for raw in range(10,41)}}
-# NFF 2.50 serving-cell enum used by NR CELLMEAS and cell-scoped events.
-# Raw values are deliberately retained as deterministic cell_index values.
-CELL_TYPES_NR=frozenset(range(32))|{98}|frozenset(range(100,132))|{198,199,1000,1001,1002}
+# The primary key of nmf_cell_second has no system or source-set column.  A
+# cell_index must therefore encode both, otherwise LTE/NR raw 0 collide and
+# repeated Listed/Detected neighbours silently collapse.  Keep the new range
+# above every 1.8.1 index (0..1002), so mixed historical captures stay
+# unambiguous in the catalogue.
+CELL_INDEX_BASE=1003
+CELL_INDEX_STRIDE=81
+# Union of LTE CELLMEAS (0,1,2,10..40) and serving-cell (0..31).
+CELL_TYPES_LTE=tuple(range(41))
+CELLMEAS_TYPES_LTE=frozenset({0,1,2}|set(range(10,41)))
+CELL_TYPES_NR=(*range(32),98,*range(100,132),198,199,1000,1001,1002)
+CELL_ENUM=((7,raw) for raw in CELL_TYPES_LTE)
+CELL_ENUM=tuple(CELL_ENUM)+tuple((9,raw) for raw in CELL_TYPES_NR)
+CELL_ENUM_ORDINAL={key:index for index,key in enumerate(CELL_ENUM)}
 
 
-def _cell_index_for(cell_type,system):
-    if system==7:return CELL_MAP_LTE.get(cell_type)
-    if system==9 and isinstance(cell_type,int) and cell_type in CELL_TYPES_NR:return cell_type
-    return None
+def _cell_index_for(cell_type,system,occurrence=0):
+    """Injective 1.8.2 projection of (system, raw type, occurrence)."""
+    ordinal=CELL_ENUM_ORDINAL.get((system,cell_type))
+    if ordinal is None:return None
+    if not isinstance(occurrence,int) or not 0<=occurrence<CELL_INDEX_STRIDE:
+        raise ValueError('cell_occurrence_out_of_range')
+    return CELL_INDEX_BASE+ordinal*CELL_INDEX_STRIDE+occurrence
+
+
+def cell_source_for_index(cell_index):
+    """Inverse of the 1.8.2 projection, or None for legacy indices."""
+    encoded=cell_index-CELL_INDEX_BASE
+    if encoded<0:return None
+    ordinal,occurrence=divmod(encoded,CELL_INDEX_STRIDE)
+    if ordinal>=len(CELL_ENUM):return None
+    system,raw=CELL_ENUM[ordinal]
+    return system,raw,occurrence
 
 
 def cell_rows(light):
     grouped=defaultdict(list)
     for b in light.buckets.values():
         # CELLMEAS carries its discriminator inside every repeated cell set.
-        # The documented serving code is 0.  Codes 10..13 are bound to
-        # SCell1..4 by the MIMOMEAS/content proof; neighbour/type-1 and the
-        # observed 14/15 codes deliberately remain outside this projection.
+        # Its LTE enum is 0=Serving, 1=Listed, 2=Detected, 10..40=SCell;
+        # NR uses the complete serving/SCG/neighbour enum declared above.
         if b['event_code']=='CELLMEAS' and b['second']>=0 and b.get('system') in {7,9}:
-            observed=defaultdict(list)
+            by_type=defaultdict(list)
             for group in b.get('groupstats',{}).values():
                 if group['group_name']!='cells':continue
                 stats=group['stats']
                 discriminator=stats.get('cell_type')
                 cell_type=discriminator.value() if discriminator else None
-                cell=_cell_index_for(cell_type,b.get('system'))
-                if cell is None:continue
-                for code,stat in stats.items():
-                    if code=='cell_type' or stat.value() is None:continue
-                    observed[(cell,code)].append((group,stat))
-            for (cell,code),items in observed.items():
-                if len(items)!=1:
-                    # More than one physical cell cannot be collapsed into a
-                    # single named serving-cell series without another key.
-                    continue
-                group,stat=items[0]
-                yield dict(second=b['second'],event_code='CELLMEAS',metric_code=code,
-                    cell_index=cell,seq_first=b['seq'],seq_last=b['seq_last'],
-                    value=stat.value(),weight=stat.weight,reason=None)
+                allowed=(CELLMEAS_TYPES_LTE if b.get('system')==7 else CELL_TYPES_NR)
+                if cell_type not in allowed:continue
+                by_type[cell_type].append(group)
+            for cell_type,groups in sorted(by_type.items()):
+                # identity includes source set_index and radio identity fields;
+                # sorting makes repeated neighbours deterministic.
+                for occurrence,group in enumerate(sorted(groups,key=lambda g:g['identity'])):
+                    cell=_cell_index_for(cell_type,b.get('system'),occurrence)
+                    stats=group['stats']
+                    for code,stat in stats.items():
+                        if code=='cell_type' or stat.value() is None:continue
+                        yield dict(second=b['second'],event_code='CELLMEAS',metric_code=code,
+                            cell_index=cell,seq_first=b['seq'],seq_last=b['seq_last'],
+                            value=stat.value(),weight=stat.weight,reason=None)
         if b['event_code']=='CELLMEAS' and b['second']>=0 and b.get('system')==7:
             for code,value in b.get('neighbors',{}).items():
                 yield dict(second=b['second'],event_code='CELLMEAS',metric_code=code,cell_index=-1,
@@ -60,17 +81,10 @@ def cell_rows(light):
                  [b['stats'][column(f['code'])].value() for f in schema.get('header',[])
                   if f['code'].endswith('.cell_type') and column(f['code']) in b['stats']])
         if len(indices)!=1 or indices[0] is None:continue
-        # LTE exposes PCell/SCell 1..31 as 0..31. NR retains the complete
-        # documented NFF 2.50 enum as its deterministic cell_index.
         raw=int(indices[0])
-        if b.get('system')==7:
-            if raw not in range(32):continue
-            cell=raw
-        elif b.get('system')==9:
-            cell=_cell_index_for(raw,9)
-            if cell is None:continue
-        else:
-            continue
+        if b.get('system')==7 and raw not in range(32):continue
+        cell=_cell_index_for(raw,b.get('system'))
+        if cell is None:continue
         for code,stat in b['stats'].items():
             f=fields().get(code,{})
             if f.get('dimension') or code=='phrate_ph_ch_type' or code.endswith('_cell_type') or stat.value() is None:continue
@@ -109,8 +123,11 @@ def cell_rows(light):
     for second,items in sorted(rates.items()):
         total=sum(r['value'] for r,_,_ in items)
         active=[r['cell_index'] for r,_,_ in items if r['value']>0]
-        secondary=sum(r['value'] for r,_,_ in items if r['cell_index']>0)
-        values={'n_scell_active':sum(i>0 for i in active),'n_cc_active':len(active),
+        def is_secondary(index):
+            source=cell_source_for_index(index)
+            return source is not None and source[1]>0
+        secondary=sum(r['value'] for r,_,_ in items if is_secondary(r['cell_index']))
+        values={'n_scell_active':sum(is_secondary(i) for i in active),'n_cc_active':len(active),
                 'scell_throughput_share':secondary/total if total>0 else None}
         for code,value in values.items():
             yield dict(second=second,event_code='PHRATE',metric_code=code,cell_index=-1,

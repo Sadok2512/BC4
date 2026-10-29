@@ -1,7 +1,7 @@
 """TEST-only inputs exercise privacy, distinct clocks and unequal cell weights."""
 from app.nmf_decoder.decoder import decode
 from app.nmf_decoder.light import Light, dimensions
-from app.nmf_decoder.cells import cell_rows
+from app.nmf_decoder.cells import cell_rows, _cell_index_for
 from app.nmf_decoder.pairs import Pairs
 
 
@@ -90,8 +90,8 @@ def test_undecoded_nr_does_not_create_zero_neighbors_or_collide_with_lte():
     light.add(record('CELLMEAS,00:00:00.000,,9,0,0,9',2))
     rows=list(cell_rows(light))
     serving={(r['metric_code'],r['cell_index']):r['value'] for r in rows}
-    assert serving['cell_rsrp',0]==-71
-    assert serving['cell_rsrq',0]==-8
+    assert serving['cell_rsrp',_cell_index_for(0,7)]==-71
+    assert serving['cell_rsrq',_cell_index_for(0,7)]==-8
     assert len({(r['second'],r['event_code'],r['metric_code'],r['cell_index']) for r in rows})==len(rows)
     assert all(r['seq_first']==1 for r in rows)
     only_nr=Light();only_nr.add(record('CELLMEAS,00:00:00.000,,9,0,0,9'))
@@ -109,9 +109,14 @@ def test_txpc_content_proven_cell_discriminator_depends_on_format():
         decoded.t_rel_s=0
         light.add(decoded)
     projected={(row['metric_code'],row['cell_index']):row for row in cell_rows(light)}
-    assert projected['txpc_pucch_tx_power',0]['value']==-16
-    assert projected['txpc_pusch_tx_power',1]['value']==4
-    assert all(cell in {-1,0,1} for _,cell in projected)
+    assert projected['txpc_pucch_tx_power',_cell_index_for(0,7)]['value']==-16
+    assert projected['txpc_pusch_tx_power',_cell_index_for(1,7)]['value']==4
+    assert all(cell in {-1,_cell_index_for(0,7),_cell_index_for(1,7)} for _,cell in projected)
+
+
+def test_cell_index_is_injective_for_system_raw_type_and_repeated_neighbour():
+    assert len({_cell_index_for(0,7),_cell_index_for(0,9),
+                _cell_index_for(1000,9,0),_cell_index_for(1000,9,1)})==4
 
 
 def test_crel_variable_header_has_declared_system_and_preserves_long_cell_ids():
