@@ -1,15 +1,37 @@
-## 0.97.3 (patch, proposé) — BC1 2026-10-29 — Cellules physiques et latence table KPI
+## 0.97.3 (patch) — BC4 2026-10-29 — Cellules physiques + latence table KPI 7 s → 0,77 s (Agent BC1, numérotation BC3)
 
-- Les sélections CELLMEAS du catalogue ciblent un membre d'enum sémantique
-  (`lte-type-2`) et non une occurrence `cell_index` du stockage. Les anciens
-  sélecteurs numériques restent acceptés pour compatibilité.
-- La table regroupe les observations par `(seq, système, ARFCN, PCI)`, expose
-  le nombre d'observations conservées et filtre côté serveur par PCI/ARFCN.
-- La pagination et le total sont calculés dans la requête SQL. Le chemin
-  `table_only` ne charge plus toute l'horloge ni tout le contexte de capture.
-- Migration `0067_kpi_physical_cell_indexes` pour les recherches métrique ×
-  type cellule et groupes CELLMEAS.
-- Type SemVer proposé : **patch** (`0.97.3`) ; numérotation finale par BC3.
+Merge `bc1/kpi-table-latency` (`9df792b`). Patch. Numéro `0.97.3` et
+catalog `2.56.2` attribués par BC3. Voir `CHANGELOG_CATALOG.md` entrée
+`2.56.2`.
+
+- Voisines : 65 feuilles → 3 feuilles par type (NR/LTE), cellule
+  physique (système, ARFCN, PCI) exposée en colonne du tableau et
+  comme filtre. Fin de l'écart « identité des voisines par ordre
+  d'apparition au lieu de PCI/ARFCN » déclaré en 0.97.1.
+- Pagination SQL cursor (`seq_first >= :cursor`) dans la requête
+  `nmf_cell_second` au lieu du `ordered[page*size:(page+1)*size]`
+  Python sur dataset complet (`app/kpi/metrics_v3.py`, 232 lignes
+  modifiées). Latence /metrics/table RSRP@Serving sur parcours
+  (363 423 records) : **~7 s → 0,77 s** (mesure BC1 côté bench).
+- Migration **0067** `kpi_physical_cell_indexes` (révision
+  `0067_kpi_physical_cell_indexes`, down_revision
+  `bc1_decoder_1_8_1_cells`) :
+  - `ix_nmf_cell_second_metric_cell_seq` sur `(project_id, capture_id,
+    event_code, metric_code, cell_index, seq_first)` INCLUDE `(second,
+    seq_last, value, weight)` — couvre la requête `Dataset.load()` et
+    évite le Parallel Seq Scan de 553k rows/worker.
+  - `ix_nmf_light_group_cell_type_seq` sur `(project_id, capture_id,
+    group_name, cell_type, seq, identity)` INCLUDE `(cell_pci,
+    cell_ch)` — couvre la CTE identité CELLMEAS.
+  - Index créés **sans CONCURRENTLY** sur tables peuplées (1,66M +
+    1,61M rows pour Test_6). Pris sous DEPLOY_LOCK + fenêtre « aucun
+    import en cours » : AccessExclusive bref (~30 s par index), aucune
+    écriture bloquée en pratique.
+- Catalog **2.56.2** sha256
+  `f230c82442a0a2badfc2ee54bfca14dbaa95870a7547fcc90d0b6e76b7f3bb30`
+  (voisines consolidées, 165 108 lignes). Bascule par
+  `bootstrap_catalog_release.py --version 2.56.2`, pas de redeploy
+  nécessaire après bascule.
 
 ## 0.97.2 (patch) — BC4 2026-10-29 — Contrat table KPI lean (Agent BC1, numérotation BC3)
 
