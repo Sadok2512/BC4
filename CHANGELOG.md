@@ -2,15 +2,27 @@
 
 ### Incident
 
-- **Début** : 2026-10-29 **21:20Z** (déploiement 0.99.0 remarqué par
-  Codex67 sur navigateur). Origine réelle **2026-10-29 19:17Z** avec
-  l'introduction de GZipMiddleware en 0.97.4 — resté masqué 2 h parce
-  que nos mesures d'audit perf attaquaient `127.0.0.1:8000` en direct,
-  jamais `127.0.0.1:5174/api/...` avec `Accept-Encoding: gzip`.
-- **Fin** : 2026-10-29 **21:40Z** (déploiement 0.99.1).
-- **Symptôme** : navigateur affiche `net::ERR_CONTENT_DECODING_FAILED`
-  sur TOUTES les requêtes `/api/*` via le front :5174, HTTP 200 OK.
-- **Impact** : UI inutilisable pendant la fenêtre 21:20Z-21:40Z.
+- **Fenêtre d'exposition CODE** : 2026-10-29 **19:18:08Z** (build +
+  déploiement bc4-api:0.97.4, introduction `GZipMiddleware`,
+  `docker image inspect bc4-api:0.97.4 --format '{{.Created}}'`) →
+  2026-10-29 **21:36:33Z** (build bc4-api:0.99.1, retrait du
+  middleware) → **container live 21:36:54Z** → vérif OK 21:40Z. Durée
+  code = **2 h 22**.
+- **Fenêtre user-SIGNALÉE** : 2026-10-29 **21:20Z** → **21:40Z**
+  (20 min), déclenchée par un reload navigateur Codex67 juste après
+  le déploiement 0.99.0.
+- **Fenêtre user-réelle** : **non mesurable**. Containers bc4-api-1
+  recréés 5 fois entre 19:18Z et 21:36Z → `docker logs bc4-api-1`
+  commence à 21:37:22Z. `bc4-front-1` (nitro) ne journalise pas les
+  requêtes proxyées par défaut. Impossible d'affirmer si Codex67 a
+  effectivement reçu le mauvais body avant 21:20Z ou si son navigateur
+  servait depuis le cache / l'onglet n'était pas rechargé.
+- **Symptôme** : navigateur `net::ERR_CONTENT_DECODING_FAILED` sur
+  TOUTES les requêtes `/api/*` via le front :5174, HTTP 200 OK.
+- **Pourquoi masqué 2 h 22 malgré 5 déploiements intermédiaires** :
+  toutes mes mesures d'audit perf attaquaient `127.0.0.1:8000` en
+  direct ; aucune ne passait par `127.0.0.1:5174/api/...` avec
+  `Accept-Encoding`. Garde manquant — ajouté ci-dessous.
 - **Cause mesurée** : via `127.0.0.1:5174/api` le header dit
   `content-encoding: gzip`, `content-length: 936`, mais le body est
   en ASCII (`gunzip: not in gzip format`). Via `127.0.0.1:8000` même
