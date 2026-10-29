@@ -67,70 +67,62 @@ def _enum_name(event: str, system: int | None) -> str:
     return "lte_scell"
 
 
-def _cell_label(event: str, system: int | None, cell_index: int) -> str:
-    """Libellé NFF 2.50 du cell_index projeté, par (event, system)."""
-    source = cell_source_for_index(cell_index)
-    encoded_source = source is not None
-    occurrence = 0
-    if source is not None:
-        system, cell_index, occurrence = source
-    def with_occurrence(label: str) -> str:
-        return f"{label} #{occurrence + 1}" if occurrence else label
+def _cell_label_for_type(event: str, system: int | None, cell_type: int) -> str:
+    """Public NFF label for a semantic cell type, never a storage index."""
     if system == 9:
-        if cell_index == 0:
-            return with_occurrence("PCell")
-        if 1 <= cell_index <= 31:
-            return with_occurrence(f"SCell {cell_index}")
-        if 100 <= cell_index <= 131:
-            return with_occurrence(f"SCG SCell {cell_index - 100}")
-        if cell_index == 199:
-            return with_occurrence("SCG PSCell")
-        label = {
+        if cell_type == 0:
+            return "PCell"
+        if 1 <= cell_type <= 31:
+            return f"SCell {cell_type}"
+        if 100 <= cell_type <= 131:
+            return f"SCG SCell {cell_type - 100}"
+        if cell_type == 199:
+            return "SCG PSCell"
+        return {
             1000: "Listed NR neighbour",
             1001: "Detected NR neighbour",
             1002: "Scanner NR neighbour",
-        }.get(cell_index, f"cell_index={cell_index}")
-        return with_occurrence(label)
+        }.get(cell_type, f"NR cell type {cell_type}")
     if event == "CELLMEAS":
-        # Decoder 1.8.1 normalized LTE raw 10..40 to 1..31.  Keep those
-        # historical captures readable while 1.8.2 exposes raw 1/2 as the
-        # distinct Listed/Detected enum through its encoded index.
-        if not encoded_source:
-            return "Serving" if cell_index == 0 else f"SCell {cell_index}"
-        if cell_index == 0:
-            label = "Serving"
-        elif cell_index == 1:
-            label = "Listed LTE neighbour"
-        elif cell_index == 2:
-            label = "Detected LTE neighbour"
-        elif 10 <= cell_index <= 40:
-            label = f"SCell {cell_index - 9}"
-        else:
-            label = f"cell_index={cell_index}"
-        return with_occurrence(label)
+        if cell_type == 0:
+            return "Serving"
+        if cell_type == 1:
+            return "Listed LTE neighbour"
+        if cell_type == 2:
+            return "Detected LTE neighbour"
+        if 10 <= cell_type <= 40:
+            return f"SCell {cell_type - 9}"
+        return f"LTE cell type {cell_type}"
     if event == "MIMOMEAS":
-        if cell_index == 0:
-            return with_occurrence("Serving")
-        if 10 <= cell_index <= 40:
-            return with_occurrence(f"SCell {cell_index - 9}")
-    label = "PCell" if cell_index == 0 else f"SCell {cell_index}"
-    return with_occurrence(label)
+        if cell_type == 0:
+            return "Serving"
+        if 10 <= cell_type <= 40:
+            return f"SCell {cell_type - 9}"
+    return "PCell" if cell_type == 0 else f"SCell {cell_type}"
 
 
-def cell_display(event: str, cell_index: int) -> dict[str, Any]:
-    """Stable public display metadata for a projected cell.
+def cell_type_selector(system: int | None, cell_type: int) -> str:
+    """Stable API selector for an enum member; intentionally not an index."""
+    return f"{'nr' if system == 9 else 'lte'}-type-{cell_type}"
 
-    The numeric ``cell_index`` is a storage key only.  Its 1.8.2 inverse is
-    authoritative for the radio system and raw NFF enum value.
-    """
-    source = cell_source_for_index(cell_index)
-    system, raw, occurrence = source if source is not None else (None, cell_index, 0)
+
+def parse_cell_type_selector(value: str) -> tuple[int, int] | None:
+    prefix, marker, raw = value.partition("-type-")
+    if not marker or prefix not in {"lte", "nr"}:
+        return None
+    try:
+        cell_type = int(raw)
+    except ValueError:
+        return None
+    return (9 if prefix == "nr" else 7), cell_type
+
+
+def cell_type_display(event: str, system: int, raw: int) -> dict[str, Any]:
+    """Stable public metadata for one enum member, independent of occurrence."""
     return {
-        "label": _cell_label(event, system, cell_index),
+        "label": _cell_label_for_type(event, system, raw),
         "system": {7: "LTE", 9: "NR"}.get(system),
         "raw_cell_type": raw,
-        "occurrence": occurrence,
-        "internal_index": cell_index,
     }
 
 
@@ -277,7 +269,7 @@ def _cell_index_counts_per_project(
     comme stockage physique du mode Light sparse. La jointure ne dépend
     jamais de `ts`.
     """
-    out: dict[tuple[str, int | None, int, str], int] = {}
+    out: dict[tuple[str, int | None, int, str], int] = defaultdict(int)
     for event, columns in event_columns.items():
         safe = sorted(c for c in columns if c.replace("_", "").isalnum())
         if not safe:
@@ -305,9 +297,14 @@ def _cell_index_counts_per_project(
         """), {"pid": project_id, "event": event, "columns": safe}).mappings()
         for row in rows:
             system = int(row["system"]) if row["system"] is not None else None
-            out[(row["event_code"], system, int(row["cell_index"]),
-                 row["metric_code"])] = int(row["n"] or 0)
-    return out
+            index = int(row["cell_index"])
+            source = cell_source_for_index(index)
+            source_system, raw, _occurrence = source if source is not None else (system, index, 0)
+            # The enum member is public identity. Occurrence is only the
+            # storage discriminator needed by nmf_cell_second's primary key.
+            out[(row["event_code"], source_system, raw,
+                 row["metric_code"])] += int(row["n"] or 0)
+    return dict(out)
 
 
 def _event_col_total(
@@ -421,23 +418,18 @@ def build_catalog_v4(
         event_columns[ev].add(col)
     cell_index_counts = _cell_index_counts_per_project(db, project_id, event_columns)
 
-    def _n_per_cell(ev: str, ct: int, col: str) -> int:
+    def _n_per_cell(ev: str, system: int | None, ct: int, col: str) -> int:
         return sum(
-            nn for (event, _system, cell, metric), nn in cell_index_counts.items()
-            if event == ev and cell == ct and metric == col
+            nn for (event, observed_system, raw, metric), nn in cell_index_counts.items()
+            if event == ev and observed_system == system and raw == ct and metric == col
         )
 
-    def _systems_per_cell(ev: str, ct: int, col: str) -> list[int | None]:
-        return sorted(
-            (system for (event, system, cell, metric), nn in cell_index_counts.items()
-             if event == ev and cell == ct and metric == col and nn > 0),
-            key=lambda value: (value is None, value if value is not None else 0),
-        )
+    def _leaf_system(leaf: dict) -> int | None:
+        value = leaf.get("field_system")
+        return int(value) if value is not None else None
 
-    def _label_per_cell(ev: str, ct: int, col: str, fallback: str) -> str:
-        systems = _systems_per_cell(ev, ct, col)
-        labels = list(dict.fromkeys(_cell_label(ev, system, ct) for system in systems))
-        return " / ".join(labels) if labels else fallback
+    def _label_per_type(ev: str, system: int | None, ct: int, fallback: str) -> str:
+        return _cell_label_for_type(ev, system, ct) if system in {7, 9} else fallback
 
     def _per_cell_reason(ev: str, ct: int, col: str, cell_label: str | None) -> str:
         """Reason honnête quand n_per_cell=0 pour une col décodée. Pas de
@@ -492,7 +484,7 @@ def build_catalog_v4(
                 # 2.54.0 — Feuille cell_scoped : COUNT filtré par cell_type
                 # pour CET event dans CE projet. ct=100 agrège le bucket NR.
                 ev_lf = (lf.get("event") or "").lstrip("#")
-                n = _n_per_cell(ev_lf, int(ct_leaf), col) if has_col else 0
+                n = _n_per_cell(ev_lf, _leaf_system(lf), int(ct_leaf), col) if has_col else 0
             # 2.54.0 — Décision selectable par-projet, pas de bake corpus-wide.
             # Si le build a figé selectable=False (structural : non applicable
             # LTE-only/NR-only, ou champ FF 2.62 non documenté 2.50), on
@@ -504,7 +496,10 @@ def build_catalog_v4(
                 is_selectable = has_col and n > 0
         if not is_selectable:
             continue
-        cell_suffix = f"@{lf.get('cell_type')}" if lf.get("cell_type") is not None else ""
+        cell_suffix = (
+            f"@{cell_type_selector(_leaf_system(lf), int(lf['cell_type']))}"
+            if lf.get("cell_type") is not None else ""
+        )
         code = f"{col}{cell_suffix}"
         if code in seen_codes:
             continue
@@ -516,14 +511,16 @@ def build_catalog_v4(
         is_cell_metric = lf.get("cell_type") is not None
         if is_cell_metric:
             field_name = metric_label.split(" @ ", 1)[0]
-            cell_index = int(lf["cell_type"])
-            cell_label = _label_per_cell(
-                event, cell_index, col, lf.get("cell_label") or str(cell_index)
+            raw_cell_type = int(lf["cell_type"])
+            system = _leaf_system(lf)
+            cell_label = _label_per_type(
+                event, system, raw_cell_type, lf.get("cell_label") or str(raw_cell_type)
             )
             metric_label = f"{field_name} @ {cell_label}"
-            metric_cells = [cell_index]
+            selector = cell_type_selector(system, raw_cell_type)
+            metric_cells = [raw_cell_type]
             metric_cell_options = [{
-                "cell": str(cell_index), "label": cell_label,
+                "cell": selector, "label": cell_label,
                 "n_in_project": n, "available": True, "reason": None,
             }]
         cat_label = (
@@ -594,7 +591,7 @@ def build_catalog_v4(
                 # 2.54.0 — cell_scoped : COUNT par (event, cell_type,
                 # source_column), pas la col globale.
                 ev_lf = (node.get("event") or "").lstrip("#")
-                n_val = _n_per_cell(ev_lf, int(ct_node), col) if has_col else 0
+                n_val = _n_per_cell(ev_lf, _leaf_system(node), int(ct_node), col) if has_col else 0
         field_no = node.get("field_no")
         field_idx: int | None = None
         try:
@@ -620,7 +617,10 @@ def build_catalog_v4(
         # convention `event_slug@cell` du metric_id. Fallback metric_id
         # pour compat ascendante quand source_column vide.
         if selectable_flag:
-            cell_suffix = f"@{ct_node}" if ct_node is not None else ""
+            cell_suffix = (
+                f"@{cell_type_selector(_leaf_system(node), int(ct_node))}"
+                if ct_node is not None else ""
+            )
             if col:
                 selection = f"{col}{cell_suffix}"
             else:
@@ -657,8 +657,8 @@ def build_catalog_v4(
         if is_leaf and ct_node is not None:
             field_name = label_val.split(" @ ", 1)[0]
             ev_lf = (node.get("event") or "").lstrip("#")
-            cell_label = _label_per_cell(
-                ev_lf, int(ct_node), col or "", node.get("cell_label") or str(ct_node)
+            cell_label = _label_per_type(
+                ev_lf, _leaf_system(node), int(ct_node), node.get("cell_label") or str(ct_node)
             )
             label_val = f"{field_name} @ {cell_label}"
         nodes_out.append(
@@ -670,7 +670,7 @@ def build_catalog_v4(
                 note=node.get("description"),
                 source=None,
                 node_type=node.get("node_type"),
-                metric_id=metric_id,
+                metric_id=(selection if ct_node is not None and selection else metric_id),
                 selection=selection,
                 event=(node.get("event") or "").lstrip("#") if is_leaf else None,
                 field_idx=field_idx,
@@ -718,34 +718,30 @@ def build_catalog_v4(
         field_system = lf.get("field_system")
         human_field_by_col.setdefault((ev_lf, field_system, sc), field_name)
 
-    def _field_name_for(ev: str, ct: int, col: str) -> str:
-        source = cell_source_for_index(ct)
-        system = source[0] if source is not None else None
+    def _field_name_for(ev: str, system: int | None, col: str) -> str:
         return (human_field_by_col.get((ev, system, col))
                 or human_field_by_col.get((ev, None, col)) or col)
 
     baked_cells = {
-        ((lf.get("event") or "").lstrip("#"), int(lf["cell_type"]),
+        ((lf.get("event") or "").lstrip("#"), _leaf_system(lf), int(lf["cell_type"]),
          _column_for_leaf(lf))
         for lf in displayed_leaves if lf.get("cell_type") is not None
     }
-    observed_cells: dict[tuple[str, int, str], int] = defaultdict(int)
-    for (ev, _system, ct, col), nn in cell_index_counts.items():
-        observed_cells[(ev, ct, col)] += nn
     dynamic_entries = sorted(
-        (ev, ct, col, nn)
-        for (ev, ct, col), nn in observed_cells.items()
-        if nn > 0 and (ev, ct, col) not in baked_cells
+        (ev, system, ct, col, nn)
+        for (ev, system, ct, col), nn in cell_index_counts.items()
+        if nn > 0 and (ev, system, ct, col) not in baked_cells
     )
-    for ev, ct, col, nn in dynamic_entries:
+    for ev, system, ct, col, nn in dynamic_entries:
         ev_nid = event_node_by_code.get(ev)
         if not ev_nid:
             continue
-        field_name = _field_name_for(ev, ct, col)
-        label_from_enum = _label_per_cell(ev, ct, col, f"cell_index={ct}")
+        field_name = _field_name_for(ev, system, col)
+        label_from_enum = _label_per_type(ev, system, ct, f"cell type {ct}")
         label_full = f"{field_name} @ {label_from_enum}"
-        node_id = f"lf_observed_{ev.lower()}_{ct}_{col}"
-        selection = f"{col}@{ct}"
+        selector = cell_type_selector(system, ct)
+        node_id = f"lf_observed_{ev.lower()}_{selector}_{col}"
+        selection = f"{col}@{selector}"
         parent_id = ev_nid
         order = siblings_counter.get(parent_id, 0)
         siblings_counter[parent_id] = order + 1
@@ -781,7 +777,7 @@ def build_catalog_v4(
                 n_in_project=int(nn), decoder_version=DECODER_VERSION,
                 event=ev, category_label=cat_label, cell_scoped=True,
                 cells=[ct], cell_options=[{
-                    "cell": str(ct), "label": label_from_enum,
+                    "cell": selector, "label": label_from_enum,
                     "n_in_project": int(nn), "available": True, "reason": None,
                 }], attributes=[], proof="observed-cell-second", available=True,
                 reason=None, alias_of=None, event_group=None,

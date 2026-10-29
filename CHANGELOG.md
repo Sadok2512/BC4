@@ -1,3 +1,16 @@
+## 0.97.3 (patch, proposé) — BC1 2026-10-29 — Cellules physiques et latence table KPI
+
+- Les sélections CELLMEAS du catalogue ciblent un membre d'enum sémantique
+  (`lte-type-2`) et non une occurrence `cell_index` du stockage. Les anciens
+  sélecteurs numériques restent acceptés pour compatibilité.
+- La table regroupe les observations par `(seq, système, ARFCN, PCI)`, expose
+  le nombre d'observations conservées et filtre côté serveur par PCI/ARFCN.
+- La pagination et le total sont calculés dans la requête SQL. Le chemin
+  `table_only` ne charge plus toute l'horloge ni tout le contexte de capture.
+- Migration `0067_kpi_physical_cell_indexes` pour les recherches métrique ×
+  type cellule et groupes CELLMEAS.
+- Type SemVer proposé : **patch** (`0.97.3`) ; numérotation finale par BC3.
+
 ## 0.97.2 (patch) — BC4 2026-10-29 — Contrat table KPI lean (Agent BC1, numérotation BC3)
 
 - `/metrics/table` expose une pagination serveur bornée, les métadonnées de
