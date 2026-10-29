@@ -1,5 +1,21 @@
 # CHANGELOG_DECODER
 
+## 1.8.2 (patch) — 2026-10-29 — Clé cellule injective avant COPY (Agent BC1)
+
+- Corrige la collision de `nmf_cell_second` entre systèmes (par exemple
+  `CELLMEAS` LTE brut `0` et NR brut `0`) et entre plusieurs cellules
+  physiques portant le même type Listed/Detected.
+- `cell_index` encode désormais sans perte `(system, cell_type brut,
+  occurrence)`. Les nouvelles valeurs sont `1003 + ordinal * 81 + occurrence`,
+  où `ordinal` suit l'union LTE `0–40`, puis l'enum NR
+  `0–31,98,100–131,198,199,1000–1002`, et `occurrence` vaut `0–80` dans
+  l'ordre déterministe de l'identité du groupe. La plage produite est donc
+  `1003–9993`; toute occurrence hors capacité échoue explicitement.
+- Le catalogue décode cette clé pour conserver le libellé NFF par événement
+  et système et distingue les occurrences répétées (`#2`, `#3`, …).
+- Le stockage vérifie l'unicité de la clé complète avant le `DELETE`/`COPY`.
+  G48 vérifie cette unicité et la conservation ligne par ligne par type brut.
+
 ## 1.8.1 (patch) — 2026-10-29 — Cellules complètes NFF 2.50 et PLAIU (Agent BC1)
 
 - `CELLMEAS` couvre l'enum NFF 2.50 complet : LTE serving/SCell 1–31 et

@@ -37,6 +37,7 @@ from app.kpi.catalog_release.registry import (
     load_catalog_json,
 )
 from app.nmf_decoder import DECODER_VERSION
+from app.nmf_decoder.cells import cell_source_for_index
 
 # 2.56.0 — Variantes canoniques par enum NFF 2.50. La disponibilité vient
 # exclusivement de nmf_cell_second.cell_index ; nmf_event_light.system choisit
@@ -68,28 +69,52 @@ def _enum_name(event: str, system: int | None) -> str:
 
 def _cell_label(event: str, system: int | None, cell_index: int) -> str:
     """Libellé NFF 2.50 du cell_index projeté, par (event, system)."""
+    source = cell_source_for_index(cell_index)
+    encoded_source = source is not None
+    occurrence = 0
+    if source is not None:
+        system, cell_index, occurrence = source
+    def with_occurrence(label: str) -> str:
+        return f"{label} #{occurrence + 1}" if occurrence else label
     if system == 9:
         if cell_index == 0:
-            return "PCell"
+            return with_occurrence("PCell")
         if 1 <= cell_index <= 31:
-            return f"SCell {cell_index}"
+            return with_occurrence(f"SCell {cell_index}")
         if 100 <= cell_index <= 131:
-            return f"SCG SCell {cell_index - 100}"
+            return with_occurrence(f"SCG SCell {cell_index - 100}")
         if cell_index == 199:
-            return "SCG PSCell"
-        return {
+            return with_occurrence("SCG PSCell")
+        label = {
             1000: "Listed NR neighbour",
             1001: "Detected NR neighbour",
             1002: "Scanner NR neighbour",
         }.get(cell_index, f"cell_index={cell_index}")
+        return with_occurrence(label)
     if event == "CELLMEAS":
-        return "Serving" if cell_index == 0 else f"SCell {cell_index}"
+        # Decoder 1.8.1 normalized LTE raw 10..40 to 1..31.  Keep those
+        # historical captures readable while 1.8.2 exposes raw 1/2 as the
+        # distinct Listed/Detected enum through its encoded index.
+        if not encoded_source:
+            return "Serving" if cell_index == 0 else f"SCell {cell_index}"
+        if cell_index == 0:
+            label = "Serving"
+        elif cell_index == 1:
+            label = "Listed LTE neighbour"
+        elif cell_index == 2:
+            label = "Detected LTE neighbour"
+        elif 10 <= cell_index <= 40:
+            label = f"SCell {cell_index - 9}"
+        else:
+            label = f"cell_index={cell_index}"
+        return with_occurrence(label)
     if event == "MIMOMEAS":
         if cell_index == 0:
-            return "Serving"
+            return with_occurrence("Serving")
         if 10 <= cell_index <= 40:
-            return f"SCell {cell_index - 9}"
-    return "PCell" if cell_index == 0 else f"SCell {cell_index}"
+            return with_occurrence(f"SCell {cell_index - 9}")
+    label = "PCell" if cell_index == 0 else f"SCell {cell_index}"
+    return with_occurrence(label)
 
 
 _KIND_MAP = {
