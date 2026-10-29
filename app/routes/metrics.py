@@ -371,21 +371,24 @@ def captures(project_id: str,f: dict=Depends(filters),db: Session=Depends(get_db
 TIME_SQL = '''SELECT seq,ts FROM stg_event_raw WHERE project_id=:pid AND capture_id=:cap
  UNION SELECT seq,ts FROM stg_event WHERE project_id=:pid AND capture_id=:cap ORDER BY seq'''
 def clock(db,pid,cap):
-    rows=db.execute(text(TIME_SQL),{'pid':pid,'cap':cap}).mappings().all()
-    if not rows:raise HTTPException(404,'capture_not_found_in_project')
-    times={};origin=None;origin_seq=None;origin_ts=None;previous=None
-    for r in rows:
-        try:
-            h,m,s=r['ts'].split(':');seconds=Decimal(h)*3600+Decimal(m)*60+Decimal(s)
-        except (AttributeError,ValueError,InvalidOperation):continue
-        if origin is None:origin=seconds;origin_seq=r['seq'];origin_ts=r['ts']
-        if previous is not None and seconds<previous:
-            raise HTTPException(409,dict(reason='capture_timestamp_regression',capture_id=cap,seq=r['seq'],ts=r['ts']))
-        if r['seq'] in times and times[r['seq']] != float(seconds-origin):
-            raise HTTPException(409,'conflicting_timestamp_at_seq')
-        times[r['seq']]=float(seconds-origin);previous=seconds
-    if not times:raise HTTPException(409,'capture_has_no_valid_timestamp')
-    return times,origin_seq,origin_ts
+    from app.signaling.capture_cache import shared_clock
+    def build():
+        rows=db.execute(text(TIME_SQL),{'pid':pid,'cap':cap}).mappings().all()
+        if not rows:raise HTTPException(404,'capture_not_found_in_project')
+        times={};origin=None;origin_seq=None;origin_ts=None;previous=None
+        for r in rows:
+            try:
+                h,m,s=r['ts'].split(':');seconds=Decimal(h)*3600+Decimal(m)*60+Decimal(s)
+            except (AttributeError,ValueError,InvalidOperation):continue
+            if origin is None:origin=seconds;origin_seq=r['seq'];origin_ts=r['ts']
+            if previous is not None and seconds<previous:
+                raise HTTPException(409,dict(reason='capture_timestamp_regression',capture_id=cap,seq=r['seq'],ts=r['ts']))
+            if r['seq'] in times and times[r['seq']] != float(seconds-origin):
+                raise HTTPException(409,'conflicting_timestamp_at_seq')
+            times[r['seq']]=float(seconds-origin);previous=seconds
+        if not times:raise HTTPException(409,'capture_has_no_valid_timestamp')
+        return times,origin_seq,origin_ts
+    return shared_clock(db,pid,cap,build)
 
 def sample(points,limit,kind):
     """Numeric min/max over fixed-width seq buckets; ties resolved by seq.

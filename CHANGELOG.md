@@ -1,3 +1,21 @@
+## 0.98.0 (minor) — BC4 2026-10-29 — Signaling progressif et borné (Agent BC1, numérotation BC3)
+
+Merge `bc1/signaling-lean` (`b2523b9`). Résout l'écart « matérialisation
+serveur de datasets 15 MB » du rapport audit perf 2026-10-29.
+
+- Nouveau résumé léger `/signaling/events/summary` : pistes, comptages
+  et bornes de capture **sans sérialiser les événements** (le 15 MB
+  n'est plus payé d'un coup).
+- `/signaling/events` accepte une fenêtre capture-locale `from_s`/`to_s`,
+  un curseur `after_seq` et une limite explicite ; l'ordre reste
+  `(project_id, capture_id, seq)` et la troncature est déclarée dans
+  la réponse.
+- Cache d'horloge partagé par `population()` et `clock()` sous clé
+  `(project_id, capture_id, decoder_version)` (nouveau
+  `app/signaling/capture_cache.py`). `decoded_at` et cardinalités
+  invalident aussi un reparse à version identique.
+- Numéro `0.98.0` attribué par BC3 (minor pour contrat API additif).
+
 ## 0.97.4 (patch) — BC4 2026-10-29 — Perf serveur : uvicorn 4 workers + PG tuning 16 GB + GZip (Agent BC3)
 
 Lot d'infrastructure sans changement applicatif. Causes 1-3 du rapport
@@ -33,7 +51,6 @@ Infirmation du 114 % CPU au repos observé pendant l'audit : py-spy
 dump × 2 (threads idle), CPU au vrai repos = 0,2 % (seuls les
 healthchecks curl toutes les 5 s produisent un pic à 8 %). Les 114 %
 étaient un artefact de ma campagne de mesure (curl parallèles).
-
 ## 0.97.3 (patch) — BC4 2026-10-29 — Cellules physiques + latence table KPI 7 s → 0,77 s (Agent BC1, numérotation BC3)
 
 Merge `bc1/kpi-table-latency` (`9df792b`). Patch. Numéro `0.97.3` et

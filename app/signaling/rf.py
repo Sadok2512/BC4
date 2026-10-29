@@ -4,8 +4,11 @@ Order and joins are capture + sequence. All times come from metrics.clock.
 Unclosed intervals stay markers. Proximity links never establish outcomes.
 Only allowlisted typed columns are selected; identity/raw tokens are not read.
 """
+from collections import OrderedDict
 from decimal import Decimal
+from threading import Lock
 from . import service as svc
+from .capture_cache import capture_stamp
 
 RULE_VERSION = '1.0.0'
 UNAVAILABLE = {
@@ -15,6 +18,9 @@ UNAVAILABLE = {
     'nr_radio': 'NR SSB occurrences lack verified physical-unit conversions and serving-MO attribution.',
     'ho_failure': 'No proven causal association between handover attempts and radio failures.',
 }
+_EVENT_CACHE = OrderedDict()
+_EVENT_CACHE_LOCK = Lock()
+_EVENT_BUILD_LOCK = Lock()
 # 0.88.0 BC3 — Fallback nmf_event_light pour captures decode_level='light'.
 # Avant 0.88.0 : rf.events ne lisait que nmf_event_deep. Pour les 66/85
 # captures live en decode_level='light' (78%), `deep` était vide → aucun
@@ -203,13 +209,29 @@ def enrich_legacy_connected_events(legacy_events, evidence_events, capture_id):
 
 def events(db,pid,cap,protocols=None,technology=None,direction=None,q=None):
     meta=svc.capture(db,pid,cap)
-    times,_,_=svc.clock(db,pid,cap)
-    params=dict(pid=pid,cap=cap,markers=list(svc.MARKERS))
-    rows=svc.query(db,svc.SOURCE_SQL,params)
-    deep=svc.query(db,DEEP_SQL,params)
-    pairs=svc.query(db,PAIR_SQL,params)
-    tasks=svc.query(db,TASK_SQL,params)
-    out=project_events(rows,deep,pairs,tasks,times,capture_id=cap)
+    stamp=capture_stamp(db,pid,cap)
+    key=(pid,cap,stamp.decoder_version)
+    with _EVENT_CACHE_LOCK:
+        cached=_EVENT_CACHE.get(key)
+        if cached is not None and cached[0] == stamp:_EVENT_CACHE.move_to_end(key)
+    if cached is None or cached[0] != stamp:
+        with _EVENT_BUILD_LOCK:
+            with _EVENT_CACHE_LOCK:
+                cached=_EVENT_CACHE.get(key)
+            if cached is None or cached[0] != stamp:
+                times,_,_=svc.clock(db,pid,cap)
+                params=dict(pid=pid,cap=cap,markers=list(svc.MARKERS))
+                rows=svc.query(db,svc.SOURCE_SQL,params)
+                deep=svc.query(db,DEEP_SQL,params)
+                pairs=svc.query(db,PAIR_SQL,params)
+                tasks=svc.query(db,TASK_SQL,params)
+                value=project_events(rows,deep,pairs,tasks,times,capture_id=cap)
+                cached=(stamp,value)
+                with _EVENT_CACHE_LOCK:
+                    _EVENT_CACHE[key]=cached
+                    _EVENT_CACHE.move_to_end(key)
+                    while len(_EVENT_CACHE)>8:_EVENT_CACHE.popitem(last=False)
+    out=cached[1]
     if protocols is not None:
         selected=protocols.split(',')
         out=[e for e in out if e['attrs']['protocol'] in selected]
