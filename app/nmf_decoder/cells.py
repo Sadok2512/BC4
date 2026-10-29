@@ -8,16 +8,16 @@ configured-carrier state or an interpolation across missing seconds.
 from collections import defaultdict
 from .schema import schemas,schema_for,fields,column
 
-# 1.7.0 — Mapping LTE SCell : proof MIMOMEAS/CELLMEAS content.
-# Codes NR observés (101, 108, 117, 199) sont utilisés comme cell_index
-# brut : pas de mapping inventé, chaque code expose sa feuille distincte
-# dans le catalog 2.51.0 (gris + raison si jamais observé).
-CELL_MAP_LTE={0:0,10:1,11:2,12:3,13:4}
+# NFF 2.50 CELLMEAS LTE: 0=serving, 10..40=SCell 1..31.
+CELL_MAP_LTE={0:0,**{raw:raw-9 for raw in range(10,41)}}
+# NFF 2.50 serving-cell enum used by NR CELLMEAS and cell-scoped events.
+# Raw values are deliberately retained as deterministic cell_index values.
+CELL_TYPES_NR=frozenset(range(32))|{98}|frozenset(range(100,132))|{198,199,1000,1001,1002}
 
 
 def _cell_index_for(cell_type,system):
     if system==7:return CELL_MAP_LTE.get(cell_type)
-    if system==9 and isinstance(cell_type,int):return cell_type
+    if system==9 and isinstance(cell_type,int) and cell_type in CELL_TYPES_NR:return cell_type
     return None
 
 
@@ -28,13 +28,7 @@ def cell_rows(light):
         # The documented serving code is 0.  Codes 10..13 are bound to
         # SCell1..4 by the MIMOMEAS/content proof; neighbour/type-1 and the
         # observed 14/15 codes deliberately remain outside this projection.
-        # 1.7.0 — SKIP CELLMEAS NR (system=9) de la projection nmf_cell_second :
-        # la clé primaire (project_id, capture_id, second, event_code,
-        # metric_code, cell_index) ne distingue pas LTE PCell=0 de NR PCell=0.
-        # Les series cells NR passent par nmf_event_light_group dans ce lot
-        # (le catalog 2.51.0 lit cell_type depuis les groupes pour ses
-        # feuilles @cell_type NR). Migration pkey+system = lot ultérieur.
-        if b['event_code']=='CELLMEAS' and b['second']>=0 and b.get('system')==7:
+        if b['event_code']=='CELLMEAS' and b['second']>=0 and b.get('system') in {7,9}:
             observed=defaultdict(list)
             for group in b.get('groupstats',{}).values():
                 if group['group_name']!='cells':continue
@@ -66,16 +60,15 @@ def cell_rows(light):
                  [b['stats'][column(f['code'])].value() for f in schema.get('header',[])
                   if f['code'].endswith('.cell_type') and column(f['code']) in b['stats']])
         if len(indices)!=1 or indices[0] is None:continue
-        # 1.7.0 — LTE serving cells (PCell/SCell 1-4) sont 0..4 (sources
-        # PHRATE/PLAID/PUSCH + hack content-proven TXPC) ; NR expose les
-        # cell_type bruts (101, 108, 117, 199) comme cell_index, scope
-        # catalog 2.51.0 PSCell/SCell NR 100+.
+        # LTE exposes PCell/SCell 1..31 as 0..31. NR retains the complete
+        # documented NFF 2.50 enum as its deterministic cell_index.
         raw=int(indices[0])
         if b.get('system')==7:
-            if raw not in range(5):continue
+            if raw not in range(32):continue
             cell=raw
         elif b.get('system')==9:
-            cell=raw
+            cell=_cell_index_for(raw,9)
+            if cell is None:continue
         else:
             continue
         for code,stat in b['stats'].items():
