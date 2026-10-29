@@ -369,7 +369,25 @@ def captures(project_id: str,f: dict=Depends(filters),db: Session=Depends(get_db
     return [dict(capture_id=c,label=meta.get(c,{}).get('filename',c),kind=meta.get(c,{}).get('kind')) for c in caps]
 
 TIME_SQL = '''SELECT seq,ts FROM stg_event_raw WHERE project_id=:pid AND capture_id=:cap
- UNION SELECT seq,ts FROM stg_event WHERE project_id=:pid AND capture_id=:cap ORDER BY seq'''
+ UNION ALL SELECT seq,ts FROM stg_event WHERE project_id=:pid AND capture_id=:cap ORDER BY seq'''
+TIME_ORIGIN_SQL = '''SELECT seq,ts FROM (
+ (SELECT seq,ts FROM stg_event_raw WHERE project_id=:pid AND capture_id=:cap ORDER BY seq LIMIT 1)
+ UNION ALL
+ (SELECT seq,ts FROM stg_event WHERE project_id=:pid AND capture_id=:cap ORDER BY seq LIMIT 1)
+) capture_origins ORDER BY seq LIMIT 1'''
+TIME_SUBSET_SQL = '''SELECT seq,ts FROM stg_event_raw
+ WHERE project_id=:pid AND capture_id=:cap AND seq=ANY(:seqs)
+ UNION ALL SELECT seq,ts FROM stg_event
+ WHERE project_id=:pid AND capture_id=:cap AND seq=ANY(:seqs)
+ ORDER BY seq'''
+
+def _clock_seconds(value):
+    try:
+        h,m,s=value.split(':')
+        return Decimal(h)*3600+Decimal(m)*60+Decimal(s)
+    except (AttributeError,ValueError,InvalidOperation):
+        return None
+
 def clock(db,pid,cap):
     from app.signaling.capture_cache import shared_clock
     def build():
@@ -389,6 +407,38 @@ def clock(db,pid,cap):
         if not times:raise HTTPException(409,'capture_has_no_valid_timestamp')
         return times,origin_seq,origin_ts
     return shared_clock(db,pid,cap,build)
+
+def clock_subset(db,pid,cap,seqs):
+    """Resolve only marker timestamps needed by the events response.
+
+    The complete clock remains shared by signaling/series, while this bounded
+    endpoint avoids decoding hundreds of thousands of unrelated timestamps.
+    Both lookups retain the capture's project boundary and deterministic seq
+    order.
+    """
+    params={'pid':pid,'cap':cap}
+    origin=db.execute(text(TIME_ORIGIN_SQL),params).mappings().one_or_none()
+    if not origin:
+        raise HTTPException(404,'capture_not_found_in_project')
+    origin_seconds=_clock_seconds(origin['ts'])
+    if origin_seconds is None:
+        raise HTTPException(409,'capture_has_no_valid_timestamp')
+    wanted=sorted(set(seqs))
+    if not wanted:
+        return {},origin['seq'],origin['ts']
+    rows=db.execute(text(TIME_SUBSET_SQL),{**params,'seqs':wanted}).mappings()
+    times={}
+    for row in rows:
+        seconds=_clock_seconds(row['ts'])
+        if seconds is None:
+            continue
+        relative=float(seconds-origin_seconds)
+        if relative < 0:
+            raise HTTPException(409,dict(reason='capture_timestamp_regression',capture_id=cap,seq=row['seq'],ts=row['ts']))
+        if row['seq'] in times and times[row['seq']] != relative:
+            raise HTTPException(409,'conflicting_timestamp_at_seq')
+        times[row['seq']]=relative
+    return times,origin['seq'],origin['ts']
 
 def sample(points,limit,kind):
     """Numeric min/max over fixed-width seq buckets; ties resolved by seq.
@@ -552,21 +602,20 @@ def events(project_id: str,capture_id: str,types: str='task,ho,rlf,rrc',f: dict=
     project(db,project_id);validate_operators(db,project_id,f);wanted=set(types.split(','))
     if not wanted<=_EVENTS_TYPES_ALLOWED:
         raise HTTPException(422,dict(reason='unknown_marker_type',allowed=sorted(_EVENTS_TYPES_ALLOWED)))
-    times,_,_=clock(db,project_id,capture_id);params={'pid':project_id,'cap':capture_id};markers=[]
+    params={'pid':project_id,'cap':capture_id};pending=[]
     condition,fp=predicate(f);params.update(fp);params['ctx_cap']=capture_id
     filter_sql='SELECT seq FROM ('+context_sql()+') c WHERE '+condition
     allowed=None if condition=='TRUE' else {r[0] for r in db.execute(text(filter_sql),params)}
-    def add(seq,kind,label,event_code=None):
+    def queue(seq,kind,label,event_code=None):
         if seq is None or (allowed is not None and seq not in allowed):return
-        if seq not in times:raise HTTPException(409,dict(reason='event_timestamp_missing',seq=seq))
-        markers.append(dict(seq=seq,t_rel_s=times[seq],type=kind,label=label,event_code=event_code))
+        pending.append((seq,kind,label,event_code))
     if 'task' in wanted:
         for r in db.execute(text(TASK_SQL),params).mappings():
-            for key,label in [('seq_daa','DAA'),('seq_dcomp','DCOMP')]:add(r[key],'task',label+' · '+r['task_type'])
+            for key,label in [('seq_daa','DAA'),('seq_dcomp','DCOMP')]:queue(r[key],'task',label+' · '+r['task_type'])
     if wanted & {'ho','rlf','rrc'}:
         for r in db.execute(text(EVENT_SQL),params).mappings():
             name=r['message'];kind='ho' if name=='RRCConnectionReconfiguration' and r['mobility'] else 'rlf' if name=='RRCConnectionReestablishmentRequest' else 'rrc' if name in ('RRCConnectionSetup','RRCConnectionRelease','RRCSetup','RRCRelease') else None
-            if kind in wanted:add(r['seq'],kind,name)
+            if kind in wanted:queue(r['seq'],kind,name)
     # 0.62.0 — markers depuis stg_event_raw pour les 23 event_codes
     # 1.1.0 (RRA, RRC_LTE, PBA, LOCK, MARK, …). On restreint les codes
     # SQL à ceux dont le type est dans `wanted` pour éviter un scan
@@ -576,10 +625,19 @@ def events(project_id: str,capture_id: str,types: str='task,ho,rlf,rrc',f: dict=
         params['raw_codes'] = wanted_raw_codes
         for r in db.execute(text(RAW_EVENT_SQL), params).mappings():
             kind, label = _RAW_EVENT_TYPE[r['event_code']]
-            add(r['seq'], kind, label, event_code=r['event_code'])
-    markers.sort(key=lambda r:(r['seq'],r['type'],r['label']))
+            queue(r['seq'], kind, label, event_code=r['event_code'])
     # 0.62.0 — capture.forcing (toujours calculé, pas filtré par `types`)
     lock_rows = db.execute(text(LOCK_SQL), {'pid': project_id, 'cap': capture_id}).mappings().all()
+    needed=[row[0] for row in pending]
+    if lock_rows:
+        needed.append(lock_rows[0]['seq'])
+    times,_,_=clock_subset(db,project_id,capture_id,needed)
+    markers=[]
+    for seq,kind,label,event_code in pending:
+        if seq not in times:
+            raise HTTPException(409,dict(reason='event_timestamp_missing',seq=seq))
+        markers.append(dict(seq=seq,t_rel_s=times[seq],type=kind,label=label,event_code=event_code))
+    markers.sort(key=lambda r:(r['seq'],r['type'],r['label']))
     forcing = None
     if lock_rows:
         first = lock_rows[0]
@@ -591,5 +649,5 @@ def events(project_id: str,capture_id: str,types: str='task,ho,rlf,rrc',f: dict=
         )
     else:
         forcing = dict(active=False, lock_count=0)
-    rid=evidence(db,project_id,';\n'.join([TIME_SQL,TASK_SQL,EVENT_SQL,RAW_EVENT_SQL,LOCK_SQL,filter_sql]),{**params,'applied_filters':f,'types':sorted(wanted)},{'markers':len(markers),'lock':forcing.get('lock_count',0)})
+    rid=evidence(db,project_id,';\n'.join([TIME_ORIGIN_SQL,TIME_SUBSET_SQL,TASK_SQL,EVENT_SQL,RAW_EVENT_SQL,LOCK_SQL,filter_sql]),{**params,'applied_filters':f,'types':sorted(wanted)},{'markers':len(markers),'lock':forcing.get('lock_count',0)})
     return dict(project_id=project_id,capture_id=capture_id,result_id=rid,markers=markers,capture_forcing=forcing)

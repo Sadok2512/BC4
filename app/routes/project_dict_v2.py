@@ -11,9 +11,13 @@ Scope strict : ``project_id`` injecté serveur via le path.
 from __future__ import annotations
 
 from typing import Literal
+from collections import OrderedDict
+from copy import deepcopy
+from threading import Lock
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 
 from app.db import get_db
 from app.deps import get_current_user
@@ -25,6 +29,7 @@ from app.dict.service_v2 import (
 from app.dict.signaling_message import decoded_message
 from app.schemas.signaling_message import SignalingMessage
 from app.dict.geo_filters import geographic_options
+from app.kpi.catalog_release.registry import current_catalog
 from app.models import Project
 from app.schemas.dict_v2 import (
     DictMapResponse,
@@ -43,6 +48,42 @@ router = APIRouter(
     # 0.48.0 — statement_timeout 60 s (cf. project_kpi.router).
     dependencies=[Depends(get_current_user), Depends(with_statement_timeout_60s)],
 )
+
+DICT_TREE_VERSION = "dict-v2-catalog-1"
+_TREE_CACHE = OrderedDict()
+_TREE_CACHE_LOCK = Lock()
+_TREE_BUILD_LOCK = Lock()
+
+
+def _tree_stamp(db: Session, project_id: str) -> tuple:
+    row = db.execute(text("""SELECT count(*) AS n, COALESCE(max(id),0) AS max_id,
+      COALESCE(max(stg_event_id),0) AS max_event_id
+      FROM param_occurrence WHERE project_id=:pid"""), {"pid": project_id}).one()
+    return tuple(row)
+
+
+def _catalog_tree(db: Session, project_id: str) -> dict:
+    release = current_catalog(db)
+    key = (project_id, release.version if release else DICT_TREE_VERSION)
+    stamp = _tree_stamp(db, project_id)
+    with _TREE_CACHE_LOCK:
+        cached = _TREE_CACHE.get(key)
+        if cached is not None and cached[0] == stamp:
+            _TREE_CACHE.move_to_end(key)
+            return deepcopy(cached[1])
+    with _TREE_BUILD_LOCK:
+        with _TREE_CACHE_LOCK:
+            cached = _TREE_CACHE.get(key)
+            if cached is not None and cached[0] == stamp:
+                _TREE_CACHE.move_to_end(key)
+                return deepcopy(cached[1])
+        value = build_dict_tree(db, project_id, "catalog", None)
+        with _TREE_CACHE_LOCK:
+            _TREE_CACHE[key] = (stamp, value)
+            _TREE_CACHE.move_to_end(key)
+            while len(_TREE_CACHE) > 16:
+                _TREE_CACHE.popitem(last=False)
+    return deepcopy(value)
 
 
 def _require_project(db: Session, project_id: str) -> Project:
@@ -70,7 +111,10 @@ def dict_tree(
                 "message": "view attendu ∈ {catalog, raw}",
             },
         )
-    return DictTreeResponse(**build_dict_tree(db, project_id, view, message))
+    value = (_catalog_tree(db, project_id)
+             if view == "catalog" and message is None
+             else build_dict_tree(db, project_id, view, message))
+    return DictTreeResponse(**value)
 
 
 @router.get("/{project_id}/dict/v2/filters", response_model=DictFilterOptions)

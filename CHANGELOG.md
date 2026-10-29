@@ -1,3 +1,28 @@
+## 0.98.1 (patch) — BC4 2026-10-29 — API capture et dictionnaire lean (Agent BC1, numérotation BC3)
+
+Merge `bc1/api-lean` (`2b0a31d`). Résout les écarts /captures/events
+9-12 s et /dict/v2/tree ~5 s du rapport audit perf 2026-10-29.
+
+- Migration **0069** `api_lean_indexes` : quatre index posés en
+  `CONCURRENTLY` (via `op.get_context().autocommit_block()`) sur tables
+  peuplées, sans AccessExclusive bloquant :
+  - `ix_api_stg_event_raw_capture_seq` sur `(project_id, capture_id, seq)` INCLUDE `(ts)`
+  - `ix_api_stg_event_capture_seq` sur `(project_id, capture_id, seq)` INCLUDE `(ts)`
+  - `ix_api_measurement_points_capture` sur `(project_id, capture_id)`
+  - `ix_api_param_occ_catalog_cover` sur `(project_id, system, origin,
+    message, functional_group, param_key)` INCLUDE `(display_name,
+    choice_of, discriminators, unit_converted, is_identifier)` WHERE
+    `param_key IS NOT NULL AND COALESCE(is_identifier, false) = false`
+    (index partiel pour les lectures catalogue).
+- `/captures/{cap}/events` : lectures `UNION ALL` bornées à la capture,
+  accepte `from_s`/`to_s`/`limit`. L'horloge ne résout plus que
+  l'origine et les `seq` des marqueurs demandés (plus de full-scan
+  `stg_event_raw` 1,7 GB systématique).
+- `/dict/v2/tree?view=catalog` : construction unique mise en cache par
+  `(project_id, catalog_version)` dans le process. Invalidation à
+  bascule catalog ou changement de population.
+- Numéro `0.98.1` attribué par BC3.
+
 ## 0.98.0 (minor) — BC4 2026-10-29 — Signaling progressif et borné (Agent BC1, numérotation BC3)
 
 Merge `bc1/signaling-lean` (`b2523b9`). Résout l'écart « matérialisation
