@@ -1,3 +1,16 @@
+## 0.98.2 (patch, proposé) — BC1 2026-10-29 — Signaling matérialisé à l'import
+
+- Les événements `legacy`/`rf`, leurs résumés et les points GPS Signaling
+  sont calculés à la finalisation puis activés par génération atomique.
+- `/signaling/events`, `/signaling/events/summary` et `/signaling/points`
+  lisent uniquement les tables matérialisées, dans l'ordre strict
+  `(project_id, capture_id, seq)` et avec fenêtrage SQL.
+- Migration `0070_signaling_materialized` : index de fenêtre créés en
+  `CONCURRENTLY`. Le rattrapage idempotent exige `--reason`, journalise
+  avant/après et ne re-décode jamais la capture.
+- Type SemVer proposé : **patch** (`0.98.2`) car les contrats HTTP restent
+  compatibles ; numérotation finale par BC3.
+
 ## 0.98.1 (patch) — BC4 2026-10-29 — API capture et dictionnaire lean (Agent BC1, numérotation BC3)
 
 Merge `bc1/api-lean` (`2b0a31d`). Résout les écarts /captures/events

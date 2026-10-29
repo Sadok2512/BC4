@@ -4,7 +4,6 @@ import io
 import math
 import time
 from collections import Counter, defaultdict
-from decimal import Decimal, InvalidOperation
 from typing import Literal, Any
 from fastapi import APIRouter, Depends, Query, HTTPException
 from pydantic import BaseModel
@@ -13,6 +12,7 @@ from app.db import get_db
 from app.deps import get_current_user
 from app.routes.tasks import project
 from app.signaling import service as svc
+from app.signaling import materialized as mat
 
 router=APIRouter(prefix='/projects/{project_id}/signaling',tags=['signaling'],dependencies=[Depends(get_current_user)])
 
@@ -186,31 +186,8 @@ def timeline(project_id:str,capture_id:str,bucket_s:float=Query(1,gt=0,le=3600),
 
 @router.get('/points',response_model=Points)
 def points(project_id:str,capture_id:str,limit:int|None=Query(None,ge=1,le=10000),f:dict=Depends(filters),db:Session=Depends(get_db)):
-    # RF already projects the source messages for the timeline. Reuse that
-    # capture projection instead of rebuilding population() (procedures,
-    # cells and persistence) solely to attach GPS fixes.
-    from app.signaling import rf
-    if f.get('procedure'):
-        rows,_,meta,_=svc.population(db,project_id,capture_id)
-        rows=svc.filtered(rows,**f)
-    else:
-        evidence,meta=rf.events(db,project_id,capture_id,f.get('protocols'),
-          f.get('technology'),f.get('direction'),f.get('q'))
-        rows=[]
-        for e in evidence:
-            attrs=e.get('attrs') or {}
-            if attrs.get('rule_id')!='raw_protocol':continue
-            protocol=attrs.get('protocol')
-            if protocol=='Nemo':protocol='Événements Nemo'
-            if protocol not in svc.LAYER_FOR_PROTOCOL:continue
-            rows.append(dict(seq=e['seq'],t_rel_s=e['t_rel_s'],protocol=protocol,
-              layer=svc.LAYER_FOR_PROTOCOL[protocol]))
-        rows=[r for r in rows if
-          (f.get('from_s') is None or r['t_rel_s'] is not None and r['t_rel_s']>=f['from_s']) and
-          (f.get('to_s') is None or r['t_rel_s'] is not None and r['t_rel_s']<=f['to_s'])]
-    pts,indoor=svc.gps_points(db,project_id,capture_id,rows,meta)
-    total=len(pts);truncated=limit is not None and total>limit
-    if limit is not None:pts=pts[:limit]
+    pts,total,active=mat.read_points(db,project_id,capture_id,limit=limit,**f)
+    indoor=active['indoor'];truncated=limit is not None and total>limit
     grouped={}
     for p in pts:
         if p['lat'] is None or p['lng'] is None:continue
@@ -284,13 +261,6 @@ class EventsSummary(Envelope):
     t_rel_start_s:float
     t_rel_end_s:float|None
 
-def _seconds(value):
-    try:
-        h,m,s=value.split(':')
-        return float(Decimal(h)*3600+Decimal(m)*60+Decimal(s))
-    except (AttributeError, ValueError, InvalidOperation):
-        return None
-
 def window_events(events,from_s=None,to_s=None,after_seq=None,limit=None):
     """Deterministic capture-local event window used by the API and guards."""
     ordered=sorted(events,key=lambda e:(e['seq'],e['id']))
@@ -306,33 +276,11 @@ def window_events(events,from_s=None,to_s=None,after_seq=None,limit=None):
 
 @router.get('/events/summary',response_model=EventsSummary)
 def events_summary(project_id:str,capture_id:str,db:Session=Depends(get_db)):
-    """Small first-paint contract; no event payload and no full clock scan."""
-    project(db,project_id)
-    bounds=svc.query(db,"""(SELECT seq,ts FROM stg_event_raw
-          WHERE project_id=:pid AND capture_id=:cap ORDER BY seq LIMIT 1)
-        UNION ALL
-        (SELECT seq,ts FROM stg_event_raw
-          WHERE project_id=:pid AND capture_id=:cap ORDER BY seq DESC LIMIT 1)""",
-        dict(pid=project_id,cap=capture_id))
-    if not bounds:raise HTTPException(404,'capture_not_found_in_project')
-    counts=svc.query(db,"""SELECT
-      (SELECT count(*) FROM stg_event WHERE project_id=:pid AND capture_id=:cap
-       AND event_code IN ('RRCSM','L3SM')) AS messages,
-      (SELECT count(*) FROM stg_event_raw WHERE project_id=:pid AND capture_id=:cap
-       AND event_code=ANY(:markers)) AS markers,
-      (SELECT count(*) FROM nmf_event_pair WHERE project_id=:pid AND capture_id=:cap) AS procedures,
-      (SELECT count(*) FROM task_run WHERE project_id=:pid AND capture_id=:cap
-       AND task_type IN ('HTTP_DL','HTTP_UL')) AS tasks""",
-      dict(pid=project_id,cap=capture_id,markers=list(svc.MARKERS)))[0]
-    counts={key:int(value) for key,value in counts.items()}
-    first,last=bounds[0],bounds[-1]
-    first_s,last_s=_seconds(first['ts']),_seconds(last['ts'])
-    duration=(last_s-first_s if first_s is not None and last_s is not None and last_s>=first_s else None)
-    tracks=['network']
-    if counts['procedures']:tracks.extend(['connexion','mobilite'])
-    if counts['tasks']:tracks.append('services')
-    payload=dict(tracks=tracks,counts=counts,total=sum(counts.values()),seq_start=first['seq'],
-      seq_end=last['seq'],t_rel_start_s=0.0,t_rel_end_s=duration)
+    """Small first-paint contract from the active import-time generation."""
+    active=mat.active_capture(db,project_id,capture_id)
+    payload=dict(tracks=active['tracks'],counts=active['event_counts'],
+      total=active['total'],seq_start=active['seq_start'],seq_end=active['seq_end'],
+      t_rel_start_s=active['t_rel_start_s'],t_rel_end_s=active['t_rel_end_s'])
     return dict(**envelope(project_id,capture_id,payload,dict(kind='events_summary')),**payload)
 
 @router.get('/events',response_model=EventsResponse)
@@ -345,27 +293,15 @@ def events(project_id:str,capture_id:str,lanes:str|None=None,failures_only:bool=
     """0.70.0 — Spec signaling_timeline.html. Retourne les événements
     agrégés (markers BC2 + procedures) avec appartenance stricte (règles
     explicites dans app.signaling.links). Jamais ts, jamais invention."""
-    from app.signaling import rf
-    if view == 'rf':
-        evs,_=rf.events(db,project_id,capture_id,protocols,technology,direction,q)
-        if failures_only:evs=[e for e in evs if e['outcome']=='fail']
-        if lanes is not None:evs=[e for e in evs if e['lane'] in lanes.split(',')]
-    else:
-        evs,_=svc.events(db,project_id,capture_id,lanes=lanes,failures_only=failures_only)
-        # The default legacy view is still consumed by Signaling V2.  Enrich
-        # only exact, proven LTE Connected procedures; do not infer sessions
-        # for markers, partial pairs, NR, NSA or SA.
-        evidence,_=rf.events(db,project_id,capture_id)
-        evs=rf.enrich_legacy_connected_events(evs,evidence,capture_id)
     if from_s is not None and to_s is not None and from_s>to_s:
         raise HTTPException(422,'invalid_time_range')
-    # Capture-local ordering only. Intervals overlapping the visible window
-    # are retained even when their opening boundary is before it.
-    evs,total,truncated,next_seq,windowed=window_events(evs,from_s,to_s,after_seq,limit)
-    counts={}
-    for e in windowed:counts[e['lane']]=counts.get(e['lane'],0)+1
-    rules={}
-    for e in evs:rules[e['link_rule']]=rules.get(e['link_rule'],0)+1
+    evs,total,counts,rules=mat.read_events(db,project_id,capture_id,
+      lanes=lanes,failures_only=failures_only,view=view,protocols=protocols,
+      technology=technology,direction=direction,q=q,from_s=from_s,to_s=to_s,
+      after_seq=after_seq,limit=limit)
+    truncated=limit is not None and total>len(evs)
+    next_seq=evs[-1]['seq'] if truncated and evs else None
+    from app.signaling import rf
     return dict(**envelope(project_id,capture_id,evs,dict(lanes=lanes,failures_only=failures_only,view=view,protocols=protocols,technology=technology,direction=direction,q=q,from_s=from_s,to_s=to_s,after_seq=after_seq,limit=limit)),
       events=evs,total=total,returned=len(evs),truncated=truncated,
       next_seq=next_seq,

@@ -29,7 +29,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Callable, Iterable
-from sqlalchemy import text
 
 
 @dataclass(frozen=True)
@@ -73,15 +72,10 @@ def _is_rrc_reconfig_with_mobility(ctx: LinkContext, row: dict) -> bool:
     name = row['message_name'] or ''
     if 'Reconfiguration' not in name:
         return False
-    hits = ctx.db.execute(text("""
-        SELECT 1 FROM param_occurrence p
-        JOIN stg_event s ON s.id = p.stg_event_id
-        WHERE p.project_id = :pid AND s.project_id = :pid
-          AND s.capture_id = :cap AND s.seq = :seq
-          AND p.path ILIKE '%mobilityControlInfo%'
-        LIMIT 1
-    """), dict(pid=ctx.project_id, cap=ctx.capture_id, seq=row['seq'])).fetchall()
-    return bool(hits)
+    # SOURCE_SQL prepares this exact EXISTS while the capture snapshot is
+    # loaded.  Consuming it here keeps projection CPU outside a database
+    # transaction during import and avoids one query per HOA/HOS candidate.
+    return bool(row.get('ho_reconfiguration'))
 
 
 def _link_ho(ctx: LinkContext, event_row: dict) -> dict:
