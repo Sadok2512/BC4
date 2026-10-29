@@ -1,3 +1,26 @@
+## 0.96.1 (patch) — BC4 2026-10-29 — décodeur 1.8.1 : cellules complètes NFF 2.50 + PLAIU (Agent BC1, numérotation BC3)
+
+Patch décodeur. Numéro `0.96.1` attribué par BC3. Voir
+`CHANGELOG_DECODER.md` entrée `1.8.1`.
+
+- Migration `0066_decoder_1_8_1_cells` (révision alembic
+  `bc1_decoder_1_8_1_cells`, renommée de `bc1_decoder_1_8_1_cells.py`
+  → `0066_decoder_1_8_1_cells.py` par BC3 pour cohérence numérique du
+  répertoire `alembic/versions/`) : `ADD COLUMN IF NOT EXISTS
+  plaiu_cell_type DOUBLE PRECISION` sur `nmf_event_deep` et
+  `nmf_event_light`. ADD COLUMN sans défaut → pas de rewrite PG16, pas
+  de CONCURRENTLY nécessaire ; propagation automatique aux partitions
+  `nmf_deep_<capture_id>` existantes.
+- `app/nmf_decoder/__init__.py` : `DECODER_VERSION = '1.8.1'`.
+- `app/nmf_decoder/cells.py` + `decoder.py` + `schemas/PLAIU.yaml` :
+  enum NFF 2.50 complet (LTE serving/SCell 1–31, NR PCell/SCell,
+  SCG SCell, PSCell, cellules listées ou détectées) ; valeurs
+  `cell_index` catalogue BC4 étendues à `0–31`, `98`, `100–131`, `198`,
+  `199`, `1000–1002` ; LTE `10–40` normalisés en SCell `1–31` ; NR
+  codes NFF déterministes conservés.
+- G46 PASS côté BC1 sur les 2 ikea 1.7.1 : aucune colonne renseignée
+  par 1.7.1 n'est vidée.
+
 ## 0.96.0 (minor) — BC4 2026-10-29 — Suppression projet-scopée d'une capture (Agent BC1, numérotation BC3)
 
 - Nouveau service `app.services.capture_delete.delete_capture` sous verrou
