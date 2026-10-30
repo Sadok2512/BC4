@@ -344,6 +344,23 @@ def aggregate_values(rows,agg):
     return sum(values)/len(values)
 
 
+def connected_summary(requested, durations):
+    """Separate an unrequested denominator from a measured empty one.
+
+    Lean numeric tables deliberately skip the RRC/RRD population scan.  They
+    must not claim that the capture contains no complete interval merely
+    because that unrelated computation did not run.
+    """
+    if not requested:
+        return None, None
+    connected = sum(durations.values()) if durations else None
+    reason = None if connected is not None else (
+        "No complete RRC connection interval is present in the selected "
+        "capture and filters."
+    )
+    return connected, reason
+
+
 class Dataset:
     def __init__(self,db,pid,cap,f,lo=None,hi=None,lean_table=False,
                  lean_series=False):
@@ -830,8 +847,10 @@ class Dataset:
                 for (op,band),rs in groups.items():
                     vals=[r['value'] for r in rs];numeric=m['kind']=='numeric'
                     hist.append(dict(code=m['selection'],label=m['label'],operator=op,band=band,cell=m['cell'],n=sum(r.get('count',1) for r in rs),p10=percentile(vals,.1) if numeric else None,p50=percentile(vals,.5) if numeric else None,p90=percentile(vals,.9) if numeric else None,distribution=[dict(value=v,n=n) for v,n in Counter(vals).items()] if not numeric else []))
-        durations=self.connected_seconds(group_by) if not table_only and not series_only and any(m['kind']=='event' for m in selections) else {}
-        connected=sum(durations.values()) if durations else None
+        connected_requested=(not table_only and not series_only
+                             and any(m['kind']=='event' for m in selections))
+        durations=self.connected_seconds(group_by) if connected_requested else {}
+        connected,connected_reason=connected_summary(connected_requested,durations)
         for h in hist:
             duration=durations.get((h['operator'],h['band']))
             h['per_connected_hour']=h['n']*3600/duration if duration and next(m for m in selections if m['selection']==h['code'])['kind']=='event' else None
@@ -1060,4 +1079,4 @@ class Dataset:
             columns.append(dict(code=m['selection'],label=m['label'] or m['selection'],unit=m['unit'] or '',kind=m['kind'],cell=m['cell'],
                 cell_label=display.get('label'),cell_system=display.get('system'),
                 cell_internal_index=None))
-        return dict(**dict(self.state),project_id=self.pid,capture_id=self.cap,result_id=rid,origin_seq=self.origin_seq,origin_ts=self.origin_ts,nmf_start_at=nmf_start_at,capture_date=capture_date,utc_offset_min=utc_offset_min,duration_s=self.duration_s,aggregation='cell: schema-weighted capture-second; other numeric: schema aggregate; event: presence + count / last attribute',time_policy='capture-local source clock in seq order; no interpolation',columns=columns,series=series,rows=page_rows,page=page,page_size=page_size,total_rows=total_rows,total_pages=total_pages,histogram=hist,scatter=scatter,map_points=map_points,connected_seconds=connected,connected_reason=None if connected else 'No proven complete eligible RRC → RRD interval',pair_rates=pair_rates,gaps=sorted(set(gaps)),csv=output.getvalue(),pairing='previous-or-same seq, same capture and same cell; no interpolation')
+        return dict(**dict(self.state),project_id=self.pid,capture_id=self.cap,result_id=rid,origin_seq=self.origin_seq,origin_ts=self.origin_ts,nmf_start_at=nmf_start_at,capture_date=capture_date,utc_offset_min=utc_offset_min,duration_s=self.duration_s,aggregation='cell: schema-weighted capture-second; other numeric: schema aggregate; event: presence + count / last attribute',time_policy='capture-local source clock in seq order; no interpolation',columns=columns,series=series,rows=page_rows,page=page,page_size=page_size,total_rows=total_rows,total_pages=total_pages,histogram=hist,scatter=scatter,map_points=map_points,connected_seconds=connected,connected_reason=connected_reason,pair_rates=pair_rates,gaps=sorted(set(gaps)),csv=output.getvalue(),pairing='previous-or-same seq, same capture and same cell; no interpolation')

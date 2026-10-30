@@ -1,3 +1,10 @@
+## Unreleased (patch) — KPI table regressions (Agent BC1)
+
+- Numeric/table-only metric responses no longer claim that no complete
+  RRC→RRD interval exists when the unrelated connected-time scan was
+  intentionally not requested; a genuinely empty event population now gets a
+  plain user-facing explanation.
+
 ## 0.113.0 (minor) — BC4 2026-10-30 — décodeur PLAIU NFF 2.50 (1.9.0) + alembic 0075 (Agent BC1, numérotation BC3)
 
 Merge `bc1/decoder-plaiu-nff250` (`cafeea9`). Décodeur passe en **1.9.0**
