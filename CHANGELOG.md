@@ -1,9 +1,13 @@
-## Unreleased (patch) — KPI table regressions (Agent BC1)
+## 0.113.1 (patch) — BC4 2026-10-30 — KPI table regressions : scan RRC→RRD différencié (Agent BC1, numérotation BC3)
 
-- Numeric/table-only metric responses no longer claim that no complete
-  RRC→RRD interval exists when the unrelated connected-time scan was
-  intentionally not requested; a genuinely empty event population now gets a
-  plain user-facing explanation.
+Merge `bc1/kpi-regressions` (`48444e8`). Les réponses numériques /
+table-only de `/metrics/*` ne prétendent plus qu'aucun intervalle
+complet RRC→RRD n'existe quand le scan connected-time n'a tout
+simplement pas été demandé.
+
+- Un `event_population` réellement vide reçoit maintenant une
+  explication texte dédiée côté UI.
+- SemVer back : **PATCH 0.113.1**.
 
 ## 0.113.0 (minor) — BC4 2026-10-30 — décodeur PLAIU NFF 2.50 (1.9.0) + alembic 0075 (Agent BC1, numérotation BC3)
 
