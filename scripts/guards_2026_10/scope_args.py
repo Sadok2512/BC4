@@ -1,14 +1,16 @@
 """Périmètre commun des gardes catalogue.
 
 Priorité : arguments CLI, puis variables d'environnement, puis projet nommé
-`Test_6`. Sans capture explicite, les captures du projet sont prises par
-contenu ; le défaut Test_6 exige exactement trois témoins.
+`Test_6` (`43e81a34a073`). Sans capture explicite, les captures du projet
+sont prises par contenu ; le défaut Test_6 exige exactement trois témoins.
 """
 from __future__ import annotations
 
 import argparse
 import os
 from sqlalchemy import text
+
+DEFAULT_PROJECT_ID = "43e81a34a073"
 
 
 def add_scope_args(parser: argparse.ArgumentParser) -> None:
@@ -30,14 +32,14 @@ def resolve_scope(db, args: argparse.Namespace) -> tuple[str, list[str]]:
     )
     default_project = project_id is None
     if default_project:
-        projects = db.execute(text(
-            "SELECT id FROM projects WHERE name=:name ORDER BY id"
-        ), {"name": "Test_6"}).scalars().all()
-        if len(projects) != 1:
+        project = db.execute(text(
+            "SELECT id FROM projects WHERE id=:pid AND name=:name"
+        ), {"pid": DEFAULT_PROJECT_ID, "name": "Test_6"}).scalar_one_or_none()
+        if project is None:
             raise ValueError(
-                f"projet par défaut Test_6 introuvable ou ambigu: matches={len(projects)}"
+                f"projet par défaut Test_6 introuvable: id={DEFAULT_PROJECT_ID}"
             )
-        project_id = projects[0]
+        project_id = project
     elif db.execute(text(
         "SELECT 1 FROM projects WHERE id=:pid"
     ), {"pid": project_id}).scalar() is None:

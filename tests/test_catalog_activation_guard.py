@@ -62,10 +62,22 @@ def test_activate_with_bc3_lock_switches_current(monkeypatch, tmp_path):
     _configure(monkeypatch, tmp_path, holder="BC3")
     db = MagicMock()
     monkeypatch.setattr(bootstrap, "SessionLocal", lambda: db)
+    invalidate = MagicMock(return_value={
+        "rows_before": 1, "rows_deleted": 1, "rows_rebuilt": 1, "rows_after": 1,
+    })
+    monkeypatch.setattr(bootstrap, "invalidate_catalog_cache", invalidate)
+    monkeypatch.setattr(
+        bootstrap, "write_cache_invalidation_audit", lambda _report: tmp_path / "audit.json"
+    )
 
     assert bootstrap.main(["--version", "9.9.9", "--activate"]) == 0
     assert len(db.execute.call_args_list) == 2
     assert "UPDATE catalog_release SET is_current=FALSE" in str(
         db.execute.call_args_list[0].args[0]
+    )
+    invalidate.assert_called_once_with(
+        db,
+        reason="catalog activation 9.9.9: bootstrap post-reset",
+        source="bootstrap_catalog_release --activate",
     )
     db.commit.assert_called_once()

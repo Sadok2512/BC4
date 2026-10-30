@@ -3,10 +3,8 @@
 Phase 3b (BC3, 2026-10-27). Les leaves du catalog dont `source_column`
 commence par `cap_` sont routés via le resolver CAPTURE Phase 2 et NON par
 une colonne SQL de `nmf_event_light` (G24 0.88.1 les ignore via le filtre
-`physical_cols`). Mais certaines de ces colonnes exposent une **identité**
-de l'acquisition (device_name, log_file_name, measurement_id, unit_id,
-session_id, subscriber_identity) qui ne doit JAMAIS être `selectable=true`
-dans le catalogue :
+`physical_cols`). Les colonnes du groupe catalogue `MASKED` (identité
+abonné, IMSI, IMEI, téléphone) ne doivent JAMAIS être `selectable=true` :
 
   - Un consommateur /metrics/table qui coche la case "metric" pourrait
     récupérer en clair le nom du device ou le fichier source, re-rattacher
@@ -18,24 +16,23 @@ Verdict G24b :
   - Message explicite listant project_id + nid pour chaque fuite.
   - exit=1 sur FAIL (0.88.x discipline).
 
-La liste des substrings interdits est volontairement conservatrice :
-  identity, subscriber, device_name, log_file_name, measurement_id,
-  unit_id, session_id, imei, imsi, phone_number.
-project_id est accepté (c'est l'identifiant du projet lui-même, déjà
-exposé partout) mais tracé en WARN.
+Les métadonnées explicitement exposées par le groupe CAPTURE `FILE`
+(device_name, log_file_name, measurement_id, unit_id, session_id,
+project_id) sont tracées en WARN ; elles ne relèvent pas du groupe `MASKED`.
 """
 import argparse, sys
 sys.path.insert(0, "/app")
 from sqlalchemy import text
-from app.db import SessionLocal
+from guard_runtime import session_local_or_fail
 from scope_args import add_scope_args, resolve_scope
 
-FORBIDDEN = (
-    "identity", "subscriber", "device_name", "log_file_name",
-    "measurement_id", "unit_id", "session_id", "imei", "imsi",
-    "phone_number",
+SessionLocal = session_local_or_fail("G24b")
+
+FORBIDDEN = ("identity", "subscriber", "imei", "imsi", "phone_number")
+WARN_ONLY = (
+    "project_id", "device_name", "log_file_name", "measurement_id",
+    "unit_id", "session_id",
 )
-WARN_ONLY = ("project_id",)
 
 
 def main():
@@ -47,7 +44,7 @@ def main():
         try:
             project_id, capture_ids = resolve_scope(db, args)
         except ValueError as exc:
-            print(f"G24b_VERDICT FAIL scope_error={exc}")
+            print(f"G24b VERDICT=FAIL reason=scope_error detail={exc}")
             sys.exit(1)
         print(f"G24b scope: project_id={project_id} captures={capture_ids}")
         rows = db.execute(text("""
@@ -68,7 +65,7 @@ def main():
                 warns.append(r)
         # 0.89.5 — garde sans témoin = FAIL (jamais PASS silencieux).
         if len(rows) == 0:
-            print(f"G24b_VERDICT FAIL no_witness examined=0 "
+            print(f"G24b VERDICT=FAIL reason=no_witness examined=0 "
                   f"(metrics_catalog_cache vide ou aucun leaf cap_* — upload un projet d'abord)")
             sys.exit(1)
         print(f"G24b scan : {len(rows)} leaves cap_* examinés")
@@ -81,7 +78,7 @@ def main():
             for r in fails:
                 print(f"    {r['project_id']} {r['nid']}  col={r['col']}  label={r['lbl']}")
         verdict = "PASS" if not fails else "FAIL"
-        print(f"G24b_VERDICT {verdict} identity_leaks={len(fails)} warns={len(warns)}")
+        print(f"G24b VERDICT={verdict} identity_leaks={len(fails)} warns={len(warns)}")
         if verdict == "FAIL":
             sys.exit(1)
     finally:

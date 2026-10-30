@@ -18,10 +18,12 @@ Verdict G32:
 """
 import argparse, sys
 sys.path.insert(0, "/app")
-from app.db import SessionLocal
-from app.signaling.service import population
 from sqlalchemy import text
+from guard_runtime import session_local_or_fail
 from scope_args import add_scope_args, resolve_scope
+
+SessionLocal = session_local_or_fail("G32")
+from app.signaling.service import population
 
 
 _PAIR_TYPES = {'attach','bearer','call','data_session','ho','rrc_connection'}
@@ -36,7 +38,7 @@ def main():
         try:
             project_id, capture_ids = resolve_scope(db, args)
         except ValueError as exc:
-            print(f"G32_VERDICT FAIL scope_error={exc}")
+            print(f"G32 VERDICT=FAIL reason=scope_error detail={exc}")
             sys.exit(1)
         caps = [(project_id, capture_id) for capture_id in capture_ids]
         print(f"G32 witnesses: {len(caps)} captures project_id={project_id}")
@@ -91,13 +93,13 @@ def main():
         # 0.89.5 — garde sans témoin = FAIL. `caps` vient de `SELECT ...
         # FROM nmf_capture` : 0 capture ⇒ aucun échantillon ⇒ FAIL.
         if len(caps) == 0:
-            print(f"\nG32_VERDICT FAIL no_witness examined=0 "
+            print(f"\nG32 VERDICT=FAIL reason=no_witness examined=0 "
                   f"(nmf_capture vide — ingérer au moins une capture)")
             sys.exit(1)
         verdict = "PASS" if (total_diff == 0 and total_orphans_pair == 0 and total_orphans_proc == 0) else "FAIL"
         # 0.87.2 — rapport procs_only (hors _PAIR_TYPES) visible, mais pas FAIL
         print(f"\nG32 procs_only (hors _PAIR_TYPES, légitimes) : {procs_only_by_type}")
-        print(f"G32_VERDICT {verdict}  total_differ={total_diff} "
+        print(f"G32 VERDICT={verdict} total_differ={total_diff} "
               f"total_orphans_pair={total_orphans_pair} total_orphans_proc={total_orphans_proc}")
         # 0.87.2 — exit non-zero sur FAIL pour qu'un wrapper CI/manuel détecte.
         if verdict == "FAIL":
