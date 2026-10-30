@@ -1,7 +1,14 @@
 """Guard closed selectors and numerical/population semantics, no fabricated reference data."""
 import pytest
 from fastapi import HTTPException
-from app.kpi.metrics_v3 import definitions,parse_selection,aggregate_values,percentile,Dataset
+from app.kpi.metrics_v3 import (
+    Dataset,
+    aggregate_values,
+    connected_summary,
+    definitions,
+    parse_selection,
+    percentile,
+)
 from app.kpi.metrics_catalogue_v6 import catalogue,source_tree
 
 def test_closed_selectors_and_unproven_cells():
@@ -51,6 +58,17 @@ def test_explicit_empty_operator_population_is_not_all():
     assert not ds.admissible(1)
     ds.allowed=None;assert ds.admissible(1)
     ds.lo=2;assert not ds.admissible(1)
+
+
+def test_connected_summary_does_not_report_an_unrequested_scan_as_empty():
+    assert connected_summary(False, {}) == (None, None)
+    assert connected_summary(True, {(None, None): 12.5}) == (12.5, None)
+    connected, reason = connected_summary(True, {})
+    assert connected is None
+    assert reason == (
+        "No complete RRC connection interval is present in the selected "
+        "capture and filters."
+    )
 
 # 0.82.2 — Tests supprimés : test_v6_catalogue_is_the_approved_html_tree
 # et test_v6_catalogue_keeps_all_cell_leaves_and_open_nr_proofs.
