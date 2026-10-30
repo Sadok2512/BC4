@@ -1,13 +1,18 @@
-## Unreleased (minor) — stable neighbour identity (Agent BC1)
+## 0.109.0 (minor) — BC4 2026-10-30 — identité neighbour stable par cellule radio (Agent BC1, numérotation BC3)
 
-- CELLMEAS neighbours are materialized once per import with physical identity
-  `(system, ARFCN, PCI)`; occurrence-based `cell_index` remains storage-only.
-- `/metrics/series` and `/metrics/table` join the materialized identity and can
-  filter one real neighbour across the whole capture without exposing an
-  internal index.
-- Migration `0073_nmf_cell_identity` adds the mapping and its concurrent lookup
-  index. `backfill_cell_identity.py --reason ...` rebuilds existing captures
-  from decoded tables only, under a BC3 `DEPLOY_LOCK`.
+Merge `bc1/neighbour-identity` (`a298701`). Les voisins CELLMEAS reçoivent
+une identité physique stable `(system, ARFCN, PCI)` au moment de l'import ;
+l'index d'occurrence `cell_index` reste purement stockage.
+
+- Table de correspondance matérialisée une seule fois par import, jointe
+  côté `/metrics/series` et `/metrics/table` pour filtrer un vrai voisin
+  sur toute la capture sans exposer d'index interne.
+- Migration **0073_nmf_cell_identity** : table + index de lookup créés
+  `CONCURRENTLY` (zéro locking long).
+- `app/scripts/backfill_cell_identity.py --reason "…"` rejoue l'identité
+  pour les captures existantes depuis les tables décodées uniquement.
+  Exécution sous `DEPLOY_LOCK` holder=BC3 obligatoire.
+- SemVer : **MINOR 0.109.0**.
 
 ## 0.108.0 (minor) — BC4 2026-10-30 — feuilles consommables visibles + catalogue 2.59.0 (Agent BC4, numérotation BC3)
 
