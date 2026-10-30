@@ -36,6 +36,7 @@ from sqlalchemy import text
 
 from app.db import SessionLocal
 from app.nmf_decoder.store import decode_capture
+from app.scripts.deploy_guard import guard_bc3_deploy_lock
 
 
 def missing_captures(db) -> list[tuple[str, str, str]]:
@@ -96,6 +97,9 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--project", help="requis avec --capture (sinon dérivé de la DB)")
     p.add_argument("--dry-run", action="store_true", help="liste les captures ciblées sans décoder")
     args = p.parse_args(argv)
+
+    if not args.dry_run and not guard_bc3_deploy_lock(action="project_cell_second"):
+        return 1
 
     db = SessionLocal()
     try:

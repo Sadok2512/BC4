@@ -33,12 +33,14 @@ from sqlalchemy import select
 try:
     from app.db import SessionLocal
     from app.models import Project
+    from app.scripts.deploy_guard import guard_bc3_deploy_lock
 except ModuleNotFoundError:
     # Fallback : ajouter la racine du dépôt (parent de scripts/) au sys.path.
     import os
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     from app.db import SessionLocal
     from app.models import Project
+    from app.scripts.deploy_guard import guard_bc3_deploy_lock
 
 
 def mirror_one(project: Project) -> dict[str, Any]:
@@ -79,6 +81,8 @@ def mirror_one(project: Project) -> dict[str, Any]:
 
 
 def main() -> int:
+    if not guard_bc3_deploy_lock(action="mirror_ingest_to_b0"):
+        return 1
     touched = 0
     seen = 0
     with SessionLocal() as db:

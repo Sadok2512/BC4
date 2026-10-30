@@ -16,6 +16,7 @@ from uuid import uuid4
 from sqlalchemy import text
 
 from app.db import SessionLocal, engine
+from app.scripts.deploy_guard import guard_bc3_deploy_lock
 from app.signaling.materialized import materialize_project
 
 
@@ -56,6 +57,8 @@ def main(argv=None):
     if len(args.reason.strip()) < 10:
         print("VERDICT=FAIL reason=reason_too_short", file=sys.stderr)
         return 2
+    if not guard_bc3_deploy_lock(action="backfill_signaling_materialized"):
+        return 1
     # Same project-scoped session lock as populate_chain: backfill and import
     # finalization can never publish competing generations.
     lock_key = f"populate:{args.project_id}"

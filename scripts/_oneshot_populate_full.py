@@ -15,11 +15,14 @@ from app.services.populate_measurements import populate_measurements
 from app.measure.populate import populate_measurement_points
 from app.measure.ecgi import populate_ecgi_for_project
 from app.measure.proof import format_proof_table, run_proof
+from app.scripts.deploy_guard import guard_bc3_deploy_lock
 
 PROJECT_ID = "7e656b8c6c19"
 
 
 def main() -> int:
+    if not guard_bc3_deploy_lock(action="oneshot_populate_full"):
+        return 1
     # Étape A : populate_measurements (purge mp project, puis crée skeleton).
     print(f"[A] populate_measurements purge+skeleton project={PROJECT_ID}", flush=True)
     with SessionLocal() as db:

@@ -1,3 +1,11 @@
+## Unreleased — catalog activation guard
+
+- Operations (**patch**) : `bootstrap_catalog_release.py` valide désormais
+  l'artefact sans ouvrir la base par défaut. Toute écriture opérationnelle exige le
+  `DEPLOY_LOCK` avec `holder: BC3`, et l'activation du catalogue exige en plus
+  le drapeau explicite `--activate`. L'ancienne voie catalogue
+  `rebuild_2_50_5_uniqueids.py --commit` refuse désormais toute écriture DB.
+
 ## Incident 2026-10-30 — BC4 ingérence en production 23:28Z-00:11Z (BC3 audit complet)
 
 ### Fenêtres mesurées (rapport BC4 confirmé, écritures en base)

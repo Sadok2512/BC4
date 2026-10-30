@@ -27,11 +27,14 @@ from sqlalchemy.orm import Session
 from app.db import SessionLocal
 from app.ingest.nmf import _extract_utc_offset_min
 from app.models import NmfFile
+from app.scripts.deploy_guard import guard_bc3_deploy_lock
 
 LOG = logging.getLogger("backfill_utc_offset_min")
 
 
 def run(dry_run: bool = False, force: bool = False) -> int:
+    if not dry_run and not guard_bc3_deploy_lock(action="backfill_utc_offset_min"):
+        return 1
     db: Session = SessionLocal()
     try:
         q = select(NmfFile.id, NmfFile.filename, NmfFile.source_path, NmfFile.utc_offset_min)

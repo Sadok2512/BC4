@@ -24,11 +24,14 @@ from sqlalchemy.orm import Session
 
 from app.db import SessionLocal
 from app.nmf_decoder.store import classify_capture_kind
+from app.scripts.deploy_guard import guard_bc3_deploy_lock
 
 LOG = logging.getLogger("backfill_capture_kind")
 
 
 def run(dry_run: bool = False, force: bool = False) -> int:
+    if not dry_run and not guard_bc3_deploy_lock(action="backfill_capture_kind"):
+        return 1
     db: Session = SessionLocal()
     try:
         caps = list(

@@ -11,6 +11,7 @@ from app.db import SessionLocal, engine
 from app.models import NmfImportJob, Project
 from app.services.import_jobs import now
 from app.services.import_worker import LOCK_ID
+from app.scripts.deploy_guard import guard_bc3_deploy_lock
 
 
 ERROR_MARKER = 'column "dci_dci_count" of relation "nmf_event_light" does not exist'
@@ -78,6 +79,8 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("job_id")
     args = parser.parse_args()
+    if not guard_bc3_deploy_lock(action="requeue_import_schema_failures"):
+        raise SystemExit(1)
     count = requeue(args.job_id)
     print(f"REQUEUE_IMPORT_SCHEMA_FAILURES job={args.job_id} files={count} verdict=PASS")
 

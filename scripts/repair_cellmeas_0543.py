@@ -6,7 +6,10 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 from app.db import engine
 from app.measure.cellmeas_repair import enrich_lte_cellmeas
+from app.scripts.deploy_guard import guard_bc3_deploy_lock
 pid='134af70a06eb';captures=['ff6a1a2d0d13','e56b56456e0c']
+if '--apply' in sys.argv and not guard_bc3_deploy_lock(action='repair_cellmeas_0543'):
+ raise SystemExit(1)
 with engine.connect() as conn:
  tx=conn.begin();db=Session(bind=conn,join_transaction_mode='create_savepoint')
  def q(sql):

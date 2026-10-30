@@ -36,12 +36,14 @@ try:
     from app.db import SessionLocal
     from app.ingest.nmf import refresh_project_summary
     from app.models import Project
+    from app.scripts.deploy_guard import guard_bc3_deploy_lock
 except ModuleNotFoundError:
     import os as _os
     sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
     from app.db import SessionLocal
     from app.ingest.nmf import refresh_project_summary
     from app.models import Project
+    from app.scripts.deploy_guard import guard_bc3_deploy_lock
 
 
 def _snap(p: Project) -> dict[str, Any]:
@@ -54,6 +56,8 @@ def _snap(p: Project) -> dict[str, Any]:
 
 
 def main() -> int:
+    if not guard_bc3_deploy_lock(action="re_refresh_after_plmn_extension"):
+        return 1
     rc = 0
     with SessionLocal() as db:
         projects = db.execute(select(Project)).scalars().all()
