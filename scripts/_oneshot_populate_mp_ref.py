@@ -12,18 +12,22 @@ try:
     from app.db import SessionLocal
     from app.measure.populate import populate_measurement_points
     from app.measure.proof import format_proof_table, run_proof
+    from app.scripts.deploy_guard import guard_bc3_deploy_lock
 except ModuleNotFoundError:
     import os
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     from app.db import SessionLocal
     from app.measure.populate import populate_measurement_points
     from app.measure.proof import format_proof_table, run_proof
+    from app.scripts.deploy_guard import guard_bc3_deploy_lock
 
 
 PROJECT_ID = "7e656b8c6c19"
 
 
 def main() -> int:
+    if not guard_bc3_deploy_lock(action="oneshot_populate_mp_ref"):
+        return 1
     print(f"[mp] project={PROJECT_ID}: start", flush=True)
     with SessionLocal() as db:
         try:

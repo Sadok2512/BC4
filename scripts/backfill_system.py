@@ -21,6 +21,7 @@ sys.path.insert(0, "/opt/nmf_decoder")
 from sqlalchemy import text  # noqa: E402
 
 from app.db import SessionLocal  # noqa: E402
+from app.scripts.deploy_guard import guard_bc3_deploy_lock  # noqa: E402
 
 NMF_ROOT = Path("/var/lib/bc4/nmf-source")
 
@@ -30,6 +31,8 @@ def main() -> int:
         print("usage: backfill_system.py <project_id>", file=sys.stderr)
         return 2
     pid = sys.argv[1]
+    if not guard_bc3_deploy_lock(action="backfill_system"):
+        return 1
 
     # ⚠ Import DANS main() → force un fresh import si on patche /opt/nmf_decoder.
     import importlib

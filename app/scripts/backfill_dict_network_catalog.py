@@ -16,6 +16,7 @@ from uuid import uuid4
 from sqlalchemy import text
 
 from app.dict.materialized import materialize_network_catalog
+from app.scripts.deploy_guard import guard_bc3_deploy_lock
 
 
 def _snapshot(db, project_id):
@@ -44,6 +45,8 @@ def main(argv=None):
     if not args.reason or len(args.reason.strip()) < 10:
         print("VERDICT=FAIL reason=reason_too_short", file=sys.stderr)
         return 2
+    if not guard_bc3_deploy_lock(action="backfill_dict_network_catalog"):
+        return 1
     from app.db import SessionLocal, engine
     report = None
     try:

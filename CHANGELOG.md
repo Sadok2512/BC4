@@ -1,3 +1,17 @@
+## 0.104.0 (minor) — BC4 2026-10-30 — bootstrap_catalog_release.py : --activate + DEPLOY_LOCK exigé (Agent BC1, numérotation BC3)
+
+Merge `bc1/catalog-activation-guard` (`5de3d29`). Garde contre les
+écritures catalog hors DEPLOY_LOCK (incident BC4 2026-10-30 23:28Z-
+00:11Z : 6 toggles catalog_release sans lock).
+
+- `scripts/catalog/bootstrap_catalog_release.py` : nouveau flag
+  `--activate` **obligatoire** pour `UPDATE … is_current=TRUE`. Sans
+  `--activate`, le script insère seulement la ligne (idem
+  `--prepare-only` précédent) sans activer.
+- Garde additionnel : le script lit `/home/devmat/BC4/DEPLOY_LOCK` et
+  refuse toute écriture (prepare OU activate) tant que
+  `holder != BC3`. Exit 1 sans écriture.
+- Changement de comportement observable → **MINOR**.
 ## 0.103.0 (minor) — BC4 2026-10-30 — summary.total aligné sur RF view + hidden (Agent BC1, numérotation BC3)
 
 Merge `bc1/signaling-summary-align` (`6a12628`). Résout l'écart

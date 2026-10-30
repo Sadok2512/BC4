@@ -37,6 +37,7 @@ def test_refuses_when_worker_lock_held():
     fake_conn.execute.return_value.scalar.return_value = False  # lock refusé
 
     with patch.object(reparse_capture, "engine", fake_engine), \
+         patch.object(reparse_capture, "guard_bc3_deploy_lock", return_value=True), \
          patch.object(reparse_capture, "decode_capture") as fake_decode, \
          patch("sys.argv", ["reparse_capture", "pid-1", "cap-1",
                             "--reason", "manual re-parse pour test"]):
@@ -73,6 +74,7 @@ def test_writes_before_after_audit_json(tmp_path):
     ]
 
     with patch.object(reparse_capture, "engine", fake_engine), \
+         patch.object(reparse_capture, "guard_bc3_deploy_lock", return_value=True), \
          patch.object(reparse_capture, "SessionLocal", lambda: fake_session), \
          patch.object(reparse_capture, "decode_capture") as fake_decode, \
          patch.object(reparse_capture, "_audit_dir", lambda: tmp_path), \

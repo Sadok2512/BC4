@@ -23,10 +23,13 @@ import sys
 from sqlalchemy import text
 
 from app.db import SessionLocal
+from app.scripts.deploy_guard import guard_bc3_deploy_lock
 from app.services.populate_measurements import populate_measurements
 
 
 def main(argv: list[str]) -> int:
+    if not guard_bc3_deploy_lock(action="backfill_measurements"):
+        return 1
     with SessionLocal() as db:
         if len(argv) > 1:
             project_ids = argv[1:]

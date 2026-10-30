@@ -34,6 +34,7 @@ from sqlalchemy import text
 
 from app.db import SessionLocal, engine
 from app.nmf_decoder.store import decode_capture
+from app.scripts.deploy_guard import guard_bc3_deploy_lock
 from app.services.import_worker import LOCK_ID
 
 
@@ -66,6 +67,9 @@ def main() -> int:
     ap.add_argument("--reason", required=True,
                     help="Justification obligatoire tracée dans le journal.")
     args = ap.parse_args()
+
+    if not guard_bc3_deploy_lock(action="reparse_capture"):
+        return 1
 
     with engine.connect() as lock:
         acquired = bool(

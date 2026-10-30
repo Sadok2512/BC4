@@ -16,11 +16,14 @@ from app.db import SessionLocal
 from app.measure.populate import populate_measurement_points
 from app.measure.ecgi import populate_ecgi_for_project
 from app.measure.proof import format_proof_table, run_proof
+from app.scripts.deploy_guard import guard_bc3_deploy_lock
 
 PROJECT_ID = "7e656b8c6c19"
 
 
 def main() -> int:
+    if not guard_bc3_deploy_lock(action="oneshot_populate_mp_ref_purge"):
+        return 1
     print(f"[mp] project={PROJECT_ID}: start (purge=True)", flush=True)
     with SessionLocal() as db:
         try:

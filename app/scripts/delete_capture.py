@@ -11,6 +11,7 @@ import json
 import sys
 
 from app.db import SessionLocal
+from app.scripts.deploy_guard import guard_bc3_deploy_lock
 from app.services.capture_delete import (
     CaptureDeleteBusy,
     CaptureDeleteError,
@@ -25,6 +26,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("capture_id")
     parser.add_argument("--reason", required=True, help="Justification obligatoire (10 caractères minimum).")
     args = parser.parse_args(argv)
+
+    if not guard_bc3_deploy_lock(action="delete_capture"):
+        return 1
 
     try:
         with SessionLocal() as db:

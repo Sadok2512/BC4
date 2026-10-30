@@ -21,6 +21,7 @@ from app.models import Project
 from app.nmf_decoder.store import decode_capture
 from app.nmf_decoder import DECODER_VERSION
 from app.nmf_decoder.decoder import RANGE_VIOLATIONS, reset_range_violations
+from app.scripts.deploy_guard import guard_bc3_deploy_lock
 
 PROGRESS = Path("/app/exports/redecode_progress.txt")
 PROGRESS.parent.mkdir(parents=True, exist_ok=True)
@@ -54,6 +55,8 @@ def main():
     nmf_file.source_path, NE TOUCHE PAS stg_event ni stg_event_raw ni
     param_occurrence). Les tables Light/Group/Deep sont purgées puis
     re-remplies ; nmf_capture est UPSERT."""
+    if not guard_bc3_deploy_lock(action="catalog_redecode_corpus"):
+        return 1
     args = sys.argv[1:]
     only_cap = None
     kind_filter = None
@@ -117,6 +120,7 @@ def main():
                 log_line(f"  FAIL {pid}/{cap} : {err[:120]}")
     finally:
         db.close()
+    return 0
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

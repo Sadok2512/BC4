@@ -21,15 +21,19 @@ try:
     from app.db import SessionLocal
     from app.dict.populate import populate_param_occurrence
     from app.models import Project
+    from app.scripts.deploy_guard import guard_bc3_deploy_lock
 except ModuleNotFoundError:
     import os
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     from app.db import SessionLocal
     from app.dict.populate import populate_param_occurrence
     from app.models import Project
+    from app.scripts.deploy_guard import guard_bc3_deploy_lock
 
 
 def main() -> int:
+    if not guard_bc3_deploy_lock(action="populate_dict_for_all_projects"):
+        return 1
     total_projects = 0
     total_written = 0
     total_denied = 0

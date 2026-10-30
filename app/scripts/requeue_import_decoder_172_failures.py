@@ -5,6 +5,8 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+from app.scripts.deploy_guard import guard_bc3_deploy_lock
+
 ERROR_MARKERS = (
     "unsupported operand type(s) for +=: 'float' and 'str'",
     "can't multiply sequence by non-int of type 'float'",
@@ -80,6 +82,8 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("job_id")
     args = parser.parse_args()
+    if not guard_bc3_deploy_lock(action="requeue_import_decoder_172_failures"):
+        raise SystemExit(1)
     count = requeue(args.job_id)
     print(
         f"REQUEUE_IMPORT_DECODER_172_FAILURES job={args.job_id} "

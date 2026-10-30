@@ -23,8 +23,11 @@ Usage (depuis bc4-back/) :
   python scripts/catalog/rebuild_2_50_5_uniqueids.py \
     --in app/kpi/catalog_release/catalog_2.50.4.json \
     --out app/kpi/catalog_release/catalog_2.50.5.json \
-    --version 2.50.5 \
-    --commit
+    --version 2.50.5
+
+Le drapeau historique `--commit` est conservé uniquement pour produire un
+refus explicite. Toute écriture de `catalog_release` passe par
+`bootstrap_catalog_release.py --activate`.
 """
 from __future__ import annotations
 import argparse, hashlib, json, sys
@@ -34,8 +37,6 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
-from sqlalchemy import text  # noqa: E402
-from app.db import SessionLocal  # noqa: E402
 
 
 def main():
@@ -45,6 +46,11 @@ def main():
     ap.add_argument("--version", required=True)
     ap.add_argument("--commit", action="store_true")
     args = ap.parse_args()
+
+    if args.commit:
+        print("VERDICT=FAIL reason=catalog_database_writes_require_bootstrap_catalog_release",
+              file=sys.stderr)
+        return 1
 
     src = json.loads(Path(args.src).read_text())
     nodes_in = src["nodes"]
@@ -102,32 +108,8 @@ def main():
     sha = hashlib.sha256(out_path.read_bytes()).hexdigest()
     print(f"[rebuild] out={out_path} sha256={sha}")
 
-    if args.commit:
-        db = SessionLocal()
-        try:
-            db.execute(text("UPDATE catalog_release SET is_current=FALSE WHERE is_current=TRUE"))
-            db.execute(text(
-                "INSERT INTO catalog_release(version, spec_version, decoder_min_version, "
-                "sha256, n_categories, n_metrics, n_leaves, changelog, is_current) "
-                "VALUES(:v,:s,:d,:sha,:nc,:nm,:nl,:cl,TRUE) "
-                "ON CONFLICT(version) DO UPDATE SET sha256=excluded.sha256, "
-                "n_categories=excluded.n_categories, n_metrics=excluded.n_metrics, "
-                "n_leaves=excluded.n_leaves, is_current=TRUE"
-            ), {
-                "v": args.version,
-                "s": payload["spec_version"],
-                "d": payload["decoder_min_version"],
-                "sha": sha,
-                "nc": payload["n_categories"],
-                "nm": payload["n_metrics"],
-                "nl": payload["n_leaves"],
-                "cl": f"post-process 2.50.4 → unique node_ids ({dup_positions} dup positions suffixed _r<i>)"
-            })
-            db.commit()
-            print(f"[rebuild] catalog_release row v={args.version} is_current=TRUE")
-        finally:
-            db.close()
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
