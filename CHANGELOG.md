@@ -1,3 +1,30 @@
+## 0.115.1 (patch) — BC4 2026-10-30 — cell_ref import alias EARFCN précis vs bande + PCI alias (BC3)
+
+Correctif import `/settings/cell-ref/upload` : récupère les colonnes
+EARFCN précises et PCI que le mapping ignorait silencieusement.
+
+Mesuré sur `/home/devmat/ref_cell_4G5G.csv` (import 842365242924,
+459 547 lignes) : la colonne `earfcn` porte la bande MHz (8 valeurs
+distinctes : 700/800/900/1400/1800/2100/2600/3500), tandis que
+`dl_earfcn` porte l'EARFCN précis (8 valeurs réelles observées :
+524/547/1300/3000/6275/6400/9310/9335) sur **19 642 lignes** (ORF 4G).
+`pci` renseigné sur **26 034 lignes** (5.7 %, dont ~20 000 ORF).
+
+- `app/routes/settings_cell_ref.py:134-146` : nouveaux alias
+  `_normalize_header` : `dl_earfcn → earfcn`, `nr_arfcn → earfcn`,
+  `physical_cell_id → pci`, `pci_id → pci`.
+- `app/routes/settings_cell_ref.py:184-192` : `_parse_csv` ne remplace
+  plus une valeur non-vide par une valeur vide (garantit que
+  `earfcn=bande` reste si `dl_earfcn` vide, et bascule sur l'EARFCN
+  précis uniquement quand `dl_earfcn` est renseigné).
+- Portée : récupère ~19 642 cellules avec EARFCN précis + les PCI alias.
+  **Zone Hénin-Beaumont / Lens (Test_6) non impactée** : les 5 lignes
+  mesurées de cette zone ont `dl_earfcn=''`, `pci=''`, `nr_arfcn=''`
+  dans le CSV source — données amont manquantes, patch sans effet
+  local, mais utile ailleurs en France (Paris, Lyon, etc.).
+- SemVer back : **PATCH 0.115.1** (correctif import, aucun contrat HTTP
+  modifié).
+
 ## 0.115.0 (minor) — BC4 2026-10-30 — route lean `/metrics/map` (Agent BC1, numérotation BC3)
 
 Merge `bc1/metrics-map-lean` (`09318f7`). Nouvelle route dédiée à la

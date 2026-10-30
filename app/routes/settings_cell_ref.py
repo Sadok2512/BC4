@@ -132,6 +132,22 @@ def _normalize_header(h: str) -> str:
     if h == "latitude": return "lat"
     if h == "longitude": return "lng"
     if h == "band": return "band_src"
+    # 0.115.1 BC3 — alias EARFCN précis vs bande MHz. L'export vendor
+    # Orange porte la bande MHz dans `earfcn` (ex. 1800) ET l'EARFCN
+    # précis dans `dl_earfcn` (ex. 1675). Mesuré sur
+    # `/home/devmat/ref_cell_4G5G.csv` import 842365242924 :
+    # `earfcn` = bande, 459 499 lignes populées, 8 valeurs distinctes
+    # (700/800/900/1400/1800/2100/2600/3500 MHz) ;
+    # `dl_earfcn` = EARFCN précis, 19 642 lignes populées (ORF 4G),
+    # 8 valeurs distinctes réelles (524/547/1300/3000/6275/6400/9310/
+    # 9335). On alias `dl_earfcn` → `earfcn` pour que l'EARFCN précis
+    # écrase la bande au `COALESCE` SQL. `ul_earfcn` reste ignoré
+    # (duplicat FDD). `nr_arfcn` jamais renseigné dans ce dépôt
+    # (0 ligne mesurée) mais alias prévu pour futur export NR.
+    if h == "dl_earfcn": return "earfcn"
+    if h == "nr_arfcn": return "earfcn"
+    if h == "physical_cell_id": return "pci"
+    if h == "pci_id": return "pci"
     return h
 
 
@@ -166,7 +182,15 @@ def _parse_csv(blob: bytes) -> tuple[list[dict[str, str]], list[str]]:
         for k, v in raw.items():
             if k is None:
                 continue
-            row[_normalize_header(k)] = (v or "").strip()
+            nk = _normalize_header(k)
+            new_val = (v or "").strip()
+            # 0.115.1 BC3 — ne jamais écraser une valeur non-vide par une
+            # valeur vide. Garantit que `earfcn=bande` reste persisté si
+            # `dl_earfcn` est vide, et qu'il est remplacé par l'EARFCN
+            # précis uniquement quand `dl_earfcn` est renseigné.
+            if nk in row and row[nk] and not new_val:
+                continue
+            row[nk] = new_val
         norm_rows.append(row)
     warnings: list[str] = []
     if not reader.fieldnames:
