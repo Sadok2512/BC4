@@ -51,6 +51,7 @@ from app.kpi.catalog_v2 import (
     TECHNO_ORDER,
     TOTAL_INPUT_ROWS,
     Status,
+    analytics_tab_for_nature,
     is_in_service_scope,
     not_applicable_reason,
     sorted_entries,
@@ -571,6 +572,9 @@ def build_catalog_v2_response(
                     "code":          e["code"],
                     "name":          e["name"],
                     "nature":        e["nature"],
+                    # Contrat commun avec catalog_release : le front ne
+                    # classe jamais depuis un libellé, un code ou une unité.
+                    "analytics_tab": analytics_tab_for_nature(e["nature"]),
                     "unit":          e["unit"],
                     "source":        e["source"],
                     "temporal_source": temporal_source,

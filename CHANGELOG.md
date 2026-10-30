@@ -1,3 +1,29 @@
+## 0.105.0 (minor) — BC4 2026-10-30 — 3 onglets KPI Analytics + catalogue 2.57.0 (Agent BC4, numérotation BC3)
+
+Merge `bc4/kpi-parameters-tab` (`f27578b`). Contrat d'onglet KPI Analytics
+servi par le back + release catalogue mineure 2.57.0 associée.
+
+- `/projects/{id}/kpi/catalog` expose `analytics_tab=kpi|metrics` sur chaque
+  feuille, calculé depuis le champ catalogue `nature` côté serveur.
+- `/projects/{id}/metrics` expose `analytics_tab=metrics` depuis la release
+  catalogue mineure, y compris sur les feuilles cellule découvertes au runtime.
+- Le code peut précéder l'activation catalogue : les releases antérieures,
+  dont la route ne contient que des feuilles Metrics, reçoivent la même valeur
+  pendant la fenêtre de livraison ordonnée.
+- `bootstrap_catalog_release.py` prépare de façon déterministe le MINOR suivant
+  depuis 2.56.2 ; `--prepare-only` garantit qu'aucune base n'est activée durant
+  la livraison. `--activate` reste requis pour `is_current=TRUE` (lot 0.104.0).
+- Catalogue 2.57.0 : classement par contenu avec `analytics_tab` et
+  `analytics_classification` — calcul dérivé d'événements → KPI, champ lu
+  dans un événement NFF → Metrics, ambiguïté résiduelle → Metrics.
+- `analytics_series_decisions` retire de l'arbre les séries non consommables
+  avec `max_points=2000`. La décision et la raison sont portées par le
+  catalogue ; aucun filtre équivalent n'existe dans le front.
+- Artefact catalogue : `app/kpi/catalog_release/catalog_2.57.0.json`
+  (sha256 attendu `6e26c529d20253f1998e0687f7e3b9bbabd36b9d24f762cca51478a509d76c7f`).
+- Activation prod : via `bootstrap_catalog_release.py --version 2.57.0
+  --activate` sous DEPLOY_LOCK BC3 (lot 0.104.0).
+
 ## 0.104.1 (patch) — BC4 2026-10-30 — scripts/fingerprint pour comparer bodies normalisés (Agent BC1, numérotation BC3)
 
 Merge `bc1/fingerprint-scripts` (`5b2bf04`). Scripts seulement, pas de
@@ -253,7 +279,6 @@ tables (`dict_network_catalog_state`, `dict_network_catalog_entry`,
 - CLI `python -m app.scripts.backfill_dict_network_catalog <PID>
   --reason "…"` idempotente.
 - Contrat HTTP `/dict/v2/tree` byte-for-byte compatible.
-
 ## 0.100.0 (minor) — BC4 2026-10-29 — `/metrics/series` borné + session JWT 480 min (Agent BC1, numérotation BC3)
 
 Merge `bc1/metrics-series-lean` (`8ead390`). Numéro **0.100.0 (minor)**

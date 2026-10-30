@@ -29,6 +29,18 @@ Chaque build écrit une ligne dans `catalog_release` (sha256, counts) ;
 
 ## Versions
 
+## 2.57.0 — 2026-10-29 — Classement KPI Analytics explicite (BC4, numéro à valider par BC3)
+
+Type SemVer : **minor**. Numéro proposé ; BC3 attribue le numéro final.
+
+- Chaque feuille porte `analytics_tab=metrics`. Le classement est un contrat
+  de catalogue ; aucun libellé, code, événement ou unité ne sert de heuristique.
+- L'artefact est dérivé déterministement de 2.56.2 avec
+  `scripts/catalog/bootstrap_catalog_release.py --version 2.57.0
+  --from-version 2.56.2 --prepare-only`.
+- La préparation n'active aucune base. La bascule reste une commande séparée :
+  `scripts/catalog/bootstrap_catalog_release.py --version 2.57.0`.
+
 ## 2.56.2 — 2026-10-29 — Feuilles cellule par enum, sans index interne (BC1)
 
 Type SemVer : **patch**. Numéro proposé ; BC3 attribue le numéro final.

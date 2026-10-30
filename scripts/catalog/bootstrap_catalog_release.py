@@ -11,6 +11,11 @@ Usage (idempotent, upsert sur `version`) :
   python scripts/catalog/bootstrap_catalog_release.py --version 2.53.0
   python scripts/catalog/bootstrap_catalog_release.py --version 2.53.0 --activate
 
+Préparer une release mineure qui ajoute le classement KPI Analytics sans
+activer la base (la bascule reste une commande séparée et explicite) :
+  python scripts/catalog/bootstrap_catalog_release.py --version 2.57.0 \
+    --from-version 2.56.2 --prepare-only
+
 Variables :
   --version <X.Y.Z> : nom du fichier catalog_<X.Y.Z>.json (requis)
   --changelog "..." : commentaire (défaut : "bootstrap post-reset")
@@ -23,6 +28,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -39,9 +45,123 @@ from app.kpi.catalog_release.registry import (  # noqa: E402
 )
 
 
+SEMVER_RE = re.compile(r"^(\d+)\.(\d+)\.(\d+)$")
+
+# Décisions issues du replay exhaustif Test_6 avec max_points=2000. Elles sont
+# écrites dans l'artefact 2.57.0 : le serveur construit l'arbre depuis ce champ,
+# le front ne contient donc aucune liste d'exclusion.
+ANALYTICS_SERIES_REMOVALS: tuple[tuple[str, str, str], ...] = (
+    ("cell_ch@lte-type-2", "CELLMEAS", "categorical_transitions_exceed_max_points:required=5449:max_points=2000"),
+    ("cell_pci@lte-type-2", "CELLMEAS", "categorical_transitions_exceed_max_points:required=19957:max_points=2000"),
+    ("cell_pci@nr-type-1000", "CELLMEAS", "categorical_transitions_exceed_max_points:required=9540:max_points=2000"),
+    *((code, event, "unknown_metric") for event, codes in {
+        "CQI": [f"cqi_n_params@lte-type-{cell}" for cell in range(5)],
+        "CREL": ["crel_band", "crel_cell_id", "crel_new_tac", "crel_old_band", "crel_old_cell_id", "crel_old_system", "crel_old_tac", "crel_params"],
+        "DAD": ["dad_application_protocol", "dad_data_disc_status"],
+        "DCOMP": ["dcomp_application_protocol", "dcomp_transf_status"],
+        "DREQ": ["dreq_application_protocol", "dreq_transf_dir"],
+        "GAD": ["gad_detach_cause", "gad_detach_status", "gad_detach_time"],
+        "HOA": ["hoa_att_band", "hoa_att_ch", "hoa_att_pci", "hoa_band", "hoa_ch_number", "hoa_current_system", "hoa_hoa_type", "hoa_pci"],
+        "HOI": ["hoi_ho_duration", "hoi_ho_u_plane"],
+        "LOCK": ["lock_band", "lock_forcings", "lock_params"],
+        "MEI": ["mei_measurement_event", "mei_measurement_id"],
+        "PBA": ["pba_pb_type"],
+        "PBC": ["pbc_pb_id"],
+        "RACHI": ["rachi_access_delay", "rachi_init_tx_power", "rachi_pathloss", "rachi_preamble_step", "rachi_preambles", "rachi_pusch_power", "rachi_rach_preamble_index", "rachi_rach_reason", "rachi_rach_result", "rachi_rach_type"],
+        "ROAM": ["roam_roaming_status"],
+        "RRA": ["rra_est_cause"],
+        "RRD": ["rrd_rrc_rel_cause", "rrd_rrc_rel_status"],
+        "SEI": ["sei_mcc", "sei_mme_code", "sei_mme_group", "sei_mnc", "sei_service_status"],
+    }.items() for code in codes),
+)
+
+
+def analytics_classification(leaf: dict) -> tuple[str, str]:
+    """Classify from catalog content only; labels are deliberately ignored."""
+    if leaf.get("analytics_computation") == "event_derived":
+        return "kpi", "computed_from_events"
+    if leaf.get("event"):
+        return "metrics", "message_measurement"
+    return "metrics", "ambiguous_defaults_to_metrics"
+
+
+def prepare_analytics_minor(source_version: str, target_version: str) -> Path:
+    """Clone a catalog release and add the explicit Analytics tab contract.
+
+    Classification uses structural catalog content: event-derived calculations
+    are KPI, message fields are Metrics, and residual ambiguity defaults to
+    Metrics. The target must be the next MINOR release; labels are ignored.
+    """
+    source_match = SEMVER_RE.fullmatch(source_version)
+    target_match = SEMVER_RE.fullmatch(target_version)
+    if not source_match or not target_match:
+        raise ValueError("versions attendues au format X.Y.Z")
+    source_semver = tuple(map(int, source_match.groups()))
+    target_semver = tuple(map(int, target_match.groups()))
+    if target_semver != (source_semver[0], source_semver[1] + 1, 0):
+        raise ValueError(
+            f"la cible doit être le MINOR suivant : "
+            f"{source_semver[0]}.{source_semver[1] + 1}.0"
+        )
+
+    source_path = catalog_file_path(source_version)
+    if not source_path.exists():
+        raise FileNotFoundError(f"catalogue source absent : {source_path}")
+    payload = json.loads(source_path.read_text(encoding="utf-8"))
+    leaves = [node for node in payload.get("nodes", []) if node.get("node_type") == "leaf"]
+    if not leaves:
+        raise ValueError("catalogue source sans feuille")
+    residual_ambiguous = []
+    for leaf in leaves:
+        tab, reason = analytics_classification(leaf)
+        leaf["analytics_tab"] = tab
+        leaf["analytics_classification"] = reason
+        if reason == "ambiguous_defaults_to_metrics":
+            residual_ambiguous.append(leaf["node_id"])
+    payload["analytics_classification_policy"] = {
+        "kpi": "analytics_computation=event_derived",
+        "computed_from_events_tab": "kpi",
+        "metrics": "event identifies a field read from a message",
+        "message_measurement_tab": "metrics",
+        "fallback": "metrics",
+        "label_fields_used": False,
+        "residual_ambiguous_node_ids": sorted(residual_ambiguous),
+    }
+    payload["analytics_series_decisions"] = [
+        {
+            "code": code,
+            "event": event,
+            "visible": False,
+            "decision": "removed_until_series_supported",
+            "reason": reason,
+        }
+        for code, event, reason in ANALYTICS_SERIES_REMOVALS
+    ]
+    payload["catalog_version"] = target_version
+
+    target_path = catalog_file_path(target_version)
+    rendered = json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+    if target_path.exists() and target_path.read_text(encoding="utf-8") != rendered:
+        raise ValueError(f"artefact cible existant différent : {target_path}")
+    target_path.write_text(rendered, encoding="utf-8")
+    print(
+        f"[bootstrap] prepared catalog v={target_version} from={source_version} "
+        f"kpi={sum(leaf['analytics_tab'] == 'kpi' for leaf in leaves)} "
+        f"metrics={sum(leaf['analytics_tab'] == 'metrics' for leaf in leaves)} "
+        f"residual_ambiguous={len(residual_ambiguous)} "
+        f"series_removed={len(ANALYTICS_SERIES_REMOVALS)} "
+        f"sha256={sha256_file(target_path)}"
+    )
+    return target_path
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--version", required=True, help="ex. 2.53.0")
+    ap.add_argument("--version", "--to", dest="version", required=True, help="ex. 2.53.0")
+    ap.add_argument(
+        "--from-version", "--from", dest="from_version",
+        help="clone cette release vers le MINOR suivant et ajoute analytics_tab",
+    )
     ap.add_argument("--changelog", default="bootstrap post-reset")
     mode = ap.add_mutually_exclusive_group()
     mode.add_argument("--prepare-only", action="store_true",
@@ -50,6 +170,12 @@ def main(argv: list[str] | None = None) -> int:
                       help="active la release ; exige un DEPLOY_LOCK holder=BC3")
     args = ap.parse_args(argv)
 
+    if args.from_version:
+        try:
+            prepare_analytics_minor(args.from_version, args.version)
+        except (FileNotFoundError, ValueError) as exc:
+            print(f"[bootstrap] FAIL — {exc}", file=sys.stderr)
+            return 2
     path = catalog_file_path(args.version)
     if not path.exists():
         print(f"[bootstrap] FAIL — fichier absent : {path}", file=sys.stderr)

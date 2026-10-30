@@ -58,6 +58,7 @@ class MetricCatalogNode(BaseModel):
     # 0.80.1 — ajout "tech"/"event" pour catalog 2.50.5 (4 niveaux
     # Technology → Catégorie → Métrique → Feuilles cellule).
     node_type: Literal['tech','category','group','metric','event','leaf']
+    analytics_tab: Literal['kpi', 'metrics'] | None = None
     metric_id: str | None = None
     selection: str | None = None
     event: str | None = None
@@ -92,6 +93,18 @@ class MetricCatalogResponse(BaseModel):
     catalog_release: CatalogReleaseInfo | None = None
     decoder_version: str = ""
     reason: str = ""
+
+
+def _with_analytics_tabs(payload: dict) -> dict:
+    """Backfill only the ordered-rollout tab contract on pre-2.57 caches.
+
+    Series visibility is never guessed here: it comes exclusively from the
+    active catalog release while building a version-keyed cache entry.
+    """
+    for node in payload.get("nodes", []):
+        if node.get("node_type") == "leaf" and not node.get("analytics_tab"):
+            node["analytics_tab"] = "metrics"
+    return payload
 class CaptureInfo(BaseModel):
     capture_id: str
     label: str
@@ -316,7 +329,7 @@ def catalog(project_id: str, db: Session=Depends(get_db)):
     cached=db.execute(text("""SELECT payload FROM metrics_catalog_cache
       WHERE project_id=:pid AND decode_stamp=:stamp"""),
       {'pid':project_id,'stamp':cache_stamp}).scalar_one_or_none()
-    if cached is not None:return cached
+    if cached is not None:return _with_analytics_tabs(cached)
     if cur:
         from app.kpi.metrics_catalog_v4 import build_catalog_v4
         payload = build_catalog_v4(db, project_id, cur)
@@ -334,7 +347,7 @@ def catalog(project_id: str, db: Session=Depends(get_db)):
       decode_stamp=excluded.decode_stamp,payload=excluded.payload,updated_at=now()"""),
       {'pid':project_id,'stamp':cache_stamp,'payload':json.dumps(payload)})
     db.commit()
-    return payload
+    return _with_analytics_tabs(payload)
 
 @router.get('/projects/{project_id}/metrics/captures', response_model=list[CaptureInfo])
 def captures(project_id: str,f: dict=Depends(filters),db: Session=Depends(get_db)):
