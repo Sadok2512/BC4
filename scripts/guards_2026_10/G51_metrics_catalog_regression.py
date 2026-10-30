@@ -36,6 +36,7 @@ reste lecture pure.
 from __future__ import annotations
 
 import argparse
+from concurrent.futures import ThreadPoolExecutor
 import json
 import os
 import sys
@@ -73,6 +74,10 @@ def main():
     ap.add_argument("--capture", required=True)
     ap.add_argument("--limit", type=int, default=None,
                     help="Max number of leaves to probe (default: all)")
+    ap.add_argument("--workers", type=int, default=1, choices=range(1, 17),
+                    help="Bounded concurrent leaves (default: 1, max: 16)")
+    ap.add_argument("--timeout", type=int, default=60,
+                    help="Per-request timeout in seconds (default: 60)")
     ap.add_argument("--allow-422", action="store_true",
                     help="Treat 422 as pass (default: pass only on 200)")
     ap.add_argument("--mixed-pairs", nargs="*",
@@ -110,32 +115,41 @@ def main():
     failures = []
     accepted = {200, 422} if args.allow_422 else {200}
 
-    for i, code in enumerate(leaves, 1):
+    def probe(code):
         table_path = (
             f"/projects/{args.project}/metrics/table"
             f"?codes={quote(code)}"
             f"&capture_id={args.capture}"
             "&group_by=operator&include_map=false&table_only=true&page=1&page_size=25"
         )
-        s, sz, el, err = _call(args.base_url, args.token, table_path)
-        results[("table", s)] += 1
-        if s == 500 or (s not in accepted and s != 422):
-            failures.append(("table", code, s, el, err))
-
+        s, sz, el, err = _call(args.base_url, args.token, table_path,
+                               timeout=args.timeout)
         series_path = (
             f"/projects/{args.project}/metrics/series"
             f"?codes={quote(code)}"
             f"&capture_id={args.capture}"
         )
-        s2, sz2, el2, err2 = _call(args.base_url, args.token, series_path)
-        results[("series", s2)] += 1
-        if s2 == 500 or (s2 not in accepted and s2 != 422):
-            failures.append(("series", code, s2, el2, err2))
+        s2, sz2, el2, err2 = _call(args.base_url, args.token, series_path,
+                                   timeout=args.timeout)
+        return code, (s, sz, el, err), (s2, sz2, el2, err2)
 
-        if i % 50 == 0 or i == len(leaves):
-            print(f"  … {i}/{len(leaves)} table[200]={results[('table',200)]} "
-                  f"table[422]={results[('table',422)]} table[500]={results[('table',500)]} "
-                  f"series[500]={results[('series',500)]}", flush=True)
+    with ThreadPoolExecutor(max_workers=args.workers) as executor:
+        for i, (code, table_result, series_result) in enumerate(
+            executor.map(probe, leaves), 1
+        ):
+            s, _sz, el, err = table_result
+            s2, _sz2, el2, err2 = series_result
+            results[("table", s)] += 1
+            if s == 500 or (s not in accepted and s != 422):
+                failures.append(("table", code, s, el, err))
+            results[("series", s2)] += 1
+            if s2 == 500 or (s2 not in accepted and s2 != 422):
+                failures.append(("series", code, s2, el2, err2))
+
+            if i % 50 == 0 or i == len(leaves):
+                print(f"  … {i}/{len(leaves)} table[200]={results[('table',200)]} "
+                      f"table[422]={results[('table',422)]} table[500]={results[('table',500)]} "
+                      f"series[500]={results[('series',500)]}", flush=True)
 
     print(f"\nG51 mixed combinations ({len(args.mixed_pairs)}):", flush=True)
     for codes in args.mixed_pairs:
@@ -145,7 +159,8 @@ def main():
             f"&capture_id={args.capture}"
             "&group_by=operator&include_map=false&table_only=true&page=1&page_size=25"
         )
-        s, sz, el, err = _call(args.base_url, args.token, table_path)
+        s, sz, el, err = _call(args.base_url, args.token, table_path,
+                               timeout=args.timeout)
         results[("mixed", s)] += 1
         print(f"  mixed codes={codes} status={s} time={el:.2f}s", flush=True)
         if s == 500 or (s not in accepted and s != 422):

@@ -485,7 +485,7 @@ def sample(points,limit,kind):
     return out,dict(method='seq_bucket_min_max',factor=n/len(out),seq_bucket_width=width)
 
 @router.get('/projects/{project_id}/metrics/series', response_model=SeriesResponse)
-def series(project_id: str,capture_id: str,codes: str,cell: str|None=None,attr: str|None=None,from_seq: int|None=Query(None,ge=0),to_seq: int|None=Query(None,ge=0),max_points: int=Query(5000,ge=2,le=100000),f: dict=Depends(filters),db: Session=Depends(get_db)):
+def series(project_id: str,capture_id: str,codes: str,cell: str|None=None,attr: str|None=None,from_seq: int|None=Query(None,ge=0),to_seq: int|None=Query(None,ge=0),max_points: int=Query(5000,ge=2,le=100000),cell_pci:int|None=Query(None,ge=0),cell_arfcn:int|None=Query(None,ge=0),f: dict=Depends(filters),db: Session=Depends(get_db)):
     from app.kpi.metrics_v3 import definitions,parse_selection,Dataset,DERIVED,EVENT_FIELD_CODES
     v3_definitions=definitions()
     if cell is not None or attr is not None or any(c.partition('@')[0].partition('~')[0] in EVENT_FIELD_CODES or c in DERIVED or c.startswith('evt_') or c.startswith('cap_') or '@' in c or '~' in c for c in codes.split(',')):
@@ -497,7 +497,8 @@ def series(project_id: str,capture_id: str,codes: str,cell: str|None=None,attr: 
         ds=Dataset(db,project_id,capture_id,f,from_seq,to_seq,lean_series=True)
         selected=[parse_selection(c,v3_definitions,cell or 'all',attr) for c in dict.fromkeys(codes.split(','))]
         if len(selected)>64:raise HTTPException(422,'too_many_metrics')
-        return ds.response(selected,max_points,series_only=True)
+        return ds.response(selected,max_points,cell_pci=cell_pci,
+                           cell_arfcn=cell_arfcn,series_only=True)
     project(db,project_id)
     validate_operators(db,project_id,f)
     definitions=metric_catalog(db)
