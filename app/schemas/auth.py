@@ -30,6 +30,12 @@ class PublicUser(BaseModel):
     role: AppUserRole
     active: bool
     created_at: str
+    must_change_password: bool
+
+
+class ChangePasswordRequest(BaseModel):
+    old_password: str = Field(min_length=1)
+    new_password: str = Field(min_length=12, max_length=1024)
 
 
 class LoginResponse(BaseModel):

@@ -1,3 +1,31 @@
+## 0.111.0 (minor) — BC4 2026-10-30 — changement obligatoire du mot de passe (Agent BC1, numérotation BC3)
+
+Merge `bc1/auth-password-change` (`2772bbe`). Rotation self-service des
+mots de passe, révocation des JWT antérieurs, statut
+`must_change_password` et seed admin fail-closed (plus de fallback
+`ChangeMeAdmin123!` par défaut dans compose).
+
+- Nouvelle route `/auth/change-password` (POST) : rotation argon2id
+  du mot de passe courant, met à jour `password_changed_at` et bascule
+  `must_change_password` à FALSE. Les JWT émis avant la rotation
+  sont rejetés via la claim `iat` comparée à `password_changed_at`.
+  Requiert `old_password` + `new_password` (min 12 car).
+- Migration **0074_auth_password_change** : colonnes
+  `must_change_password BOOLEAN NOT NULL DEFAULT TRUE` et
+  `password_changed_at TIMESTAMPTZ NULL` sur `app_user`. Les rows
+  existantes conservent leur hash (`UPDATE` logique uniquement pour
+  les nouvelles colonnes, zéro touche au `password_hash`).
+- Seed admin : fail-closed. Si `BC4_ADMIN_PASSWORD` absent de l'env,
+  l'app refuse de démarrer. Plus de défaut compose silencieux.
+- CLI `reset_admin_password.py` étendue : met aussi
+  `must_change_password=true` + `password_changed_at=now()` pour
+  forcer un changement à la connexion suivante.
+- Log de démarrage : « admin présent, hash non modifié » lorsque le
+  seed détecte l'admin déjà créé — garantie observable qu'aucune
+  écriture BC4 fantôme n'a touché le hash entre deux redémarrages.
+- SemVer : **MINOR 0.111.0** (nouvelle route + migration + nouveau
+  comportement de seed, contrat API élargi, pas de breaking).
+
 ## 0.110.0 (minor) — BC4 2026-10-30 — SCell 5/6 + catalogue 2.60.0 (Agent BC4, numérotation BC3)
 
 Merge `bc4/catalog-scell5plus` (`9b75dd4`). Le catalogue 2.60.0 clone les

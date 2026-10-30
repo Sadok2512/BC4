@@ -48,6 +48,7 @@ ROLE_DB_TO_API: dict[str, str] = {
 
 
 def get_current_user(
+    request: Request,
     creds: HTTPAuthorizationCredentials | None = Depends(_bearer),
     db: Session = Depends(get_db),
 ) -> AppUser:
@@ -67,6 +68,22 @@ def get_current_user(
     user = db.get(AppUser, sub)
     if not user or not user.active:
         raise HTTPException(401, {"code": "INVALID_TOKEN", "message": "Compte invalide"})
+    issued_at = payload.get("iat")
+    if user.password_changed_at is not None:
+        changed_at = user.password_changed_at
+        if changed_at.tzinfo is None:
+            from datetime import timezone
+            changed_at = changed_at.replace(tzinfo=timezone.utc)
+        if not isinstance(issued_at, (int, float)) or float(issued_at) < changed_at.timestamp():
+            raise HTTPException(
+                401,
+                {"code": "TOKEN_REVOKED", "message": "Token antérieur au changement de mot de passe"},
+            )
+    if user.must_change_password and request.url.path != "/auth/change-password":
+        raise HTTPException(
+            403,
+            {"code": "PASSWORD_CHANGE_REQUIRED", "message": "Changement de mot de passe requis"},
+        )
     return user
 
 

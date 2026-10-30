@@ -61,7 +61,9 @@ def create_token(
     payload = {
         "sub": user_id,
         "role": role,
-        "iat": int(now.timestamp()),
+        # NumericDate accepte les fractions. La precision sub-seconde rend
+        # toute rotation immédiatement révocatoire, même dans la même seconde.
+        "iat": now.timestamp(),
         "exp": int(exp.timestamp()),
     }
     return jwt.encode(payload, secret, algorithm="HS256"), exp

@@ -364,14 +364,17 @@ def _seed_admin_from_env() -> None:
     argon2, jamais stocké en clair ni loggé."""
     email = (settings.admin_email or "").strip().lower()
     password = settings.admin_password or ""
-    if not email or not password:
-        print("[seed] BC4_ADMIN_EMAIL/BC4_ADMIN_PASSWORD manquant — admin non seedé (écart déclaré)")
-        return
+    if not email:
+        raise RuntimeError("BC4_ADMIN_EMAIL absent : impossible d'initialiser l'administrateur")
     with SessionLocal() as db:
         existing = db.query(AppUser).filter(AppUser.email == email).one_or_none()
         if existing:
-            print(f"[seed] admin {email} déjà présent (idempotent)")
+            print(f"[seed] admin {email} présent, hash non modifié")
             return
+        if not password:
+            raise RuntimeError(
+                "BC4_ADMIN_PASSWORD absent et aucun administrateur existant : démarrage refusé"
+            )
         user = AppUser(
             id=f"adm-{uuid.uuid4().hex[:12]}",
             email=email,

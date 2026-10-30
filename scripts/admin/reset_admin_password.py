@@ -84,7 +84,11 @@ def main() -> int:
     eng = create_engine(dsn)
     with eng.begin() as conn:
         res = conn.execute(
-            text("UPDATE app_user SET password_hash=:h WHERE email=:e RETURNING id"),
+            text("""UPDATE app_user
+                    SET password_hash=:h,
+                        must_change_password=true,
+                        password_changed_at=now()
+                    WHERE email=:e RETURNING id"""),
             dict(h=h, e=email),
         ).fetchone()
 

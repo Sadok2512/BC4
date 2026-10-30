@@ -30,3 +30,4 @@ dist/
 env/
 pgdata/
 venv/
+worktrees/

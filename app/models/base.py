@@ -47,6 +47,8 @@ class AppUser(Base):
     role: Mapped[str] = mapped_column(String, nullable=False)  # admin|ingenieur|lecteur
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    must_change_password: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    password_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class Project(Base):
