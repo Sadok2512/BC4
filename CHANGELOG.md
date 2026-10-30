@@ -1,15 +1,28 @@
-## Unreleased (minor) — BC4 — bandes MHz séparées des canaux radio exacts (Agent BC1, numérotation BC3)
+## 0.116.0 (minor) — BC4 2026-10-30 — bandes MHz séparées des canaux radio exacts + alembic 0077 (Agent BC1, numérotation BC3)
 
-- Migration Alembic : `cell_ref.band_mhz`, `cell_ref.earfcn` LTE exact et
-  `cell_ref.nr_arfcn` NR exact deviennent trois dimensions distinctes. Une
-  ancienne valeur n'est conservée comme canal que si elle diffère de la bande
-  autoritaire de sa ligne ; les égalités ambiguës ne sont jamais devinées. Le réimport source est
-  assuré par une commande tracée, idempotente, avec `--reason` et
-  `DEPLOY_LOCK holder=BC3` obligatoires.
-- Les deux chemins d'import lisent `earfcn`, `dl_earfcn` et `nr_arfcn` depuis
-  leurs colonnes CSV respectives. Map-cell-links joint désormais uniquement
-  `(system, ARFCN exact, PCI)` ; `/sites` expose séparément bande et canaux.
-- SemVer back : **MINOR** (migration de schéma ; numéro attribué par BC3).
+Merge `bc1/cell-ref-band-vs-earfcn` (`0bee0f0`). Remplace mon `0.115.1`
+par une solution structurelle : trois dimensions distinctes `band_mhz`
+/ `earfcn` LTE / `nr_arfcn` NR dans le schéma `cell_ref`.
+
+- Migration **0077_cell_ref_band_channels** : ajoute `band_mhz` +
+  `nr_arfcn` ; `earfcn` existant conservé comme canal LTE exact.
+  Index couvrants `(earfcn, pci, techno)` et `(nr_arfcn, pci, techno)`
+  en **CONCURRENTLY**. Une ancienne valeur `earfcn=bande` n'est
+  conservée comme canal que si elle diffère de la bande autoritaire
+  de sa ligne ; égalités ambiguës non devinées.
+- `app/routes/settings_cell_ref.py:140-143` : alias
+  `earfcn → band_mhz`, `dl_earfcn → earfcn`, `nr_arfcn` tel quel.
+  Remplace l'alias `dl_earfcn → earfcn` + superposition de 0.115.1
+  par une séparation stricte des 3 domaines.
+- `app/kpi/map_cell_links.py` : jointure `(system, ARFCN exact, PCI)`
+  uniquement — plus de recouvrement bande / canal.
+- `app/routes/sites.py` : réponse `/sites` expose `band_mhz` +
+  `earfcn` + `nr_arfcn` séparés dans les properties GeoJSON.
+- `app/scripts/reimport_cell_reference.py` : commande CLI tracée,
+  idempotente, `--reason` + `DEPLOY_LOCK holder=BC3` obligatoires,
+  sans passage par le proxy Nitro.
+- SemVer back : **MINOR 0.116.0** (migration schéma + extension
+  contrat `/sites`, pas de régression existante).
 
 ## 0.115.1 (patch) — BC4 2026-10-30 — cell_ref import alias EARFCN précis vs bande + PCI alias (BC3)
 
