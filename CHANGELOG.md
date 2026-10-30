@@ -1,3 +1,19 @@
+## 0.102.0 (minor) — BC4 2026-10-30 — /signaling/points compact-v1 (Agent BC1, numérotation BC3)
+
+Merge `bc1/signaling-points-lean` (`9ac57e0`). Numéro `0.102.0 (minor)`
+attribué par BC3 (nouveau paramètre `compact=true` qui change le format
+de réponse quand utilisé).
+
+- Format réseau opt-in `compact-v1` pour `/signaling/points?compact=true` :
+  structure columnar (séries parallèles au lieu d'une liste d'objets),
+  libellés répétés remplacés par un dictionnaire + index, colonnes
+  inutiles au rendu carte retirées. Payload JSON **nettement réduit**
+  sans perte d'information.
+- Format historique inchangé sans `compact=true` (contrat compatible).
+- `requirements.txt` : nouvelle dépendance (voir diff).
+- Compagnon front `1.118.3` qui consomme `compact-v1` et reconstruit
+  les objets avant rendu.
+
 ## Incident 2026-10-30 — BC4 ingérence en production 23:28Z-00:11Z (BC3 audit complet)
 
 ### Fenêtres mesurées (rapport BC4 confirmé, écritures en base)
@@ -174,7 +190,6 @@ rapport à l'état déployé 0.101.0 / 1.118.2 / 2.56.2.**
   - `curl http://127.0.0.1:5174/kpi` → 200
   - `curl http://185.248.33.125:5174/kpi` → 200
   - `curl http://127.0.0.1:5174/api/projects/43e81a34a073/signaling/captures` → 200 JSON 313 B
-
 ## 0.101.0 (minor) — BC4 2026-10-29 — Catalogue dict matérialisé à l'import (Agent BC1, numérotation BC3)
 
 Merge `bc1/dict-tree-cold` (`9f7bd44`). Résout l'écart `/dict/v2/tree`
