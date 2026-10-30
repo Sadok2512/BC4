@@ -15,6 +15,7 @@ from app.nmf_decoder.schema import schemas, fields, column
 from app.nmf_decoder.projection import ALIASES, metric_counts
 from app.kpi.english import english_text
 from app.kpi.metrics import metric_catalog
+from app.kpi.metrics_map import build_map_points
 from app.kpi.population import context_sql, predicate, validate_operators
 from app.kpi.service import date_from_start_at_py
 
@@ -442,7 +443,8 @@ class Dataset:
             self.times.update(subset)
 
     def _load_semantic_cell(self, m, *, page=None, page_size=None,
-                            cell_pci=None, cell_arfcn=None):
+                            cell_pci=None, cell_arfcn=None,
+                            include_total=True):
         """Load one enum leaf as physical cells, with SQL pagination.
 
         Storage occurrences are joined to the import-time identity mapping.
@@ -500,7 +502,7 @@ class Dataset:
         grouped = f"""
             WITH physical AS (
               SELECT s.seq_first AS seq,MAX(s.seq_last) AS seq_last,s.second,
-                     NULL::double precision AS exact_t_rel_s,
+                     MIN(l.t_rel_s) AS exact_t_rel_s,
                      i.cell_pci,i.cell_arfcn,
                      CASE WHEN SUM(s.weight) FILTER (WHERE s.weight>0)>0
                        THEN SUM(s.value*s.weight) FILTER (WHERE s.weight>0)
@@ -514,6 +516,9 @@ class Dataset:
                AND i.seq=s.seq_first AND i.event_code=s.event_code
                AND i.cell_index=s.cell_index
                AND i.decoder_version=s.decoder_version
+              JOIN nmf_event_light l
+                ON l.project_id=s.project_id AND l.capture_id=s.capture_id
+               AND l.seq=s.seq_first AND l.event_code=s.event_code
               WHERE s.project_id=:pid AND s.capture_id=:cap
                 AND s.event_code=:event AND s.metric_code=:metric
                 AND s.cell_index BETWEEN :first_index AND :last_index
@@ -522,9 +527,10 @@ class Dataset:
               GROUP BY s.seq_first,s.second,i.cell_pci,i.cell_arfcn
             )
         """
-        sql = grouped + """
+        total_column = ",COUNT(*) OVER()::int AS total_rows" if include_total else ""
+        sql = grouped + f"""
             SELECT seq,seq_last,second,exact_t_rel_s,cell_pci,cell_arfcn,value,
-                   observation_count,COUNT(*) OVER()::int AS total_rows
+                   observation_count{total_column}
             FROM physical
             ORDER BY seq,cell_arfcn NULLS LAST,cell_pci NULLS LAST,storage_order
         """
@@ -532,16 +538,19 @@ class Dataset:
             sql += " LIMIT :limit OFFSET :offset"
             params.update(limit=page_size, offset=(page-1)*page_size)
         result = [dict(r) for r in self.query(sql, params)]
-        if result:
+        if result and include_total:
             total = int(result[0].pop('total_rows'))
             for row in result[1:]:row.pop('total_rows',None)
+        elif result:
+            total = len(result)
         else:
             # Only an out-of-range page needs the extra count query.
             count_row = self.query(grouped + "SELECT COUNT(*) AS n FROM physical", params).first()
             total = int(count_row['n'] if count_row else 0)
         return result, total
 
-    def load(self,m,*,page=None,page_size=None,cell_pci=None,cell_arfcn=None):
+    def load(self,m,*,page=None,page_size=None,cell_pci=None,cell_arfcn=None,
+             include_total=True):
         code=m['source_column'];cell=m['cell'];attr=m['attr'];event=m['event'];rows=[]
         # 2.53.0 — CAPTURE dispatcher (prefix `cap_`). Résolveurs :
         # CONST (nmf_file/nmf_capture) · SERIES_DEVI (stg_event_raw c{col})
@@ -566,6 +575,7 @@ class Dataset:
             rows, total = self._load_semantic_cell(
                 m, page=page, page_size=page_size,
                 cell_pci=cell_pci, cell_arfcn=cell_arfcn,
+                include_total=include_total,
             )
             m['_total_rows'] = total
             display=m['cell_display']
@@ -911,76 +921,12 @@ class Dataset:
             self._ensure_times(f['seq'] for f in gps_fixes)
         gps_exact={f['seq']:(f['lat'],f['lon']) for f in gps_fixes}
         if include_map:
-            # Serving-cell proof for map links. CHI #6 is the documented LTE
-            # Cell ID. Its state is carried forward only inside this capture
-            # in canonical seq order, then joined by exact ECI to cell_ref.
-            # An absent reference match stays absent: never pick a nearby site.
-            chi_rows=[dict(r) for r in self.query("""
-                SELECT seq, raw_fields->>'c9' AS eci
-                FROM stg_event_raw
-                WHERE project_id=:pid AND capture_id=:cap
-                  AND event_code='CHI' AND system='LTE'
-                  AND raw_fields->>'c9' ~ '^[0-9]+$'
-                ORDER BY seq
-            """)]
-            cell_ids=sorted({r['eci'] for r in chi_rows})
-            cell_refs={}
-            if cell_ids:
-                cell_refs={r['eci']:dict(r) for r in self.query("""
-                    SELECT eci,id AS cell_ref_id,site_id,site_name,
-                           ST_Y(geom) AS lat,ST_X(geom) AS lng
-                    FROM cell_ref
-                    WHERE eci=ANY(:serving_ecgis) AND geom IS NOT NULL
-                """,{'serving_ecgis':cell_ids})}
-            # N1 — map_points.position_source ∈ {'exact','previous_fix'} + delta_seq.
-            # Avant N1 : seuls les rows exactement sur un GPS fix étaient
-            # tracés ; les autres n'étaient PAS ajoutés sur la carte. En plus
-            # `gps_exact` incluait les lat/lon héritées (bug fix ligne 369).
-            # Désormais : chaque row avec une valeur est tracé ; position_source
-            # distingue le fix exact du fix précédent (delta_seq = r.seq - prev.seq).
-            rows_for_map: list[tuple] = []
             returned_by_selection=({item['code']:{point['seq'] for point in item['points']}
                                     for item in series} if series_only else None)
-            for m,rows in loaded:
-                for r,chi in _pair_previous_or_same(chi_rows,rows):
-                    if r['value'] is None:
-                        continue
-                    if (returned_by_selection is not None
-                            and r['seq'] not in returned_by_selection.get(m['selection'],set())):
-                        continue
-                    rows_for_map.append((m, r, chi))
-            # Un seul previous-or-same seq join GPS pour toute la boucle.
-            keyed=[{'seq':r['seq'],'_tuple':(m,r,chi)} for (m,r,chi) in rows_for_map]
-            keyed.sort(key=lambda e: e['seq'])
-            for y, prev in _pair_previous_or_same(gps_fixes, keyed):
-                if prev is None:
-                    continue
-                m,r,chi = y['_tuple']
-                lat,lng = prev['lat'], prev['lon']
-                position_source = 'exact' if prev['seq']==r['seq'] else 'previous_fix'
-                delta_seq = r['seq'] - prev['seq']
-                ref=cell_refs.get(chi['eci']) if chi else None
-                tooltip = (f"{m['label']} · seq {r['seq']} · {r['value']} {m['unit']}"
-                           + (f" · position héritée du fix seq {prev['seq']} (Δseq {delta_seq})"
-                              if position_source=='previous_fix' else ''))
-                map_points.append(dict(
-                    seq=r['seq'],lat=lat,lng=lng,code=m['selection'],
-                    _second=r['second'],
-                    value=r['value'],t_rel_s=r['t_rel_s'],
-                    position_source=position_source, delta_seq=delta_seq,
-                    position_fix_seq=prev['seq'],
-                    tooltip=tooltip,
-                    serving_cell_id=chi['eci'] if ref else None,
-                    serving_cell_seq=chi['seq'] if ref else None,
-                    serving_cell_ref_id=ref['cell_ref_id'] if ref else None,
-                    serving_site_id=ref['site_id'] if ref else None,
-                    serving_site_name=ref['site_name'] if ref else None,
-                    serving_cell_lat=ref['lat'] if ref else None,
-                    serving_cell_lng=ref['lng'] if ref else None,
-                    serving_cell_source='chi_previous_seq_cell_ref_exact' if ref else None,
-                ))
-            from app.kpi.map_cell_links import enrich_radio_links
-            enrich_radio_links(self.db,self.pid,self.cap,map_points)
+            map_points=build_map_points(
+                self,loaded,gps_fixes,
+                returned_by_selection=returned_by_selection,
+            )
         pair_rows=[] if series_only else [dict(p) for p in self.pairs if self.admissible(p['seq_start']) and (p['seq_end'] is None or self.admissible(p['seq_end']))]
         pair_rates=[]
         for kind in sorted({p['type'] for p in pair_rows}):

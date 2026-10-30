@@ -1,3 +1,13 @@
+## Unreleased (patch) — Metric map lean endpoint (Agent BC1)
+
+- Ajout de `/projects/{project_id}/metrics/map`, projection légère des points
+  de carte complets sans reconstruire l'horloge, les histogrammes, le CSV ni
+  la table ; GPS et métrique sont lus en parallèle, et `Server-Timing` expose
+  les étapes mesurables.
+- Les liens radio conservent leurs preuves et leur `candidate_count`, tout en
+  écartant avant transfert les références hors de la boîte géographique de
+  25 km. SemVer back : **PATCH**, numéro attribué par BC3 au merge.
+
 ## Unreleased (patch) — Signaling timeline matérialisée (Agent BC1)
 
 - `/signaling/timeline?bucket_s=10` agrège directement les événements RF

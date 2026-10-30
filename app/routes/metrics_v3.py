@@ -1,6 +1,10 @@
 """Typed table/analysis contract for the Metrics v3 workspace."""
+from hashlib import sha256
+from concurrent.futures import ThreadPoolExecutor
+import time
 from typing import Literal
 from fastapi import APIRouter,Depends,HTTPException,Query
+from fastapi.responses import ORJSONResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from app.db import get_db
@@ -8,6 +12,7 @@ from app.deps import get_current_user
 from app.routes.tasks import project,filters
 from app.routes.metrics import MetricSeries
 from app.kpi.metrics_v3 import Dataset,definitions,parse_selection
+from app.kpi.metrics_map import build_map_points,load_gps_fixes_scoped
 from app.schemas.metric_map import MetricMapPoint
 router=APIRouter(tags=['metrics'],dependencies=[Depends(get_current_user)])
 Scalar=float|str|None
@@ -53,6 +58,54 @@ class Analysis(BaseModel):
     page:int;page_size:int;total_rows:int;total_pages:int
     histogram:list[Histogram];scatter:list[Scatter];map_points:list[MetricMapPoint]
     connected_seconds:float|None;connected_reason:str|None;pair_rates:list[PairRate];gaps:list[str];csv:str
+
+class MetricMapResponse(BaseModel):
+    project_id:str;capture_id:str;result_id:str;decoder_version:str
+    total_points:int;map_points:list[MetricMapPoint]
+
+@router.get('/projects/{project_id}/metrics/map',response_model=MetricMapResponse)
+def metric_map(project_id:str,capture_id:str,codes:str,cell:str='all',attr:str|None=None,
+               from_seq:int|None=Query(None,ge=0),to_seq:int|None=Query(None,ge=0),
+               cell_pci:int|None=Query(None,ge=0),cell_arfcn:int|None=Query(None,ge=0),
+               f:dict=Depends(filters),db:Session=Depends(get_db)):
+    """Return only proven map points; no clock, histogram, table or CSV work."""
+    project(db,project_id)
+    if from_seq is not None and to_seq is not None and from_seq>to_seq:
+        raise HTTPException(422,'from_seq_after_to_seq')
+    tokens=list(dict.fromkeys(codes.split(',')))
+    if len(tokens)>64:raise HTTPException(422,'too_many_metrics')
+    selected=[parse_selection(code,definitions(),cell,attr) for code in tokens]
+    started=time.perf_counter()
+    dataset=Dataset(db,project_id,capture_id,f,from_seq,to_seq,lean_series=True)
+    after_init=time.perf_counter()
+    with ThreadPoolExecutor(max_workers=1,thread_name_prefix='metrics-map-gps') as executor:
+        gps_future=executor.submit(load_gps_fixes_scoped,project_id,capture_id)
+        loaded=[(metric,dataset.load(
+            metric,
+            cell_pci=metric.get('cell_pci',cell_pci),
+            cell_arfcn=metric.get('cell_arfcn',cell_arfcn),
+            include_total=False,
+        )) for metric in selected]
+        after_load=time.perf_counter()
+        gps_fixes=gps_future.result()
+    after_gps=time.perf_counter()
+    points=build_map_points(dataset,loaded,gps_fixes)
+    after_map=time.perf_counter()
+    basis=':'.join((project_id,capture_id,dataset.state['decoder_version'],codes,
+                    str(len(points)),str(points[0]['seq'] if points else ''),
+                    str(points[-1]['seq'] if points else '')))
+    server_timing=', '.join((
+        f'dataset;dur={(after_init-started)*1000:.3f}',
+        f'metric;dur={(after_load-after_init)*1000:.3f}',
+        f'gps;dur={(after_gps-after_load)*1000:.3f}',
+        f'links;dur={(after_map-after_gps)*1000:.3f}',
+    ))
+    payload=dict(project_id=project_id,capture_id=capture_id,
+                 result_id=sha256(basis.encode()).hexdigest()[:32],
+                 decoder_version=dataset.state['decoder_version'],
+                 total_points=len(points),map_points=points)
+    return ORJSONResponse(payload,headers={'Server-Timing':server_timing})
+
 @router.get('/projects/{project_id}/metrics/table',response_model=Analysis)
 @router.get('/projects/{project_id}/metrics/analysis',response_model=Analysis)
 def analysis(project_id:str,capture_id:str,codes:str,cell:str='all',attr:str|None=None,
