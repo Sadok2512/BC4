@@ -58,7 +58,7 @@ services:
     environment:
       # Durcissement 2026-10-27 : DSN construit depuis .env (plus de "bc4:bc4").
       BC4_DSN: postgresql+psycopg://bc4:${BC4_PGPW:?BC4_PGPW required in .env}@db:5432/bc4
-      BC4_ENV: development
+      BC4_ENV: ${BC4_ENV:-development}
       # P1-1 : liste étendue (localhost + 127.0.0.1 variants). Surchargeable
       # via BC4_CORS_ORIGINS côté host en prod. Jamais en dur dans le code.
       BC4_CORS_ORIGINS: ${BC4_CORS_ORIGINS:-http://localhost:5173,http://localhost:5174,http://localhost:8080,http://127.0.0.1:5173,http://127.0.0.1:5174,http://127.0.0.1:8080,https://franco-focus-forge.lovable.app,https://id-preview--a8015a08-bb84-4b94-b38f-e26461097bfa.lovable.app,https://a8015a08-bb84-4b94-b38f-e26461097bfa.lovableproject.com}
@@ -136,7 +136,7 @@ services:
     environment:
       # Durcissement 2026-10-27 : DSN + JWT depuis .env (plus de défauts).
       BC4_DSN: postgresql+psycopg://bc4:${BC4_PGPW:?BC4_PGPW required in .env}@db:5432/bc4
-      BC4_ENV: development
+      BC4_ENV: ${BC4_ENV:-development}
       BC4_JWT_SECRET: ${BC4_JWT_SECRET:?BC4_JWT_SECRET required in .env}
       BC4_NMF_DECODER_PATH: /opt/nmf_decoder
       BC4_NMF_SOURCE_DIR: /var/lib/bc4/nmf-source
