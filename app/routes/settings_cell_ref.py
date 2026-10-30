@@ -18,7 +18,9 @@ Géo + radio (0.87.0 BC3) :
   (lng, lat), 4326)``. Les deux doivent être présentes et numériques
   valides (lat ∈ [-90,90], lng ∈ [-180,180]) ; sinon warning + geom
   reste NULL (ligne quand même persistée pour les autres champs).
-- ``pci``, ``azimuth``, ``tilt``, ``height``, ``earfcn``
+- ``pci``, ``azimuth``, ``tilt``, ``height``
+- ``earfcn`` → bande MHz, ``dl_earfcn`` → porteuse LTE exacte,
+  ``nr_arfcn`` → porteuse NR exacte
 - ``band`` / ``band_src``, ``band_3gpp``, ``techno``, ``vendor``,
   ``rat``
 - ``id_site`` / ``site_id``, ``site_name``, ``sector``, ``cell_class``,
@@ -86,7 +88,7 @@ _ALLOWED_FIELDS = {
     # ARCEP / admin (historique)
     "dr", "plaque", "dor", "arcep_zone", "commune", "insee",
     # Radio
-    "pci", "azimuth", "tilt", "height", "earfcn",
+    "pci", "azimuth", "tilt", "height", "band_mhz", "earfcn", "nr_arfcn",
     "band_src", "band_3gpp", "techno", "vendor", "rat",
     # Site
     "site_id", "site_name", "sector", "cell_class", "coverage", "etat",
@@ -96,7 +98,7 @@ _ALLOWED_FIELDS = {
 # `lat` et `lng` sont traités à part (composent geom).
 _GEO_FIELDS = {"lat", "lng"}
 _ID_FIELDS = {"eci", "ecgi", "enodebid", "enb_id", "sac_ci_eci", "id"}
-_INT_FIELDS = {"pci", "earfcn"}
+_INT_FIELDS = {"pci", "band_mhz", "earfcn", "nr_arfcn"}
 _FLOAT_FIELDS = {"azimuth", "tilt", "height", "lat", "lng"}
 
 # 0.42.1 — ARCEP 2019 : densités autoritaires ZTD/ZMD/ZPD.
@@ -132,20 +134,11 @@ def _normalize_header(h: str) -> str:
     if h == "latitude": return "lat"
     if h == "longitude": return "lng"
     if h == "band": return "band_src"
-    # 0.115.1 BC3 — alias EARFCN précis vs bande MHz. L'export vendor
-    # Orange porte la bande MHz dans `earfcn` (ex. 1800) ET l'EARFCN
-    # précis dans `dl_earfcn` (ex. 1675). Mesuré sur
-    # `/home/devmat/ref_cell_4G5G.csv` import 842365242924 :
-    # `earfcn` = bande, 459 499 lignes populées, 8 valeurs distinctes
-    # (700/800/900/1400/1800/2100/2600/3500 MHz) ;
-    # `dl_earfcn` = EARFCN précis, 19 642 lignes populées (ORF 4G),
-    # 8 valeurs distinctes réelles (524/547/1300/3000/6275/6400/9310/
-    # 9335). On alias `dl_earfcn` → `earfcn` pour que l'EARFCN précis
-    # écrase la bande au `COALESCE` SQL. `ul_earfcn` reste ignoré
-    # (duplicat FDD). `nr_arfcn` jamais renseigné dans ce dépôt
-    # (0 ligne mesurée) mais alias prévu pour futur export NR.
+    # Vendor contract: `earfcn` is a band in MHz, while `dl_earfcn` and
+    # `nr_arfcn` are exact channels.  Never merge these three domains: 1800
+    # is valid both as a band label and as an LTE EARFCN.
+    if h == "earfcn": return "band_mhz"
     if h == "dl_earfcn": return "earfcn"
-    if h == "nr_arfcn": return "earfcn"
     if h == "physical_cell_id": return "pci"
     if h == "pci_id": return "pci"
     return h
@@ -184,10 +177,9 @@ def _parse_csv(blob: bytes) -> tuple[list[dict[str, str]], list[str]]:
                 continue
             nk = _normalize_header(k)
             new_val = (v or "").strip()
-            # 0.115.1 BC3 — ne jamais écraser une valeur non-vide par une
-            # valeur vide. Garantit que `earfcn=bande` reste persisté si
-            # `dl_earfcn` est vide, et qu'il est remplacé par l'EARFCN
-            # précis uniquement quand `dl_earfcn` est renseigné.
+            # Several legacy aliases can still target the same canonical
+            # field (e.g. pci/physical_cell_id). Never replace a populated
+            # authoritative value with a later empty alias.
             if nk in row and row[nk] and not new_val:
                 continue
             row[nk] = new_val

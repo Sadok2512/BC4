@@ -144,7 +144,8 @@ def sites(
         rows = db.execute(
             text(
                 f"""
-                SELECT id, site_id, site_name, techno, band_3gpp AS band, pci,
+                SELECT id, site_id, site_name, techno, band_3gpp AS band,
+                       band_mhz, earfcn, nr_arfcn, pci,
                        azimuth, tilt, height, cell_op_leader AS operator,
                        ST_X(geom) AS lng, ST_Y(geom) AS lat
                 FROM cell_ref WHERE {where}
@@ -213,6 +214,15 @@ def sites(
                     "site_name": r["site_name"],
                     "techno": r["techno"],
                     "band": band,
+                    "band_mhz": r["band_mhz"],
+                    "earfcn": r["earfcn"],
+                    "nr_arfcn": r["nr_arfcn"],
+                    "nrarfcn": r["nr_arfcn"],
+                    "arfcn": (
+                        r["nr_arfcn"]
+                        if r["nr_arfcn"] is not None
+                        else r["earfcn"]
+                    ),
                     "band_color": BAND_COLORS.get(band or "", "#64748b"),
                     "pci": r["pci"],
                     "azimuth": r["azimuth"],

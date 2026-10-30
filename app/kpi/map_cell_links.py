@@ -2,11 +2,11 @@
 
 Neighbour identity is read at the measurement's exact ``seq`` from
 ``nmf_cell_identity``; PSCell is read in the same capture-second because the
-LTE and NR CELLMEAS records have distinct seq values. ``cell_ref.earfcn`` is
-currently a band-frequency key (700/800/1800/...) rather than a raw channel,
-so the measured ARFCN is deterministically normalized before matching
-``(system, band, PCI)``.  The closest duplicate within 25 km wins.  A
-missing/out-of-range match produces no link.
+LTE and NR CELLMEAS records have distinct seq values. Reference identity is
+matched only on the exact channel: ``cell_ref.earfcn`` for LTE and
+``cell_ref.nr_arfcn`` for NR, plus PCI and system. ``band_mhz`` is never a
+link key. The closest duplicate within 25 km wins. A missing/out-of-range
+match produces no link.
 """
 from collections import defaultdict
 from math import asin, cos, radians, sin, sqrt
@@ -19,40 +19,6 @@ _METRES_PER_LATITUDE_DEGREE = 111_000.0
 LTE_NEIGHBOUR_TYPES = (1, 2)
 NR_NEIGHBOUR_TYPES = (1000, 1001, 1002)
 NR_ANCHOR_TYPE = 199
-
-
-def _reference_channel(system: int, arfcn: int) -> int | None:
-    """Map 3GPP ARFCN to the band-frequency vocabulary stored by cell_ref."""
-    if system == 7:
-        # LTE E-UTRA ranges whose French band keys exist in cell_ref.
-        for lo, hi, channel in (
-            (0, 599, 2100),       # band 1
-            (1200, 1949, 1800),   # band 3
-            (2750, 3449, 2600),   # band 7
-            (3450, 3799, 900),    # band 8
-            (5010, 5379, 700),    # bands 12-14
-            (5730, 5849, 700),    # band 17
-            (6150, 6449, 800),    # band 20
-            (9040, 9209, 800),    # band 27
-            (9210, 9659, 700),    # band 28
-            (9660, 9769, 700),    # band 29
-        ):
-            if lo <= arfcn <= hi:
-                return channel
-        return None
-    if system == 9:
-        # NR operating ranges represented by the French reference import.
-        for lo, hi, channel in (
-            (151600, 160600, 700),    # n28
-            (361000, 376000, 1800),   # n3
-            (422000, 434000, 2100),   # n1
-            (524000, 538000, 2600),   # n7
-            (620000, 680000, 3500),   # n77/n78
-        ):
-            if lo <= arfcn <= hi:
-                return channel
-        return None
-    return None
 
 
 def _distance_m(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
@@ -105,10 +71,10 @@ def enrich_radio_links(db, project_id: str, capture_id: str, map_points: list[di
         "nr_types": [*NR_NEIGHBOUR_TYPES, NR_ANCHOR_TYPE],
     }).mappings())
     points_with_second=[p for p in map_points if p.get("_second") is not None]
-    wanted = sorted({(int(r["system"]), int(r["cell_arfcn"]), int(r["cell_pci"]),
-                      _reference_channel(int(r["system"]),int(r["cell_arfcn"])))
-                     for r in candidate_identities
-                     if _reference_channel(int(r["system"]),int(r["cell_arfcn"])) is not None})
+    wanted = sorted({
+        (int(r["system"]), int(r["cell_arfcn"]), int(r["cell_pci"]))
+        for r in candidate_identities
+    })
     if not wanted:
         for point in map_points:
             point.pop("_second",None)
@@ -122,17 +88,22 @@ def enrich_radio_links(db, project_id: str, capture_id: str, map_points: list[di
     refs = list(db.execute(text("""
         WITH wanted AS (
           SELECT * FROM unnest(
-            CAST(:systems AS smallint[]),CAST(:arfcns AS bigint[]),
-            CAST(:pcis AS integer[]),CAST(:reference_channels AS integer[])
-          ) AS w(system,arfcn,pci,reference_channel)
+            CAST(:systems AS smallint[]),CAST(:arfcns AS integer[]),
+            CAST(:pcis AS integer[])
+          ) AS w(system,arfcn,pci)
         ), matching AS (
-          SELECT w.system,w.arfcn,w.pci,w.reference_channel,
+          SELECT w.system,w.arfcn,w.pci,w.arfcn AS reference_channel,
                  r.id AS cell_ref_id,r.site_id,r.site_name,
                  ST_Y(r.geom) AS lat,ST_X(r.geom) AS lng
           FROM wanted w
-          JOIN cell_ref r ON r.earfcn=w.reference_channel AND r.pci=w.pci
-            AND ((w.system=7 AND upper(COALESCE(r.techno,r.rat)) IN ('4G','LTE'))
-              OR (w.system=9 AND upper(COALESCE(r.techno,r.rat)) IN ('5G','NR')))
+          JOIN cell_ref r ON w.system=7 AND r.earfcn=w.arfcn AND r.pci=w.pci
+          WHERE r.geom IS NOT NULL
+          UNION ALL
+          SELECT w.system,w.arfcn,w.pci,w.arfcn AS reference_channel,
+                 r.id AS cell_ref_id,r.site_id,r.site_name,
+                 ST_Y(r.geom) AS lat,ST_X(r.geom) AS lng
+          FROM wanted w
+          JOIN cell_ref r ON w.system=9 AND r.nr_arfcn=w.arfcn AND r.pci=w.pci
           WHERE r.geom IS NOT NULL
         )
         SELECT * FROM matching
@@ -143,7 +114,6 @@ def enrich_radio_links(db, project_id: str, capture_id: str, map_points: list[di
         "systems": [v[0] for v in wanted],
         "arfcns": [v[1] for v in wanted],
         "pcis": [v[2] for v in wanted],
-        "reference_channels": [v[3] for v in wanted],
         "min_lat": min(point_latitudes) - latitude_delta,
         "max_lat": max(point_latitudes) + latitude_delta,
         "min_lng": min(point_longitudes) - longitude_delta,
@@ -154,22 +124,27 @@ def enrich_radio_links(db, project_id: str, capture_id: str, map_points: list[di
         count_rows = list(db.execute(text("""
             WITH wanted AS (
               SELECT * FROM unnest(
-                CAST(:systems AS smallint[]),CAST(:arfcns AS bigint[]),
-                CAST(:pcis AS integer[]),CAST(:reference_channels AS integer[])
-              ) AS w(system,arfcn,pci,reference_channel)
+                CAST(:systems AS smallint[]),CAST(:arfcns AS integer[]),
+                CAST(:pcis AS integer[])
+              ) AS w(system,arfcn,pci)
+            ), matching AS (
+              SELECT w.system,w.arfcn,w.pci,r.id
+              FROM wanted w
+              JOIN cell_ref r ON w.system=7 AND r.earfcn=w.arfcn AND r.pci=w.pci
+              WHERE r.geom IS NOT NULL
+              UNION ALL
+              SELECT w.system,w.arfcn,w.pci,r.id
+              FROM wanted w
+              JOIN cell_ref r ON w.system=9 AND r.nr_arfcn=w.arfcn AND r.pci=w.pci
+              WHERE r.geom IS NOT NULL
             )
-            SELECT w.system,w.arfcn,w.pci,COUNT(*)::int AS n
-            FROM wanted w
-            JOIN cell_ref r ON r.earfcn=w.reference_channel AND r.pci=w.pci
-              AND ((w.system=7 AND upper(COALESCE(r.techno,r.rat)) IN ('4G','LTE'))
-                OR (w.system=9 AND upper(COALESCE(r.techno,r.rat)) IN ('5G','NR')))
-            WHERE r.geom IS NOT NULL
-            GROUP BY w.system,w.arfcn,w.pci
+            SELECT system,arfcn,pci,COUNT(*)::int AS n
+            FROM matching
+            GROUP BY system,arfcn,pci
         """), {
             "systems": [v[0] for v in wanted],
             "arfcns": [v[1] for v in wanted],
             "pcis": [v[2] for v in wanted],
-            "reference_channels": [v[3] for v in wanted],
         }).mappings())
         candidate_counts = {
             (int(row["system"]), int(row["arfcn"]), int(row["pci"])): int(row["n"])
@@ -237,9 +212,7 @@ def enrich_radio_links(db, project_id: str, capture_id: str, map_points: list[di
         arfcn = int(identity["cell_arfcn"])
         pci = int(identity["cell_pci"])
         cell_type = int(identity["cell_type"])
-        reference_channel = _reference_channel(system, arfcn)
-        if reference_channel is None:
-            continue
+        reference_channel = arfcn
         identity_key = (system, cell_type, arfcn, pci)
         if identity_key in seen[seq]:
             continue
@@ -269,8 +242,8 @@ def enrich_radio_links(db, project_id: str, capture_id: str, map_points: list[di
                 "distance_m": round(distance, 1),
                 "max_distance_m": MAX_CELL_LINK_DISTANCE_M,
                 "candidate_count": candidate_count,
-                "confidence": ("radio_band_pci_unique" if candidate_count == 1
-                               else "radio_band_pci_nearest_within_25000m"),
+                "confidence": ("radio_arfcn_pci_unique" if candidate_count == 1
+                               else "radio_arfcn_pci_nearest_within_25000m"),
             }
             if system == 9 and cell_type == NR_ANCHOR_TYPE:
                 # EN-DC is proven only when this point also has a proven LTE

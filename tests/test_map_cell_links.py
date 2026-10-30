@@ -19,10 +19,10 @@ class _Db:
     def execute(self, statement, params):
         sql = str(statement)
         self.calls.append((sql, params))
-        if "FROM nmf_cell_identity" in sql:
-            return _Result(self.identities)
         if "WITH targets AS" in sql:
             return _Result(self.anchors)
+        if "FROM nmf_cell_identity" in sql:
+            return _Result(self.identities)
         return _Result(self.refs)
 
 
@@ -34,11 +34,11 @@ def test_exact_identity_nearest_candidate_and_nr_anchor_require_serving():
         {"seq": 20, "system": 9, "cell_type": 199, "cell_arfcn": 643392, "cell_pci": 7},
     ]
     refs = [
-        {"system": 7, "arfcn": 1675, "pci": 215, "reference_channel": 1800, "cell_ref_id": "lte-far",
+        {"system": 7, "arfcn": 1675, "pci": 215, "reference_channel": 1675, "cell_ref_id": "lte-far",
          "site_id": "s2", "site_name": None, "lat": 50.2, "lng": 3.0},
-        {"system": 7, "arfcn": 1675, "pci": 215, "reference_channel": 1800, "cell_ref_id": "lte-near",
+        {"system": 7, "arfcn": 1675, "pci": 215, "reference_channel": 1675, "cell_ref_id": "lte-near",
          "site_id": "s1", "site_name": "near", "lat": 50.0001, "lng": 3.0},
-        {"system": 9, "arfcn": 643392, "pci": 7, "reference_channel": 3500, "cell_ref_id": "nr",
+        {"system": 9, "arfcn": 643392, "pci": 7, "reference_channel": 643392, "cell_ref_id": "nr",
          "site_id": "s1", "site_name": "anchor", "lat": 50.0002, "lng": 3.0},
     ]
     point = {"seq": 20, "_second": 10, "lat": 50.0, "lng": 3.0,
@@ -50,12 +50,18 @@ def test_exact_identity_nearest_candidate_and_nr_anchor_require_serving():
     assert point["neighbour_links"][0]["cell_ref_id"] == "lte-near"
     assert point["neighbour_links"][0]["candidate_count"] == 2
     assert point["neighbour_links"][0]["max_distance_m"] == 25_000.0
-    assert point["neighbour_links"][0]["confidence"] == "radio_band_pci_nearest_within_25000m"
+    assert point["neighbour_links"][0]["reference_channel"] == 1675
+    assert point["neighbour_links"][0]["confidence"] == "radio_arfcn_pci_nearest_within_25000m"
     assert point["nr_anchor_link"]["cell_ref_id"] == "nr"
+    assert point["nr_anchor_link"]["reference_channel"] == 643392
     assert "_second" not in point
     sql, params = db.calls[0]
     assert "project_id=:pid AND capture_id=:cap" in sql
     assert params["pid"] == "project-a" and params["cap"] == "capture-a"
+    refs_sql = db.calls[1][0]
+    assert "r.earfcn=w.arfcn" in refs_sql
+    assert "r.nr_arfcn=w.arfcn" in refs_sql
+    assert "band_mhz" not in refs_sql
 
 
 def test_no_guess_outside_radius_and_no_anchor_without_lte_serving_proof():

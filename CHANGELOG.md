@@ -1,3 +1,16 @@
+## Unreleased (minor) — BC4 — bandes MHz séparées des canaux radio exacts (Agent BC1, numérotation BC3)
+
+- Migration Alembic : `cell_ref.band_mhz`, `cell_ref.earfcn` LTE exact et
+  `cell_ref.nr_arfcn` NR exact deviennent trois dimensions distinctes. Une
+  ancienne valeur n'est conservée comme canal que si elle diffère de la bande
+  autoritaire de sa ligne ; les égalités ambiguës ne sont jamais devinées. Le réimport source est
+  assuré par une commande tracée, idempotente, avec `--reason` et
+  `DEPLOY_LOCK holder=BC3` obligatoires.
+- Les deux chemins d'import lisent `earfcn`, `dl_earfcn` et `nr_arfcn` depuis
+  leurs colonnes CSV respectives. Map-cell-links joint désormais uniquement
+  `(system, ARFCN exact, PCI)` ; `/sites` expose séparément bande et canaux.
+- SemVer back : **MINOR** (migration de schéma ; numéro attribué par BC3).
+
 ## 0.115.1 (patch) — BC4 2026-10-30 — cell_ref import alias EARFCN précis vs bande + PCI alias (BC3)
 
 Correctif import `/settings/cell-ref/upload` : récupère les colonnes
