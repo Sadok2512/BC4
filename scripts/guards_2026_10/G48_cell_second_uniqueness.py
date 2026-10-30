@@ -12,6 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from app.nmf_decoder.cells import (
     CELLMEAS_TYPES_LTE,
+    SERVING_CELL_TYPES_LTE,
     CELL_TYPES_NR,
     _cell_index_for,
     cell_rows,
@@ -73,7 +74,7 @@ def expected_projection(light: Light):
         if len(indices) != 1 or indices[0] is None:
             continue
         raw = int(indices[0])
-        allowed = range(32) if system == 7 else CELL_TYPES_NR if system == 9 else ()
+        allowed = SERVING_CELL_TYPES_LTE if system == 7 else CELL_TYPES_NR if system == 9 else ()
         if raw not in allowed:
             unsupported[(event, system, raw)] += 1
             continue

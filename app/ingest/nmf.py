@@ -65,6 +65,23 @@ IDENTITY_KEYS: set[str] = {
     "guti", "mtmsi", "m_tmsi", "ptmsi", "p_tmsi", "subscriber_id",
 }
 
+# NFF 2.50 content classification for the three most frequent event codes
+# that decoder 2.1.0 still emits as ``other`` on the three reference files.
+# This override is deliberately narrow and only replaces ``other``: a future
+# external decoder's more specific classification always wins.
+NFF250_OTHER_CLASSIFICATION: dict[str, str] = {
+    "PHRATE": "throughput",
+    "PLAID": "measurement",
+    "MACRATE": "throughput",
+}
+
+
+def _nff250_category(event_code: str | None, category: str | None) -> str:
+    current = category or "signalling"
+    if current != "other":
+        return current
+    return NFF250_OTHER_CLASSIFICATION.get(event_code or "", current)
+
 
 def _copy_rows(db: Session, table: str, columns: list[str], rows: list[dict]) -> None:
     """COPY a bounded batch; table/columns are internal constants only."""
@@ -368,14 +385,15 @@ def decode_nmf_file(path: str, handle: DecoderHandle) -> DecodeResult:
                 technos[str(system)] = technos.get(str(system), 0) + 1
 
             # Dispatch par catégorie décodeur 2.0.0.
-            category = ev.get("category") or "signalling"
+            event_code = _s(ev.get("event_code"))
+            category = _nff250_category(event_code, ev.get("category"))
             if category == "signalling":
                 events.append(
                     {
                         "capture_id": str(cap_id),
                         "seq": int(seq),
                         "ts": _s(ev.get("ts")),
-                        "event_code": _s(ev.get("event_code")),
+                        "event_code": event_code,
                         "system": _s(system),
                         "channel": _s(ev.get("channel")),
                         "direction": _s(ev.get("direction")),
@@ -409,7 +427,7 @@ def decode_nmf_file(path: str, handle: DecoderHandle) -> DecodeResult:
                         "capture_id": str(cap_id),
                         "seq": int(seq),
                         "ts": _s(ev.get("ts")),
-                        "event_code": _s(ev.get("event_code")) or "UNKNOWN",
+                        "event_code": event_code or "UNKNOWN",
                         "category": category,
                         "system": _s(system),
                         "lat": float(lat) if lat is not None else None,

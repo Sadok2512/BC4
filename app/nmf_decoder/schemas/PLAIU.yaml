@@ -6,7 +6,7 @@
   ],
   "system_col": 4,
   "min_format": "2.50",
-  "schema_version": "1.8.2",
+  "schema_version": "1.9.0",
   "unknown_tail": "keep",
   "header": [
     {
@@ -148,6 +148,58 @@
           ],
           "proof": "NFF 2.50 PLAIU LTE pla #4",
           "category": "allocation_mcs"
+        },
+        {
+          "code": "plaiu.mod1",
+          "label": "PUSCH modulation for codeword 1",
+          "type": "int",
+          "unit": "index",
+          "agg": "dominant",
+          "weight": "percentage",
+          "proof": "NFF 2.50 PLAIU LTE pla #5",
+          "category": "link_quality"
+        },
+        {
+          "code": "plaiu.mcs1",
+          "label": "PUSCH MCS index for codeword 1",
+          "type": "int",
+          "unit": "index",
+          "agg": "mean",
+          "weight": "percentage",
+          "range": [0, 31],
+          "proof": "NFF 2.50 PLAIU LTE pla #6",
+          "category": "allocation_mcs"
+        },
+        {
+          "code": "plaiu.n_rep",
+          "label": "PUSCH repetitions",
+          "type": "int",
+          "unit": "count",
+          "agg": "mean",
+          "weight": "percentage",
+          "range": [1, 128],
+          "proof": "NFF 2.50 PLAIU LTE pla #7",
+          "category": "allocation_mcs"
+        },
+        {
+          "code": "plaiu.tbs0",
+          "label": "PUSCH transport block size for codeword 0",
+          "type": "int",
+          "unit": "bit",
+          "agg": "mean",
+          "weight": "percentage",
+          "proof": "NFF 2.50 PLAIU LTE pla #8",
+          "category": "allocation_mcs"
+        },
+        {
+          "code": "plaiu.tbs1",
+          "label": "PUSCH transport block size for codeword 1",
+          "type": "int",
+          "unit": "bit",
+          "agg": "mean",
+          "weight": "percentage",
+          "proof": "NFF 2.50 PLAIU LTE pla #9",
+          "category": "allocation_mcs"
         }
       ],
       "start": {
@@ -185,6 +237,16 @@
             100
           ],
           "proof": "NFF 2.50 PLAIU LTE prbs #2",
+          "category": "allocation_mcs"
+        },
+        {
+          "code": "plaiu.scs",
+          "label": "PUSCH subcarriers",
+          "type": "int",
+          "unit": "count",
+          "agg": "mean",
+          "weight": "prb_percentage",
+          "proof": "NFF 2.50 PLAIU LTE prbs #3",
           "category": "allocation_mcs"
         }
       ],

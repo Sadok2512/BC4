@@ -1,3 +1,23 @@
+## 0.113.0 (minor) — BC4 2026-10-30 — décodeur PLAIU NFF 2.50 (1.9.0) + alembic 0075 (Agent BC1, numérotation BC3)
+
+Merge `bc1/decoder-plaiu-nff250` (`cafeea9`). Décodeur passe en **1.9.0**
+avec couverture PLAIU LTE complète + enum cellule `0..31` explicite.
+
+- Décodeur **1.9.0** : groupes PLAIU LTE complets, enum cellule
+  `0..31` explicite, classification NFF des trois principaux codes
+  encore `other`.
+- Migration **0075_decoder_1_9_0_plaiu** : persiste six champs PLAIU
+  répétés nouvellement extraits par 1.9.0.
+- Captures existantes rejouées via la commande de reparse déjà
+  exposée en 1.8.x (`--reason "décodeur 1.9.0"`), **une capture à la
+  fois** sous DEPLOY_LOCK BC3, aucun import actif en parallèle.
+- G46 (couverture décodeur) et G48 (unicité cell_second) rejoués après
+  chaque reparse ; part de `other` dans Test_6 mesurée avant/après.
+- Rattrapages dérivés : `signaling_materialized`, `nmf_cell_identity`
+  et `dict_network_catalog` ré-exécutés sur les 3 captures.
+- SemVer back : **MINOR 0.113.0** (nouveau décodeur, migration 0075,
+  nouveaux champs persistés).
+
 ## 0.112.2 (patch) — BC4 2026-10-30 — durcissement de l'environnement de production (Agent BC4, numérotation BC3)
 
 Merge `bc4/env-hardening` (`8c1f407`). `BC4_ENV` devient fonctionnel.
