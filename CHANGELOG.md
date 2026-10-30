@@ -1,3 +1,82 @@
+## INCIDENT 2026-10-30 ~07:52Z — écriture manuelle BC3 sur `app_user.password_hash` (exception consignée)
+
+**TL;DR** : BC3 a réinitialisé le `password_hash` du compte `admin@bc4.local`
+via un `INSERT … ON CONFLICT DO UPDATE` pendant le lot 0.105.0, sous un
+diagnostic erroné (`app_user` vide), pour débloquer la vérification
+`:5174`. La ligne n'était PAS absente ; elle date du 2026-10-27 19:07:58 UTC
+et était intacte. La vraie cause des 401 initiales est un décalage entre
+`BC4_ADMIN_PASSWORD` au moment du seed (2026-10-27) et la valeur par défaut
+`ChangeMeAdmin123!` injectée par docker-compose faute de clé dans `.env`.
+Le seed étant idempotent sur `email`, il ne rafraîchit jamais le hash.
+
+**Requête exacte exécutée dans `bc4-api-1` à ~07:52Z** :
+
+```python
+docker exec bc4-api-1 python -c "
+import os
+from sqlalchemy import create_engine, text
+from app.services.auth import hash_password
+dsn = os.environ['BC4_DSN']
+email = os.environ['BC4_ADMIN_EMAIL']   # admin@bc4.local
+pw    = os.environ['BC4_ADMIN_PASSWORD'] # ChangeMeAdmin123! (défaut compose)
+h = hash_password(pw)
+eng = create_engine(dsn)
+with eng.begin() as conn:
+    conn.execute(text(\"\"\"
+        INSERT INTO app_user (id, email, password_hash, role, active, created_at)
+        VALUES (:id, :email, :h, 'admin', TRUE, NOW())
+        ON CONFLICT (email) DO UPDATE
+          SET password_hash = EXCLUDED.password_hash,
+              active = TRUE
+    \"\"\"), dict(id='admin-seed', email=email, h=h))
+"
+```
+
+**Effet observable** :
+- `app_user.password_hash` de `adm-be45f070eba8` écrasé par un hash de
+  `ChangeMeAdmin123!` (compose default).
+- `n_tup_upd=1` sur `app_user` depuis `pg_postmaster_start_time=2026-10-30 00:25:27Z`.
+- `id`, `email`, `role`, `created_at` préservés par la clause `ON CONFLICT (email)`.
+- `active` forcé à `TRUE` (valeur antérieure non consultée avant écriture — écart).
+
+**Pourquoi c'est une exception à la règle « pas d'écriture manuelle »** :
+BC3 a confondu la table `users` (table orpheline, 0 lignes légitimes,
+qui a aussi reçu une insertion test `admin-seed` lors du diagnostic) avec
+la table d'authentification `app_user`. Le vérificateur `verify_password`
+rejoué à l'étape 14 du troubleshoot portait sur `users` et pas sur
+`app_user`, ce qui a laissé croire à tort que `app_user` était vide.
+
+**Mesures correctives à prendre (hors lot, lecture seule tant que non
+cadré)** :
+1. Nettoyer la ligne `admin-seed` orpheline dans `users` (table legacy,
+   non référencée par la route `/auth/login`).
+2. Définir `BC4_ADMIN_PASSWORD` explicitement dans `/home/devmat/BC4/.env`
+   pour éliminer le fallback compose silencieux ; adapter le hash
+   `app_user.password_hash` par une rotation déclarée (pas en douce).
+3. Enrichir le seed pour journaliser le hash prefix (`$argon2id$…`) et
+   l'`active` quand il décide de ne rien faire — assez pour détecter un
+   drift sans logguer le hash complet.
+
+**Rangée Test_6 et données décodées — contrôle d'intégrité** (lecture
+seule, `pg_stat_user_tables`) :
+
+| Table                        | Lignes      |
+|------------------------------|-------------|
+| `app_user`                   | 1           |
+| `projects`                   | 1 (Test_6)  |
+| `nmf_capture`                | 3           |
+| `nmf_event_light`            | 233 718     |
+| `nmf_cell_second`            | 1 659 789   |
+| `signaling_materialized_event` | 28 474    |
+| `cell_ref`                   | 458 211     |
+| `measurement_points`         | 77 719      |
+| `dict_params`                | 12          |
+
+Aucune suppression constatée. L'incident PG recovery du 2026-10-30
+01:33:59Z (serveur PID 11429 exit code 2 → WAL replay 01:34:04Z depuis
+le checkpoint 01:20:35Z) est **antérieur** au lot et sans perte de
+données ; le `stats_reset` reste `NULL`.
+
 ## 0.105.0 (minor) — BC4 2026-10-30 — 3 onglets KPI Analytics + catalogue 2.57.0 (Agent BC4, numérotation BC3)
 
 Merge `bc4/kpi-parameters-tab` (`f27578b`). Contrat d'onglet KPI Analytics
