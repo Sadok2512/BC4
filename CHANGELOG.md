@@ -1,4 +1,20 @@
-## 0.102.0 (minor) — BC4 2026-10-30 — /signaling/points compact-v1 (Agent BC1, numérotation BC3)
+## 0.103.0 (minor) — BC4 2026-10-30 — summary.total aligné sur RF view + hidden (Agent BC1, numérotation BC3)
+
+Merge `bc1/signaling-summary-align` (`6a12628`). Résout l'écart
+`summary.total` 23 546 vs RF 23 398 (+148 parcours, +8 ikea.2, +7
+ikea.6) de l'audit Signaling.
+
+- `summary.total` = `count(signaling_materialized_event WHERE view='rf')`
+  → identique à la timeline affichée.
+- Nouveau champ `hidden` = events sources (`stg_event` RRCSM/L3SM +
+  `nmf_event_pair` + `task_run`) non convertis en events RF (filtrés
+  par `rf.events()` ou dédoublonnés via ON CONFLICT).
+- Migration **0072** `signaling_summary_hidden` : ajoute une colonne
+  `hidden bigint NOT NULL DEFAULT 0` sur `signaling_materialized_capture`
+  (ADD COLUMN sans défaut sur table live, propagation instantanée PG16).
+- Rattrapage obligatoire : `python -m
+  app.scripts.backfill_signaling_materialized <PID> --reason "…"` (CLI
+  déjà existante, mise à jour pour peupler `hidden`).
 
 Merge `bc1/signaling-points-lean` (`9ac57e0`). Numéro `0.102.0 (minor)`
 attribué par BC3 (nouveau paramètre `compact=true` qui change le format
@@ -14,6 +30,7 @@ de réponse quand utilisé).
 - Compagnon front `1.118.3` qui consomme `compact-v1` et reconstruit
   les objets avant rendu.
 
+## 0.102.0 (minor) — BC4 2026-10-30 — /signaling/points compact-v1 (Agent BC1, numérotation BC3)
 ## Incident 2026-10-30 — BC4 ingérence en production 23:28Z-00:11Z (BC3 audit complet)
 
 ### Fenêtres mesurées (rapport BC4 confirmé, écritures en base)
