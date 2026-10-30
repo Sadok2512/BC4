@@ -1,3 +1,28 @@
+## 0.107.1 (patch) — BC4 2026-10-30 — CLI tracée `reset_admin_password.py` + rotation Codex67 (BC3)
+
+Comble le trou ouvert par l'incident 2026-10-30 07:52Z (écriture manuelle
+non autorisée sur `app_user.password_hash`). Désormais toute rotation
+de hash admin passe par un chemin unique traçable.
+
+- `scripts/admin/reset_admin_password.py` : CLI sous DEPLOY_LOCK
+  (holder=BC3). `UPDATE app_user SET password_hash=:h WHERE email=:e`
+  en argon2id ; pas d'`INSERT`, pas d'`ON CONFLICT`. Mot de passe
+  généré par `secrets.token_urlsafe(24)` (≥160 bits) ou fourni via
+  `--password-stdin`. `--reason` obligatoire.
+- Trace append-only `scripts/admin/reset_admin_password.log` avec
+  horodatage UTC, email, raison, holder, pid, status. **Jamais** le
+  hash ni le mot de passe en clair.
+- SemVer : **PATCH** (nouveau script, aucune route modifiée, aucun
+  changement de contrat API ou de schéma).
+
+**Écart résiduel ouvert** : l'application n'a pas de mécanisme
+« must_change_password at first login » dans `app_user` (aucune colonne
+`password_changed_at`, pas de route `/auth/change-password`). Le
+destinataire du nouveau mot de passe doit donc le changer **par une
+seconde rotation CLI** sous DEPLOY_LOCK, ou on l'accepte temporairement
+jusqu'au prochain lot auth qui ajoutera `/auth/change-password` + la
+colonne `must_change_password`.
+
 ## 0.107.0 (minor) — BC4 2026-10-30 — libellés LTE/NR explicites + catalogue 2.58.0 (Agent BC4, numérotation BC3)
 
 Merge `bc4/catalog-nr-labels` (`3b602cf`). Désambiguïsation visuelle des
