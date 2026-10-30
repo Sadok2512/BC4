@@ -15,10 +15,40 @@ from sqlalchemy import text
 
 
 MAX_CELL_LINK_DISTANCE_M = 25_000.0
+PROBABLE_LINK_MAX_DISTANCE_M = 10_000.0
 _METRES_PER_LATITUDE_DEGREE = 111_000.0
 LTE_NEIGHBOUR_TYPES = (1, 2)
 NR_NEIGHBOUR_TYPES = (1000, 1001, 1002)
 NR_ANCHOR_TYPE = 199
+
+# 0.117.0 BC3 — Mapping 3GPP EARFCN LTE → bande MHz (match
+# cell_ref.band_mhz : 700/800/900/1400/1800/2100/2600/3500). Dérivé
+# directement des plages 3GPP B1/B3/B7/B8/B20/B28/B32. Utilisé par le
+# fallback "probable" sur la cellule serving quand le référentiel n'a
+# pas d'EARFCN exact pour cette porteuse.
+_LTE_EARFCN_RANGES: list[tuple[int, int, int]] = [
+    (0, 599, 2100),      # B1 : 2110-2170 MHz downlink
+    (1200, 1949, 1800),  # B3
+    (2750, 3449, 2600),  # B7
+    (3450, 3799, 900),   # B8
+    (6150, 6449, 800),   # B20
+    (9210, 9659, 700),   # B28
+    (9770, 9869, 1500),  # B32 (SDL)
+]
+
+
+def _lte_earfcn_to_band_mhz(earfcn: int | None) -> int | None:
+    """Band MHz autoritaire pour un EARFCN LTE donné, ou None hors plage."""
+    if earfcn is None:
+        return None
+    try:
+        e = int(earfcn)
+    except (TypeError, ValueError):
+        return None
+    for lo, hi, band in _LTE_EARFCN_RANGES:
+        if lo <= e <= hi:
+            return band
+    return None
 
 
 def _distance_m(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
@@ -253,4 +283,115 @@ def enrich_radio_links(db, project_id: str, capture_id: str, map_points: list[di
             else:
                 point["neighbour_links"].append(link)
     for point in map_points:
-        point.pop("_second",None)
+        point.pop("_second", None)
+    # 0.117.0 BC3 — Marque les liens serving existants comme 'earfcn_pci / proven'.
+    for point in map_points:
+        if point.get("serving_cell_ref_id"):
+            point.setdefault("link_method", "earfcn_pci")
+            point.setdefault("confidence", "proven")
+
+
+def enrich_probable_serving_links(
+    db, project_id: str, capture_id: str, map_points: list[dict]
+) -> None:
+    """Fallback 'probable' pour la cellule serving quand le référentiel
+    n'a pas d'EARFCN exact ou de PCI pour la zone (cas Hénin-Beaumont /
+    Test_6). Pour chaque point sans serving_cell_ref_id (= pas prouvé),
+    récupère (cell_ch, cell_pci) de la PCell (cell_index=1003) sur
+    la seconde du point, dérive band_mhz depuis cell_ch, cherche le
+    cell_ref le plus proche à distance <= 10 km avec band_mhz égal et
+    pci optionnel ; pose les champs probable_serving_* avec distance
+    et confidence='probable'. Jamais présenté comme prouvé.
+    """
+    if not map_points:
+        return
+    # 1. Récupère (seq → cell_ch, cell_pci) pour PCell (cell_index=1003)
+    rows = db.execute(text("""
+        SELECT seq_first AS seq,
+               MAX(CASE WHEN metric_code='cell_ch'  THEN value END) AS cell_ch,
+               MAX(CASE WHEN metric_code='cell_pci' THEN value END) AS cell_pci
+        FROM nmf_cell_second
+        WHERE project_id=:pid AND capture_id=:cap AND cell_index=1003
+          AND metric_code IN ('cell_ch','cell_pci')
+        GROUP BY seq_first
+    """), {"pid": project_id, "cap": capture_id}).mappings().all()
+    pcell_by_seq = {
+        int(r["seq"]): (
+            int(r["cell_ch"]) if r["cell_ch"] is not None else None,
+            int(r["cell_pci"]) if r["cell_pci"] is not None else None,
+        )
+        for r in rows
+    }
+    if not pcell_by_seq:
+        return
+    # 2. Pour chaque point sans serving, dérive bande + cherche cell_ref proche
+    #    par bande+pci (prioritaire) puis bande seulement.
+    unlinked = [p for p in map_points if not p.get("serving_cell_ref_id")]
+    if not unlinked:
+        return
+    # Précharge cell_ref par (band_mhz) dans la bbox élargie des points
+    lats = [float(p["lat"]) for p in unlinked]
+    lngs = [float(p["lng"]) for p in unlinked]
+    deg_lat = PROBABLE_LINK_MAX_DISTANCE_M / _METRES_PER_LATITUDE_DEGREE
+    deg_lng = deg_lat / max(cos(radians(sum(lats) / len(lats))), 1e-6)
+    refs_by_band_pci: dict[tuple[int, int], list[dict]] = defaultdict(list)
+    refs_by_band: dict[int, list[dict]] = defaultdict(list)
+    for r in db.execute(text("""
+        SELECT id, band_mhz, pci, site_id, site_name,
+               ST_Y(geom) AS lat, ST_X(geom) AS lng
+        FROM cell_ref
+        WHERE geom IS NOT NULL AND band_mhz IS NOT NULL
+          AND ST_Y(geom) BETWEEN :lat_min AND :lat_max
+          AND ST_X(geom) BETWEEN :lng_min AND :lng_max
+    """), {
+        "lat_min": min(lats) - deg_lat, "lat_max": max(lats) + deg_lat,
+        "lng_min": min(lngs) - deg_lng, "lng_max": max(lngs) + deg_lng,
+    }).mappings().all():
+        ref = {k: r[k] for k in ("id", "band_mhz", "pci", "site_id",
+                                  "site_name", "lat", "lng")}
+        band_mhz = int(ref["band_mhz"])
+        pci = int(ref["pci"]) if ref["pci"] is not None else None
+        if pci is not None:
+            refs_by_band_pci[(band_mhz, pci)].append(ref)
+        refs_by_band[band_mhz].append(ref)
+
+    for point in unlinked:
+        seq = int(point["seq"])
+        pcell = pcell_by_seq.get(seq)
+        if not pcell:
+            continue
+        ch, pci = pcell
+        band_mhz = _lte_earfcn_to_band_mhz(ch)
+        if band_mhz is None:
+            continue
+        # Candidats : band+pci (plus spécifique) puis band seul
+        candidates = (refs_by_band_pci.get((band_mhz, pci), [])
+                      if pci is not None else [])
+        used_fallback_band_only = False
+        if not candidates:
+            candidates = refs_by_band.get(band_mhz, [])
+            used_fallback_band_only = True
+        if not candidates:
+            continue
+        p_lat = float(point["lat"])
+        p_lng = float(point["lng"])
+        best = None
+        best_d = PROBABLE_LINK_MAX_DISTANCE_M
+        for ref in candidates:
+            d = _distance_m(p_lat, p_lng, float(ref["lat"]), float(ref["lng"]))
+            if d < best_d:
+                best = ref
+                best_d = d
+        if best is None:
+            continue
+        point["probable_serving_cell_ref_id"] = best["id"]
+        point["probable_serving_site_id"] = best["site_id"]
+        point["probable_serving_site_name"] = best["site_name"]
+        point["probable_serving_cell_lat"] = float(best["lat"])
+        point["probable_serving_cell_lng"] = float(best["lng"])
+        point["probable_serving_distance_m"] = round(best_d, 1)
+        point["probable_serving_band_mhz"] = band_mhz
+        point["probable_serving_pci"] = pci
+        point["link_method"] = "band_proximity" + ("_pci" if not used_fallback_band_only else "")
+        point["confidence"] = "probable"
+        point["probable_link_max_distance_m"] = PROBABLE_LINK_MAX_DISTANCE_M

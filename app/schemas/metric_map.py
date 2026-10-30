@@ -50,3 +50,22 @@ class MetricMapPoint(BaseModel):
     serving_cell_source: Literal["chi_previous_seq_cell_ref_exact"] | None = None
     neighbour_links: list[RadioCellLink] = Field(default_factory=list)
     nr_anchor_link: RadioCellLink | None = None
+    # 0.117.0 BC3 — Lien 'probable' pour la cellule serving quand le
+    # référentiel n'a pas d'EARFCN exact + PCI sur la zone (cas
+    # Hénin-Beaumont / Test_6). Match par bande MHz dérivée du cell_ch
+    # mesuré + PCI mesuré (prioritaire) ou bande seule (fallback) +
+    # site le plus proche dans un rayon <= 10 km. Jamais présenté
+    # comme prouvé — distance et bande toujours exposées.
+    link_method: Literal[
+        "eci", "earfcn_pci", "band_proximity_pci", "band_proximity", "none"
+    ] | None = None
+    confidence: Literal["proven", "probable", "none"] | None = None
+    probable_serving_cell_ref_id: str | None = None
+    probable_serving_site_id: str | None = None
+    probable_serving_site_name: str | None = None
+    probable_serving_cell_lat: float | None = None
+    probable_serving_cell_lng: float | None = None
+    probable_serving_distance_m: float | None = None
+    probable_serving_band_mhz: int | None = None
+    probable_serving_pci: int | None = None
+    probable_link_max_distance_m: float | None = None

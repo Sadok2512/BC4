@@ -1,3 +1,56 @@
+## 0.117.0 (minor) — BC4 2026-10-30 — serving link probable par bande + proximité 10 km (BC3)
+
+Rattrape les cellules serving dont le référentiel n'a NI EARFCN exact
+NI PCI (cas Hénin-Beaumont / Test_6 : 1 lien proven sur 4 935 points
+en 0.116.0). Fallback **jamais présenté comme prouvé** — distance et
+bande toujours exposées pour contrôle à l'œil.
+
+**Audit préalable** (NMF Nemo) :
+- `nmf_event_light` : zéro `chi_cell_id`/`cellscan_cell_id`/`chi_pci` sur
+  Test_6 → l'ingest NMF **ne persiste pas** l'ECI/CGI mesuré pour cette
+  campagne (champs vides).
+- `nmf_cell_second` : **58 605 lignes** avec (`cell_ch`=EARFCN exact,
+  `cell_pci`=PCI mesuré) sur a4b0c321c52e (37 PCI distincts sur
+  cell_index=1003 PCell + 6 EARFCN distincts = many handovers). Même
+  mesure couvre daa2 et ecff en continu.
+
+**Correctif** (`app/kpi/map_cell_links.py`) :
+- `_lte_earfcn_to_band_mhz(earfcn) → band_mhz` : table 3GPP standard
+  B1→2100 / B3→1800 / B7→2600 / B8→900 / B20→800 / B28→700 / B32→1500.
+- `enrich_probable_serving_links(db, pid, cap, points)` : pour chaque
+  point SANS `serving_cell_ref_id` (= pas déjà prouvé en 0.116.0),
+  lit `(cell_ch, cell_pci)` de la PCell `cell_index=1003` au seq du
+  point, dérive `band_mhz`, cherche `cell_ref` le plus proche avec
+  `band_mhz=derived` ET `pci=cell_pci` (prioritaire) ou `band_mhz`
+  seule (fallback) dans un rayon **PROBABLE_LINK_MAX_DISTANCE_M =
+  10 000 m** déclaré. Si trouvé, pose `probable_serving_*` +
+  `probable_serving_distance_m` + `link_method=band_proximity[_pci]` +
+  `confidence=probable`.
+- `app/kpi/metrics_map.py:121` : appelle `enrich_probable_serving_links`
+  **après** `enrich_radio_links` (ne touche pas les points déjà prouvés).
+
+**Schema `MetricMapPoint`** étendu (optionnels, non breaking) :
+- `link_method ∈ {eci, earfcn_pci, band_proximity_pci, band_proximity,
+  none}` + `confidence ∈ {proven, probable, none}` — `earfcn_pci/proven`
+  marqué sur les liens 0.116.0 existants.
+- `probable_serving_{cell_ref_id, site_id, site_name, cell_lat,
+  cell_lng, distance_m, band_mhz, pci}` + `probable_link_max_distance_m`
+  (toujours 10 000 m pour transparence).
+
+**Voisines + NR anchor probable** : non implémenté dans ce lot (nécessite
+mapping `nr_arfcn → band_mhz` + logique analogue pour nmf_cell_identity
+type=1/2/1000-1002/199). **TODO BC1 lot suivant** pour couvrir le cas
+« voisines détectées mesurées + bande + proximité ». Les voisines proven
+existantes (0.116.0 — 0 sur Test_6 par manque de données amont) restent
+inchangées.
+
+**Front BC4** : dessinera les liens `confidence=probable` en pointillés
+dans un lot ultérieur. En attendant, ils peuvent apparaître en trait
+plein — signalé à Codex67.
+
+SemVer back : **MINOR 0.117.0** (extension optionnelle contrat
+`/metrics/map`, aucun contrat cassé).
+
 ## 0.116.0 (minor) — BC4 2026-10-30 — bandes MHz séparées des canaux radio exacts + alembic 0077 (Agent BC1, numérotation BC3)
 
 Merge `bc1/cell-ref-band-vs-earfcn` (`0bee0f0`). Remplace mon `0.115.1`

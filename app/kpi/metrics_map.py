@@ -119,4 +119,8 @@ def build_map_points(
         })
 
     enrich_radio_links(dataset.db, dataset.pid, dataset.cap, points)
+    # 0.117.0 BC3 — fallback probable pour serving quand pas d'EARFCN
+    # exact dans cell_ref (band + PCI + proximité <= 10 km).
+    from app.kpi.map_cell_links import enrich_probable_serving_links
+    enrich_probable_serving_links(dataset.db, dataset.pid, dataset.cap, points)
     return points
