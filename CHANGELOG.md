@@ -1,14 +1,23 @@
-## À numéroter (minor) — BC4 — voisines Metrics par cellule radio réelle
+## 0.112.0 (minor) — BC4 2026-10-30 — voisines Metrics par cellule radio réelle (Agent BC4, numérotation BC3)
 
-- Le catalogue Metrics remplace chaque feuille CELLMEAS de voisines par des
-  feuilles projet-scopées `(system, ARFCN, PCI)`. L'occurrence interne
-  `cell_index` reste exclusivement une clé de jointure et ne s'affiche plus.
-- Les sélections `code@cell-type!ARFCN:PCI` filtrent chaque métrique
-  indépendamment, y compris lorsque plusieurs cellules réelles partagent le
-  même workspace. Le cache catalogue est invalidé par l'empreinte de
-  `nmf_cell_identity` après un rattrapage sans re-décodage.
-- SemVer back : **MINOR**, numéro attribué par BC3. Catalogue : **inchangé**
-  (projection dynamique au-dessus de 2.60.0).
+Merge `bc4/neighbours-by-radio` (`5af76ec`). Les feuilles CELLMEAS de
+voisines passent de l'occurrence interne `cell_index` à l'identité
+radio physique `(system, ARFCN, PCI)` servie par 0.109.0.
+
+- Chaque feuille CELLMEAS de voisines dans `/projects/{pid}/metrics`
+  est désormais projet-scopée sur `(system, ARFCN, PCI)` ; l'occurrence
+  interne `cell_index` reste purement clé de jointure et n'apparaît plus
+  dans les feuilles exposées.
+- Format de sélection : `code@cell-type!ARFCN:PCI` (ex.
+  `cell_rsrp@lte-type-2!1675:196`). Chaque métrique filtre
+  indépendamment, y compris quand plusieurs cellules réelles partagent
+  le même workspace.
+- Le cache catalogue est invalidé par l'empreinte de
+  `nmf_cell_identity` après un rattrapage sans re-décodage. Pas de
+  flush manuel.
+- Catalogue 2.60.0 **inchangé** : la projection est dynamique au-dessus
+  du catalogue en base.
+- SemVer back : **MINOR 0.112.0**.
 
 ## 0.111.0 (minor) — BC4 2026-10-30 — changement obligatoire du mot de passe (Agent BC1, numérotation BC3)
 
