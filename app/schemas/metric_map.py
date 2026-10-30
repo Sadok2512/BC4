@@ -7,10 +7,10 @@ from pydantic import BaseModel, Field
 class RadioCellLink(BaseModel):
     """A radio-identity match proven against ``cell_ref``.
 
-    The measurement keeps its exact ARFCN. ``reference_channel`` is the
-    deterministic 3GPP band-frequency key used by the current ``cell_ref``
-    import (whose ``earfcn`` column contains 700/800/1800/... rather than the
-    raw channel). Distance only disambiguates duplicate band+PCI candidates.
+    The measurement keeps its exact ARFCN. ``reference_channel`` preserves
+    the historical field but now contains the same exact LTE EARFCN or
+    NR-ARFCN as ``arfcn``. Distance only disambiguates duplicate exact
+    channel+PCI candidates.
     """
 
     system: Literal["LTE", "NR"]
@@ -26,7 +26,7 @@ class RadioCellLink(BaseModel):
     distance_m: float
     max_distance_m: float
     candidate_count: int
-    confidence: Literal["radio_band_pci_unique", "radio_band_pci_nearest_within_25000m"]
+    confidence: Literal["radio_arfcn_pci_unique", "radio_arfcn_pci_nearest_within_25000m"]
 
 
 class MetricMapPoint(BaseModel):

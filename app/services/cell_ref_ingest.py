@@ -147,6 +147,15 @@ def _rat(v: str | None) -> str | None:
     return None
 
 
+def reference_channels(row: dict[str, str], rat: str) -> tuple[int | None, int | None, int | None]:
+    """Return ``(band_mhz, lte_earfcn, nr_arfcn)`` without cross-domain fallback."""
+    return (
+        _i(row.get("earfcn")),
+        _i(row.get("dl_earfcn")) if rat == "4G" else None,
+        _i(row.get("nr_arfcn")) if rat == "5G" else None,
+    )
+
+
 def _chunked(iterable: Iterator[dict], size: int) -> Iterator[list[dict]]:
     batch: list[dict] = []
     for item in iterable:
@@ -206,7 +215,8 @@ def ingest_csv_stream(
     # recalcule via ST_SetSRID(ST_MakePoint(lng, lat), 4326) à l'upsert.
     STG_COLUMNS = (
         "id", "snapshot_date", "rat", "vendor", "eci", "nci", "enodebid",
-        "pci", "band_src", "band_3gpp", "techno", "earfcn", "azimuth",
+        "pci", "band_src", "band_3gpp", "techno", "band_mhz", "earfcn",
+        "nr_arfcn", "azimuth",
         "tilt", "height", "coverage", "cell_class", "etat", "dor", "dr",
         "plaque", "site_id", "site_name", "sector", "cell_op_leader",
         "arcep_zone", "lng", "lat", "reference_import_id",
@@ -225,7 +235,9 @@ def ingest_csv_stream(
             band_src       text,
             band_3gpp      text,
             techno         text,
+            band_mhz       integer,
             earfcn         integer,
+            nr_arfcn       integer,
             azimuth        double precision,
             tilt           double precision,
             height         double precision,
@@ -249,14 +261,16 @@ def ingest_csv_stream(
     upsert_sql = """
         INSERT INTO cell_ref (
             id, snapshot_date, rat, vendor, eci, nci, enodebid, pci,
-            band_src, band_3gpp, techno, earfcn, azimuth, tilt, height,
+            band_src, band_3gpp, techno, band_mhz, earfcn, nr_arfcn,
+            azimuth, tilt, height,
             coverage, cell_class, etat, dor, dr, plaque, site_id,
             site_name, sector, cell_op_leader, arcep_zone, geom,
             reference_import_id
         )
         SELECT
             id, snapshot_date, rat, vendor, eci, nci, enodebid, pci,
-            band_src, band_3gpp, techno, earfcn, azimuth, tilt, height,
+            band_src, band_3gpp, techno, band_mhz, earfcn, nr_arfcn,
+            azimuth, tilt, height,
             coverage, cell_class, etat, dor, dr, plaque, site_id,
             site_name, sector, cell_op_leader, arcep_zone,
             ST_SetSRID(ST_MakePoint(lng, lat), 4326),
@@ -273,7 +287,9 @@ def ingest_csv_stream(
             band_src = EXCLUDED.band_src,
             band_3gpp = EXCLUDED.band_3gpp,
             techno = EXCLUDED.techno,
+            band_mhz = EXCLUDED.band_mhz,
             earfcn = EXCLUDED.earfcn,
+            nr_arfcn = EXCLUDED.nr_arfcn,
             azimuth = EXCLUDED.azimuth,
             tilt = EXCLUDED.tilt,
             height = EXCLUDED.height,
@@ -352,6 +368,7 @@ def ingest_csv_stream(
                 eci_set.add(eci)
             if nci:
                 nci_set.add(nci)
+            band_mhz, lte_earfcn, nr_arfcn = reference_channels(row, rat)
             yield {
                 "id": rid,
                 "snapshot_date": _s(row.get("snapshot_date")),
@@ -364,7 +381,9 @@ def ingest_csv_stream(
                 "band_src": band_src,
                 "band_3gpp": band_3gpp,
                 "techno": _s(row.get("techno")),
-                "earfcn": _i(row.get("earfcn")),
+                "band_mhz": band_mhz,
+                "earfcn": lte_earfcn,
+                "nr_arfcn": nr_arfcn,
                 "azimuth": _f(row.get("azimuth")),
                 "tilt": _f(row.get("tilt")),
                 "height": _f(row.get("height")),
