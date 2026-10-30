@@ -29,7 +29,20 @@ from app.routes import (
 logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(name)s:%(message)s")
 logging.getLogger("app").setLevel(logging.INFO)
 
-app = FastAPI(title="bc4-back", version="0.112.0")
+def _documentation_urls(environment: str) -> dict[str, str | None]:
+    production = environment == "production"
+    return {
+        "docs_url": None if production else "/docs",
+        "redoc_url": None if production else "/redoc",
+        "openapi_url": None if production else "/openapi.json",
+    }
+
+
+app = FastAPI(
+    title="bc4-back",
+    version="0.112.0",
+    **_documentation_urls(settings.env),
+)
 
 # CORS (B2 / P1-1) : origines PILOTÉES par `BC4_CORS_ORIGINS` (jamais en
 # dur), méthodes/en-têtes explicites pour les uploads multipart

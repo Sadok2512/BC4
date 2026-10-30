@@ -1,3 +1,14 @@
+## À numéroter (patch) — BC4 — durcissement de l'environnement de production
+
+- `BC4_ENV` alimente réellement `settings.env` et n'accepte que `mock`,
+  `development` ou `production` ; `/health` et `/settings/about` exposent la
+  même valeur, sans chaîne `development` codée en dur.
+- En `BC4_ENV=production`, FastAPI ne publie ni `/docs`, ni `/redoc`, ni
+  `/openapi.json` (donc les chemins proxy `/api/*` correspondants répondent
+  404). Les environnements de développement conservent leur documentation.
+- SemVer back : **PATCH**, numéro attribué par BC3. Catalogue et front :
+  **inchangés**.
+
 ## 0.112.0 (minor) — BC4 2026-10-30 — voisines Metrics par cellule radio réelle (Agent BC4, numérotation BC3)
 
 Merge `bc4/neighbours-by-radio` (`5af76ec`). Les feuilles CELLMEAS de

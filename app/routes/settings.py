@@ -5,6 +5,8 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from app.config import settings
+
 from app.db import get_db
 from app.deps import ROLE_DB_TO_API, get_actor, require_role
 from app.models import (
@@ -109,7 +111,7 @@ def get_about(db: Session = Depends(get_db)) -> About:
         version="0.1.0",
         build_number=None,
         build_date=None,
-        environment="development",
+        environment=settings.env,
         api_contracts_version="bc4-back/0.1.0",
         api_client_status="live",
         organization=org_row.name or None,
