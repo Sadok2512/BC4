@@ -47,6 +47,10 @@ sys.path.insert(0, str(ROOT))
 from sqlalchemy import text  # noqa: E402
 from app.db import SessionLocal  # noqa: E402
 from app.scripts.deploy_guard import guard_bc3_deploy_lock  # noqa: E402
+from app.scripts.invalidate_catalog_cache import (  # noqa: E402
+    invalidate_catalog_cache,
+    write_audit as write_cache_invalidation_audit,
+)
 from app.kpi.catalog_release.registry import (  # noqa: E402
     CATALOG_DIR,
     catalog_file_path,
@@ -480,10 +484,22 @@ def main(argv: list[str] | None = None) -> int:
             "nl": payload["n_leaves"],
             "cl": args.changelog,
         })
+        cache_report = invalidate_catalog_cache(
+            db,
+            reason=f"catalog activation {args.version}: {args.changelog}",
+            source="bootstrap_catalog_release --activate",
+        )
         db.commit()
+        cache_audit = write_cache_invalidation_audit(cache_report)
         print(f"[bootstrap] catalog_release v={args.version} is_current=TRUE sha256={sha}  "
               f"n_categories={payload['n_categories']} n_metrics={payload['n_metrics']} "
               f"n_leaves={payload['n_leaves']}")
+        print(
+            f"[bootstrap] catalog_cache rows_before={cache_report['rows_before']} "
+            f"rows_deleted={cache_report['rows_deleted']} "
+            f"rows_rebuilt={cache_report['rows_rebuilt']} "
+            f"rows_after={cache_report['rows_after']} audit={cache_audit}"
+        )
     finally:
         db.close()
     return 0

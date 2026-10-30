@@ -67,8 +67,7 @@ def _call(base_url, token, path, timeout=60):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--base-url", default=os.environ.get("G51_BASE_URL",
-                                                         "http://127.0.0.1:5174/api"))
+    ap.add_argument("--base-url", default=os.environ.get("G51_BASE_URL"))
     ap.add_argument("--token", default=os.environ.get("G51_TOKEN"))
     ap.add_argument("--project", required=True)
     ap.add_argument("--capture", required=True)
@@ -87,8 +86,12 @@ def main():
                     help="Combinaisons de codes mélangées pour reproduire le TypeError")
     args = ap.parse_args()
 
+    if not args.base_url:
+        print("G51 VERDICT=FAIL reason=missing_base_url (--base-url obligatoire)",
+              file=sys.stderr)
+        return 2
     if not args.token:
-        print("G51 FAIL: --token or G51_TOKEN required", file=sys.stderr)
+        print("G51 VERDICT=FAIL reason=missing_token", file=sys.stderr)
         return 2
 
     print(f"G51 base_url={args.base_url} project={args.project} capture={args.capture}",
@@ -97,7 +100,7 @@ def main():
     status, size, elapsed, err = _call(args.base_url, args.token,
                                        f"/projects/{args.project}/metrics")
     if status != 200:
-        print(f"G51 FAIL: /metrics catalog unavailable: status={status} err={err}",
+        print(f"G51 VERDICT=FAIL reason=catalog_unavailable status={status} err={err}",
               file=sys.stderr)
         return 3
     import gzip, io
@@ -140,10 +143,10 @@ def main():
             s, _sz, el, err = table_result
             s2, _sz2, el2, err2 = series_result
             results[("table", s)] += 1
-            if s == 500 or (s not in accepted and s != 422):
+            if s not in accepted:
                 failures.append(("table", code, s, el, err))
             results[("series", s2)] += 1
-            if s2 == 500 or (s2 not in accepted and s2 != 422):
+            if s2 not in accepted:
                 failures.append(("series", code, s2, el2, err2))
 
             if i % 50 == 0 or i == len(leaves):
@@ -163,7 +166,7 @@ def main():
                                timeout=args.timeout)
         results[("mixed", s)] += 1
         print(f"  mixed codes={codes} status={s} time={el:.2f}s", flush=True)
-        if s == 500 or (s not in accepted and s != 422):
+        if s not in accepted:
             failures.append(("mixed", codes, s, el, err))
 
     print("\nG51 summary (by endpoint, status):")
@@ -182,8 +185,8 @@ def main():
             err_s = (err or "")[:120]
             print(f"  {kind:7s} status={s} code={code} time={el:.2f}s err={err_s}")
 
-    if n_500 > 0 or (failures and not args.allow_422):
-        print("G51 VERDICT=FAIL")
+    if failures:
+        print("G51 VERDICT=FAIL reason=http_regression")
         return 1
     print("G51 VERDICT=PASS")
     return 0

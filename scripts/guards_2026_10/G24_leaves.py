@@ -3,30 +3,35 @@
 Phase 3b préalable (BC3, 2026-10-25) — version remise à zéro après
 critique "mode trust = ne vérifie rien" (G24 lot 0.80.0 avait sauté la
 re-count). Ici on **RECOMPTE** vraiment, depuis `nmf_event_light`, sur
-un **projet témoin** explicite, ou par défaut le projet nommé `Test_6`.
+un **projet témoin** explicite.
 
-Pour chaque leaf de la cache avec `n=0` ET `source_column` non vide :
+Pour chaque leaf non cell-scoped de la cache avec `n=0` ET
+`source_column` non vide :
   SELECT COUNT(*) FROM nmf_event_light
    WHERE project_id=:pid AND "<col>" IS NOT NULL;
 Si la count live > 0 → false_zero (catalog mentait).
+
+Les variantes `metric_id@cell` sont exclues : leur autorité est
+`nmf_cell_second` et leur conservation est vérifiée par G25.4. Les recompter
+globalement dans `nmf_event_light` mélangeait les cellules et produisait des
+faux positifs.
 
 Pour éviter de scanner `nmf_event_light` N fois, on BATCH la projection
 en une seule requête par chunk de 50 colonnes (COUNT FILTER WHERE col IS
 NOT NULL), même technique que `app.kpi.metrics_catalog_v4._n_per_column`.
 
-Usage (défaut = projet Test_6 et ses trois captures) :
-  python scripts/guards_2026_10/G24_leaves.py
-  python scripts/guards_2026_10/G24_leaves.py --project-id <project_id>
+Usage (`--pid` obligatoire) :
   python scripts/guards_2026_10/G24_leaves.py --pid <pid> --limit 0  # tous
 """
 import argparse, sys
 from collections import defaultdict
 sys.path.insert(0, "/app")
 from sqlalchemy import text
-from app.db import SessionLocal
+from guard_runtime import session_local_or_fail
 from scope_args import add_scope_args, resolve_scope
 
 CHUNK = 50
+SessionLocal = session_local_or_fail("G24")
 
 
 def main():
@@ -35,13 +40,16 @@ def main():
     ap.add_argument("--limit", type=int, default=0,
                     help="limite de candidats re-comptés (0 = tous)")
     args = ap.parse_args()
+    if not args.project_id:
+        print("G24 VERDICT=FAIL reason=missing_pid (--pid obligatoire)")
+        return 2
     db = SessionLocal()
     try:
         try:
             pid, capture_ids = resolve_scope(db, args)
         except ValueError as exc:
-            print(f"G24_VERDICT FAIL scope_error={exc}")
-            sys.exit(1)
+            print(f"G24 VERDICT=FAIL reason=scope_error detail={exc}")
+            return 1
         print(f"G24 scope: project_id={pid} captures={capture_ids}")
         # 1) Stats globales par projet
         pids = [r[0] for r in db.execute(text(
@@ -68,9 +76,10 @@ def main():
         # 2) Re-count LIVE sur le projet passé en --pid.
         print(f"\n[G24 recount] witness project={pid}")
         if pid not in pids:
-            print(f"G24_VERDICT FAIL witness_pid={pid} not in metrics_catalog_cache "
+            print(f"G24 VERDICT=FAIL reason=missing_cache witness_pid={pid} "
+                  f"not in metrics_catalog_cache "
                   f"(available: {pids or 'empty cache'})")
-            sys.exit(1)
+            return 1
 
         candidates = db.execute(text("""
             SELECT m->>'source_column' AS col, m->>'label' AS lbl, m->>'node_id' AS nid
@@ -78,6 +87,7 @@ def main():
             WHERE c.project_id=:pid AND m->>'node_type'='leaf'
               AND (m->>'n')::int=0
               AND m->>'source_column' IS NOT NULL AND m->>'source_column' <> ''
+              AND coalesce(m->>'metric_id','') NOT LIKE '%@%'
         """), {"pid": pid}).all()
         if args.limit > 0:
             candidates = candidates[:args.limit]
@@ -133,14 +143,15 @@ def main():
             print(f"  FALSE_ZERO col={col} n_live={n_live} leaves_sharing_col={len(rows)}  label={lbl0}  node_id={nid0}")
 
         verdict = "PASS" if not false_zeros else "FAIL"
-        print(f"G24_VERDICT {verdict} witness_pid={pid} "
+        print(f"G24 VERDICT={verdict} witness_pid={pid} "
               f"candidates_recounted={len(cols)} false_zeros={len(false_zeros)}")
         # 0.88.1 — exit non-zero sur FAIL (ou sur exception non-attrapée).
         if verdict == "FAIL":
-            sys.exit(1)
+            return 1
+        return 0
     finally:
         db.close()
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

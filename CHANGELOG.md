@@ -1,3 +1,23 @@
+## À numéroter (patch) — BC4 — harnais manuel de gardes post-déploiement
+
+- `scripts/guards/run_all.py` lance séquentiellement G18b, G24, G24b,
+  G32 et G51 sur Test_6 (`43e81a34a073`), puis affiche garde, verdict,
+  durée, code de sortie et un `GUARDS VERDICT=PASS|FAIL` global.
+- Commande BC3 après déploiement :
+  `BC4_DSN=... G51_TOKEN=... python scripts/guards/run_all.py --base-url http://127.0.0.1:9182`.
+  `--base-url` est obligatoire ; aucun défaut ne pointe vers un front partagé.
+- Chaque garde échoue explicitement sans DSN ou sans témoin. G24 exige
+  `--pid`; son re-comptage non cell-scoped ne mélange plus les variantes
+  dont l’autorité est `nmf_cell_second`/G25.4.
+- `python -m app.scripts.invalidate_catalog_cache --reason "…"` invalide
+  de façon tracée et idempotente le cache persistant, uniquement sous
+  `DEPLOY_LOCK holder=BC3`. Toute activation réussie par
+  `bootstrap_catalog_release.py --activate` l'appelle dans la même
+  transaction et réchauffe les témoins déjà présents ; G18b compare donc le
+  nouveau catalogue, sans purge ni appel API manuel.
+- SemVer back : **PATCH**, numéro attribué par BC3. Catalogue et front :
+  **inchangés**.
+
 ## 0.112.0 (minor) — BC4 2026-10-30 — voisines Metrics par cellule radio réelle (Agent BC4, numérotation BC3)
 
 Merge `bc4/neighbours-by-radio` (`5af76ec`). Les feuilles CELLMEAS de

@@ -19,9 +19,11 @@ import argparse, sys
 from collections import Counter
 sys.path.insert(0, "/app")
 from sqlalchemy import text
-from app.db import SessionLocal
 from app.kpi.catalog_release.registry import current_catalog
+from guard_runtime import session_local_or_fail
 from scope_args import add_scope_args, resolve_scope
+
+SessionLocal = session_local_or_fail("G18b")
 
 
 def _leaves_list(nodes):
@@ -38,7 +40,7 @@ def main():
         try:
             project_id, capture_ids = resolve_scope(db, args)
         except ValueError as exc:
-            print(f"G18b_VERDICT FAIL scope_error={exc}")
+            print(f"G18b VERDICT=FAIL reason=scope_error detail={exc}")
             sys.exit(1)
         print(f"G18b scope: project_id={project_id} captures={capture_ids}")
         cur = current_catalog(db)
@@ -97,11 +99,11 @@ def main():
         # 0.89.5 — garde sans témoin = FAIL. Un garde qui n'a examiné aucun
         # projet (cache vide) ne prouve rien ; il doit lever, pas renvoyer PASS.
         if len(pids) == 0:
-            print(f"G18b_VERDICT FAIL no_witness examined=0 "
+            print(f"G18b VERDICT=FAIL reason=no_witness examined=0 "
                   f"(metrics_catalog_cache vide — upload un projet d'abord)")
             sys.exit(1)
         verdict = "PASS" if divergent == 0 else "FAIL"
-        print(f"G18b_VERDICT {verdict} projects={len(pids)} divergent={divergent}  "
+        print(f"G18b VERDICT={verdict} projects={len(pids)} divergent={divergent}  "
               f"mode={mode}")
         if verdict == "FAIL":
             sys.exit(1)
