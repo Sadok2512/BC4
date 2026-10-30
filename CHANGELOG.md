@@ -1,3 +1,11 @@
+## Unreleased (patch) — Signaling timeline matérialisée (Agent BC1)
+
+- `/signaling/timeline?bucket_s=10` agrège directement les événements RF
+  matérialisés et livre la densité de toute la capture en une réponse.
+- Les états RRC/UE prouvés sont joints à cette vue d'ensemble ; aucun appel à
+  `population()` n'est effectué sur le chemin de requête.
+- SemVer back : **PATCH**, numéro attribué par BC3 au merge.
+
 ## 0.114.0 (minor) — BC4 2026-10-30 — liens cellule prouvés sur la carte métrique (Agent BC1, numérotation BC3)
 
 Merge `bc1/map-cell-links` (`dd031c3`). Extension optionnelle du

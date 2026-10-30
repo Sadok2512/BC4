@@ -259,7 +259,7 @@ def active_capture(db, project_id, capture_id):
 
 def event_where(params, *, lanes=None, failures_only=False, view="legacy",
                 protocols=None, technology=None, direction=None, q=None,
-                from_s=None, to_s=None, after_seq=None):
+                procedure=None, from_s=None, to_s=None, after_seq=None):
     clauses = ["e.project_id=:pid", "e.capture_id=:cap",
                "e.generation=:generation", "e.view=:view"]
     params["view"] = view
@@ -276,6 +276,11 @@ def event_where(params, *, lanes=None, failures_only=False, view="legacy",
         clauses.append("e.attrs->>'direction'=:direction"); params["direction"] = direction
     if view == "rf" and q:
         clauses.append("e.label ILIKE :q"); params["q"] = f"%{q}%"
+    if procedure:
+        clauses.append("""(e.id=:procedure OR e.session_id=:procedure
+          OR e.attrs->>'procedure_id'=:procedure
+          OR COALESCE(e.attrs->'procedure_ids','[]'::jsonb) ? :procedure)""")
+        params["procedure"] = procedure
     if from_s is not None:
         clauses.append("COALESCE(e.t_rel_end_s,e.t_rel_s)>=:from_s"); params["from_s"] = from_s
     if to_s is not None:
@@ -304,6 +309,52 @@ def read_events(db, project_id, capture_id, **filters):
     events = [dict(row) for row in db.execute(text(sql), params).mappings()]
     rules = dict(Counter(event["link_rule"] for event in events))
     return events, total, {row["lane"]: int(row["n"]) for row in counts}, rules
+
+
+def read_timeline(db, project_id, capture_id, *, bucket_s=10, **filters):
+    """Read a compact RF overview without rebuilding the capture population."""
+    active = active_capture(db, project_id, capture_id)
+    params = dict(pid=project_id, cap=capture_id,
+                  generation=active["generation"], bucket_s=float(bucket_s))
+    where = event_where(params, view="rf", **filters)
+    grouped = list(db.execute(text(f"""
+      SELECT floor(e.t_rel_s/:bucket_s)*:bucket_s AS t_rel_s,
+             COALESCE(e.attrs->>'protocol','Procedures') AS protocol,
+             e.lane,count(*) AS n
+      FROM signaling_materialized_event e
+      WHERE {where} AND e.t_rel_s IS NOT NULL
+      GROUP BY 1,2,3 ORDER BY 1,2,3
+    """), params).mappings())
+    by_time = {}
+    for row in grouped:
+        bucket = by_time.setdefault(float(row["t_rel_s"]),
+                                    {"counts": {}, "lane_counts": {}})
+        bucket["counts"][row["protocol"]] = (
+            bucket["counts"].get(row["protocol"], 0) + int(row["n"])
+        )
+        bucket["lane_counts"][row["lane"]] = (
+            bucket["lane_counts"].get(row["lane"], 0) + int(row["n"])
+        )
+    buckets = [dict(t_rel_s=t, **values) for t, values in sorted(by_time.items())]
+    # State bands describe the capture clock itself and must remain available
+    # when radio filters narrow only the density/detail layers.
+    state_where = event_where(params, view="rf")
+    state_events = [dict(row) for row in db.execute(text(f"""
+      SELECT id,lane,type,kind,seq,seq_end,t_rel_s,t_rel_end_s,
+        duration_ms,outcome,cause,label,attrs,pivot_seq,linked_seqs,link_rule,
+        seq_gap,context_id,session_id
+      FROM signaling_materialized_event e
+      WHERE {state_where}
+        AND upper(COALESCE(e.attrs->>'track','')) IN ('RRC_STATE','UE_STATE')
+      ORDER BY e.project_id,e.capture_id,e.seq,e.id
+    """), params).mappings()]
+    missing_time = int(db.execute(text(f"""SELECT count(*)
+      FROM signaling_materialized_event e WHERE {where} AND e.t_rel_s IS NULL"""),
+      params).scalar_one())
+    total = sum(sum(bucket["counts"].values()) for bucket in buckets) + missing_time
+    return dict(buckets=buckets,state_events=state_events,bucket_s=float(bucket_s),
+                total=total,missing_time=missing_time,
+                t_rel_end_s=active.get("t_rel_end_s"))
 
 
 def read_points(db, project_id, capture_id, *, protocols=None, direction=None,

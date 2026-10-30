@@ -3,11 +3,10 @@ import csv
 import io
 import math
 import time
-from collections import Counter, defaultdict
 from typing import Literal, Any
 from fastapi import APIRouter, Depends, Query, HTTPException
 from fastapi.responses import ORJSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from app.db import get_db
 from app.deps import get_current_user
@@ -81,12 +80,15 @@ class Lines(Envelope):
 class Bucket(BaseModel):
     t_rel_s:float
     counts:dict[str,int]
+    lane_counts:dict[str,int]=Field(default_factory=dict)
 
 class Timeline(Envelope):
     buckets:list[Bucket]
+    state_events:list[dict[str,Any]]=Field(default_factory=list)
     bucket_s:float
     total:int
     missing_time:int
+    t_rel_end_s:float|None=None
 
 class Point(BaseModel):
     seq:int
@@ -226,13 +228,8 @@ def lines(project_id:str,capture_id:str,page:int=Query(1,ge=1),size:int=Query(10
 
 @router.get('/timeline',response_model=Timeline)
 def timeline(project_id:str,capture_id:str,bucket_s:float=Query(1,gt=0,le=3600),f:dict=Depends(filters),db:Session=Depends(get_db)):
-    rows,_,_,_=svc.population(db,project_id,capture_id)
-    rows=svc.filtered(rows,**f)
-    counts=defaultdict(Counter)
-    for r in rows:
-        if r['t_rel_s'] is not None:counts[math.floor(r['t_rel_s']/bucket_s)*bucket_s][r['protocol']]+=1
-    buckets=[dict(t_rel_s=t,counts={p:c[p] for p in svc.PROTOCOLS}) for t,c in sorted(counts.items())]
-    return dict(**envelope(project_id,capture_id,rows,{**f,'bucket_s':bucket_s}),buckets=buckets,bucket_s=bucket_s,total=len(rows),missing_time=sum(r['t_rel_s'] is None for r in rows))
+    overview=mat.read_timeline(db,project_id,capture_id,bucket_s=bucket_s,**f)
+    return dict(**envelope(project_id,capture_id,overview,{**f,'bucket_s':bucket_s}),**overview)
 
 @router.get('/points',response_model=Points)
 def points(project_id:str,capture_id:str,limit:int|None=Query(None,ge=1,le=10000),compact:bool=False,f:dict=Depends(filters),db:Session=Depends(get_db)):
