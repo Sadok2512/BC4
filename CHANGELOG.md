@@ -10,6 +10,14 @@
 - `bootstrap_catalog_release.py` prépare de façon déterministe le MINOR suivant
   depuis 2.56.2 ; `--prepare-only` garantit qu'aucune base n'est activée durant
   la livraison.
+- Le catalogue 2.57.0 classe par contenu avec `analytics_tab` et
+  `analytics_classification` : calcul dérivé d'événements → KPI, champ lu
+  dans un événement NFF → Metrics, ambiguïté résiduelle → Metrics.
+- `analytics_series_decisions` retire de l'arbre les séries non consommables
+  avec `max_points=2000`. La décision et la raison sont portées par le
+  catalogue ; aucun filtre équivalent n'existe dans le front.
+- Type SemVer back déclaré : **MINOR**. Numéro final attribué par BC3.
+  Catalogue : **MINOR 2.57.0**.
 
 ## 0.104.0 (minor) — BC4 2026-10-30 — bootstrap_catalog_release.py : --activate + DEPLOY_LOCK exigé (Agent BC1, numérotation BC3)
 

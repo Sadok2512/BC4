@@ -16,8 +16,9 @@ def test_prepare_analytics_minor_classifies_every_leaf_without_labels(monkeypatc
             {
                 "catalog_version": "2.56.2",
                 "nodes": [
-                    {"node_type": "leaf", "node_id": "a", "label": "Success rate"},
-                    {"node_type": "leaf", "node_id": "b", "label": "RSRP"},
+                    {"node_type": "leaf", "node_id": "a", "label": "anything", "analytics_computation": "event_derived"},
+                    {"node_type": "leaf", "node_id": "b", "label": "anything", "event": "CI", "source_column": "ci_rs_snr"},
+                    {"node_type": "leaf", "node_id": "c", "label": "Success rate"},
                     {"node_type": "event", "node_id": "parent", "label": "RSRP"},
                 ],
             }
@@ -35,15 +36,43 @@ def test_prepare_analytics_minor_classifies_every_leaf_without_labels(monkeypatc
     payload = json.loads(target.read_text(encoding="utf-8"))
     assert payload["catalog_version"] == "2.57.0"
     assert [node.get("analytics_tab") for node in payload["nodes"]] == [
+        "kpi",
         "metrics",
         "metrics",
         None,
     ]
+    assert [node.get("analytics_classification") for node in payload["nodes"]] == [
+        "computed_from_events",
+        "message_measurement",
+        "ambiguous_defaults_to_metrics",
+        None,
+    ]
+    assert payload["analytics_classification_policy"]["label_fields_used"] is False
+    assert payload["analytics_classification_policy"]["computed_from_events_tab"] == "kpi"
+    assert payload["analytics_classification_policy"]["message_measurement_tab"] == "metrics"
+    assert payload["analytics_classification_policy"]["residual_ambiguous_node_ids"] == ["c"]
+    assert len(payload["analytics_series_decisions"]) == 61
 
 
 def test_prepare_analytics_minor_rejects_non_minor_target():
     with pytest.raises(ValueError, match="MINOR suivant"):
         bootstrap.prepare_analytics_minor("2.56.2", "2.56.3")
+
+
+def test_catalog_257_records_every_removed_series_and_residual_ambiguity():
+    payload = json.loads(
+        bootstrap.catalog_file_path("2.57.0").read_text(encoding="utf-8")
+    )
+    leaves = [node for node in payload["nodes"] if node.get("node_type") == "leaf"]
+    decisions = payload["analytics_series_decisions"]
+
+    assert len(decisions) == 61
+    assert len({(row["event"], row["code"]) for row in decisions}) == 61
+    assert all(row["visible"] is False for row in decisions)
+    assert all(row["decision"] == "removed_until_series_supported" for row in decisions)
+    assert not [leaf for leaf in leaves if not leaf.get("analytics_tab")]
+    assert {leaf["analytics_tab"] for leaf in leaves} == {"metrics"}
+    assert len(payload["analytics_classification_policy"]["residual_ambiguous_node_ids"]) == 27
 
 
 def test_kpi_catalog_item_requires_explicit_analytics_tab():

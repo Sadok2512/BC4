@@ -379,11 +379,39 @@ def build_catalog_v4(
     catalog = load_catalog_json(current.version)
     nodes_in = catalog["nodes"]
     nodes_by_id = {n["node_id"]: n for n in nodes_in}
+    analytics_policy = catalog.get("analytics_classification_policy", {})
+    analytics_fallback = analytics_policy.get("fallback", "metrics")
+    message_measurement_tab = analytics_policy.get(
+        "message_measurement_tab", analytics_fallback
+    )
+    removed_series = {
+        decision["code"]
+        for decision in catalog.get("analytics_series_decisions", [])
+        if decision.get("visible") is False
+    }
+
+    def _series_code(leaf: dict) -> str:
+        col = _column_for_leaf(leaf) or leaf.get("metric_id") or ""
+        if leaf.get("cell_type") is None:
+            return col
+        return f"{col}@{cell_type_selector(_leaf_system(leaf), int(leaf['cell_type']))}"
+
+    def _series_visible(event: str, code: str) -> bool:
+        # /metrics/series resolves a code without event discriminator. A
+        # catalog decision therefore removes that code from every branch;
+        # ``event`` remains recorded in the decision for audit provenance.
+        return code not in removed_series
+
+    def _leaf_system(leaf: dict) -> int | None:
+        value = leaf.get("field_system")
+        return int(value) if value is not None else None
 
     displayed_leaves = [
         n
         for n in nodes_in
-        if n.get("node_type") == "leaf" and n.get("displayed")
+        if n.get("node_type") == "leaf"
+        and n.get("displayed")
+        and _series_visible(n.get("event") or "", _series_code(n))
     ]
 
     # 1) Map leaf → candidate column; keep only columns present in DB.
@@ -423,10 +451,6 @@ def build_catalog_v4(
             nn for (event, observed_system, raw, metric), nn in cell_index_counts.items()
             if event == ev and observed_system == system and raw == ct and metric == col
         )
-
-    def _leaf_system(leaf: dict) -> int | None:
-        value = leaf.get("field_system")
-        return int(value) if value is not None else None
 
     def _label_per_type(ev: str, system: int | None, ct: int, fallback: str) -> str:
         return _cell_label_for_type(ev, system, ct) if system in {7, 9} else fallback
@@ -674,7 +698,7 @@ def build_catalog_v4(
                 # déployable avant l'activation 2.57.0. Les releases plus
                 # anciennes n'exposent que des feuilles Metrics sur cette
                 # route ; 2.57.0 devient ensuite la source explicite.
-                analytics_tab=(node.get("analytics_tab") or "metrics") if is_leaf else None,
+                analytics_tab=(node.get("analytics_tab") or analytics_fallback) if is_leaf else None,
                 metric_id=(selection if ct_node is not None and selection else metric_id),
                 selection=selection,
                 event=(node.get("event") or "").lstrip("#") if is_leaf else None,
@@ -735,7 +759,9 @@ def build_catalog_v4(
     dynamic_entries = sorted(
         (ev, system, ct, col, nn)
         for (ev, system, ct, col), nn in cell_index_counts.items()
-        if nn > 0 and (ev, system, ct, col) not in baked_cells
+        if nn > 0
+        and (ev, system, ct, col) not in baked_cells
+        and _series_visible(ev, f"{col}@{cell_type_selector(system, ct)}")
     )
     for ev, system, ct, col, nn in dynamic_entries:
         ev_nid = event_node_by_code.get(ev)
@@ -759,7 +785,7 @@ def build_catalog_v4(
                 note="Cellule observée dans nmf_cell_second",
                 source=None,
                 node_type="leaf",
-                analytics_tab="metrics",
+                analytics_tab=message_measurement_tab,
                 metric_id=selection,
                 selection=selection,
                 event=ev,

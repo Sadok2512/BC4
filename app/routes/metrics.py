@@ -58,7 +58,7 @@ class MetricCatalogNode(BaseModel):
     # 0.80.1 — ajout "tech"/"event" pour catalog 2.50.5 (4 niveaux
     # Technology → Catégorie → Métrique → Feuilles cellule).
     node_type: Literal['tech','category','group','metric','event','leaf']
-    analytics_tab: Literal['metrics'] | None = None
+    analytics_tab: Literal['kpi', 'metrics'] | None = None
     metric_id: str | None = None
     selection: str | None = None
     event: str | None = None
@@ -96,7 +96,11 @@ class MetricCatalogResponse(BaseModel):
 
 
 def _with_analytics_tabs(payload: dict) -> dict:
-    """Backfill the rolling contract on cached pre-2.57 payloads in memory."""
+    """Backfill only the ordered-rollout tab contract on pre-2.57 caches.
+
+    Series visibility is never guessed here: it comes exclusively from the
+    active catalog release while building a version-keyed cache entry.
+    """
     for node in payload.get("nodes", []):
         if node.get("node_type") == "leaf" and not node.get("analytics_tab"):
             node["analytics_tab"] = "metrics"

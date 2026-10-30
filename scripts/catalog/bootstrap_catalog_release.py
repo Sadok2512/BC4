@@ -47,13 +47,50 @@ from app.kpi.catalog_release.registry import (  # noqa: E402
 
 SEMVER_RE = re.compile(r"^(\d+)\.(\d+)\.(\d+)$")
 
+# Décisions issues du replay exhaustif Test_6 avec max_points=2000. Elles sont
+# écrites dans l'artefact 2.57.0 : le serveur construit l'arbre depuis ce champ,
+# le front ne contient donc aucune liste d'exclusion.
+ANALYTICS_SERIES_REMOVALS: tuple[tuple[str, str, str], ...] = (
+    ("cell_ch@lte-type-2", "CELLMEAS", "categorical_transitions_exceed_max_points:required=5449:max_points=2000"),
+    ("cell_pci@lte-type-2", "CELLMEAS", "categorical_transitions_exceed_max_points:required=19957:max_points=2000"),
+    ("cell_pci@nr-type-1000", "CELLMEAS", "categorical_transitions_exceed_max_points:required=9540:max_points=2000"),
+    *((code, event, "unknown_metric") for event, codes in {
+        "CQI": [f"cqi_n_params@lte-type-{cell}" for cell in range(5)],
+        "CREL": ["crel_band", "crel_cell_id", "crel_new_tac", "crel_old_band", "crel_old_cell_id", "crel_old_system", "crel_old_tac", "crel_params"],
+        "DAD": ["dad_application_protocol", "dad_data_disc_status"],
+        "DCOMP": ["dcomp_application_protocol", "dcomp_transf_status"],
+        "DREQ": ["dreq_application_protocol", "dreq_transf_dir"],
+        "GAD": ["gad_detach_cause", "gad_detach_status", "gad_detach_time"],
+        "HOA": ["hoa_att_band", "hoa_att_ch", "hoa_att_pci", "hoa_band", "hoa_ch_number", "hoa_current_system", "hoa_hoa_type", "hoa_pci"],
+        "HOI": ["hoi_ho_duration", "hoi_ho_u_plane"],
+        "LOCK": ["lock_band", "lock_forcings", "lock_params"],
+        "MEI": ["mei_measurement_event", "mei_measurement_id"],
+        "PBA": ["pba_pb_type"],
+        "PBC": ["pbc_pb_id"],
+        "RACHI": ["rachi_access_delay", "rachi_init_tx_power", "rachi_pathloss", "rachi_preamble_step", "rachi_preambles", "rachi_pusch_power", "rachi_rach_preamble_index", "rachi_rach_reason", "rachi_rach_result", "rachi_rach_type"],
+        "ROAM": ["roam_roaming_status"],
+        "RRA": ["rra_est_cause"],
+        "RRD": ["rrd_rrc_rel_cause", "rrd_rrc_rel_status"],
+        "SEI": ["sei_mcc", "sei_mme_code", "sei_mme_group", "sei_mnc", "sei_service_status"],
+    }.items() for code in codes),
+)
+
+
+def analytics_classification(leaf: dict) -> tuple[str, str]:
+    """Classify from catalog content only; labels are deliberately ignored."""
+    if leaf.get("analytics_computation") == "event_derived":
+        return "kpi", "computed_from_events"
+    if leaf.get("event"):
+        return "metrics", "message_measurement"
+    return "metrics", "ambiguous_defaults_to_metrics"
+
 
 def prepare_analytics_minor(source_version: str, target_version: str) -> Path:
     """Clone a catalog release and add the explicit Analytics tab contract.
 
-    Catalog 2.56.2 exposes only raw NFF measurement leaves, so every leaf is
-    classified as ``metrics``.  The target must be the next MINOR release;
-    labels, event names and units are deliberately ignored.
+    Classification uses structural catalog content: event-derived calculations
+    are KPI, message fields are Metrics, and residual ambiguity defaults to
+    Metrics. The target must be the next MINOR release; labels are ignored.
     """
     source_match = SEMVER_RE.fullmatch(source_version)
     target_match = SEMVER_RE.fullmatch(target_version)
@@ -74,8 +111,32 @@ def prepare_analytics_minor(source_version: str, target_version: str) -> Path:
     leaves = [node for node in payload.get("nodes", []) if node.get("node_type") == "leaf"]
     if not leaves:
         raise ValueError("catalogue source sans feuille")
+    residual_ambiguous = []
     for leaf in leaves:
-        leaf["analytics_tab"] = "metrics"
+        tab, reason = analytics_classification(leaf)
+        leaf["analytics_tab"] = tab
+        leaf["analytics_classification"] = reason
+        if reason == "ambiguous_defaults_to_metrics":
+            residual_ambiguous.append(leaf["node_id"])
+    payload["analytics_classification_policy"] = {
+        "kpi": "analytics_computation=event_derived",
+        "computed_from_events_tab": "kpi",
+        "metrics": "event identifies a field read from a message",
+        "message_measurement_tab": "metrics",
+        "fallback": "metrics",
+        "label_fields_used": False,
+        "residual_ambiguous_node_ids": sorted(residual_ambiguous),
+    }
+    payload["analytics_series_decisions"] = [
+        {
+            "code": code,
+            "event": event,
+            "visible": False,
+            "decision": "removed_until_series_supported",
+            "reason": reason,
+        }
+        for code, event, reason in ANALYTICS_SERIES_REMOVALS
+    ]
     payload["catalog_version"] = target_version
 
     target_path = catalog_file_path(target_version)
@@ -85,7 +146,11 @@ def prepare_analytics_minor(source_version: str, target_version: str) -> Path:
     target_path.write_text(rendered, encoding="utf-8")
     print(
         f"[bootstrap] prepared catalog v={target_version} from={source_version} "
-        f"analytics_tab=metrics leaves={len(leaves)} sha256={sha256_file(target_path)}"
+        f"kpi={sum(leaf['analytics_tab'] == 'kpi' for leaf in leaves)} "
+        f"metrics={sum(leaf['analytics_tab'] == 'metrics' for leaf in leaves)} "
+        f"residual_ambiguous={len(residual_ambiguous)} "
+        f"series_removed={len(ANALYTICS_SERIES_REMOVALS)} "
+        f"sha256={sha256_file(target_path)}"
     )
     return target_path
 
