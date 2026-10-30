@@ -226,6 +226,22 @@ def _catalog(db,pid):
 
 
 def parse_selection(token,defs,cell='all',attr=None):
+    # A physical CELLMEAS neighbour is selected by its radio identity, never
+    # by the repeated-set occurrence stored in ``cell_index``.  The suffix is
+    # intentionally part of the selection token so several real neighbours
+    # can coexist in one workspace/request without a global filter leaking
+    # from one metric to another.
+    token, physical_sep, physical_identity = token.partition('!')
+    physical_arfcn = physical_pci = None
+    if physical_sep:
+        arfcn, separator, pci = physical_identity.partition(':')
+        try:
+            physical_arfcn = int(arfcn)
+            physical_pci = int(pci) if separator else None
+        except (TypeError, ValueError):
+            physical_pci = None
+        if physical_arfcn is None or physical_pci is None or physical_arfcn < 0 or physical_pci < 0:
+            raise HTTPException(422, dict(reason='invalid_physical_cell_identity'))
     code,sep,own_cell=token.partition('@');code,sep_attr,own_attr=code.partition('~')
     cell=own_cell if sep else cell;attr=own_attr if sep_attr else attr
     if code not in defs:raise HTTPException(422,dict(reason='unknown_metric',code=code,allowed=sorted(defs)))
@@ -263,6 +279,12 @@ def parse_selection(token,defs,cell='all',attr=None):
         m.update(label=m['event']+' · '+a['label'],unit=a['unit'],kind=a['kind'],attr=attr)
     else:m['attr']=None
     m['cell']=cell;m['selection']=code+('~'+attr if attr else '')+('@'+cell if m['cell_scoped'] else '')
+    if physical_sep:
+        if not m['cell_scoped']:
+            raise HTTPException(422, 'physical_identity_requires_cell_scoped_metric')
+        m['cell_arfcn'] = physical_arfcn
+        m['cell_pci'] = physical_pci
+        m['selection'] += f'!{physical_arfcn}:{physical_pci}'
     if m['cell_scoped']:
         if cell == 'all':
             cell_label = 'Total CA'
@@ -289,6 +311,8 @@ def parse_selection(token,defs,cell='all',attr=None):
             cell_label = display['label'] + (f" · {display['system']}" if display['system'] else '')
             m['cell_display'] = display
         m['label'] += ' · ' + cell_label
+        if physical_sep:
+            m['label'] += f' · ARFCN {physical_arfcn} · PCI {physical_pci}'
     return m
 
 
@@ -723,8 +747,8 @@ class Dataset:
                 m,
                 page=page if sql_paginated else None,
                 page_size=page_size if sql_paginated else None,
-                cell_pci=cell_pci,
-                cell_arfcn=cell_arfcn,
+                cell_pci=m.get('cell_pci', cell_pci),
+                cell_arfcn=m.get('cell_arfcn', cell_arfcn),
             ),
         ) for m in selections]
         series_table_keys=None

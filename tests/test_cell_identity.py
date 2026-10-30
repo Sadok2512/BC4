@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from app.kpi.cell_identity import _enum_values_sql
+from app.kpi.metrics_catalog_v4 import _is_physical_neighbour
 
 
 def test_enum_values_cover_injective_storage_ranges():
@@ -25,3 +26,14 @@ def test_series_route_forwards_physical_cell_filters():
     assert "cell_arfcn:int|None=Query(None,ge=0)" in route
     assert "cell_pci=cell_pci" in route
     assert "cell_arfcn=cell_arfcn" in route
+
+
+def test_only_content_defined_cellmeas_neighbours_expand_by_radio_identity():
+    assert _is_physical_neighbour("CELLMEAS", 7, 1)
+    assert _is_physical_neighbour("CELLMEAS", 7, 2)
+    assert _is_physical_neighbour("CELLMEAS", 9, 1000)
+    assert _is_physical_neighbour("CELLMEAS", 9, 1001)
+    assert _is_physical_neighbour("CELLMEAS", 9, 1002)
+    assert not _is_physical_neighbour("CELLMEAS", 7, 0)
+    assert not _is_physical_neighbour("CELLMEAS", 7, 10)
+    assert not _is_physical_neighbour("MIMOMEAS", 7, 1)
