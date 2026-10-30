@@ -1,3 +1,17 @@
+## À numéroter (minor) — BC4 — SCell 5/6 + catalogue 2.60.0
+
+- Le catalogue 2.60.0 clone les familles complètes de SCell 4 vers SCell 5
+  et SCell 6. Les discriminateurs NFF restent structurels : types 5/6 pour
+  les événements LTE cell-scoped, types bruts 14/15 pour CELLMEAS et
+  MIMOMEAS LTE.
+- `bootstrap_catalog_release.py --transform scell5plus` prépare uniquement
+  l’artefact sur disque. Il ne crée aucune session SQL en mode
+  `--prepare-only`; l’activation reste réservée à BC3 sous DEPLOY_LOCK.
+- Commande manuelle :
+  `python3 scripts/catalog/bootstrap_catalog_release.py --to 2.60.0 --from 2.59.0 --transform scell5plus --prepare-only`.
+- SemVer catalogue : **MINOR 2.60.0**. SemVer back : **MINOR**, numéro
+  attribué par BC3. Front : **inchangé**.
+
 ## 0.108.0 (minor) — BC4 2026-10-30 — feuilles consommables visibles + catalogue 2.59.0 (Agent BC4, numérotation BC3)
 
 Merge `bc4/catalog-visible-leaves` (`f9abcea`). Les 61 feuilles différées
