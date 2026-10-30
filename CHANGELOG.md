@@ -1,3 +1,18 @@
+## Unreleased (minor) — Catalogue 2.58.0 : libellés LTE/NR explicites (Agent BC4, numérotation BC3)
+
+- `CELLMEAS` et `MIMOMEAS` exposent le système dans chaque libellé :
+  `RSRP (LTE)`, `RSRP (NR)`, etc. La décision repose sur le contenu NFF
+  (`event`, `field_system`, `cell_type`), jamais sur le libellé source.
+- Les champs communs portent `label_system` sans modifier leur
+  `field_system`; le contrat de sélection existant reste inchangé.
+- Le garde de duplication visuelle vérifie l'unicité de `(parent_id, label)`
+  sur tout l'arbre, y compris les blocs répétés DCI (`#Variables`,
+  `CCE aggregation`).
+- `bootstrap_catalog_release.py --transform nr-labels` prépare 2.58.0 sur
+  disque uniquement. L'activation reste exclusivement réservée à BC3.
+- SemVer catalogue : **MINOR 2.58.0**. SemVer back proposé : **MINOR** ;
+  numéro applicatif attribué par BC3.
+
 ## 0.105.0 (minor) — BC4 2026-10-30 — 3 onglets KPI Analytics + catalogue 2.57.0 (Agent BC4, numérotation BC3)
 
 Merge `bc4/kpi-parameters-tab` (`f27578b`). Contrat d'onglet KPI Analytics
