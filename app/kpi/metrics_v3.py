@@ -82,6 +82,33 @@ _PRIVATE={'caa_phone_number','caa_own_phone_number','sei_lac','sei_tmsi','sei_p_
 _cache={}
 _catalog_lock=Lock()
 
+# Catalog 2.57.0 temporarily hid these documented NFF fields because the
+# metrics endpoint only knew continuous curves.  They are event attributes:
+# identifiers/enums render as categorical markers, while physical durations,
+# powers and counts remain ordinary numeric series.
+EVENT_FIELD_CODES=frozenset({
+ 'cqi_n_params','crel_band','crel_cell_id','crel_new_tac','crel_old_band',
+ 'crel_old_cell_id','crel_old_system','crel_old_tac','crel_params',
+ 'dad_application_protocol','dad_data_disc_status','dcomp_application_protocol',
+ 'dcomp_transf_status','dreq_application_protocol','dreq_transf_dir',
+ 'gad_detach_cause','gad_detach_status','gad_detach_time','hoa_att_band',
+ 'hoa_att_ch','hoa_att_pci','hoa_band','hoa_ch_number','hoa_current_system',
+ 'hoa_hoa_type','hoa_pci','hoi_ho_duration','hoi_ho_u_plane','lock_band',
+ 'lock_forcings','lock_params','mei_measurement_event','mei_measurement_id',
+ 'pba_pb_type','pbc_pb_id','rachi_access_delay','rachi_init_tx_power',
+ 'rachi_pathloss','rachi_preamble_step','rachi_preambles','rachi_pusch_power',
+ 'rachi_rach_preamble_index','rachi_rach_reason','rachi_rach_result',
+ 'rachi_rach_type','roam_roaming_status','rra_est_cause','rrd_rrc_rel_cause',
+ 'rrd_rrc_rel_status','sei_mcc','sei_mme_code','sei_mme_group','sei_mnc',
+ 'sei_service_status',
+})
+NUMERIC_EVENT_FIELDS=frozenset({
+ 'cqi_n_params','crel_params','gad_detach_time','hoi_ho_duration',
+ 'hoi_ho_u_plane','lock_forcings','rachi_access_delay','rachi_init_tx_power',
+ 'rachi_pathloss','rachi_preamble_step','rachi_preambles','rachi_pusch_power',
+})
+MARKER_FIELD_CODES=(EVENT_FIELD_CODES-NUMERIC_EVENT_FIELDS)|frozenset({'cell_ch','cell_pci'})
+
 
 @lru_cache(maxsize=1)
 def definitions():
@@ -96,6 +123,30 @@ def definitions():
             cell_scoped=scoped,cells=[],cell_options=[],attributes=[],proof='documented',proof_ref=f['proof'],
             decoder_version=DECODER_VERSION,n_in_project=0,available=True,reason=english_text(s.get('cell_scope_reason')),
             alias_of=ALIASES.get(code),agg=f.get('agg'),weighted=bool(f.get('weight')),sql=m.sql)
+    # Direct leaves use the same decoder schema metadata as evt_EVENT~attr,
+    # but expose the catalog's stable field code without an artificial event
+    # wrapper.  Repeated LOCK values keep set_index in attributes.
+    for code in sorted(EVENT_FIELD_CODES):
+        f=fs.get(code)
+        if not f:continue
+        event=f['event'];schema=ss.get(event,{})
+        scoped=(bool(schema.get('cell_scoped')) and not f.get('dimension'))
+        kind='numeric' if code in NUMERIC_EVENT_FIELDS else 'categorical'
+        result[code]=dict(
+            code=code,label=english_text(f.get('label') or _humanize_label(code)),
+            unit=f.get('unit') or '',source_table='nmf_event_group' if f.get('group') else 'nmf_event_deep',
+            source_tables=['nmf_event_group','nmf_event_light_group'] if f.get('group') else ['nmf_event_deep','nmf_event_light'],
+            source_column=code,tech='BOTH',kind=kind,event=event,event_code=event,
+            category=f.get('category') or 'signalling_states',
+            category_label=CATEGORIES.get(f.get('category') or 'signalling_states','Events'),
+            cell_scoped=scoped,cells=[],cell_options=[],attributes=[],proof='documented',
+            proof_ref=f.get('proof') or '',decoder_version=DECODER_VERSION,n_in_project=0,
+            available=True,reason=None,alias_of=None,agg=f.get('agg') or 'last',
+            weighted=bool(f.get('weight')),event_attribute=not scoped,
+            repeated_group=f.get('group'),marker_series=code in MARKER_FIELD_CODES,
+        )
+    for code in MARKER_FIELD_CODES:
+        if code in result:result[code]['marker_series']=True
     for event in sorted(EVENTS):
         s=ss.get(event,{});attrs=[]
         for f in s.get('header',[]):
@@ -361,6 +412,37 @@ class Dataset:
         """
         from app.nmf_decoder.cells import cell_index_bounds
         spec = m['cell_type_filter']
+        if m.get('marker_series') and m['source_column'] in {'cell_ch','cell_pci'}:
+            metric=m['source_column']
+            filters=''
+            params={'system':spec['system'],'raw':spec['raw_cell_type'],
+                    'cell_pci':cell_pci,'cell_arfcn':cell_arfcn}
+            if cell_pci is not None:filters+=' AND g.cell_pci=:cell_pci'
+            if cell_arfcn is not None:filters+=' AND g.cell_ch=:cell_arfcn'
+            sql=f"""
+                SELECT g.seq,g.seq AS seq_last,FLOOR(MIN(l.t_rel_s))::int AS second,
+                       MIN(l.t_rel_s) AS exact_t_rel_s,g.cell_pci,
+                       g.cell_ch AS cell_arfcn,g.{metric} AS value,
+                       1::int AS observation_count,
+                       COUNT(*) OVER()::int AS total_rows
+                FROM nmf_event_light_group g
+                JOIN nmf_event_light l
+                  ON l.project_id=g.project_id AND l.capture_id=g.capture_id
+                 AND l.seq=g.seq AND l.event_code='CELLMEAS'
+                WHERE g.project_id=:pid AND g.capture_id=:cap
+                  AND g.group_name='cells' AND g.cell_type=:raw
+                  AND l.system=:system AND g.{metric} IS NOT NULL {filters}
+                GROUP BY g.project_id,g.capture_id,g.seq,g.cell_pci,g.cell_ch,g.{metric}
+                ORDER BY g.project_id,g.capture_id,g.seq,g.cell_ch NULLS LAST,
+                         g.cell_pci NULLS LAST
+            """
+            if page is not None and page_size is not None:
+                sql+=' LIMIT :limit OFFSET :offset'
+                params.update(limit=page_size,offset=(page-1)*page_size)
+            result=[dict(r) for r in self.query(sql,params)]
+            total=int(result[0].pop('total_rows')) if result else 0
+            for row in result[1:]:row.pop('total_rows',None)
+            return result,total
         bounds = cell_index_bounds(spec['system'], spec['raw_cell_type'])
         if bounds is None:
             return [], 0
@@ -464,6 +546,21 @@ class Dataset:
             scale=1e-6 if fields().get(code,{}).get('unit')=='bit/s' else 100 if code=='scell_throughput_share' else 1
             for r in rows:
                 if r['value'] is not None:r['value']*=scale
+        elif m['base_code']=='cqi_n_params' and m.get('cell_type_filter'):
+            spec=m['cell_type_filter']
+            table='nmf_event_deep' if self.state['decode_level']=='deep' else 'nmf_event_light'
+            rows=[dict(r) for r in self.query(f"""
+                SELECT seq,{code} AS value,
+                       {'seq_last' if table.endswith('light') else 'seq AS seq_last'}
+                FROM {table}
+                WHERE project_id=:pid AND capture_id=:cap AND event_code='CQI'
+                  AND system=:system AND cqi_cell_type=:raw AND {code} IS NOT NULL
+                ORDER BY project_id,capture_id,seq
+            """,{'system':spec['system'],'raw':spec['raw_cell_type']})]
+            display=m.get('cell_display')
+            for row in rows:
+                if display:
+                    row['cell_label']=display['label'];row['cell_system']=display['system']
         elif m['cell_scoped'] or m['base_code'] in DERIVED:
             # 0.99.2 (hotfix 2026-10-29 22:00Z, régression 0.97.3 catalog 2.56.2) :
             # cette branche gère TOUT metric cell_scoped qui n'est pas CELLMEAS
@@ -533,6 +630,26 @@ class Dataset:
             scale=1e-6 if fields().get(code,{}).get('unit')=='bit/s' else 100 if code=='scell_throughput_share' else 1
             for r in rows:
                 if r['value'] is not None:r['value']*=scale
+        elif m.get('event_attribute'):
+            table=('nmf_event_group' if self.state['decode_level']=='deep' else 'nmf_event_light_group') if m.get('repeated_group') else ('nmf_event_deep' if self.state['decode_level']=='deep' else 'nmf_event_light')
+            if m.get('repeated_group'):
+                sql=(f'SELECT seq,{code} AS value,set_index FROM {table} '
+                     'WHERE project_id=:pid AND capture_id=:cap '
+                     'AND group_name=:group_name AND '+code+' IS NOT NULL '
+                     'ORDER BY project_id,capture_id,seq,set_index')
+                source=self.query(sql,{'group_name':m['repeated_group']})
+            else:
+                tail=',seq_last' if table.endswith('light') else ',seq AS seq_last'
+                sql=(f'SELECT seq,{code} AS value{tail} FROM {table} '
+                     'WHERE project_id=:pid AND capture_id=:cap AND event_code=:event '
+                     'AND '+code+' IS NOT NULL ORDER BY project_id,capture_id,seq')
+                source=self.query(sql,{'event':event})
+            for raw in source:
+                value=raw['value']
+                attrs={'value_label':str(value)}
+                if raw.get('set_index') is not None:attrs['set_index']=raw['set_index']
+                rows.append(dict(seq=raw['seq'],seq_last=raw.get('seq_last',raw['seq']),
+                                 value=value,attributes=attrs,count=1))
         elif m['base_code'].startswith('evt_'):
             attributes=[a['code'] for a in m['attributes'] if a['code'] not in PAIR_ATTRS and a['code']!='context_id' and not a.get('group')]
             group_fields={a['code']:a['group'] for a in m['attributes'] if a.get('group')}
@@ -644,10 +761,16 @@ class Dataset:
                 if r['second'] is not None:buckets[r['second']].append(r)
                 if not table_only and r['value'] is not None and r['t_rel_s'] is not None:
                     tip=f"{m['label']} : {r['value']} {m['unit']} · seq {r['seq']}"+(' · '+str(r.get('attributes')) if r.get('attributes') else '')
-                    points.append(dict(seq=r['seq'],t_rel_s=r['t_rel_s'],value=r['value'],tooltip=tip,attributes=r.get('attributes',{})))
+                    value_label=str(r.get('attributes',{}).get('value_label',r['value']))
+                    cell_label=r.get('cell_label')
+                    if cell_label and r.get('cell_system'):cell_label+=f" · {r['cell_system']}"
+                    if cell_label and r.get('cell_pci') is not None:cell_label+=f" · PCI {r['cell_pci']:g}"
+                    if cell_label and r.get('cell_arfcn') is not None:cell_label+=f" · ARFCN {r['cell_arfcn']:g}"
+                    points.append(dict(seq=r['seq'],t_rel_s=r['t_rel_s'],value=r['value'],label=value_label,cell=cell_label,tooltip=tip,attributes=r.get('attributes',{})))
                 if r.get('reason'):gaps.append(r['reason'])
             if not table_only:
-                out,sampling=sample(points,limit,m['kind']) if m['kind']!='event' else (points,dict(method='all_occurrences',factor=1,seq_bucket_width=None))
+                sample_kind='categorical_marker' if m.get('marker_series') and m['kind']=='categorical' else m['kind']
+                out,sampling=sample(points,limit,sample_kind) if m['kind']!='event' else (points,dict(method='all_occurrences',factor=1,seq_bucket_width=None))
                 if m['kind']=='event' and len(points)>limit:raise HTTPException(422,dict(reason='event_occurrences_exceed_max_points',required=len(points)))
                 series.append(dict(code=m['selection'],label=m['label'] or m['selection'],unit=m['unit'] or '',kind=m['kind'],cell=m['cell'],source_table='nmf_cell_second' if m['cell_scoped'] else m['source_table'],source_column=m['source_column'],n_total=len(points),n_returned=len(out),sampling=sampling,states=list(dict.fromkeys(str(p['value']) for p in points)) if m['kind']=='categorical' else [],segments=[],points=out))
             for second,rs in buckets.items():
@@ -658,10 +781,13 @@ class Dataset:
                 # les clés `int(second)` et `tuple` cohabitaient dans le même
                 # dict → TypeError sur `sorted` ligne ordered=…
                 physical = bool(m.get('cell_type_filter')) and m.get('event') == 'CELLMEAS'
+                per_event = bool(m.get('event_attribute'))
                 groups = defaultdict(list)
                 if physical:
                     for item in rs:
                         groups[(item['seq'], item.get('cell_arfcn'), item.get('cell_pci'))].append(item)
+                elif per_event:
+                    for item in rs:groups[(item['seq'],None,None)].append(item)
                 else:
                     groups[(second, None, None)] = rs
                 for physical_key, physical_rows in groups.items():

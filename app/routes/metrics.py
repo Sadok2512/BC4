@@ -115,6 +115,8 @@ class Sample(BaseModel):
     seq: int
     t_rel_s: float
     value: float | str
+    label: str = ''
+    cell: str | None = None
     tooltip: str = ''
     attributes: dict = {}
 class Sampling(BaseModel):
@@ -458,6 +460,14 @@ def sample(points,limit,kind):
     Categorical transitions are lossless: exceeding the cap is explicit (422).
     """
     n=len(points)
+    if kind=='categorical_marker':
+        if n<=limit:return points,dict(method='none',factor=1,seq_bucket_width=None)
+        # Event attributes are independent markers, not a carried state.  A
+        # deterministic ordinal sample keeps real (seq,value) pairs and never
+        # invents transitions.  max_points=100000 remains the lossless proof
+        # path used by the guard.
+        selected=[points[min(n-1,math.floor(i*n/limit))] for i in range(limit)]
+        return selected,dict(method='categorical_markers_ordinal',factor=n/len(selected),seq_bucket_width=None)
     if kind=='categorical':
         states=[]
         for p in points:
@@ -476,15 +486,16 @@ def sample(points,limit,kind):
 
 @router.get('/projects/{project_id}/metrics/series', response_model=SeriesResponse)
 def series(project_id: str,capture_id: str,codes: str,cell: str|None=None,attr: str|None=None,from_seq: int|None=Query(None,ge=0),to_seq: int|None=Query(None,ge=0),max_points: int=Query(5000,ge=2,le=100000),f: dict=Depends(filters),db: Session=Depends(get_db)):
-    from app.kpi.metrics_v3 import definitions,parse_selection,Dataset,DERIVED
-    if cell is not None or attr is not None or any(c in DERIVED or c.startswith('evt_') or c.startswith('cap_') or '@' in c or '~' in c for c in codes.split(',')):
+    from app.kpi.metrics_v3 import definitions,parse_selection,Dataset,DERIVED,EVENT_FIELD_CODES
+    v3_definitions=definitions()
+    if cell is not None or attr is not None or any(c.partition('@')[0].partition('~')[0] in EVENT_FIELD_CODES or c in DERIVED or c.startswith('evt_') or c.startswith('cap_') or '@' in c or '~' in c for c in codes.split(',')):
         project(db,project_id)
         if from_seq is not None and to_seq is not None and from_seq>to_seq:raise HTTPException(422,'from_seq_after_to_seq')
         # /metrics/series needs only the selected rows and their canonical
         # capture-relative timestamps.  Rebuilding the complete capture clock,
         # context and event-pair population here dominated cold response time.
         ds=Dataset(db,project_id,capture_id,f,from_seq,to_seq,lean_series=True)
-        selected=[parse_selection(c,definitions(),cell or 'all',attr) for c in dict.fromkeys(codes.split(','))]
+        selected=[parse_selection(c,v3_definitions,cell or 'all',attr) for c in dict.fromkeys(codes.split(','))]
         if len(selected)>64:raise HTTPException(422,'too_many_metrics')
         return ds.response(selected,max_points,series_only=True)
     project(db,project_id)

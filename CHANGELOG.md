@@ -1,3 +1,10 @@
+## Unreleased (minor) — categorical and event metrics series (Agent BC1)
+
+- `/metrics/series` accepts the 61 leaves deferred by catalog 2.57.0:
+  documented event fields are emitted as ordered numeric series or labeled
+  categorical markers, and CELLMEAS identifiers retain their exact physical
+  cell context. Marker sampling is bounded without fabricating values.
+
 ## 0.105.0 (minor) — BC4 2026-10-30 — 3 onglets KPI Analytics + catalogue 2.57.0 (Agent BC4, numérotation BC3)
 
 Merge `bc4/kpi-parameters-tab` (`f27578b`). Contrat d'onglet KPI Analytics
