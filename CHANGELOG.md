@@ -1,3 +1,9 @@
+## Prochaine version (minor) — décodeur PLAIU NFF 2.50 (Agent BC1, numéro BC3)
+
+- Décodeur **MINOR 1.9.0** : groupes PLAIU LTE complets, enum cellule `0–31`
+  explicite et classification NFF des trois principaux codes encore `other`.
+- Back **MINOR** : migration 0075 pour persister six champs PLAIU répétés.
+
 ## 0.112.0 (minor) — BC4 2026-10-30 — voisines Metrics par cellule radio réelle (Agent BC4, numérotation BC3)
 
 Merge `bc4/neighbours-by-radio` (`5af76ec`). Les feuilles CELLMEAS de

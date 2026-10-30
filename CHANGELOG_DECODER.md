@@ -1,5 +1,17 @@
 # CHANGELOG_DECODER
 
+## 1.9.0 (minor) — 2026-10-30 — PLAIU LTE complet NFF 2.50 (Agent BC1)
+
+- Complète les groupes PLAIU LTE 2.50 : codeword 1, répétitions, TBS des
+  deux codewords et sous-porteuses. Les lignes conformes ne retombent plus
+  dans `unknown_fields` et `plaiu_cell_type` reste le discriminateur cellule.
+- L'enum cellule LTE documenté `0–31` couvre explicitement SCell 5 et les
+  suivantes; la projection déterministe et injective de 1.8.2 est conservée.
+- Classe par définition NFF 2.50 les trois premiers codes encore `other` sur
+  les témoins : `PHRATE`/`MACRATE` en `throughput`, `PLAID` en `measurement`.
+- Migration back 0075 pour les six nouvelles colonnes répétées; G46 et G48
+  couvrent respectivement la rétention des colonnes et la projection cellule.
+
 ## 1.8.2 (patch) — 2026-10-29 — Clé cellule injective avant COPY (Agent BC1)
 
 - Corrige la collision de `nmf_cell_second` entre systèmes (par exemple

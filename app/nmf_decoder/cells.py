@@ -17,6 +17,7 @@ CELL_INDEX_BASE=1003
 CELL_INDEX_STRIDE=81
 # Union of LTE CELLMEAS (0,1,2,10..40) and serving-cell (0..31).
 CELL_TYPES_LTE=tuple(range(41))
+SERVING_CELL_TYPES_LTE=frozenset(range(32))
 CELLMEAS_TYPES_LTE=frozenset({0,1,2}|set(range(10,41)))
 CELL_TYPES_NR=(*range(32),98,*range(100,132),198,199,1000,1001,1002)
 CELL_ENUM=((7,raw) for raw in CELL_TYPES_LTE)
@@ -90,7 +91,7 @@ def cell_rows(light):
                   if f['code'].endswith('.cell_type') and column(f['code']) in b['stats']])
         if len(indices)!=1 or indices[0] is None:continue
         raw=int(indices[0])
-        if b.get('system')==7 and raw not in range(32):continue
+        if b.get('system')==7 and raw not in SERVING_CELL_TYPES_LTE:continue
         cell=_cell_index_for(raw,b.get('system'))
         if cell is None:continue
         for code,stat in b['stats'].items():
