@@ -330,6 +330,58 @@ def _event_col_total(
     """), {"pid": project_id, "ev": event_code, "col": col}).scalar() or 0)
 
 
+def _is_physical_neighbour(event: str, system: int | None, cell_type: int) -> bool:
+    """True only for NFF CELLMEAS enum members that represent neighbours."""
+    return event == "CELLMEAS" and (
+        (system == 7 and cell_type in {1, 2})
+        or (system == 9 and cell_type in {1000, 1001, 1002})
+    )
+
+
+def _physical_neighbour_counts(
+    db: Session, project_id: str, metric_codes: set[str]
+) -> dict[tuple[str, int, int, str], list[tuple[int, int, int]]]:
+    """Return series-point counts by real radio cell for catalog leaves.
+
+    The metric projection remains authoritative for the value.  Its local
+    occurrence key is joined to ``nmf_cell_identity`` at the exact canonical
+    sequence; public grouping is then solely ``(system, ARFCN, PCI)``.
+    """
+    safe = sorted(code for code in metric_codes if code.replace("_", "").isalnum())
+    if not safe:
+        return {}
+    rows = db.execute(text("""
+        SELECT s.event_code,i.system,i.cell_type,s.metric_code,
+               i.cell_arfcn,i.cell_pci,
+               COUNT(DISTINCT (s.capture_id,s.seq_first))::bigint AS n
+        FROM nmf_cell_second s
+        JOIN nmf_cell_identity i
+          ON i.project_id=s.project_id AND i.capture_id=s.capture_id
+         AND i.seq=s.seq_first AND i.event_code=s.event_code
+         AND i.cell_index=s.cell_index
+         AND i.decoder_version=s.decoder_version
+        WHERE s.project_id=:pid AND s.event_code='CELLMEAS'
+          AND s.metric_code=ANY(:metrics) AND s.value IS NOT NULL
+          AND ((i.system=7 AND i.cell_type IN (1,2))
+            OR (i.system=9 AND i.cell_type IN (1000,1001,1002)))
+          AND i.cell_arfcn IS NOT NULL AND i.cell_pci IS NOT NULL
+        GROUP BY s.event_code,i.system,i.cell_type,s.metric_code,
+                 i.cell_arfcn,i.cell_pci
+        ORDER BY s.event_code,i.system,i.cell_type,s.metric_code,
+                 i.cell_arfcn,i.cell_pci
+    """), {
+        "pid": project_id,
+        "metrics": safe,
+    }).mappings()
+    out: dict[tuple[str, int, int, str], list[tuple[int, int, int]]] = defaultdict(list)
+    for row in rows:
+        out[(row["event_code"], int(row["system"]), int(row["cell_type"]),
+             row["metric_code"])].append(
+            (int(row["cell_arfcn"]), int(row["cell_pci"]), int(row["n"]))
+        )
+    return dict(out)
+
+
 def _bucket_ct_lte_scell(ct: int) -> int:
     """Bucket SCG SCell NR : 100-131 → 100 pour l'enum `lte_scell`
     uniquement (events partagés LTE/NR en EN-DC). Autres canoniques
@@ -712,6 +764,110 @@ def build_catalog_v4(
                 reason=reason_val,
             )
         )
+
+    # 4.a) Real CELLMEAS neighbours.  A repeated-set occurrence is local to
+    # one record and therefore must never be exposed as a catalog leaf.  Turn
+    # each selectable neighbour-type leaf into a branch and append one leaf
+    # per stable radio identity observed in this project.
+    node_input_by_id = {node["node_id"]: node for node in nodes_in}
+    metrics_by_code = {metric["code"]: metric for metric in metrics_out}
+    physical_count_index = _physical_neighbour_counts(
+        db,
+        project_id,
+        {
+            column
+            for node in nodes_in
+            if node.get("node_type") == "leaf"
+            and node.get("cell_type") is not None
+            and _leaf_system(node) is not None
+            and _is_physical_neighbour(
+                (node.get("event") or "").lstrip("#"),
+                _leaf_system(node),
+                int(node["cell_type"]),
+            )
+            and (column := _column_for_leaf(node))
+        },
+    )
+    replaced_metric_codes: set[str] = set()
+    physical_metrics: list[dict] = []
+    physical_nodes: list[dict] = []
+    for parent in nodes_out:
+        if parent.get("node_type") != "leaf" or not parent.get("selectable"):
+            continue
+        source = node_input_by_id.get(parent["node_id"], {})
+        raw_cell_type = source.get("cell_type")
+        system = _leaf_system(source)
+        event = parent.get("event") or ""
+        metric_code = parent.get("source_column") or ""
+        if raw_cell_type is None or system is None or not metric_code:
+            continue
+        raw_cell_type = int(raw_cell_type)
+        if not _is_physical_neighbour(event, system, raw_cell_type):
+            continue
+        base_selection = parent.get("selection")
+        base_metric = metrics_by_code.get(base_selection or "")
+        if not base_selection or base_metric is None:
+            continue
+        if base_selection in replaced_metric_codes:
+            # Several NFF blocks may document the same decoded projection.
+            # Only the first content-equivalent parent owns the real-cell
+            # leaves; duplicating them would make one radio cell selectable
+            # more than once.
+            parent["selectable"] = False
+            parent["selection"] = None
+            parent["n"] = 0
+            parent["reason"] = "Projection identique déjà exposée par cellule radio"
+            continue
+        identities = physical_count_index.get(
+            (event, system, raw_cell_type, metric_code), []
+        )
+        if not identities:
+            continue
+        parent["selectable"] = False
+        parent["selection"] = None
+        parent["reason"] = None
+        parent["n"] = sum(n for _, _, n in identities)
+        replaced_metric_codes.add(base_selection)
+        for order, (arfcn, pci, count) in enumerate(identities):
+            selection = f"{base_selection}!{arfcn}:{pci}"
+            node_id = f"{parent['node_id']}__arfcn_{arfcn}__pci_{pci}"
+            label = f"ARFCN {arfcn} · PCI {pci}"
+            physical_nodes.append(dict(
+                node_id=node_id,
+                parent_id=parent["node_id"],
+                order=order,
+                label=label,
+                note="Identité radio observée dans nmf_cell_identity",
+                source=f"{event} · system={system} · cell_type={raw_cell_type}",
+                node_type="leaf",
+                analytics_tab="metrics",
+                metric_id=selection,
+                selection=selection,
+                event=event,
+                field_idx=parent.get("field_idx"),
+                source_column=metric_code,
+                unit=parent.get("unit") or "",
+                cell=None,
+                n=count,
+                proof="physical-cell-identity",
+                selectable=True,
+                reason=None,
+            ))
+            physical_metrics.append(dict(
+                base_metric,
+                code=selection,
+                label=f"{base_metric['label']} · ARFCN {arfcn} · PCI {pci}",
+                n_in_project=count,
+                proof="physical-cell-identity",
+                proof_ref="nmf_cell_second + nmf_cell_identity",
+            ))
+    if replaced_metric_codes:
+        metrics_out = [
+            metric for metric in metrics_out
+            if metric["code"] not in replaced_metric_codes
+        ]
+        metrics_out.extend(physical_metrics)
+        nodes_out.extend(physical_nodes)
 
     # 5) 2.54.0 — Découverte « cellules observées non cataloguées » par
     # projet. Pour chaque cell_scoped event, si une valeur `cell_type`

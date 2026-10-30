@@ -19,6 +19,17 @@ def test_closed_selectors_and_unproven_cells():
     assert detected['cell_type_filter']=={'system':7,'raw_cell_type':2}
     assert detected['label'].endswith('Detected LTE neighbour · LTE')
     assert 'internal_index' not in detected['cell_display']
+    physical=parse_selection('cell_rsrp@lte-type-2!1675:196',d)
+    assert physical['cell_type_filter']=={'system':7,'raw_cell_type':2}
+    assert physical['cell_arfcn']==1675
+    assert physical['cell_pci']==196
+    assert physical['selection']=='cell_rsrp@lte-type-2!1675:196'
+    assert physical['label'].endswith(
+        'Detected LTE neighbour · LTE · ARFCN 1675 · PCI 196'
+    )
+    for token in ['cell_rsrp@lte-type-2!bad:196', 'cell_rsrp@lte-type-2!1675:']:
+        with pytest.raises(HTTPException) as error:parse_selection(token,d)
+        assert error.value.status_code==422
     for token in ['evt_CAA~caa_phone_number','evt_SEI~sei_m_tmsi','unk_CAA','rsrp; DROP TABLE capture']:
         with pytest.raises(HTTPException) as error:parse_selection(token,d)
         assert error.value.status_code==422

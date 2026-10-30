@@ -1,3 +1,15 @@
+## À numéroter (minor) — BC4 — voisines Metrics par cellule radio réelle
+
+- Le catalogue Metrics remplace chaque feuille CELLMEAS de voisines par des
+  feuilles projet-scopées `(system, ARFCN, PCI)`. L'occurrence interne
+  `cell_index` reste exclusivement une clé de jointure et ne s'affiche plus.
+- Les sélections `code@cell-type!ARFCN:PCI` filtrent chaque métrique
+  indépendamment, y compris lorsque plusieurs cellules réelles partagent le
+  même workspace. Le cache catalogue est invalidé par l'empreinte de
+  `nmf_cell_identity` après un rattrapage sans re-décodage.
+- SemVer back : **MINOR**, numéro attribué par BC3. Catalogue : **inchangé**
+  (projection dynamique au-dessus de 2.60.0).
+
 ## 0.111.0 (minor) — BC4 2026-10-30 — changement obligatoire du mot de passe (Agent BC1, numérotation BC3)
 
 Merge `bc1/auth-password-change` (`2772bbe`). Rotation self-service des

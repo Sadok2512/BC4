@@ -325,9 +325,17 @@ def catalog(project_id: str, db: Session=Depends(get_db)):
       capture_id || ':' || decoder_version || ':' || coalesce(decoded_at::text,''),
       ',' ORDER BY capture_id),'')) FROM nmf_capture WHERE project_id=:pid"""),
       {'pid':project_id}).scalar_one()
+    identity_stamp=db.execute(text("""SELECT md5(
+      count(*)::text || ':' || coalesce(max(built_at)::text,''))
+      FROM nmf_cell_identity WHERE project_id=:pid"""),
+      {'pid':project_id}).scalar_one()
     # Clé de cache inclut la version catalog_release pour qu'un bump
-    # catalog invalide automatiquement sans TRUNCATE manuel.
-    cache_stamp = f"{stamp}|cat={cur.version if cur else 'legacy'}"
+    # catalog invalide automatiquement sans TRUNCATE manuel. L'identité
+    # physique est reconstruite sans re-décodage : son empreinte invalide
+    # aussi le cache afin que les nouvelles voisines apparaissent aussitôt.
+    cache_stamp = (
+      f"{stamp}|identity={identity_stamp}|cat={cur.version if cur else 'legacy'}"
+    )
     cached=db.execute(text("""SELECT payload FROM metrics_catalog_cache
       WHERE project_id=:pid AND decode_stamp=:stamp"""),
       {'pid':project_id,'stamp':cache_stamp}).scalar_one_or_none()
