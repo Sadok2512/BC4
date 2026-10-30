@@ -1,3 +1,14 @@
+## Unreleased (minor) — Proven metric map cell links (Agent BC1)
+
+- `/metrics/table` et `/metrics/series?include_map=true` exposent sans rupture
+  des liens optionnels vers les voisines CELLMEAS et l'ancre NR PSCell.
+- L'identité mesurée reste `(system, ARFCN, PCI)` ; la clé bande du référentiel
+  est dérivée explicitement, les doublons sont levés par la cellule la plus
+  proche dans un rayon déclaré de 25 km, et aucun lien n'est émis hors preuve.
+- Alembic `0076_map_cell_links` ajoute l'index couvrant du référentiel radio.
+- SemVer back : **MINOR** (extension optionnelle du contrat HTTP + migration),
+  numéro attribué par BC3 au merge.
+
 ## 0.113.1 (patch) — BC4 2026-10-30 — KPI table regressions : scan RRC→RRD différencié (Agent BC1, numérotation BC3)
 
 Merge `bc1/kpi-regressions` (`48444e8`). Les réponses numériques /

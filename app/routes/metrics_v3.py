@@ -8,6 +8,7 @@ from app.deps import get_current_user
 from app.routes.tasks import project,filters
 from app.routes.metrics import MetricSeries
 from app.kpi.metrics_v3 import Dataset,definitions,parse_selection
+from app.schemas.metric_map import MetricMapPoint
 router=APIRouter(tags=['metrics'],dependencies=[Depends(get_current_user)])
 Scalar=float|str|None
 class Column(BaseModel):
@@ -38,12 +39,6 @@ class Histogram(BaseModel):
     distribution:list[Distribution];per_connected_hour:float|None
 class Scatter(BaseModel):
     code:str;seq:int;x_seq:int;seq_gap:int;cell:str;x:float|str;value:float|str
-class MapPoint(BaseModel):
-    seq:int;lat:float;lng:float;code:str;value:float|str;t_rel_s:float|None;tooltip:str
-    serving_cell_id:str|None=None;serving_cell_seq:int|None=None
-    serving_cell_ref_id:str|None=None;serving_site_id:str|None=None;serving_site_name:str|None=None
-    serving_cell_lat:float|None=None;serving_cell_lng:float|None=None
-    serving_cell_source:Literal['chi_previous_seq_cell_ref_exact']|None=None
 class PairRate(BaseModel):
     type:str;attempts:int;completed:int;success:int;known_outcomes:int;success_pct:float|None
 class Analysis(BaseModel):
@@ -56,7 +51,7 @@ class Analysis(BaseModel):
     aggregation:str;time_policy:str;pairing:str
     columns:list[Column];rows:list[TableRow];series:list[MetricSeries]
     page:int;page_size:int;total_rows:int;total_pages:int
-    histogram:list[Histogram];scatter:list[Scatter];map_points:list[MapPoint]
+    histogram:list[Histogram];scatter:list[Scatter];map_points:list[MetricMapPoint]
     connected_seconds:float|None;connected_reason:str|None;pair_rates:list[PairRate];gaps:list[str];csv:str
 @router.get('/projects/{project_id}/metrics/table',response_model=Analysis)
 @router.get('/projects/{project_id}/metrics/analysis',response_model=Analysis)
