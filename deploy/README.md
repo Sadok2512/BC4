@@ -29,6 +29,7 @@ pour fail-fast au démarrage) :
 | `POSTGRES_PASSWORD` | Mot de passe PG du rôle `bc4` (généré via `secrets.token_urlsafe(32)`). |
 | `BC4_PGPW` | Même valeur que `POSTGRES_PASSWORD`, utilisée dans la construction de `BC4_DSN`. |
 | `BC4_JWT_SECRET` | Secret JWT (généré via `secrets.token_urlsafe(64)`). |
+| `BC4_ADMIN_PASSWORD` | Requis au premier démarrage d'une base vide ; jamais de valeur par défaut. Une fois l'admin créé, il peut être omis et son hash reste inchangé. |
 
 Variables optionnelles (défauts fournis) :
 
@@ -36,7 +37,7 @@ Variables optionnelles (défauts fournis) :
 |---|---|
 | `BC4_CORS_ORIGINS` | liste des origins autorisés (localhost + lovable) |
 | `BC4_JWT_TTL_MIN` | 60 min |
-| `BC4_ADMIN_EMAIL` / `BC4_ADMIN_PASSWORD` | admin seedé au premier `app.seed.run` |
+| `BC4_ADMIN_EMAIL` | `admin@bc4.local` (identité recherchée par le seed) |
 | `BC4_DEMO_EMAIL` / `BC4_DEMO_PASSWORD` / `BC4_DEMO_ROLE` | compte démo (vide par défaut) |
 | `BC4_LLM_SECRET_KEY` | clé Fernet pour chiffrer `settings_llm.api_key_cipher` |
 | `BC4_SEED_DEMO` | 0 par défaut (0.89.4+) ; mettre `1` pour seed démo complet |

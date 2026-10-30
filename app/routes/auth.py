@@ -7,8 +7,8 @@ from app.config import settings
 from app.db import get_db
 from app.deps import get_current_user
 from app.models import AppUser
-from app.schemas.auth import LoginRequest, LoginResponse, PublicUser
-from app.services.auth import create_token, verify_password
+from app.schemas.auth import ChangePasswordRequest, LoginRequest, LoginResponse, PublicUser
+from app.services.auth import create_token, hash_password, verify_password
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -20,6 +20,7 @@ def _public(u: AppUser) -> PublicUser:
         role=u.role,  # type: ignore[arg-type]
         active=u.active,
         created_at=u.created_at.replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+        must_change_password=u.must_change_password,
     )
 
 
@@ -49,6 +50,40 @@ def login(body: LoginRequest, db: Session = Depends(get_db)) -> LoginResponse:
         token=token,
         expires_at=exp.replace(microsecond=0).isoformat().replace("+00:00", "Z"),
         user=_public(user),
+    )
+
+
+@router.post("/change-password", response_model=LoginResponse)
+def change_password(
+    body: ChangePasswordRequest,
+    current: AppUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> LoginResponse:
+    if not verify_password(body.old_password, current.password_hash):
+        raise HTTPException(
+            400,
+            {"code": "INVALID_CURRENT_PASSWORD", "message": "Ancien mot de passe incorrect"},
+        )
+    if body.old_password == body.new_password:
+        raise HTTPException(
+            400,
+            {"code": "PASSWORD_UNCHANGED", "message": "Le nouveau mot de passe doit être différent"},
+        )
+    current.password_hash = hash_password(body.new_password)
+    current.must_change_password = False
+    current.password_changed_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(current)
+    token, exp = create_token(
+        user_id=current.id,
+        role=current.role,
+        ttl_min=settings.jwt_ttl_min,
+        secret=settings.jwt_secret,
+    )
+    return LoginResponse(
+        token=token,
+        expires_at=exp.replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+        user=_public(current),
     )
 
 

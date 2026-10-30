@@ -67,7 +67,7 @@ services:
       BC4_JWT_TTL_MIN: ${BC4_JWT_TTL_MIN:-60}
       # Seed admin idempotent (B2) — crie si absent, pas d'invention.
       BC4_ADMIN_EMAIL: ${BC4_ADMIN_EMAIL:-admin@bc4.local}
-      BC4_ADMIN_PASSWORD: ${BC4_ADMIN_PASSWORD:-ChangeMeAdmin123!}
+      BC4_ADMIN_PASSWORD: ${BC4_ADMIN_PASSWORD:-}
       # Compte démo optionnel (P1-1). Vide par défaut → pas de seed.
       BC4_DEMO_EMAIL: ${BC4_DEMO_EMAIL:-}
       BC4_DEMO_PASSWORD: ${BC4_DEMO_PASSWORD:-}

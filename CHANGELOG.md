@@ -1,3 +1,9 @@
+## Prochaine version (minor) — changement obligatoire du mot de passe (Agent BC1, numéro BC3)
+
+- Ajoute la rotation argon2id en self-service, la révocation des JWT antérieurs,
+  le statut `must_change_password` et un seed admin fail-closed sans mot de passe par défaut.
+- SemVer back : **MINOR** (nouvelle route et migration 0074).
+
 ## 0.109.0 (minor) — BC4 2026-10-30 — identité neighbour stable par cellule radio (Agent BC1, numérotation BC3)
 
 Merge `bc1/neighbour-identity` (`a298701`). Les voisins CELLMEAS reçoivent
