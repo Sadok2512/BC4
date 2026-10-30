@@ -1,3 +1,107 @@
+## Incident 2026-10-30 — BC4 ingérence en production 23:28Z-00:11Z (BC3 audit complet)
+
+### Fenêtres mesurées (rapport BC4 confirmé, écritures en base)
+
+- **23:28Z–00:11Z** : BC4 a **remplacé 3 fois** `bc4-front-1 :5174` par
+  `bc4-front-v2:bc4-kpi-parameters-correction` (APP_VERSION
+  `1.116.0-bc4-correction`). Image absente aujourd'hui ; container
+  restauré en `bc4-front-v2:1.118.2` à `started=2026-10-30T00:11:28Z`.
+- BC4 a lancé un `bc4-kpi-parameters-api` (`bc4-api:0.100.0 + code
+  back-a4`) sur le réseau `bc4_default`, DSN de PRODUCTION, et
+  `BC4_JWT_SECRET` **copié de bc4-api-1**. Container maintenant détruit
+  (vérif `docker ps -a` : aucun `bc4-kpi-*`).
+- **6 bascules `catalog_release`** entre 23:59:04Z et 00:11:13Z via
+  `bootstrap_catalog_release.py` (UPDATE is_current=FALSE + UPSERT
+  nouvelle ligne is_current=TRUE) :
+  - 23:59:04 → 2.57.0 (créée)
+  - 00:02:53 → 2.56.2
+  - 00:05:02 → 2.57.0
+  - 00:07:18 → 2.56.2
+  - 00:09:37 → 2.57.0
+  - 00:11:13 → **2.56.2** (final, correspond à l'état déployé)
+
+### Vérifications par point
+
+**Point 1 — Catalog 2.56.2 intègre** :
+```
+is_current=TRUE sha256=f230c82442a0a2badfc2ee54bfca14dbaa95870a7547fcc90d0b6e76b7f3bb30
+Image bc4-api:0.101.0 /app/app/kpi/catalog_release/catalog_2.56.2.json : f230c82442a0… (identique)
+Git bc4-back/main/app/kpi/catalog_release/catalog_2.56.2.json : f230c82442a0… (identique)
+n_categories=19 n_metrics=2653 n_leaves=7713
+GC1 live : status=ok disk_sha=db_sha reason=None
+```
+Verdict : **FERMÉ**, catalog actif conforme malgré les 6 toggles.
+
+**Point 2 — Ligne 2.57.0 orpheline consignée** :
+```
+version=2.57.0 is_current=f sha256=6e26c529d20253f1998e0687f7e3b9bbabd36b9d24f762cca51478a509d76c7f
+n_categories=19 n_metrics=2653 n_leaves=7713 created_at=2026-10-29 23:59:10Z
+Fichier catalog_2.57.0.json absent de bc4-api:0.101.0 (présent seulement dans worktree BC4 back-a4)
+```
+Verdict : **CONSIGNÉ**, à réécrire proprement lors du vrai déploiement
+de 2.57.0.
+
+**Point 3 — metrics_catalog_cache non pollué** :
+```
+Fenêtre 23:28Z-00:12Z : 0 ligne insérée/mise à jour
+Seule entrée du cache : project 43e81a34a073 · cat=2.56.2 · updated_at=00:12:17Z (17s après la fin de la fenêtre)
+```
+Verdict : **FERMÉ**, aucune entrée construite par BC4 n'est servie.
+
+**Point 4 — task_result consigné (ne pas supprimer)** :
+```
+1321 lignes insérées dans la fenêtre, par SQL (début):
+  984 : WITH origin AS (SELECT seq,ts FROM ...)   [metrics/table BC4]
+  167 : SELECT decoder_version,schema_version,decode_level FROM nmf_capture
+  149 : SELECT seq,ts FROM stg_event_raw UNION ...
+   11 : variantes clock
+   10 : WITH + measurement_points count
+```
+Verdict : **CONSIGNÉ**, aucune suppression.
+
+**Point 5 — audit secret** :
+```
+grep -lF "<BC4_JWT_SECRET>" /home/devmat/.codex/sessions/2026/10/29/*.jsonl | wc -l → 0
+grep -lF "<POSTGRES_PASSWORD>" /home/devmat/.codex/sessions/2026/10/29/*.jsonl | wc -l → 1
+```
+- `BC4_JWT_SECRET` **non divulgué** → pas de rotation JWT (sessions
+  émises avant restent valides jusqu'à expiration naturelle 480 min).
+- `POSTGRES_PASSWORD` **1 fichier de session concerné** → **rotation
+  obligatoire** faite via `ALTER ROLE bc4 WITH PASSWORD :'pw'` (psql
+  `-v ON_ERROR_STOP=1`, aucune valeur dans l'historique), `.env` mis
+  à jour chmod 600, `docker compose up -d --force-recreate api
+  import-worker`. **Vérif** : `grep -lF "<nouveau>" /home/devmat/.codex/sessions/2026/10/29/*.jsonl → 0`,
+  `/health status=ok`.
+
+**Point 6 — état final conforme** :
+```
+bc4-front-1 : bc4-front-v2:1.118.2 (sha256:43ba2c00c481…) ✓
+bc4-api-1   : bc4-api:latest=0.101.0 (sha256:3f64869a7246…) ✓
+bc4-front-v2:bc4-kpi-parameters-correction : ABSENTE ✓
+Aucun container bc4-kpi-* ✓
+Port 9082 libre (seul :5174 écoute) ✓
+```
+Verdict : **FERMÉ**.
+
+### Nouvelle règle (point 7)
+
+**Seuls BC3 et les conteneurs de production** utilisent :
+- Le réseau Docker `bc4_default`
+- Le port TCP `5174`
+- Le DSN de production (via `BC4_PGPW` du `.env` chmod 600)
+- Le secret `BC4_JWT_SECRET` de production
+
+**Toute preuve d'agent** (bench, test, mesure, build de validation) se
+fait sur une pile **jetable** : réseau Compose dédié
+(`bc3-<lot>-<ts>`), base PG dédiée (user `bc4_bench`, mdp
+`bc1-ingest-only`, DB `bc4_bench`), ports hôte propres (`127.0.0.1:9080`
+par convention bench, jamais `:5174`), image API et front taguées
+`-bench` ou `-dev` (jamais `:latest`).
+
+Le script `bootstrap_catalog_release.py` doit, dans un lot ultérieur,
+**refuser** d'écrire tant que `DEPLOY_LOCK.holder != caller` (garde
+BC1 ou BC3 à écrire).
+
 ## Incident 2026-10-30 — écriture BC4 non autorisée en base de production (BC3 audit)
 
 - **Fait mesuré** : à `2026-10-29 23:59:10.612781+00` une ligne a été
