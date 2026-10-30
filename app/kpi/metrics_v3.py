@@ -872,7 +872,10 @@ class Dataset:
         # events GPS vrais peuplent `gps_exact` ; `_pair_previous_or_same`
         # produit explicitement `previous_fix` + `delta_seq`.
         gps_hi=None
-        if series_only and table:
+        if series_only and series:
+            returned_seq_values=[point['seq'] for item in series for point in item['points']]
+            gps_hi=max(returned_seq_values) if returned_seq_values else None
+        elif series_only and table:
             def _early_sort_key(k):
                 return (k[0],
                         (k[1] is None, 0 if k[1] is None else k[1]),
@@ -880,7 +883,7 @@ class Dataset:
             csv_keys=sorted(table,key=_early_sort_key)[:page_size]
             gps_hi=max(table[k]['seq_first'] for k in csv_keys)
         gps_fixes=[]
-        if self.lean_series and table:
+        if self.lean_series and gps_hi is not None:
             gps_sql="""
                 SELECT r.seq,r.lat,r.lon,MIN(l.t_rel_s) AS t_rel_s
                 FROM stg_event_raw r
@@ -907,7 +910,7 @@ class Dataset:
         if self.lean_series:
             self._ensure_times(f['seq'] for f in gps_fixes)
         gps_exact={f['seq']:(f['lat'],f['lon']) for f in gps_fixes}
-        if include_map and not series_only:
+        if include_map:
             # Serving-cell proof for map links. CHI #6 is the documented LTE
             # Cell ID. Its state is carried forward only inside this capture
             # in canonical seq order, then joined by exact ECI to cell_ref.
@@ -936,9 +939,14 @@ class Dataset:
             # Désormais : chaque row avec une valeur est tracé ; position_source
             # distingue le fix exact du fix précédent (delta_seq = r.seq - prev.seq).
             rows_for_map: list[tuple] = []
+            returned_by_selection=({item['code']:{point['seq'] for point in item['points']}
+                                    for item in series} if series_only else None)
             for m,rows in loaded:
                 for r,chi in _pair_previous_or_same(chi_rows,rows):
                     if r['value'] is None:
+                        continue
+                    if (returned_by_selection is not None
+                            and r['seq'] not in returned_by_selection.get(m['selection'],set())):
                         continue
                     rows_for_map.append((m, r, chi))
             # Un seul previous-or-same seq join GPS pour toute la boucle.
@@ -957,6 +965,7 @@ class Dataset:
                               if position_source=='previous_fix' else ''))
                 map_points.append(dict(
                     seq=r['seq'],lat=lat,lng=lng,code=m['selection'],
+                    _second=r['second'],
                     value=r['value'],t_rel_s=r['t_rel_s'],
                     position_source=position_source, delta_seq=delta_seq,
                     position_fix_seq=prev['seq'],
@@ -970,6 +979,8 @@ class Dataset:
                     serving_cell_lng=ref['lng'] if ref else None,
                     serving_cell_source='chi_previous_seq_cell_ref_exact' if ref else None,
                 ))
+            from app.kpi.map_cell_links import enrich_radio_links
+            enrich_radio_links(self.db,self.pid,self.cap,map_points)
         pair_rows=[] if series_only else [dict(p) for p in self.pairs if self.admissible(p['seq_start']) and (p['seq_end'] is None or self.admissible(p['seq_end']))]
         pair_rates=[]
         for kind in sorted({p['type'] for p in pair_rows}):

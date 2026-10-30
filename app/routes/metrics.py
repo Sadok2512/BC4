@@ -6,7 +6,7 @@ import math
 from decimal import Decimal, InvalidOperation
 from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 from app.db import get_db
@@ -14,6 +14,7 @@ from app.deps import get_current_user
 from app.kpi.metrics import metric_catalog
 from app.kpi.population import attributed_source, context_sql, predicate, validate_operators
 from app.routes.tasks import project, evidence, filters
+from app.schemas.metric_map import MetricMapPoint
 
 router = APIRouter(tags=['metrics'], dependencies=[Depends(get_current_user)])
 class MetricInfo(BaseModel):
@@ -162,6 +163,7 @@ class SeriesResponse(BaseModel):
     series: list[MetricSeries]
     csv: str
     time_policy: str
+    map_points: list[MetricMapPoint] = Field(default_factory=list)
 class Marker(BaseModel):
     seq: int
     t_rel_s: float
@@ -493,10 +495,10 @@ def sample(points,limit,kind):
     return out,dict(method='seq_bucket_min_max',factor=n/len(out),seq_bucket_width=width)
 
 @router.get('/projects/{project_id}/metrics/series', response_model=SeriesResponse)
-def series(project_id: str,capture_id: str,codes: str,cell: str|None=None,attr: str|None=None,from_seq: int|None=Query(None,ge=0),to_seq: int|None=Query(None,ge=0),max_points: int=Query(5000,ge=2,le=100000),cell_pci:int|None=Query(None,ge=0),cell_arfcn:int|None=Query(None,ge=0),f: dict=Depends(filters),db: Session=Depends(get_db)):
+def series(project_id: str,capture_id: str,codes: str,cell: str|None=None,attr: str|None=None,from_seq: int|None=Query(None,ge=0),to_seq: int|None=Query(None,ge=0),max_points: int=Query(5000,ge=2,le=100000),cell_pci:int|None=Query(None,ge=0),cell_arfcn:int|None=Query(None,ge=0),include_map:bool=False,f: dict=Depends(filters),db: Session=Depends(get_db)):
     from app.kpi.metrics_v3 import definitions,parse_selection,Dataset,DERIVED,EVENT_FIELD_CODES
     v3_definitions=definitions()
-    if cell is not None or attr is not None or any(c.partition('@')[0].partition('~')[0] in EVENT_FIELD_CODES or c in DERIVED or c.startswith('evt_') or c.startswith('cap_') or '@' in c or '~' in c for c in codes.split(',')):
+    if include_map or cell is not None or attr is not None or any(c.partition('@')[0].partition('~')[0] in EVENT_FIELD_CODES or c in DERIVED or c.startswith('evt_') or c.startswith('cap_') or '@' in c or '~' in c for c in codes.split(',')):
         project(db,project_id)
         if from_seq is not None and to_seq is not None and from_seq>to_seq:raise HTTPException(422,'from_seq_after_to_seq')
         # /metrics/series needs only the selected rows and their canonical
@@ -505,8 +507,8 @@ def series(project_id: str,capture_id: str,codes: str,cell: str|None=None,attr: 
         ds=Dataset(db,project_id,capture_id,f,from_seq,to_seq,lean_series=True)
         selected=[parse_selection(c,v3_definitions,cell or 'all',attr) for c in dict.fromkeys(codes.split(','))]
         if len(selected)>64:raise HTTPException(422,'too_many_metrics')
-        return ds.response(selected,max_points,cell_pci=cell_pci,
-                           cell_arfcn=cell_arfcn,series_only=True)
+        return ds.response(selected,max_points,include_map=include_map,
+                           cell_pci=cell_pci,cell_arfcn=cell_arfcn,series_only=True)
     project(db,project_id)
     validate_operators(db,project_id,f)
     definitions=metric_catalog(db)
