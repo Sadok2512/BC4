@@ -1,3 +1,19 @@
+## 0.110.0 (minor) — BC4 2026-10-30 — SCell 5/6 + catalogue 2.60.0 (Agent BC4, numérotation BC3)
+
+Merge `bc4/catalog-scell5plus` (`9b75dd4`). Le catalogue 2.60.0 clone les
+familles SCell 4 vers SCell 5 et 6 ; les discriminateurs NFF restent
+structurels (zéro libellé dans la décision).
+
+- Types 5/6 pour les événements LTE cell-scoped, types bruts 14/15 pour
+  CELLMEAS et MIMOMEAS LTE.
+- `bootstrap_catalog_release.py --transform scell5plus` prépare l'artefact
+  disque uniquement en `--prepare-only` ; `--activate` reste réservé à
+  BC3 sous DEPLOY_LOCK (lot 0.104.0).
+- Artefact : `app/kpi/catalog_release/catalog_2.60.0.json`
+  (sha256 attendu `beb43de1…d4a2`).
+- SemVer catalogue : **MINOR 2.60.0**. SemVer back : **MINOR 0.110.0**.
+  Front inchangé.
+
 ## 0.109.0 (minor) — BC4 2026-10-30 — identité neighbour stable par cellule radio (Agent BC1, numérotation BC3)
 
 Merge `bc1/neighbour-identity` (`a298701`). Les voisins CELLMEAS reçoivent

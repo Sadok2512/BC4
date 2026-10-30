@@ -35,6 +35,7 @@ l'artefact sans ouvrir de session de base. `--activate` est le seul mode qui
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import re
 import sys
@@ -256,6 +257,99 @@ def prepare_visible_leaves_minor(source_version: str, target_version: str) -> Pa
     return target_path
 
 
+def _clone_scell_leaf(template: dict, scell_index: int) -> dict:
+    """Clone one SCell 4 leaf from structural cell metadata."""
+    clone = copy.deepcopy(template)
+    event = clone.get("event")
+    template_type = int(clone["cell_type"])
+    lte_offset_type = event == "CELLMEAS" or (
+        event == "MIMOMEAS"
+        and (template.get("label_system") == 7 or template_type == 13)
+    )
+    target_type = scell_index + 9 if lte_offset_type else scell_index
+
+    source_identity = 13 if event == "MIMOMEAS" and template_type == 13 else 4
+    target_identity = target_type if source_identity == 13 else scell_index
+    node_suffix = f"_c{source_identity}"
+    metric_suffix = f"@{source_identity}"
+    if not clone["node_id"].endswith(node_suffix):
+        raise ValueError(f"identité SCell 4 inattendue : {clone['node_id']}")
+    if not clone["metric_id"].endswith(metric_suffix):
+        raise ValueError(f"metric_id SCell 4 inattendu : {clone['metric_id']}")
+    clone["node_id"] = clone["node_id"][:-len(node_suffix)] + f"_c{target_identity}"
+    clone["metric_id"] = clone["metric_id"][:-len(metric_suffix)] + f"@{target_identity}"
+    clone["cell_type"] = target_type
+    clone["label"] = clone["label"].replace("SCell 4", f"SCell {scell_index}")
+    if event == "CELLMEAS":
+        clone["cell_label"] = f"SCell {scell_index} (raw {target_type})"
+    else:
+        clone["cell_label"] = f"SCell {scell_index} ({target_type})"
+
+    # Explicit system metadata stays authoritative.  The remaining common
+    # SCell 0..31 families in the 2.59 catalog are LTE decoder schemas.
+    if clone.get("field_system") is None:
+        clone["field_system"] = int(clone.get("label_system") or 7)
+    return clone
+
+
+def prepare_scell5plus_minor(source_version: str, target_version: str) -> Path:
+    """Clone the complete SCell 4 families to SCell 5 and SCell 6.
+
+    This deterministic preparation writes only the catalog artifact on disk.
+    """
+    _validate_next_minor(source_version, target_version)
+    source_path = catalog_file_path(source_version)
+    if not source_path.exists():
+        raise FileNotFoundError(f"catalogue source absent : {source_path}")
+    payload = json.loads(source_path.read_text(encoding="utf-8"))
+    nodes = payload.get("nodes", [])
+    leaves = [node for node in nodes if node.get("node_type") == "leaf"]
+    templates = [
+        leaf for leaf in leaves
+        if leaf.get("cell_type") == 4
+        or (leaf.get("event") == "MIMOMEAS" and leaf.get("cell_type") == 13)
+    ]
+    if not templates:
+        raise ValueError("catalogue source sans famille SCell 4")
+
+    existing_ids = {node["node_id"] for node in nodes}
+    additions = []
+    by_scell = {5: 0, 6: 0}
+    for scell_index in (5, 6):
+        for template in templates:
+            clone = _clone_scell_leaf(template, scell_index)
+            if clone["node_id"] in existing_ids:
+                raise ValueError(f"feuille cible déjà présente : {clone['node_id']}")
+            existing_ids.add(clone["node_id"])
+            additions.append(clone)
+            by_scell[scell_index] += 1
+
+    payload["nodes"] = nodes + additions
+    payload["n_leaves"] = sum(
+        node.get("node_type") == "leaf" for node in payload["nodes"]
+    )
+    payload["n_leaves_displayed"] = sum(
+        node.get("node_type") == "leaf" and bool(node.get("displayed"))
+        for node in payload["nodes"]
+    )
+    payload["catalog_scell_policy"] = {
+        "source_family": "SCell 4",
+        "added_scell_indices": [5, 6],
+        "cellmeas_lte_raw_types": {"5": 14, "6": 15},
+        "mimomeas_lte_raw_types": {"5": 14, "6": 15},
+        "other_lte_raw_types": {"5": 5, "6": 6},
+        "label_fields_used_for_selection": False,
+        "added_leaves": len(additions),
+    }
+    target_path = _write_catalog_artifact(payload, target_version)
+    print(
+        f"[bootstrap] prepared SCell 5+ v={target_version} from={source_version} "
+        f"scell5={by_scell[5]} scell6={by_scell[6]} "
+        f"added={len(additions)} sha256={sha256_file(target_path)}"
+    )
+    return target_path
+
+
 def prepare_analytics_minor(source_version: str, target_version: str) -> Path:
     """Clone a catalog release and add the explicit Analytics tab contract.
 
@@ -319,7 +413,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     ap.add_argument(
         "--transform",
-        choices=("analytics", "nr-labels", "visible-leaves"),
+        choices=("analytics", "nr-labels", "visible-leaves", "scell5plus"),
         default="analytics",
         help="transformation disque appliquée avec --from (défaut : analytics)",
     )
@@ -337,6 +431,8 @@ def main(argv: list[str] | None = None) -> int:
                 prepare_nr_labels_minor(args.from_version, args.version)
             elif args.transform == "visible-leaves":
                 prepare_visible_leaves_minor(args.from_version, args.version)
+            elif args.transform == "scell5plus":
+                prepare_scell5plus_minor(args.from_version, args.version)
             else:
                 prepare_analytics_minor(args.from_version, args.version)
         except (FileNotFoundError, ValueError) as exc:
