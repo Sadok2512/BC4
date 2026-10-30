@@ -1,3 +1,9 @@
+## Unreleased — scripts d'empreinte reproductibles
+
+- Back (**patch**) : ajoute les CLI versionnés pour reproduire les empreintes
+  canoniques de dict-tree, signaling points et metrics series depuis leurs
+  réponses JSON, avec exclusions, ordre et sérialisation documentés.
+
 ## 0.104.0 (minor) — BC4 2026-10-30 — bootstrap_catalog_release.py : --activate + DEPLOY_LOCK exigé (Agent BC1, numérotation BC3)
 
 Merge `bc1/catalog-activation-guard` (`5de3d29`). Garde contre les
