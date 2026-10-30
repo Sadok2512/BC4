@@ -543,7 +543,14 @@ def main():
                 if sect_short.lower().startswith("parameters for "):
                     sect_short = sect_short[len("Parameters for "):]
                 if sect_cnt == 0:
-                    row["_label_suffix"] = f" (bloc {sect_short})" if sect_short else f" (bloc #{row.get('field_no')})"
+                    # CELLMEAS/MIMOMEAS carry a real radio-system section,
+                    # not a repeated visual block. Expose that content as
+                    # ``(LTE)`` / ``(NR)``. Other events keep the historical
+                    # ``bloc`` qualifier used to disambiguate repeated fields.
+                    if row.get("_force_section_suffix"):
+                        row["_label_suffix"] = f" ({sect_short})"
+                    else:
+                        row["_label_suffix"] = f" (bloc {sect_short})" if sect_short else f" (bloc #{row.get('field_no')})"
                 else:
                     # 2e occurrence+ dans la MÊME section — répétition
                     # structurelle du spec (ex. DCI NR #Variables p.27805
@@ -611,6 +618,8 @@ def main():
                         extras_reason = "FF 2.62 non documenté 2.50 — nommage par contenu BC3 2026-10-25"
                     row_slug = row.get("_slug") or slugify(row["name"])
                     row_label = row["name"] + (row.get("_label_suffix") or "")
+                    if ev in {"CELLMEAS", "MIMOMEAS"} and not row.get("_force_section_suffix"):
+                        row_label += " (LTE)" if tech_cell == 7 else " (NR)"
                     leaf = {
                         "node_type": "leaf", "event": ev, "label": f"{row_label} @ {label_short}",
                         "metric_id": f"{ev.lower()}_{row_slug}@{ct}",
@@ -619,6 +628,7 @@ def main():
                         # mapping YAML (événement hors corpus décodé).
                         "source_column": source_column_for(ev, row["name"]),
                         "field_system": tech_cell if row.get("_force_section_suffix") else None,
+                        "label_system": tech_cell if ev in {"CELLMEAS", "MIMOMEAS"} else None,
                         "cell_type": ct, "cell_label": label_long, "parent_id": ev_nid,
                         "node_id": f"lf_{slugify(ev)}_{row_slug}_c{ct}",
                         "field_no": row.get("field_no"), "type": row.get("type"),

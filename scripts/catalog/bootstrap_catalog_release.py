@@ -16,6 +16,10 @@ activer la base (la bascule reste une commande séparée et explicite) :
   python scripts/catalog/bootstrap_catalog_release.py --version 2.57.0 \
     --from-version 2.56.2 --prepare-only
 
+Préparer les libellés LTE/NR de la release catalogue suivante :
+  python scripts/catalog/bootstrap_catalog_release.py --to 2.58.0 \
+    --from 2.57.0 --transform nr-labels --prepare-only
+
 Variables :
   --version <X.Y.Z> : nom du fichier catalog_<X.Y.Z>.json (requis)
   --changelog "..." : commentaire (défaut : "bootstrap post-reset")
@@ -46,6 +50,7 @@ from app.kpi.catalog_release.registry import (  # noqa: E402
 
 
 SEMVER_RE = re.compile(r"^(\d+)\.(\d+)\.(\d+)$")
+CATALOG_SYSTEM_LABELS = {7: "LTE", 9: "NR"}
 
 # Décisions issues du replay exhaustif Test_6 avec max_points=2000. Elles sont
 # écrites dans l'artefact 2.57.0 : le serveur construit l'arbre depuis ce champ,
@@ -85,13 +90,7 @@ def analytics_classification(leaf: dict) -> tuple[str, str]:
     return "metrics", "ambiguous_defaults_to_metrics"
 
 
-def prepare_analytics_minor(source_version: str, target_version: str) -> Path:
-    """Clone a catalog release and add the explicit Analytics tab contract.
-
-    Classification uses structural catalog content: event-derived calculations
-    are KPI, message fields are Metrics, and residual ambiguity defaults to
-    Metrics. The target must be the next MINOR release; labels are ignored.
-    """
+def _validate_next_minor(source_version: str, target_version: str) -> None:
     source_match = SEMVER_RE.fullmatch(source_version)
     target_match = SEMVER_RE.fullmatch(target_version)
     if not source_match or not target_match:
@@ -103,6 +102,108 @@ def prepare_analytics_minor(source_version: str, target_version: str) -> Path:
             f"la cible doit être le MINOR suivant : "
             f"{source_semver[0]}.{source_semver[1] + 1}.0"
         )
+
+
+def _write_catalog_artifact(payload: dict, target_version: str) -> Path:
+    payload["catalog_version"] = target_version
+    target_path = catalog_file_path(target_version)
+    rendered = json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+    if target_path.exists() and target_path.read_text(encoding="utf-8") != rendered:
+        raise ValueError(f"artefact cible existant différent : {target_path}")
+    target_path.write_text(rendered, encoding="utf-8")
+    return target_path
+
+
+def _cell_leaf_system(leaf: dict) -> int:
+    """Infer LTE/NR from structural catalog content, never from the label."""
+    field_system = leaf.get("field_system")
+    if field_system in CATALOG_SYSTEM_LABELS:
+        return int(field_system)
+    event = leaf.get("event")
+    cell_type = leaf.get("cell_type")
+    if not isinstance(cell_type, int):
+        raise ValueError(f"feuille sans cell_type : {leaf.get('node_id')}")
+    if event == "CELLMEAS":
+        return 7 if cell_type in range(5) else 9
+    if event == "MIMOMEAS":
+        return 7 if cell_type == 0 or cell_type in range(10, 14) else 9
+    raise ValueError(f"event non pris en charge : {event}")
+
+
+def _system_label(label: str, system: int) -> str:
+    """Replace the legacy block suffix with an explicit LTE/NR label."""
+    if " @ " in label:
+        field_label, cell_label = label.split(" @ ", 1)
+        cell_suffix = f" @ {cell_label}"
+    else:
+        field_label = label
+        cell_suffix = ""
+    field_label = re.sub(r" \(bloc (?:LTE|NR)(?: #[^)]+)?\)$", "", field_label)
+    return f"{field_label} ({CATALOG_SYSTEM_LABELS[system]}){cell_suffix}"
+
+
+def prepare_nr_labels_minor(source_version: str, target_version: str) -> Path:
+    """Clone a catalog and make CELLMEAS/MIMOMEAS labels system-explicit.
+
+    ``event``, ``field_system`` and ``cell_type`` decide the system. Labels are
+    output only and never participate in the decision. This function writes the
+    deterministic JSON artifact and never opens a database session.
+    """
+    _validate_next_minor(source_version, target_version)
+    source_path = catalog_file_path(source_version)
+    if not source_path.exists():
+        raise FileNotFoundError(f"catalogue source absent : {source_path}")
+    payload = json.loads(source_path.read_text(encoding="utf-8"))
+    leaves = [node for node in payload.get("nodes", []) if node.get("node_type") == "leaf"]
+    if not leaves:
+        raise ValueError("catalogue source sans feuille")
+
+    relabeled = 0
+    by_system = {7: 0, 9: 0}
+    for leaf in leaves:
+        if leaf.get("event") not in {"CELLMEAS", "MIMOMEAS"}:
+            continue
+        system = _cell_leaf_system(leaf)
+        leaf["label_system"] = system
+        leaf["label"] = _system_label(leaf["label"], system)
+        by_system[system] += 1
+        relabeled += 1
+
+    duplicate_labels: dict[tuple[str | None, str], list[str]] = {}
+    for leaf in leaves:
+        key = (leaf.get("parent_id"), leaf["label"])
+        duplicate_labels.setdefault(key, []).append(leaf["node_id"])
+    duplicates = {key: ids for key, ids in duplicate_labels.items() if len(ids) > 1}
+    if duplicates:
+        sample = next(iter(duplicates.items()))
+        raise ValueError(f"libellés dupliqués après transformation : {sample}")
+
+    payload["catalog_label_policy"] = {
+        "events": ["CELLMEAS", "MIMOMEAS"],
+        "source": "NFF 2.50 event + field_system/cell_type + param",
+        "system_field": "field_system",
+        "inferred_label_system_field": "label_system",
+        "systems": {"7": "LTE", "9": "NR"},
+        "label_fields_used_for_classification": False,
+        "duplicate_scope": "parent_id + label",
+    }
+    target_path = _write_catalog_artifact(payload, target_version)
+    print(
+        f"[bootstrap] prepared NR labels v={target_version} from={source_version} "
+        f"relabeled={relabeled} lte={by_system[7]} nr={by_system[9]} "
+        f"duplicate_labels=0 sha256={sha256_file(target_path)}"
+    )
+    return target_path
+
+
+def prepare_analytics_minor(source_version: str, target_version: str) -> Path:
+    """Clone a catalog release and add the explicit Analytics tab contract.
+
+    Classification uses structural catalog content: event-derived calculations
+    are KPI, message fields are Metrics, and residual ambiguity defaults to
+    Metrics. The target must be the next MINOR release; labels are ignored.
+    """
+    _validate_next_minor(source_version, target_version)
 
     source_path = catalog_file_path(source_version)
     if not source_path.exists():
@@ -137,13 +238,7 @@ def prepare_analytics_minor(source_version: str, target_version: str) -> Path:
         }
         for code, event, reason in ANALYTICS_SERIES_REMOVALS
     ]
-    payload["catalog_version"] = target_version
-
-    target_path = catalog_file_path(target_version)
-    rendered = json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
-    if target_path.exists() and target_path.read_text(encoding="utf-8") != rendered:
-        raise ValueError(f"artefact cible existant différent : {target_path}")
-    target_path.write_text(rendered, encoding="utf-8")
+    target_path = _write_catalog_artifact(payload, target_version)
     print(
         f"[bootstrap] prepared catalog v={target_version} from={source_version} "
         f"kpi={sum(leaf['analytics_tab'] == 'kpi' for leaf in leaves)} "
@@ -160,7 +255,13 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--version", "--to", dest="version", required=True, help="ex. 2.53.0")
     ap.add_argument(
         "--from-version", "--from", dest="from_version",
-        help="clone cette release vers le MINOR suivant et ajoute analytics_tab",
+        help="clone cette release vers le MINOR suivant",
+    )
+    ap.add_argument(
+        "--transform",
+        choices=("analytics", "nr-labels"),
+        default="analytics",
+        help="transformation disque appliquée avec --from (défaut : analytics)",
     )
     ap.add_argument("--changelog", default="bootstrap post-reset")
     mode = ap.add_mutually_exclusive_group()
@@ -172,7 +273,10 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.from_version:
         try:
-            prepare_analytics_minor(args.from_version, args.version)
+            if args.transform == "nr-labels":
+                prepare_nr_labels_minor(args.from_version, args.version)
+            else:
+                prepare_analytics_minor(args.from_version, args.version)
         except (FileNotFoundError, ValueError) as exc:
             print(f"[bootstrap] FAIL — {exc}", file=sys.stderr)
             return 2

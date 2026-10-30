@@ -1,3 +1,24 @@
+## 0.107.0 (minor) — BC4 2026-10-30 — libellés LTE/NR explicites + catalogue 2.58.0 (Agent BC4, numérotation BC3)
+
+Merge `bc4/catalog-nr-labels` (`3b602cf`). Désambiguïsation visuelle des
+libellés CELLMEAS/MIMOMEAS entre LTE et NR + release catalogue mineure
+2.58.0 associée.
+
+- `CELLMEAS` et `MIMOMEAS` exposent le système dans chaque libellé :
+  `RSRP (LTE)`, `RSRP (NR)`, etc. La décision repose sur le contenu NFF
+  (`event`, `field_system`, `cell_type`), jamais sur le libellé source.
+- Les champs communs portent `label_system` sans modifier leur
+  `field_system` ; le contrat de sélection existant reste inchangé.
+- Le garde de duplication visuelle vérifie l'unicité de `(parent_id, label)`
+  sur tout l'arbre, y compris les blocs répétés DCI (`#Variables`,
+  `CCE aggregation`).
+- `bootstrap_catalog_release.py --transform nr-labels` prépare 2.58.0 sur
+  disque uniquement. L'activation `--activate` reste exclusivement réservée
+  à BC3 sous DEPLOY_LOCK (lot 0.104.0).
+- Artefact catalogue : `app/kpi/catalog_release/catalog_2.58.0.json`
+  (sha256 attendu `e871335d…00bf7`).
+- SemVer catalogue : **MINOR 2.58.0**. SemVer back : **MINOR 0.107.0**.
+
 ## 0.106.0 (minor) — BC4 2026-10-30 — séries catégorielles & event metrics (Agent BC1, numérotation BC3)
 
 Merge `bc1/kpi-categorical-metrics` (`12ff6f0`). Compagnon back des 61
