@@ -49,3 +49,59 @@ def test_summary_total_is_rf_population_and_hidden_closes_source_gap():
 def test_backfill_refuses_untraced_reason_without_database(capsys):
     assert backfill_main(["p", "--reason", "short"]) == 2
     assert "VERDICT=FAIL reason=reason_too_short" in capsys.readouterr().err
+
+
+class _TimelineResult:
+    def __init__(self, rows=None, scalar=None):
+        self._rows = rows or []
+        self._scalar = scalar
+
+    def mappings(self):
+        return self._rows
+
+    def scalar_one(self):
+        return self._scalar
+
+
+class _TimelineDb:
+    def __init__(self):
+        self.sql = []
+
+    def execute(self, statement, params):
+        sql = str(statement)
+        self.sql.append((sql, dict(params)))
+        if "GROUP BY 1,2,3" in sql:
+            return _TimelineResult([
+                {"t_rel_s": 0.0, "protocol": "RRC LTE", "lane": "radio", "n": 3},
+                {"t_rel_s": 0.0, "protocol": "Procedures", "lane": "connexion", "n": 1},
+                {"t_rel_s": 10.0, "protocol": "NAS", "lane": "radio", "n": 2},
+            ])
+        if "upper(COALESCE" in sql:
+            return _TimelineResult([{"id": "state-1", "seq": 7}])
+        return _TimelineResult(scalar=2)
+
+
+def test_timeline_is_bucketed_from_materialized_capture_without_population(monkeypatch):
+    monkeypatch.setattr(mat, "active_capture", lambda *_: {
+        "generation": "generation-1", "t_rel_end_s": 20.0,
+    })
+    monkeypatch.setattr(mat.svc, "population", lambda *_args, **_kwargs: (_ for _ in ()).throw(
+        AssertionError("population must not run on timeline request")
+    ))
+    db = _TimelineDb()
+
+    result = mat.read_timeline(db, "project-1", "capture-1", bucket_s=10)
+
+    assert result["total"] == 8
+    assert result["missing_time"] == 2
+    assert result["t_rel_end_s"] == 20.0
+    assert result["buckets"] == [
+        {"t_rel_s": 0.0, "counts": {"RRC LTE": 3, "Procedures": 1},
+         "lane_counts": {"radio": 3, "connexion": 1}},
+        {"t_rel_s": 10.0, "counts": {"NAS": 2}, "lane_counts": {"radio": 2}},
+    ]
+    assert result["state_events"] == [{"id": "state-1", "seq": 7}]
+    assert all(params["pid"] == "project-1" and params["cap"] == "capture-1"
+               for _, params in db.sql)
+    assert all("ORDER BY e.project_id,e.capture_id,e.seq" in sql
+               for sql, _ in db.sql if "upper(COALESCE" in sql)
