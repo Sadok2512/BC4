@@ -136,6 +136,13 @@ Aucune suppression constatée. L'incident PG recovery du 2026-10-30
 le checkpoint 01:20:35Z) est **antérieur** au lot et sans perte de
 données ; le `stats_reset` reste `NULL`.
 
+## Unreleased (minor) — categorical and event metrics series (Agent BC1)
+
+- `/metrics/series` accepts the 61 leaves deferred by catalog 2.57.0:
+  documented event fields are emitted as ordered numeric series or labeled
+  categorical markers, and CELLMEAS identifiers retain their exact physical
+  cell context. Marker sampling is bounded without fabricating values.
+
 ## 0.105.0 (minor) — BC4 2026-10-30 — 3 onglets KPI Analytics + catalogue 2.57.0 (Agent BC4, numérotation BC3)
 
 Merge `bc4/kpi-parameters-tab` (`f27578b`). Contrat d'onglet KPI Analytics
@@ -7777,3 +7784,14 @@ du front `franco-focus-forge` et lancer **front + back** de bout en bout.
 - Documented string fields are retained as strings; only undocumented strings
   are hashed. Metrics projections therefore expose the same values as the NMF
   source and preserve zero-valued measurements.
+## Unreleased (minor) — Catalogue 2.59.0 : feuilles consommables visibles (Agent BC4, numérotation BC3)
+
+- Les 61 décisions `removed_until_series_supported` de 2.58.0 deviennent
+  `visible_series_supported` après prise en charge par le back BC1 `12ff6f0`.
+- La transformation repose sur `(code, event, decision, visible)` dans le
+  catalogue et refuse un ensemble incomplet ou divergent ; aucun libellé ne
+  participe à la décision.
+- `bootstrap_catalog_release.py --transform visible-leaves` prépare 2.59.0
+  sur disque uniquement. L'activation reste exclusivement réservée à BC3.
+- SemVer catalogue : **MINOR 2.59.0**. SemVer back proposé : **MINOR** ;
+  numéro applicatif attribué par BC3.

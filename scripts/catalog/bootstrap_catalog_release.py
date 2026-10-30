@@ -20,6 +20,10 @@ Préparer les libellés LTE/NR de la release catalogue suivante :
   python scripts/catalog/bootstrap_catalog_release.py --to 2.58.0 \
     --from 2.57.0 --transform nr-labels --prepare-only
 
+Préparer la visibilité des séries désormais prises en charge :
+  python scripts/catalog/bootstrap_catalog_release.py --to 2.59.0 \
+    --from 2.58.0 --transform visible-leaves --prepare-only
+
 Variables :
   --version <X.Y.Z> : nom du fichier catalog_<X.Y.Z>.json (requis)
   --changelog "..." : commentaire (défaut : "bootstrap post-reset")
@@ -196,6 +200,62 @@ def prepare_nr_labels_minor(source_version: str, target_version: str) -> Path:
     return target_path
 
 
+def prepare_visible_leaves_minor(source_version: str, target_version: str) -> Path:
+    """Unmask only the 61 series supported by metrics back ``12ff6f0``.
+
+    The source decisions remain the authority: this transform never derives a
+    code from a label and refuses a source whose exact decision set diverges
+    from the catalog 2.57/2.58 contract. It only writes the JSON artifact.
+    """
+    _validate_next_minor(source_version, target_version)
+    source_path = catalog_file_path(source_version)
+    if not source_path.exists():
+        raise FileNotFoundError(f"catalogue source absent : {source_path}")
+    payload = json.loads(source_path.read_text(encoding="utf-8"))
+    decisions = payload.get("analytics_series_decisions", [])
+    expected = {(code, event) for code, event, _reason in ANALYTICS_SERIES_REMOVALS}
+    removable = {
+        (row.get("code"), row.get("event"))
+        for row in decisions
+        if row.get("decision") == "removed_until_series_supported"
+        and row.get("visible") is False
+    }
+    if removable != expected:
+        missing = sorted(expected - removable)
+        unexpected = sorted(removable - expected)
+        raise ValueError(
+            "décisions de séries inattendues : "
+            f"missing={missing[:3]} unexpected={unexpected[:3]}"
+        )
+
+    changed = 0
+    for row in decisions:
+        if (row.get("code"), row.get("event")) not in expected:
+            continue
+        row["previous_decision"] = row["decision"]
+        row["previous_reason"] = row["reason"]
+        row["visible"] = True
+        row["decision"] = "visible_series_supported"
+        row["reason"] = "supported_by_metrics_series_12ff6f0"
+        row["support_commit"] = "12ff6f0"
+        changed += 1
+
+    payload["analytics_visibility_policy"] = {
+        "source_field": "analytics_series_decisions",
+        "selection": "decision=removed_until_series_supported and visible=false",
+        "support_commit": "12ff6f0",
+        "label_fields_used": False,
+        "unmasked": changed,
+    }
+    target_path = _write_catalog_artifact(payload, target_version)
+    print(
+        f"[bootstrap] prepared visible leaves v={target_version} "
+        f"from={source_version} unmasked={changed} "
+        f"sha256={sha256_file(target_path)}"
+    )
+    return target_path
+
+
 def prepare_analytics_minor(source_version: str, target_version: str) -> Path:
     """Clone a catalog release and add the explicit Analytics tab contract.
 
@@ -259,7 +319,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     ap.add_argument(
         "--transform",
-        choices=("analytics", "nr-labels"),
+        choices=("analytics", "nr-labels", "visible-leaves"),
         default="analytics",
         help="transformation disque appliquée avec --from (défaut : analytics)",
     )
@@ -275,6 +335,8 @@ def main(argv: list[str] | None = None) -> int:
         try:
             if args.transform == "nr-labels":
                 prepare_nr_labels_minor(args.from_version, args.version)
+            elif args.transform == "visible-leaves":
+                prepare_visible_leaves_minor(args.from_version, args.version)
             else:
                 prepare_analytics_minor(args.from_version, args.version)
         except (FileNotFoundError, ValueError) as exc:
