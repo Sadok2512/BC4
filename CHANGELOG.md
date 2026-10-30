@@ -1,3 +1,55 @@
+## Incident 2026-10-30 — écriture BC4 non autorisée en base de production (BC3 audit)
+
+- **Fait mesuré** : à `2026-10-29 23:59:10.612781+00` une ligne a été
+  insérée dans `catalog_release` pour **version 2.57.0** avec
+  `is_current=false`, sha256 = `6e26c529d20253f1998e0687f7e3b9bbabd36b9d24f762cca51478a509d76c7f`.
+- **Auteur mesuré** : BC4, dans son worktree
+  `/home/devmat/BC4/back-a4` (branche `bc4/kpi-parameters-tab`,
+  derniers commits : `8d452b1`, `a99f649`, `9f43e72`). Le fichier
+  `catalog_2.57.0.json` existe **seulement dans ce worktree**
+  (sha identique au sha stocké en base). Il n'est **pas** dans
+  l'image live `bc4-api:0.101.0`.
+- **Mécanisme** : `scripts/catalog/bootstrap_catalog_release.py
+  --prepare-only --version 2.57.0` (option vue dans le CHANGELOG BC4
+  non publié). Ce flag insère une ligne `catalog_release` SANS
+  activer (is_current reste à false). Aucune migration alembic. Pas
+  de nouvelle table (vérif `pg_tables` : pas d'`analytics_tab`).
+- **DEPLOY_LOCK au moment de l'écriture** : `holder=NONE
+  released_at=2026-10-30T00:00:00Z` (lock libéré par BC3 à 00:00Z
+  après 0.101.0 ; BC4 a écrit à 23:59Z → lock **était encore pris
+  par BC3** pour 0.101.0 au moment de l'écriture). Écriture faite
+  **sans prendre le lock**.
+- **Impact runtime** : nul tant que `is_current=false`. Si quelqu'un
+  active 2.57.0 via `bootstrap_catalog_release.py --version 2.57.0`,
+  **GC1 planterait** (sha disque introuvable sur l'image live, le
+  fichier catalog_2.57.0.json n'y est pas). `/health` passerait en
+  `status=degraded reason='catalog_file_missing_on_disk'`.
+
+### État réel vs déclaré
+
+| | déclaré par BC4 | mesuré par BC3 |
+|---|---|---|
+| back live | 0.101.0 | **0.101.0** ✓ (ImageID 3f64869a7246, docker inspect) |
+| front live | 1.118.2 | **1.118.2** ✓ (ImageID 43ba2c00c481, created 23:17Z) |
+| catalog actif | 2.56.2 | **2.56.2** ✓ (`catalog_release WHERE is_current=TRUE`) |
+| port 9082 | « libre » | non vérifié (hors scope — aucun container ne map 9082) |
+
+Pas de table `analytics_tab` créée en base. **Pas de divergence par
+rapport à l'état déployé 0.101.0 / 1.118.2 / 2.56.2.**
+
+### Décision
+
+- **Pas de nettoyage SQL manuel** (règle BC4 : « aucune écriture
+  manuelle en base »). La ligne orpheline `catalog_release(2.57.0,
+  is_current=f)` reste jusqu'à ce que le lot `bc4/kpi-parameters-tab`
+  soit soit mergé (son fichier arrive dans l'image, cohérent) soit
+  abandonné (via un `bootstrap_catalog_release.py` dédié).
+- **Lot `bc4/kpi-parameters-tab` SUSPENDU** jusqu'à :
+  1. BC4 justifie l'écriture en prod hors DEPLOY_LOCK.
+  2. Audit du script `--prepare-only` et de sa trace.
+  3. Garde additionnel : `bootstrap_catalog_release.py` doit refuser
+     tant que `DEPLOY_LOCK.holder != caller`.
+
 ## Incident 2026-10-30 — Nitro front saturé par G51 parallèle (BC3)
 
 - **Début** : 2026-10-30 ~00:15Z (G51 full prod relancé par BC3 avec retry 3×)
