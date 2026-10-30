@@ -1,3 +1,10 @@
+## Unreleased — signaling-summary-align
+
+- Signaling (**minor**) : le `total` du résumé est désormais le nombre exact
+  d'événements matérialisés dans la vue RF. Le nouveau champ `hidden` ventile
+  l'écart avec les populations sources par raison mesurée (`without_rf_lane`,
+  `procedure_projection_delta`).
+
 ## Unreleased — signaling-points-lean
 
 - Performance (**minor**) : ajoute le format réseau opt-in `compact-v1` à

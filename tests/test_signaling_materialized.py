@@ -29,6 +29,23 @@ def test_event_window_is_capture_generation_and_seq_scoped():
     assert " ts" not in where.lower()
 
 
+def test_summary_total_is_rf_population_and_hidden_closes_source_gap():
+    source = dict(
+        event_counts={"messages": 19863, "markers": 3199,
+                      "procedures": 415, "tasks": 69},
+        tracks=["network"], source_total=23546, without_rf_lane=123,
+        seq_start=1, seq_end=2, t_rel_start_s=0.0, t_rel_end_s=1.0,
+        indoor=False,
+    )
+    summary = mat.align_summary(source, [{}] * 23398)
+    assert summary["total"] == 23398
+    assert summary["hidden"] == {
+        "without_rf_lane": 123,
+        "procedure_projection_delta": 25,
+    }
+    assert sum(summary["hidden"].values()) == 23546 - summary["total"]
+
+
 def test_backfill_refuses_untraced_reason_without_database(capsys):
     assert backfill_main(["p", "--reason", "short"]) == 2
     assert "VERDICT=FAIL reason=reason_too_short" in capsys.readouterr().err

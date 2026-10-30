@@ -309,6 +309,7 @@ class EventsResponse(Envelope):
 class EventsSummary(Envelope):
     tracks:list[str]
     counts:dict[str,int]
+    hidden:dict[str,int]
     total:int
     seq_start:int|None
     seq_end:int|None
@@ -333,7 +334,8 @@ def events_summary(project_id:str,capture_id:str,db:Session=Depends(get_db)):
     """Small first-paint contract from the active import-time generation."""
     active=mat.active_capture(db,project_id,capture_id)
     payload=dict(tracks=active['tracks'],counts=active['event_counts'],
-      total=active['total'],seq_start=active['seq_start'],seq_end=active['seq_end'],
+      hidden=active['hidden'],total=active['total'],
+      seq_start=active['seq_start'],seq_end=active['seq_end'],
       t_rel_start_s=active['t_rel_start_s'],t_rel_end_s=active['t_rel_end_s'])
     return dict(**envelope(project_id,capture_id,payload,dict(kind='events_summary')),**payload)
 

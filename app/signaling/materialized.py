@@ -82,8 +82,12 @@ def _summary(db, project_id, capture_id, indoor):
        AND event_code=ANY(:markers)) AS markers,
       (SELECT count(*) FROM nmf_event_pair WHERE project_id=:pid AND capture_id=:cap) AS procedures,
       (SELECT count(*) FROM task_run WHERE project_id=:pid AND capture_id=:cap
-       AND task_type IN ('HTTP_DL','HTTP_UL')) AS tasks""", params)[0]
+       AND task_type IN ('HTTP_DL','HTTP_UL')) AS tasks,
+      (SELECT count(*) FROM stg_event WHERE project_id=:pid AND capture_id=:cap
+       AND event_code IN ('RRCSM','L3SM')
+       AND system NOT IN ('LTE','NR')) AS without_rf_lane""", params)[0]
     counts = {key: int(value) for key, value in counts.items()}
+    without_rf_lane = counts.pop("without_rf_lane")
     first, last = bounds[0], bounds[-1]
     first_s, last_s = _seconds(first["ts"]), _seconds(last["ts"])
     duration = (last_s - first_s if first_s is not None and last_s is not None
@@ -93,9 +97,24 @@ def _summary(db, project_id, capture_id, indoor):
         tracks.extend(["connexion", "mobilite"])
     if counts["tasks"]:
         tracks.append("services")
-    return dict(event_counts=counts, tracks=tracks, total=sum(counts.values()),
+    return dict(event_counts=counts, tracks=tracks, source_total=sum(counts.values()),
+                without_rf_lane=without_rf_lane,
                 seq_start=first["seq"], seq_end=last["seq"],
                 t_rel_start_s=0.0, t_rel_end_s=duration, indoor=indoor)
+
+
+def align_summary(summary, rf_events):
+    """Make the headline count describe exactly the visible RF population."""
+    rf_total = len(rf_events)
+    gap = summary.pop("source_total") - rf_total
+    without_rf_lane = min(summary.pop("without_rf_lane"), max(gap, 0))
+    procedure_delta = max(gap - without_rf_lane, 0)
+    hidden = {}
+    if without_rf_lane:
+        hidden["without_rf_lane"] = without_rf_lane
+    if procedure_delta:
+        hidden["procedure_projection_delta"] = procedure_delta
+    return dict(**summary, total=rf_total, hidden=hidden)
 
 
 def materialize_capture(db, project_id, capture_id, *, batch_size=WRITE_BATCH):
@@ -126,6 +145,7 @@ def materialize_capture(db, project_id, capture_id, *, batch_size=WRITE_BATCH):
 
     evidence = rf.project_events(rf_rows, deep, pairs, tasks, times,
                                  capture_id=capture_id)
+    summary = align_summary(summary, evidence)
     legacy, _ = svc.project_legacy_events(
         db, project_id, capture_id, rows, procedures, meta, times,
     )
@@ -175,22 +195,24 @@ def materialize_capture(db, project_id, capture_id, *, batch_size=WRITE_BATCH):
         db.commit()
 
     db.execute(text("""INSERT INTO signaling_materialized_capture (
-      project_id,capture_id,generation,decoder_version,event_counts,tracks,total,
+      project_id,capture_id,generation,decoder_version,event_counts,tracks,hidden,total,
       seq_start,seq_end,t_rel_start_s,t_rel_end_s,indoor,built_at)
       VALUES (:pid,:cap,:generation,:decoder_version,CAST(:event_counts AS jsonb),
-      CAST(:tracks AS jsonb),:total,:seq_start,:seq_end,:t_rel_start_s,
+      CAST(:tracks AS jsonb),CAST(:hidden AS jsonb),:total,:seq_start,:seq_end,:t_rel_start_s,
       :t_rel_end_s,:indoor,now())
       ON CONFLICT (project_id,capture_id) DO UPDATE SET
       generation=excluded.generation,decoder_version=excluded.decoder_version,
-      event_counts=excluded.event_counts,tracks=excluded.tracks,total=excluded.total,
+      event_counts=excluded.event_counts,tracks=excluded.tracks,hidden=excluded.hidden,
+      total=excluded.total,
       seq_start=excluded.seq_start,seq_end=excluded.seq_end,
       t_rel_start_s=excluded.t_rel_start_s,t_rel_end_s=excluded.t_rel_end_s,
       indoor=excluded.indoor,built_at=excluded.built_at"""),
       dict(pid=project_id, cap=capture_id, generation=generation,
            decoder_version=decoder_version,
            event_counts=json.dumps(summary["event_counts"], sort_keys=True),
-           tracks=json.dumps(summary["tracks"]), **{key: value for key, value in summary.items()
-           if key not in ("event_counts", "tracks")}))
+           tracks=json.dumps(summary["tracks"]), hidden=json.dumps(summary["hidden"], sort_keys=True),
+           **{key: value for key, value in summary.items()
+           if key not in ("event_counts", "tracks", "hidden")}))
     db.commit()
 
     # Activation above is atomic; old rows can now be removed independently.
