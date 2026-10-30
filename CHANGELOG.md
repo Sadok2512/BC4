@@ -7661,3 +7661,14 @@ du front `franco-focus-forge` et lancer **front + back** de bout en bout.
 - Documented string fields are retained as strings; only undocumented strings
   are hashed. Metrics projections therefore expose the same values as the NMF
   source and preserve zero-valued measurements.
+## Unreleased (minor) — Catalogue 2.59.0 : feuilles consommables visibles (Agent BC4, numérotation BC3)
+
+- Les 61 décisions `removed_until_series_supported` de 2.58.0 deviennent
+  `visible_series_supported` après prise en charge par le back BC1 `12ff6f0`.
+- La transformation repose sur `(code, event, decision, visible)` dans le
+  catalogue et refuse un ensemble incomplet ou divergent ; aucun libellé ne
+  participe à la décision.
+- `bootstrap_catalog_release.py --transform visible-leaves` prépare 2.59.0
+  sur disque uniquement. L'activation reste exclusivement réservée à BC3.
+- SemVer catalogue : **MINOR 2.59.0**. SemVer back proposé : **MINOR** ;
+  numéro applicatif attribué par BC3.
