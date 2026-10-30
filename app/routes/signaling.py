@@ -6,6 +6,7 @@ import time
 from collections import Counter, defaultdict
 from typing import Literal, Any
 from fastapi import APIRouter, Depends, Query, HTTPException
+from fastapi.responses import ORJSONResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from app.db import get_db
@@ -108,6 +109,55 @@ class Points(Envelope):
     returned:int|None=None
     truncated:bool=False
 
+POINT_FIELDS = ['seq','t_rel_s','lat','lng','protocol_index','gps_seq','seq_gap']
+MARKER_FIELDS = ['seq','t_rel_s','lat','lng','protocol_index','counts']
+
+
+def compact_points_payload(project_id, capture_id, pts, total, active, f, limit):
+    """Compact wire format; every map point remains reconstructible exactly."""
+    protocols = list(svc.PROTOCOLS)
+    protocol_index = {name: index for index, name in enumerate(protocols)}
+    grouped = {}
+    for point in pts:
+        if point['lat'] is None or point['lng'] is None:
+            continue
+        key = point['gps_seq']
+        if key not in grouped:
+            grouped[key] = {
+                'seq': point['seq'], 't_rel_s': point['t_rel_s'],
+                'lat': point['lat'], 'lng': point['lng'],
+                'protocol_index': protocol_index[point['protocol']],
+                'counts': [0] * len(protocols),
+            }
+        grouped[key]['counts'][protocol_index[point['protocol']]] += 1
+    point_rows = [[
+        point['seq'], point['t_rel_s'], point['lat'], point['lng'],
+        protocol_index[point['protocol']], point['gps_seq'], point['seq_gap'],
+    ] for point in pts]
+    marker_rows = [[
+        marker['seq'], marker['t_rel_s'], marker['lat'], marker['lng'],
+        marker['protocol_index'], marker['counts'],
+    ] for marker in grouped.values()]
+    indoor = active['indoor']
+    result_params = {**f, 'limit': limit, 'compact': True}
+    result_basis = {
+        'generation': active.get('generation'), 'total': total,
+        'returned': len(pts),
+        'first_seq': pts[0]['seq'] if pts else None,
+        'last_seq': pts[-1]['seq'] if pts else None,
+    }
+    return dict(
+        project_id=project_id, capture_id=capture_id,
+        result_id=svc.result_id(project_id, capture_id, result_basis, result_params),
+        format='compact-v1', point_fields=POINT_FIELDS,
+        marker_fields=MARKER_FIELDS, protocols=protocols,
+        points=point_rows, markers=marker_rows,
+        positioned_count=sum(p['lat'] is not None and p['lng'] is not None for p in pts),
+        indoor=indoor, floorplan_id=None,
+        reason='Plan non renseigné, pas de position' if indoor else None,
+        total=total, returned=len(pts), truncated=limit is not None and total > limit,
+    )
+
 class RadioValue(BaseModel):
     time_gap_s:float|None
     temporal_relation:Literal['unavailable','same_timestamp','previous_timestamp']
@@ -185,8 +235,12 @@ def timeline(project_id:str,capture_id:str,bucket_s:float=Query(1,gt=0,le=3600),
     return dict(**envelope(project_id,capture_id,rows,{**f,'bucket_s':bucket_s}),buckets=buckets,bucket_s=bucket_s,total=len(rows),missing_time=sum(r['t_rel_s'] is None for r in rows))
 
 @router.get('/points',response_model=Points)
-def points(project_id:str,capture_id:str,limit:int|None=Query(None,ge=1,le=10000),f:dict=Depends(filters),db:Session=Depends(get_db)):
+def points(project_id:str,capture_id:str,limit:int|None=Query(None,ge=1,le=10000),compact:bool=False,f:dict=Depends(filters),db:Session=Depends(get_db)):
     pts,total,active=mat.read_points(db,project_id,capture_id,limit=limit,**f)
+    if compact:
+        return ORJSONResponse(compact_points_payload(
+            project_id, capture_id, pts, total, active, f, limit,
+        ))
     indoor=active['indoor'];truncated=limit is not None and total>limit
     grouped={}
     for p in pts:

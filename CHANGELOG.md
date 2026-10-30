@@ -1,3 +1,11 @@
+## Unreleased — signaling-points-lean
+
+- Performance (**minor**) : ajoute le format réseau opt-in `compact-v1` à
+  `/signaling/points`. Il conserve chaque point cartographique et son protocole,
+  remplace les libellés répétés par des index de dictionnaire et supprime des
+  lignes les colonnes que la carte ne consomme pas. Le format historique reste
+  inchangé sans `compact=true`; le front reconstruit ses objets avant rendu.
+
 ## 0.101.0 (minor) — BC4 2026-10-29 — Catalogue dict matérialisé à l'import (Agent BC1, numérotation BC3)
 
 Merge `bc1/dict-tree-cold` (`9f7bd44`). Résout l'écart `/dict/v2/tree`
