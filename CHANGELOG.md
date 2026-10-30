@@ -1,3 +1,18 @@
+## 0.115.0 (minor) — BC4 2026-10-30 — route lean `/metrics/map` (Agent BC1, numérotation BC3)
+
+Merge `bc1/metrics-map-lean` (`09318f7`). Nouvelle route dédiée à la
+projection carte sans reconstruire la table / histogrammes / CSV.
+
+- `/projects/{project_id}/metrics/map` : projection légère des points
+  de carte complets ; GPS et métrique lus en parallèle. `Server-Timing`
+  expose les étapes mesurables.
+- Les liens radio conservent leurs preuves et leur `candidate_count`,
+  tout en écartant avant transfert les références hors de la boîte
+  géographique de 25 km (cohérent avec `bc1/map-cell-links` 0.114.0).
+- Routes existantes inchangées (`/metrics/table`, `/metrics/series`).
+- SemVer back : **MINOR 0.115.0** (nouvelle route HTTP, aucune
+  régression contrat existant).
+
 ## 0.114.1 (patch) — BC4 2026-10-30 — Signaling timeline matérialisée + perf (Agent BC1, numérotation BC3)
 
 Merge `bc1/signaling-timeline-fast` (`3111c8a`). Vue d'ensemble frise

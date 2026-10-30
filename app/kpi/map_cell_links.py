@@ -15,6 +15,7 @@ from sqlalchemy import text
 
 
 MAX_CELL_LINK_DISTANCE_M = 25_000.0
+_METRES_PER_LATITUDE_DEGREE = 111_000.0
 LTE_NEIGHBOUR_TYPES = (1, 2)
 NR_NEIGHBOUR_TYPES = (1000, 1001, 1002)
 NR_ANCHOR_TYPE = 199
@@ -63,6 +64,22 @@ def _distance_m(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
     return 6_371_008.8 * 2 * asin(sqrt(a))
 
 
+def _within_distance_box(point: dict, ref) -> bool:
+    """Cheap conservative box before the exact great-circle distance.
+
+    ``candidate_count`` still describes every radio-identity candidate; the
+    box only avoids thousands of trigonometric calculations for sites that
+    cannot possibly be inside the declared 25 km proof radius.
+    """
+    latitude_delta = MAX_CELL_LINK_DISTANCE_M / _METRES_PER_LATITUDE_DEGREE
+    if abs(float(ref["lat"]) - float(point["lat"])) > latitude_delta:
+        return False
+    edge_latitude = min(89.9, abs(float(point["lat"])) + latitude_delta)
+    longitude_scale = max(cos(radians(edge_latitude)), 1e-6)
+    longitude_delta = latitude_delta / longitude_scale
+    return abs(float(ref["lng"]) - float(point["lng"])) <= longitude_delta
+
+
 def enrich_radio_links(db, project_id: str, capture_id: str, map_points: list[dict]) -> None:
     """Mutate map points with optional proven links, scoped to one capture."""
     if not map_points:
@@ -73,6 +90,105 @@ def enrich_radio_links(db, project_id: str, capture_id: str, map_points: list[di
         point.setdefault("neighbour_links", [])
         point.setdefault("nr_anchor_link", None)
 
+    candidate_identities = list(db.execute(text("""
+        SELECT DISTINCT system,cell_type,cell_arfcn,cell_pci
+        FROM nmf_cell_identity
+        WHERE project_id=:pid AND capture_id=:cap AND event_code='CELLMEAS'
+          AND cell_arfcn IS NOT NULL AND cell_pci IS NOT NULL
+          AND ((system=7 AND cell_type=ANY(:lte_types))
+            OR (system=9 AND cell_type=ANY(:nr_types)))
+        ORDER BY system,cell_type,cell_arfcn,cell_pci
+    """), {
+        "pid": project_id,
+        "cap": capture_id,
+        "lte_types": list(LTE_NEIGHBOUR_TYPES),
+        "nr_types": [*NR_NEIGHBOUR_TYPES, NR_ANCHOR_TYPE],
+    }).mappings())
+    points_with_second=[p for p in map_points if p.get("_second") is not None]
+    wanted = sorted({(int(r["system"]), int(r["cell_arfcn"]), int(r["cell_pci"]),
+                      _reference_channel(int(r["system"]),int(r["cell_arfcn"])))
+                     for r in candidate_identities
+                     if _reference_channel(int(r["system"]),int(r["cell_arfcn"])) is not None})
+    if not wanted:
+        for point in map_points:
+            point.pop("_second",None)
+        return
+    point_latitudes = [float(point["lat"]) for point in map_points]
+    point_longitudes = [float(point["lng"]) for point in map_points]
+    latitude_delta = MAX_CELL_LINK_DISTANCE_M / _METRES_PER_LATITUDE_DEGREE
+    edge_latitude = min(89.9, max(abs(min(point_latitudes)), abs(max(point_latitudes)))
+                        + latitude_delta)
+    longitude_delta = latitude_delta / max(cos(radians(edge_latitude)), 1e-6)
+    refs = list(db.execute(text("""
+        WITH wanted AS (
+          SELECT * FROM unnest(
+            CAST(:systems AS smallint[]),CAST(:arfcns AS bigint[]),
+            CAST(:pcis AS integer[]),CAST(:reference_channels AS integer[])
+          ) AS w(system,arfcn,pci,reference_channel)
+        ), matching AS (
+          SELECT w.system,w.arfcn,w.pci,w.reference_channel,
+                 r.id AS cell_ref_id,r.site_id,r.site_name,
+                 ST_Y(r.geom) AS lat,ST_X(r.geom) AS lng
+          FROM wanted w
+          JOIN cell_ref r ON r.earfcn=w.reference_channel AND r.pci=w.pci
+            AND ((w.system=7 AND upper(COALESCE(r.techno,r.rat)) IN ('4G','LTE'))
+              OR (w.system=9 AND upper(COALESCE(r.techno,r.rat)) IN ('5G','NR')))
+          WHERE r.geom IS NOT NULL
+        )
+        SELECT * FROM matching
+        WHERE lat BETWEEN :min_lat AND :max_lat
+          AND lng BETWEEN :min_lng AND :max_lng
+        ORDER BY system,arfcn,pci,cell_ref_id
+    """), {
+        "systems": [v[0] for v in wanted],
+        "arfcns": [v[1] for v in wanted],
+        "pcis": [v[2] for v in wanted],
+        "reference_channels": [v[3] for v in wanted],
+        "min_lat": min(point_latitudes) - latitude_delta,
+        "max_lat": max(point_latitudes) + latitude_delta,
+        "min_lng": min(point_longitudes) - longitude_delta,
+        "max_lng": max(point_longitudes) + longitude_delta,
+    }).mappings())
+    candidate_counts = {}
+    if refs:
+        count_rows = list(db.execute(text("""
+            WITH wanted AS (
+              SELECT * FROM unnest(
+                CAST(:systems AS smallint[]),CAST(:arfcns AS bigint[]),
+                CAST(:pcis AS integer[]),CAST(:reference_channels AS integer[])
+              ) AS w(system,arfcn,pci,reference_channel)
+            )
+            SELECT w.system,w.arfcn,w.pci,COUNT(*)::int AS n
+            FROM wanted w
+            JOIN cell_ref r ON r.earfcn=w.reference_channel AND r.pci=w.pci
+              AND ((w.system=7 AND upper(COALESCE(r.techno,r.rat)) IN ('4G','LTE'))
+                OR (w.system=9 AND upper(COALESCE(r.techno,r.rat)) IN ('5G','NR')))
+            WHERE r.geom IS NOT NULL
+            GROUP BY w.system,w.arfcn,w.pci
+        """), {
+            "systems": [v[0] for v in wanted],
+            "arfcns": [v[1] for v in wanted],
+            "pcis": [v[2] for v in wanted],
+            "reference_channels": [v[3] for v in wanted],
+        }).mappings())
+        candidate_counts = {
+            (int(row["system"]), int(row["arfcn"]), int(row["pci"])): int(row["n"])
+            for row in count_rows if "n" in row
+        }
+    refs_by_identity: dict[tuple[int, int, int], list] = defaultdict(list)
+    for ref in refs:
+        key=(int(ref["system"]), int(ref["arfcn"]), int(ref["pci"]))
+        item=dict(ref)
+        item["candidate_count"]=candidate_counts.get(key)
+        refs_by_identity[key].append(item)
+
+    if not refs_by_identity:
+        for point in map_points:
+            point.pop("_second",None)
+        return
+
+    # Fetch per-seq identities only when at least one reference cell lies
+    # within the capture's conservative 25 km bounding box.
     identities = list(db.execute(text("""
         SELECT seq,system,cell_type,cell_arfcn,cell_pci
         FROM nmf_cell_identity
@@ -89,7 +205,6 @@ def enrich_radio_links(db, project_id: str, capture_id: str, map_points: list[di
         "lte_types": list(LTE_NEIGHBOUR_TYPES),
         "nr_types": [*NR_NEIGHBOUR_TYPES, NR_ANCHOR_TYPE],
     }).mappings())
-    points_with_second=[p for p in map_points if p.get("_second") is not None]
     if points_with_second:
         identities.extend(db.execute(text("""
             WITH targets AS (
@@ -114,37 +229,6 @@ def enrich_radio_links(db, project_id: str, capture_id: str, map_points: list[di
             "seconds": [int(p["_second"]) for p in points_with_second],
             "anchor_type": NR_ANCHOR_TYPE,
         }).mappings())
-    wanted = sorted({(int(r["system"]), int(r["cell_arfcn"]), int(r["cell_pci"]),
-                      _reference_channel(int(r["system"]),int(r["cell_arfcn"])))
-                     for r in identities
-                     if _reference_channel(int(r["system"]),int(r["cell_arfcn"])) is not None})
-    if not wanted:
-        return
-    refs = list(db.execute(text("""
-        WITH wanted AS (
-          SELECT * FROM unnest(
-            CAST(:systems AS smallint[]),CAST(:arfcns AS bigint[]),
-            CAST(:pcis AS integer[]),CAST(:reference_channels AS integer[])
-          ) AS w(system,arfcn,pci,reference_channel)
-        )
-        SELECT w.system,w.arfcn,w.pci,w.reference_channel,
-               r.id AS cell_ref_id,r.site_id,r.site_name,
-               ST_Y(r.geom) AS lat,ST_X(r.geom) AS lng
-        FROM wanted w
-        JOIN cell_ref r ON r.earfcn=w.reference_channel AND r.pci=w.pci
-          AND ((w.system=7 AND upper(COALESCE(r.techno,r.rat)) IN ('4G','LTE'))
-            OR (w.system=9 AND upper(COALESCE(r.techno,r.rat)) IN ('5G','NR')))
-        WHERE r.geom IS NOT NULL
-        ORDER BY w.system,w.arfcn,w.pci,r.id
-    """), {
-        "systems": [v[0] for v in wanted],
-        "arfcns": [v[1] for v in wanted],
-        "pcis": [v[2] for v in wanted],
-        "reference_channels": [v[3] for v in wanted],
-    }).mappings())
-    refs_by_identity: dict[tuple[int, int, int], list] = defaultdict(list)
-    for ref in refs:
-        refs_by_identity[(int(ref["system"]), int(ref["arfcn"]), int(ref["pci"]))].append(ref)
 
     seen: dict[int, set[tuple[int, int, int, int]]] = defaultdict(set)
     for identity in identities:
@@ -164,12 +248,13 @@ def enrich_radio_links(db, project_id: str, capture_id: str, map_points: list[di
         for point in points_by_seq[seq]:
             ranked = sorted(
                 ((_distance_m(point["lat"], point["lng"], ref["lat"], ref["lng"]), ref)
-                 for ref in candidates),
+                 for ref in candidates if _within_distance_box(point, ref)),
                 key=lambda item: (item[0], item[1]["cell_ref_id"]),
             )
             if not ranked or ranked[0][0] > MAX_CELL_LINK_DISTANCE_M:
                 continue
             distance, ref = ranked[0]
+            candidate_count = int(ref.get("candidate_count") or len(candidates))
             link = {
                 "system": "LTE" if system == 7 else "NR",
                 "arfcn": arfcn,
@@ -183,8 +268,8 @@ def enrich_radio_links(db, project_id: str, capture_id: str, map_points: list[di
                 "lng": float(ref["lng"]),
                 "distance_m": round(distance, 1),
                 "max_distance_m": MAX_CELL_LINK_DISTANCE_M,
-                "candidate_count": len(candidates),
-                "confidence": ("radio_band_pci_unique" if len(candidates) == 1
+                "candidate_count": candidate_count,
+                "confidence": ("radio_band_pci_unique" if candidate_count == 1
                                else "radio_band_pci_nearest_within_25000m"),
             }
             if system == 9 and cell_type == NR_ANCHOR_TYPE:
