@@ -1,3 +1,24 @@
+## Incident 2026-10-30 — Nitro front saturé par G51 parallèle (BC3)
+
+- **Début** : 2026-10-30 ~00:15Z (G51 full prod relancé par BC3 avec retry 3×)
+- **Fin** : 2026-10-30 ~00:30Z (G51 arrêté, front remontant automatiquement)
+- **Symptôme** : navigateur `net::ERR_CONNECTION_REFUSED` sur
+  `http://185.248.33.125:5174` (ex. `/api/projects/.../signaling/captures`).
+- **Cause mesurée** : G51 attaque le proxy nitro avec ~5000 requêtes
+  séquentielles (via `urllib` sans keep-alive). Nitro h3 server a graceful-
+  restart au moins 5 fois (traces `Stopping server gracefully` dans
+  `docker logs bc4-front-1`). RestartCount Docker = 0 (bun a géré le
+  restart interne), OOMKilled = false. Mais pendant chaque graceful
+  shutdown, le front refuse les connexions externes → `ERR_CONNECTION_REFUSED`.
+- **Fix** : G51 en production doit être **séquentiel strict** avec pause
+  entre requêtes. Jamais de retry automatique côté garde (masque les
+  erreurs transitoires du proxy — à mesurer et déclarer).
+- **Preuves rétablissement** :
+  - `docker inspect bc4-front-1` : `running ExitCode=0 OOMKilled=false RestartCount=0`
+  - `curl http://127.0.0.1:5174/kpi` → 200
+  - `curl http://185.248.33.125:5174/kpi` → 200
+  - `curl http://127.0.0.1:5174/api/projects/43e81a34a073/signaling/captures` → 200 JSON 313 B
+
 ## 0.101.0 (minor) — BC4 2026-10-29 — Catalogue dict matérialisé à l'import (Agent BC1, numérotation BC3)
 
 Merge `bc1/dict-tree-cold` (`9f7bd44`). Résout l'écart `/dict/v2/tree`
