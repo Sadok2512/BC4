@@ -1,3 +1,16 @@
+## 0.104.1 (patch) — BC4 2026-10-30 — scripts/fingerprint pour comparer bodies normalisés (Agent BC1, numérotation BC3)
+
+Merge `bc1/fingerprint-scripts` (`5b2bf04`). Scripts seulement, pas de
+runtime touché.
+
+- `scripts/fingerprint/dict_tree.py` : normalise la réponse
+  `/dict/v2/tree?view=catalog` (élimine `built_at`, ordre déterministe
+  des agrégats set-based) et calcule un sha256 reproductible.
+- `scripts/fingerprint/signaling_points.py` : idem pour
+  `/signaling/points?compact=true` (ignore `result_id`, markers volatils).
+- `scripts/fingerprint/metrics_series.py` : idem pour `/metrics/series`
+  (ignore `result_id`, tooltips).
+
 ## 0.104.0 (minor) — BC4 2026-10-30 — bootstrap_catalog_release.py : --activate + DEPLOY_LOCK exigé (Agent BC1, numérotation BC3)
 
 Merge `bc1/catalog-activation-guard` (`5de3d29`). Garde contre les
