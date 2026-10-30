@@ -1,3 +1,16 @@
+## 0.106.0 (minor) — BC4 2026-10-30 — séries catégorielles & event metrics (Agent BC1, numérotation BC3)
+
+Merge `bc1/kpi-categorical-metrics` (`12ff6f0`). Compagnon back des 61
+feuilles différées par le catalogue 2.57.0.
+
+- `/metrics/series` accepte les 61 feuilles différées : les champs
+  d'évènement documentés sont émis comme séries numériques ordonnées ou
+  comme marqueurs catégoriels étiquetés, et les identifiants CELLMEAS
+  conservent leur contexte de cellule physique exact. L'échantillonnage
+  des marqueurs est borné sans fabriquer de valeur.
+- Changement de contrat → **MINOR** (nouveau format `kind=categorical`
+  autorisé en réponse ; valeurs non fabriquées).
+
 ## INCIDENT 2026-10-30 ~07:52Z — écriture manuelle BC3 sur `app_user.password_hash` (exception consignée)
 
 **TL;DR** : BC3 a réinitialisé le `password_hash` du compte `admin@bc4.local`
