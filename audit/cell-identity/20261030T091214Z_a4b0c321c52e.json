@@ -1,0 +1,37 @@
+{
+  "op_id": "507b546cdefd4cfcbef74a3c598d6648",
+  "when": "2026-10-30T09:12:14.370371+00:00",
+  "project_id": "43e81a34a073",
+  "capture_id": "a4b0c321c52e",
+  "reason": "preuve idempotence pile jetable BC1",
+  "source": "existing_database_tables_no_decode",
+  "before": [
+    {
+      "capture_id": "a4b0c321c52e",
+      "decoder_version": "1.8.2",
+      "identities": 58605,
+      "incomplete_identity": 0
+    }
+  ],
+  "after": [
+    {
+      "capture_id": "a4b0c321c52e",
+      "decoder_version": "1.8.2",
+      "identities": 58605,
+      "incomplete_identity": 0
+    }
+  ],
+  "result": {
+    "project_id": "43e81a34a073",
+    "captures": [
+      {
+        "capture_id": "a4b0c321c52e",
+        "decoder_version": "1.8.2",
+        "stored": 58605,
+        "incomplete_identity": 0
+      }
+    ],
+    "stored": 58605,
+    "incomplete_identity": 0
+  }
+}

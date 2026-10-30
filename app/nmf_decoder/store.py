@@ -235,7 +235,13 @@ def decode_capture(db,pid,cap,level,*,force=False,parsing_snapshot=None):
     # here rather than relying on each caller to do so after arbitrary Python
     # work (ensure_light, import ingestion, or manual decode jobs).
     db.commit()
-    return dict(capture_id=cap,level=level,n_records=n,n_partial=partial,elapsed_s=elapsed,kind=kind)
+    # cell_index is an occurrence key local to one second. Materialize the
+    # stable (system, ARFCN, PCI) identity from the decoded tables after the
+    # capture row exists; this never reads the source NMF again.
+    from app.kpi.cell_identity import materialize_capture
+    cell_identity=materialize_capture(db,pid,cap)
+    return dict(capture_id=cap,level=level,n_records=n,n_partial=partial,
+                elapsed_s=elapsed,kind=kind,cell_identity=cell_identity)
 
 
 # 0.76.0 — Classification capture par CONTENU (NFF 2.19 events observés), jamais

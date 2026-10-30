@@ -1,3 +1,14 @@
+## Unreleased (minor) — stable neighbour identity (Agent BC1)
+
+- CELLMEAS neighbours are materialized once per import with physical identity
+  `(system, ARFCN, PCI)`; occurrence-based `cell_index` remains storage-only.
+- `/metrics/series` and `/metrics/table` join the materialized identity and can
+  filter one real neighbour across the whole capture without exposing an
+  internal index.
+- Migration `0073_nmf_cell_identity` adds the mapping and its concurrent lookup
+  index. `backfill_cell_identity.py --reason ...` rebuilds existing captures
+  from decoded tables only, under a BC3 `DEPLOY_LOCK`.
+
 ## 0.108.0 (minor) — BC4 2026-10-30 — feuilles consommables visibles + catalogue 2.59.0 (Agent BC4, numérotation BC3)
 
 Merge `bc4/catalog-visible-leaves` (`f9abcea`). Les 61 feuilles différées

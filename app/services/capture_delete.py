@@ -47,6 +47,7 @@ CAPTURE_TABLES = (
     "nmf_event_light",
     "nmf_event_group",
     "nmf_event_deep",
+    "nmf_cell_identity",
     "nmf_cell_second",
 )
 

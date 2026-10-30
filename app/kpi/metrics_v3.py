@@ -404,11 +404,9 @@ class Dataset:
                             cell_pci=None, cell_arfcn=None):
         """Load one enum leaf as physical cells, with SQL pagination.
 
-        Storage occurrences are joined back to the exact CELLMEAS repeated
-        group by `(project_id, capture_id, seq, raw type, occurrence)`. Rows
-        are then reduced to `(seq, system, ARFCN, PCI)`; duplicate samples of
-        the same physical cell retain their count and use their documented
-        weights for the displayed mean.
+        Storage occurrences are joined to the import-time identity mapping.
+        Rows are reduced to `(seq, system, ARFCN, PCI)`; `cell_index` remains
+        only a storage join key and can never become public cell identity.
         """
         from app.nmf_decoder.cells import cell_index_bounds
         spec = m['cell_type_filter']
@@ -455,23 +453,14 @@ class Dataset:
         }
         identity_filters = ""
         if cell_pci is not None:
-            identity_filters += " AND r.cell_pci=:cell_pci"
+            identity_filters += " AND i.cell_pci=:cell_pci"
         if cell_arfcn is not None:
-            identity_filters += " AND r.cell_ch=:cell_arfcn"
+            identity_filters += " AND i.cell_arfcn=:cell_arfcn"
         grouped = f"""
-            WITH ranked AS (
-              SELECT g.seq,g.cell_pci,g.cell_ch,
-                     row_number() OVER (
-                       PARTITION BY g.project_id,g.capture_id,g.seq,g.cell_type
-                       ORDER BY g.identity
-                     )-1 AS occurrence
-              FROM nmf_event_light_group g
-              WHERE g.project_id=:pid AND g.capture_id=:cap
-                AND g.group_name='cells' AND g.cell_type=:raw
-            ), physical AS (
+            WITH physical AS (
               SELECT s.seq_first AS seq,MAX(s.seq_last) AS seq_last,s.second,
                      NULL::double precision AS exact_t_rel_s,
-                     r.cell_pci,r.cell_ch AS cell_arfcn,
+                     i.cell_pci,i.cell_arfcn,
                      CASE WHEN SUM(s.weight) FILTER (WHERE s.weight>0)>0
                        THEN SUM(s.value*s.weight) FILTER (WHERE s.weight>0)
                             / SUM(s.weight) FILTER (WHERE s.weight>0)
@@ -479,16 +468,17 @@ class Dataset:
                      COUNT(*)::int AS observation_count,
                      MIN(s.cell_index)::int AS storage_order
               FROM nmf_cell_second s
-              LEFT JOIN ranked r
-                ON r.seq=s.seq_first
-               AND r.occurrence=s.cell_index-:first_index
+              JOIN nmf_cell_identity i
+                ON i.project_id=s.project_id AND i.capture_id=s.capture_id
+               AND i.seq=s.seq_first AND i.event_code=s.event_code
+               AND i.cell_index=s.cell_index
+               AND i.decoder_version=s.decoder_version
               WHERE s.project_id=:pid AND s.capture_id=:cap
                 AND s.event_code=:event AND s.metric_code=:metric
                 AND s.cell_index BETWEEN :first_index AND :last_index
+                AND i.system=:system AND i.cell_type=:raw
                 {identity_filters}
-              GROUP BY s.seq_first,s.second,r.cell_pci,r.cell_ch,
-                       CASE WHEN r.cell_pci IS NULL OR r.cell_ch IS NULL
-                            THEN s.cell_index ELSE NULL END
+              GROUP BY s.seq_first,s.second,i.cell_pci,i.cell_arfcn
             )
         """
         sql = grouped + """
