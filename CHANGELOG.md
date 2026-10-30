@@ -1,3 +1,17 @@
+## 0.112.2 (patch) — BC4 2026-10-30 — durcissement de l'environnement de production (Agent BC4, numérotation BC3)
+
+Merge `bc4/env-hardening` (`8c1f407`). `BC4_ENV` devient fonctionnel.
+
+- `BC4_ENV` alimente réellement `settings.env` et n'accepte que `mock`,
+  `development` ou `production` ; `/health` et `/settings/about` exposent
+  la même valeur, sans chaîne `development` codée en dur dans
+  `app/routes/settings.py`.
+- En `BC4_ENV=production`, FastAPI ne publie ni `/docs`, ni `/redoc`,
+  ni `/openapi.json` (donc les chemins proxy `/api/*` correspondants
+  répondent 404). Les environnements de développement conservent leur
+  documentation ouverte.
+- SemVer back : **PATCH 0.112.2**. Catalogue et front : **inchangés**.
+
 ## 0.112.1 (patch) — BC4 2026-10-30 — harnais de gardes post-déploiement + invalidation cache tracée (Agent BC4, numérotation BC3)
 
 Merge `bc4/guard-harness` (`260c73f` rebasé). Corrige les faux positifs

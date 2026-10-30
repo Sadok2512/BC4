@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -6,7 +8,9 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="BC4_", env_file=".env", extra="ignore")
 
     dsn: str = Field(..., alias="BC4_DSN")
-    env: str = Field("development", alias="BC4_ENV")
+    env: Literal["mock", "development", "production"] = Field(
+        "development", alias="BC4_ENV"
+    )
     # Origines autorisées (CSV). Toujours piloté par l'env en prod ; la
     # valeur par défaut couvre les ports Vite usuels + 127.0.0.1 pour
     # lever le préflight CORS depuis le navigateur dev sans Vite proxy.
