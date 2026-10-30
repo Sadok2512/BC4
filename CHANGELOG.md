@@ -10,8 +10,19 @@ projection carte sans reconstruire la table / histogrammes / CSV.
   tout en écartant avant transfert les références hors de la boîte
   géographique de 25 km (cohérent avec `bc1/map-cell-links` 0.114.0).
 - Routes existantes inchangées (`/metrics/table`, `/metrics/series`).
-- SemVer back : **MINOR 0.115.0** (nouvelle route HTTP, aucune
-  régression contrat existant).
+- Correction collatérale `/metrics/table` mesurée post-déploiement par
+  BC1 : `exact_t_rel_s` n'est plus NULL quand une observation CELLMEAS
+  existe. `metrics_v3.py` récupère désormais `MIN(l.t_rel_s)` depuis
+  `nmf_event_light` au lieu de renvoyer `None`
+  (`app/kpi/metrics_v3.py:505`, `519-521`, `585-586`).
+  Effet observable sur Test_6 / a4b0c321c52e, requête
+  `cell_rsrp@lte-type-0 group_by=operator`: les lignes de la vue
+  temporelle passent de **0** à **25 par page sur 4 935 total**, le
+  gap « Missing timestamp » disparaît. Explique la différence
+  d'empreinte `rows` observée entre 0.114.1 et 0.115.0 (consignée
+  comme bug fix positif dans l'audit du 20:00Z).
+- SemVer back : **MINOR 0.115.0** (nouvelle route HTTP + correction
+  collatérale conservant le contrat `/metrics/table`).
 
 ## 0.114.1 (patch) — BC4 2026-10-30 — Signaling timeline matérialisée + perf (Agent BC1, numérotation BC3)
 
