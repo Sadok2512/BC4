@@ -75,6 +75,11 @@ def _run_populate_chain(db: "Session", project: "Project") -> dict:
     assert_lte_enriched(db, project.id)
     db.commit()
 
+    # Probable serving/neighbour/NR map links are prepared once at import.
+    from app.kpi.probable_link_materialized import materialize_project as materialize_probable_links
+    logger.info("[populate_chain] B2 probable map links project=%s", project.id)
+    report["probable_map_links"] = materialize_probable_links(db, project.id)
+
     # Étape C — populate_ecgi strict (sib1_strict_capture_earfcn).
     logger.info("[populate_chain] C ecgi project=%s", project.id)
     try:

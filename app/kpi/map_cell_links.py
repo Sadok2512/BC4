@@ -1,17 +1,22 @@
-"""Proven neighbour and EN-DC anchor links for metric map points.
+"""Proven and probable neighbour/EN-DC links for metric map points.
 
 Neighbour identity is read at the measurement's exact ``seq`` from
 ``nmf_cell_identity``; PSCell is read in the same capture-second because the
-LTE and NR CELLMEAS records have distinct seq values. Reference identity is
-matched only on the exact channel: ``cell_ref.earfcn`` for LTE and
-``cell_ref.nr_arfcn`` for NR, plus PCI and system. ``band_mhz`` is never a
-link key. The closest duplicate within 25 km wins. A missing/out-of-range
-match produces no link.
+LTE and NR CELLMEAS records have distinct seq values. Proven matches use the
+exact channel plus PCI. When that identity is absent from the reference,
+probable matches use the measured channel's band, PCI when represented, and
+the closest site within 10 km. Probable links are explicitly labelled and
+never replace proven links.
 """
 from collections import defaultdict
+import logging
 from math import asin, cos, radians, sin, sqrt
+import time
 
 from sqlalchemy import text
+
+
+log = logging.getLogger(__name__)
 
 
 MAX_CELL_LINK_DISTANCE_M = 25_000.0
@@ -20,6 +25,7 @@ _METRES_PER_LATITUDE_DEGREE = 111_000.0
 LTE_NEIGHBOUR_TYPES = (1, 2)
 NR_NEIGHBOUR_TYPES = (1000, 1001, 1002)
 NR_ANCHOR_TYPE = 199
+MAX_NEIGHBOUR_LINKS_PER_POINT = 1
 
 # 0.117.0 BC3 — Mapping 3GPP EARFCN LTE → bande MHz (match
 # cell_ref.band_mhz : 700/800/900/1400/1800/2100/2600/3500). Dérivé
@@ -51,6 +57,32 @@ def _lte_earfcn_to_band_mhz(earfcn: int | None) -> int | None:
     return None
 
 
+# NR bands represented by the current cell-reference vocabulary. Some 3GPP
+# NR-ARFCN ranges overlap; returning every compatible MHz bucket lets the
+# geographical match disambiguate them while keeping confidence="probable".
+_NR_ARFCN_RANGES: list[tuple[int, int, int]] = [
+    (151600, 160600, 700),    # n28
+    (158200, 164200, 800),    # n20
+    (185000, 192000, 900),    # n8
+    (285400, 303400, 1400),   # n75/n76
+    (361000, 376000, 1800),   # n3
+    (422000, 434000, 2100),   # n1
+    (514000, 538000, 2600),   # n38/n7
+    (620000, 653333, 3500),   # n78
+    (2016667, 2070832, 26000),  # n258
+]
+
+
+def _nr_arfcn_to_band_mhz(nr_arfcn: int | None) -> tuple[int, ...]:
+    if nr_arfcn is None:
+        return ()
+    try:
+        value = int(nr_arfcn)
+    except (TypeError, ValueError):
+        return ()
+    return tuple(band for low, high, band in _NR_ARFCN_RANGES if low <= value <= high)
+
+
 def _distance_m(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
     """Great-circle distance, deterministic and independent of PostGIS."""
     p1, p2 = radians(lat1), radians(lat2)
@@ -58,6 +90,153 @@ def _distance_m(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
     dl = radians(lng2 - lng1)
     a = sin(dp / 2) ** 2 + cos(p1) * cos(p2) * sin(dl / 2) ** 2
     return 6_371_008.8 * 2 * asin(sqrt(a))
+
+
+def _unit_xyz(lat: float, lng: float) -> tuple[float, float, float]:
+    latitude = radians(lat)
+    longitude = radians(lng)
+    scale = cos(latitude)
+    return scale * cos(longitude), scale * sin(longitude), sin(latitude)
+
+
+class _ReferenceTree:
+    """Small deterministic 3-D k-d tree; chord and great-circle order agree."""
+
+    def __init__(self, refs: list[dict]):
+        points = [(_unit_xyz(float(ref["lat"]), float(ref["lng"])), ref) for ref in refs]
+        self.count = len(points)
+        self.root = self._build(points, 0)
+
+    @classmethod
+    def _build(cls, points: list, depth: int):
+        if not points:
+            return None
+        axis = depth % 3
+        points.sort(key=lambda item: (item[0][axis], str(item[1]["id"])))
+        middle = len(points) // 2
+        return (
+            points[middle][0], points[middle][1], axis,
+            cls._build(points[:middle], depth + 1),
+            cls._build(points[middle + 1:], depth + 1),
+        )
+
+    def nearest(self, lat: float, lng: float) -> tuple[dict | None, float]:
+        target = _unit_xyz(lat, lng)
+        best_ref = None
+        best_squared = float("inf")
+
+        def visit(node) -> None:
+            nonlocal best_ref, best_squared
+            if node is None:
+                return
+            xyz, ref, axis, left, right = node
+            squared = sum((xyz[i] - target[i]) ** 2 for i in range(3))
+            if best_ref is None or (squared, str(ref["id"])) < (
+                best_squared, str(best_ref["id"])
+            ):
+                best_ref = ref
+                best_squared = squared
+            delta = target[axis] - xyz[axis]
+            near, far = (left, right) if delta < 0 else (right, left)
+            visit(near)
+            if delta * delta <= best_squared:
+                visit(far)
+
+        visit(self.root)
+        if best_ref is None:
+            return None, PROBABLE_LINK_MAX_DISTANCE_M
+        return best_ref, _distance_m(
+            lat, lng, float(best_ref["lat"]), float(best_ref["lng"])
+        )
+
+
+class _ReferenceTrees:
+    def __init__(self, groups: dict[tuple, list[dict]]):
+        self.groups = groups
+        self.trees: dict[tuple, _ReferenceTree] = {}
+
+    def get(self, key):
+        tree = self.trees.get(key)
+        if tree is not None:
+            return tree
+        refs = self.groups.get(key)
+        if not refs:
+            return None
+        tree = _ReferenceTree(refs)
+        self.trees[key] = tree
+        return tree
+
+
+def _reference_trees(groups: dict[tuple, list[dict]]) -> _ReferenceTrees:
+    return _ReferenceTrees(groups)
+
+
+class _ProbableReferenceLookup:
+    def __init__(self, refs: list[dict]):
+        self.count = len(refs)
+        by_band: dict[tuple[int, int], list[dict]] = defaultdict(list)
+        by_band_pci: dict[tuple[int, int, int], list[dict]] = defaultdict(list)
+        for ref in refs:
+            system = int(ref["system"])
+            band = int(ref["band_mhz"])
+            by_band[(system, band)].append(ref)
+            if ref["pci"] is not None:
+                by_band_pci[(system, band, int(ref["pci"]))].append(ref)
+        self.by_band = _reference_trees(by_band)
+        self.by_band_pci = _reference_trees(by_band_pci)
+        self.cache: dict[tuple[int, float, float], tuple[dict | None, float]] = {}
+
+    def _nearest(self, tree: _ReferenceTree, lat: float, lng: float):
+        key = (id(tree), lat, lng)
+        result = self.cache.get(key)
+        if result is None:
+            result = tree.nearest(lat, lng)
+            self.cache[key] = result
+        return result
+
+    def match(
+        self, system: int, bands: tuple[int, ...], pci: int | None,
+        lat: float, lng: float,
+    ) -> tuple[dict, float, int, str, int] | None:
+        ranked = []
+        for band in bands:
+            tree = self.by_band_pci.get((system, band, pci)) if pci is not None else None
+            method = "band_proximity_pci"
+            if tree is None:
+                tree = self.by_band.get((system, band))
+                method = "band_proximity"
+            if tree is None:
+                continue
+            ref, distance = self._nearest(tree, lat, lng)
+            if ref is not None and distance <= PROBABLE_LINK_MAX_DISTANCE_M:
+                ranked.append((distance, str(ref["id"]), band, method, tree.count, ref))
+        if not ranked:
+            return None
+        distance, _, band, method, candidate_count, ref = min(ranked)
+        return ref, distance, band, method, candidate_count
+
+
+def load_probable_reference_lookup(db, map_points: list[dict]) -> _ProbableReferenceLookup:
+    lats = [float(point["lat"]) for point in map_points]
+    lngs = [float(point["lng"]) for point in map_points]
+    deg_lat = PROBABLE_LINK_MAX_DISTANCE_M / _METRES_PER_LATITUDE_DEGREE
+    deg_lng = deg_lat / max(cos(radians(sum(lats) / len(lats))), 1e-6)
+    refs = [dict(row) for row in db.execute(text("""
+        SELECT id,band_mhz,pci,site_id,site_name,
+               CASE WHEN upper(COALESCE(techno,rat)) IN ('5G','NR')
+                    THEN 9 ELSE 7 END AS system,
+               ST_Y(geom) AS lat,ST_X(geom) AS lng
+        FROM cell_ref
+        WHERE geom IS NOT NULL AND band_mhz IS NOT NULL
+          AND geom && ST_MakeEnvelope(:lng_min,:lat_min,:lng_max,:lat_max,4326)
+          AND ST_Y(geom) BETWEEN :lat_min AND :lat_max
+          AND ST_X(geom) BETWEEN :lng_min AND :lng_max
+        ORDER BY system,band_mhz,pci,id
+    """), {
+        "lat_min": min(lats) - deg_lat, "lat_max": max(lats) + deg_lat,
+        "lng_min": min(lngs) - deg_lng, "lng_max": max(lngs) + deg_lng,
+    }).mappings()]
+    return _ProbableReferenceLookup(refs)
 
 
 def _within_distance_box(point: dict, ref) -> bool:
@@ -302,7 +481,8 @@ def enrich_radio_links(db, project_id: str, capture_id: str, map_points: list[di
 
 
 def enrich_probable_serving_links(
-    db, project_id: str, capture_id: str, map_points: list[dict]
+    db, project_id: str, capture_id: str, map_points: list[dict],
+    reference_lookup: _ProbableReferenceLookup | None = None,
 ) -> None:
     """Fallback 'probable' pour la cellule serving quand le référentiel
     n'a pas d'EARFCN exact ou de PCI pour la zone (cas Hénin-Beaumont /
@@ -339,31 +519,7 @@ def enrich_probable_serving_links(
     unlinked = [p for p in map_points if not p.get("serving_cell_ref_id")]
     if not unlinked:
         return
-    # Précharge cell_ref par (band_mhz) dans la bbox élargie des points
-    lats = [float(p["lat"]) for p in unlinked]
-    lngs = [float(p["lng"]) for p in unlinked]
-    deg_lat = PROBABLE_LINK_MAX_DISTANCE_M / _METRES_PER_LATITUDE_DEGREE
-    deg_lng = deg_lat / max(cos(radians(sum(lats) / len(lats))), 1e-6)
-    refs_by_band_pci: dict[tuple[int, int], list[dict]] = defaultdict(list)
-    refs_by_band: dict[int, list[dict]] = defaultdict(list)
-    for r in db.execute(text("""
-        SELECT id, band_mhz, pci, site_id, site_name,
-               ST_Y(geom) AS lat, ST_X(geom) AS lng
-        FROM cell_ref
-        WHERE geom IS NOT NULL AND band_mhz IS NOT NULL
-          AND ST_Y(geom) BETWEEN :lat_min AND :lat_max
-          AND ST_X(geom) BETWEEN :lng_min AND :lng_max
-    """), {
-        "lat_min": min(lats) - deg_lat, "lat_max": max(lats) + deg_lat,
-        "lng_min": min(lngs) - deg_lng, "lng_max": max(lngs) + deg_lng,
-    }).mappings().all():
-        ref = {k: r[k] for k in ("id", "band_mhz", "pci", "site_id",
-                                  "site_name", "lat", "lng")}
-        band_mhz = int(ref["band_mhz"])
-        pci = int(ref["pci"]) if ref["pci"] is not None else None
-        if pci is not None:
-            refs_by_band_pci[(band_mhz, pci)].append(ref)
-        refs_by_band[band_mhz].append(ref)
+    lookup = reference_lookup or load_probable_reference_lookup(db, map_points)
 
     for point in unlinked:
         seq = int(point["seq"])
@@ -375,25 +531,12 @@ def enrich_probable_serving_links(
         if band_mhz is None:
             continue
         # Candidats : band+pci (plus spécifique) puis band seul
-        candidates = (refs_by_band_pci.get((band_mhz, pci), [])
-                      if pci is not None else [])
-        used_fallback_band_only = False
-        if not candidates:
-            candidates = refs_by_band.get(band_mhz, [])
-            used_fallback_band_only = True
-        if not candidates:
-            continue
         p_lat = float(point["lat"])
         p_lng = float(point["lng"])
-        best = None
-        best_d = PROBABLE_LINK_MAX_DISTANCE_M
-        for ref in candidates:
-            d = _distance_m(p_lat, p_lng, float(ref["lat"]), float(ref["lng"]))
-            if d < best_d:
-                best = ref
-                best_d = d
-        if best is None:
+        match = lookup.match(7, (band_mhz,), pci, p_lat, p_lng)
+        if match is None:
             continue
+        best, best_d, _, link_method, _ = match
         point["probable_serving_cell_ref_id"] = best["id"]
         point["probable_serving_site_id"] = best["site_id"]
         point["probable_serving_site_name"] = best["site_name"]
@@ -402,6 +545,199 @@ def enrich_probable_serving_links(
         point["probable_serving_distance_m"] = round(best_d, 1)
         point["probable_serving_band_mhz"] = band_mhz
         point["probable_serving_pci"] = pci
-        point["link_method"] = "band_proximity" + ("_pci" if not used_fallback_band_only else "")
+        point["link_method"] = link_method
         point["confidence"] = "probable"
         point["probable_link_max_distance_m"] = PROBABLE_LINK_MAX_DISTANCE_M
+
+
+def enrich_probable_neighbour_nr_links(
+    db,
+    project_id: str,
+    capture_id: str,
+    map_points: list[dict],
+    seconds_by_seq: dict[int, int],
+    reference_lookup: _ProbableReferenceLookup | None = None,
+) -> None:
+    """Complete missing neighbour/NR links with bounded probable matches.
+
+    Proven exact-channel links are immutable. LTE neighbours come from the
+    point's exact seq. NR candidates (PSCell first, then NR neighbour enums)
+    come from CELLMEAS records in the point's capture-second. Probable LTE
+    links fill at most ``MAX_NEIGHBOUR_LINKS_PER_POINT`` slots, strongest RSRP
+    first. A pre-existing proven list is never truncated.
+    """
+    if not map_points:
+        return
+    started = time.perf_counter()
+    points_by_seq: dict[int, list[dict]] = defaultdict(list)
+    for point in map_points:
+        points_by_seq[int(point["seq"])].append(point)
+
+    lte_rows = list(db.execute(text("""
+        WITH candidates AS (
+          SELECT i.seq,i.system,i.cell_type,i.cell_arfcn,i.cell_pci,i.cell_index,
+                 i.cell_rsrp AS strength
+          FROM nmf_cell_identity i
+          WHERE i.project_id=:pid AND i.capture_id=:cap
+            AND i.seq=ANY(:seqs) AND i.event_code='CELLMEAS'
+            AND i.system=7 AND i.cell_type=ANY(:lte_types)
+            AND i.cell_arfcn IS NOT NULL
+        ), ranked AS (
+          SELECT *,row_number() OVER (
+            PARTITION BY seq ORDER BY strength DESC NULLS LAST,
+              cell_type,cell_arfcn,cell_pci,cell_index
+          ) AS rank
+          FROM candidates
+        )
+        SELECT seq,system,cell_type,cell_arfcn,cell_pci,cell_index,strength
+        FROM ranked WHERE rank<=:max_neighbours
+        ORDER BY seq,rank
+    """), {
+        "pid": project_id,
+        "cap": capture_id,
+        "seqs": sorted(points_by_seq),
+        "lte_types": list(LTE_NEIGHBOUR_TYPES),
+        "max_neighbours": MAX_NEIGHBOUR_LINKS_PER_POINT,
+    }).mappings())
+
+    nr_rows = []
+    targets = [(seq, second) for seq, second in sorted(seconds_by_seq.items())]
+    if targets:
+        nr_rows = list(db.execute(text("""
+            WITH targets AS (
+              SELECT * FROM unnest(CAST(:target_seqs AS integer[]),
+                                   CAST(:seconds AS integer[]))
+                AS t(target_seq,second)
+            )
+            , candidates AS (
+              SELECT t.target_seq AS seq,i.system,i.cell_type,i.cell_arfcn,
+                     i.cell_pci,i.cell_index,
+                     i.cell_rsrp AS strength
+              FROM targets t
+              JOIN nmf_event_light l
+                ON l.project_id=:pid AND l.capture_id=:cap AND l.second=t.second
+               AND l.event_code='CELLMEAS'
+              JOIN nmf_cell_identity i
+                ON i.project_id=l.project_id AND i.capture_id=l.capture_id
+               AND i.seq=l.seq AND i.event_code=l.event_code
+              WHERE i.system=9 AND i.cell_type=ANY(:nr_types)
+                AND i.cell_arfcn IS NOT NULL
+            ), ranked AS (
+              SELECT *,row_number() OVER (
+                PARTITION BY seq ORDER BY (cell_type=:anchor_type) DESC,
+                  strength DESC NULLS LAST,cell_type,cell_arfcn,cell_pci,cell_index
+              ) AS rank
+              FROM candidates
+            )
+            SELECT seq,system,cell_type,cell_arfcn,cell_pci,cell_index,strength
+            FROM ranked WHERE rank=1
+            ORDER BY seq
+        """), {
+            "pid": project_id,
+            "cap": capture_id,
+            "target_seqs": [item[0] for item in targets],
+            "seconds": [item[1] for item in targets],
+            "nr_types": [NR_ANCHOR_TYPE, *NR_NEIGHBOUR_TYPES],
+            "anchor_type": NR_ANCHOR_TYPE,
+        }).mappings())
+
+    identities = [dict(row) for row in [*lte_rows, *nr_rows]]
+    if not identities:
+        return
+    after_identities = time.perf_counter()
+    lookup = reference_lookup or load_probable_reference_lookup(db, map_points)
+    after_references = time.perf_counter()
+    after_indexes = time.perf_counter()
+
+    identities_by_seq: dict[int, list[dict]] = defaultdict(list)
+    for identity in identities:
+        identities_by_seq[int(identity["seq"])].append(identity)
+
+    def strongest(identity: dict) -> tuple:
+        strength = identity.get("strength")
+        return (
+            strength is None,
+            -(float(strength) if strength is not None else -9999.0),
+            int(identity["cell_type"]),
+            int(identity["cell_arfcn"]),
+            int(identity["cell_pci"] or -1),
+        )
+
+    def probable_link(point: dict, identity: dict) -> dict | None:
+        system = int(identity["system"])
+        arfcn = int(identity["cell_arfcn"])
+        pci = int(identity["cell_pci"]) if identity["cell_pci"] is not None else None
+        bands = ((_lte_earfcn_to_band_mhz(arfcn),) if system == 7
+                 else _nr_arfcn_to_band_mhz(arfcn))
+        bands = tuple(band for band in bands if band is not None)
+        latitude = float(point["lat"])
+        longitude = float(point["lng"])
+        match = lookup.match(system, bands, pci, latitude, longitude)
+        if match is None:
+            return None
+        ref, distance, band, method, candidate_count = match
+        return {
+            "system": "LTE" if system == 7 else "NR",
+            "arfcn": arfcn,
+            "reference_channel": arfcn,
+            "pci": pci,
+            "cell_type": int(identity["cell_type"]),
+            "cell_ref_id": ref["id"],
+            "site_id": ref["site_id"],
+            "site_name": ref["site_name"],
+            "lat": float(ref["lat"]),
+            "lng": float(ref["lng"]),
+            "distance_m": round(distance, 1),
+            "max_distance_m": PROBABLE_LINK_MAX_DISTANCE_M,
+            "candidate_count": candidate_count,
+            "confidence": "probable",
+            "link_method": method,
+            "band_mhz": band,
+            "measured_strength_dbm": (
+                float(identity["strength"]) if identity.get("strength") is not None else None
+            ),
+        }
+
+    for seq, points in points_by_seq.items():
+        ordered = sorted(identities_by_seq.get(seq, []), key=strongest)
+        for point in points:
+            proven_keys = {
+                (link["system"], int(link["arfcn"]), link.get("pci"), int(link["cell_type"]))
+                for link in point.get("neighbour_links", [])
+            }
+            slots = max(0, MAX_NEIGHBOUR_LINKS_PER_POINT - len(point.get("neighbour_links", [])))
+            for identity in (item for item in ordered if int(item["system"]) == 7):
+                if slots <= 0:
+                    break
+                key = ("LTE", int(identity["cell_arfcn"]), identity.get("cell_pci"),
+                       int(identity["cell_type"]))
+                if key in proven_keys:
+                    continue
+                link = probable_link(point, identity)
+                if link is not None:
+                    point.setdefault("neighbour_links", []).append(link)
+                    slots -= 1
+            if point.get("nr_anchor_link") is not None:
+                continue
+            if not (point.get("serving_cell_ref_id") or point.get("probable_serving_cell_ref_id")):
+                continue
+            nr_ordered = sorted(
+                (item for item in ordered if int(item["system"]) == 9),
+                key=lambda item: (int(item["cell_type"]) != NR_ANCHOR_TYPE, strongest(item)),
+            )
+            for identity in nr_ordered:
+                link = probable_link(point, identity)
+                if link is not None:
+                    point["nr_anchor_link"] = link
+                    break
+    finished = time.perf_counter()
+    log.info(
+        "probable neighbour/NR stages project=%s capture=%s identities=%d refs=%d "
+        "identity_ms=%.3f references_ms=%.3f indexes_ms=%.3f match_ms=%.3f total_ms=%.3f",
+        project_id, capture_id, len(identities), lookup.count,
+        (after_identities - started) * 1000,
+        (after_references - after_identities) * 1000,
+        (after_indexes - after_references) * 1000,
+        (finished - after_indexes) * 1000,
+        (finished - started) * 1000,
+    )

@@ -8,12 +8,22 @@ points from already loaded metric rows.  Ordering is always
 
 from __future__ import annotations
 
+import logging
+import time
 from typing import Iterable
 
 from sqlalchemy import text
 
 from app.db import SessionLocal
-from app.kpi.map_cell_links import enrich_radio_links
+from app.kpi.map_cell_links import (
+    enrich_probable_neighbour_nr_links,
+    enrich_probable_serving_links,
+    enrich_radio_links,
+    load_probable_reference_lookup,
+)
+
+
+log = logging.getLogger(__name__)
 
 
 def _pair_previous_or_same(xs: list[dict], ys: Iterable[dict]):
@@ -118,9 +128,37 @@ def build_map_points(
             ),
         })
 
-    enrich_radio_links(dataset.db, dataset.pid, dataset.cap, points)
-    # 0.117.0 BC3 — fallback probable pour serving quand pas d'EARFCN
-    # exact dans cell_ref (band + PCI + proximité <= 10 km).
-    from app.kpi.map_cell_links import enrich_probable_serving_links
-    enrich_probable_serving_links(dataset.db, dataset.pid, dataset.cap, points)
+    seconds_by_seq = {
+        int(point["seq"]): int(point["_second"])
+        for point in points if point.get("_second") is not None
+    }
+    link_started = time.perf_counter()
+    from app.kpi.probable_link_materialized import apply_materialized
+    materialized = apply_materialized(dataset.db, dataset.pid, dataset.cap, points)
+    if not materialized:
+        enrich_radio_links(dataset.db, dataset.pid, dataset.cap, points)
+        after_proven = time.perf_counter()
+        # 0.117.0 BC3 — fallback probable pour serving quand pas d'EARFCN
+        # exact dans cell_ref (band + PCI + proximité <= 10 km).
+        probable_lookup = load_probable_reference_lookup(dataset.db, points)
+        enrich_probable_serving_links(
+            dataset.db, dataset.pid, dataset.cap, points, probable_lookup
+        )
+        after_serving = time.perf_counter()
+        enrich_probable_neighbour_nr_links(
+            dataset.db, dataset.pid, dataset.cap, points, seconds_by_seq, probable_lookup
+        )
+    else:
+        after_proven = time.perf_counter()
+        after_serving = after_proven
+    after_probable = time.perf_counter()
+    log.info(
+        "metrics map link stages project=%s capture=%s points=%d "
+        "proven_ms=%.3f serving_probable_ms=%.3f neighbour_nr_probable_ms=%.3f total_ms=%.3f",
+        dataset.pid, dataset.cap, len(points),
+        (after_proven - link_started) * 1000,
+        (after_serving - after_proven) * 1000,
+        (after_probable - after_serving) * 1000,
+        (after_probable - link_started) * 1000,
+    )
     return points

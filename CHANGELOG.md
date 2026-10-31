@@ -1,3 +1,17 @@
+## Unreleased (minor) — probable neighbour and NR-anchor links (BC1)
+
+- Extends `/metrics/map` with optional LTE-neighbour and NR-anchor links
+  labelled `confidence=probable`, selected by measured band + PCI when
+  available, otherwise band + nearest site, within a declared 10 km radius.
+- Keeps proven links immutable and caps probable LTE neighbours at the one
+  strongest measured neighbour per point (`cell_rsrp`, deterministic ties).
+- Alembic 0078 persists neighbour strength; 0079 materializes links at import.
+  A guarded, idempotent `backfill_probable_cell_links --reason ...` rebuilds
+  existing captures from database tables without NMF re-decoding.
+
+SemVer back: **MINOR** (new optional response fields and two migrations;
+number assigned by BC3).
+
 ## 0.117.1 (patch) — BC4 2026-10-31 — marquage link_method/confidence sur serving posés avant early-return (BC3)
 
 Comble l'écart résiduel signalé en 0.117.0 : les 199 serving déjà
