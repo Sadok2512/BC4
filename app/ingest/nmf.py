@@ -44,6 +44,7 @@ from app.config import settings
 from app.models import NmfFile, Project
 from app.services.task_privacy import redact_command
 from app.nmf_decoder.privacy import redact_raw
+from app.nmf_decoder.classification import classify_other
 
 # ---------------------------------------------------------------------------
 # Limites & chemins
@@ -65,22 +66,10 @@ IDENTITY_KEYS: set[str] = {
     "guti", "mtmsi", "m_tmsi", "ptmsi", "p_tmsi", "subscriber_id",
 }
 
-# NFF 2.50 content classification for the three most frequent event codes
-# that decoder 2.1.0 still emits as ``other`` on the three reference files.
-# This override is deliberately narrow and only replaces ``other``: a future
-# external decoder's more specific classification always wins.
-NFF250_OTHER_CLASSIFICATION: dict[str, str] = {
-    "PHRATE": "throughput",
-    "PLAID": "measurement",
-    "MACRATE": "throughput",
-}
-
-
 def _nff250_category(event_code: str | None, category: str | None) -> str:
-    current = category or "signalling"
-    if current != "other":
-        return current
-    return NFF250_OTHER_CLASSIFICATION.get(event_code or "", current)
+    """Compatibility wrapper; classification does not certify NFF 2.59."""
+
+    return classify_other(event_code, category)
 
 
 def _copy_rows(db: Session, table: str, columns: list[str], rows: list[dict]) -> None:

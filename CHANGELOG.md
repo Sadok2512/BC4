@@ -1,4 +1,4 @@
-## 0.119.0 (minor) — Superstream SS-01 domain and CRUD hardening — 2026-10-31 (BC4)
+## 0.119.0 (minor) — Superstream SS-01 + NMF type classification — 2026-10-31
 
 - Superstream writes now use ordered `captureIds`; rename and member
   replacement have separate endpoints and require optimistic `If-Match`
@@ -8,6 +8,11 @@
   without touching NMF data.
 - Deleting a Superstream still deletes only its grouping metadata. Capture and
   decoded data remain unchanged.
+- Reclassifies 25 schema-known radio/KPI event types emitted as `other` into
+  `measurement` or `throughput`, without changing layouts, fields, enums or KPI
+  projections.
+- Separates type recognition from structure/field validation and keeps NFF 2.59
+  explicitly uncertified while the available specification stops at 2.50.
 - SemVer back: **MINOR 0.119.0**.
 
 ## 0.118.3 (patch) — Signaling overview Task Bar — 2026-10-31 (BC1)
