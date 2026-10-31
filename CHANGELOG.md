@@ -1,3 +1,24 @@
+## 0.118.0 (minor) — BC4 2026-10-31 — probable neighbour + NR-anchor links materialized (Agent BC1, numérotation BC3)
+
+Merge `bc1/probable-neighbour-nr-links` (`4e1cc0c`). Étend `/metrics/map`
+avec des liens LTE voisines ET ancre NR étiquetés `confidence=probable`,
+sélectionnés par bande mesurée + PCI quand disponible, sinon bande +
+site le plus proche, dans un rayon déclaré de 10 km.
+
+- Les liens prouvés restent immuables ; le lot limite les voisines LTE
+  probables à **une** voisine la plus forte mesurée par point
+  (`cell_rsrp`, départage déterministe).
+- Alembic 0078 persiste la force des voisines ; 0079 matérialise les
+  liens à l'ingestion. Backfill guardé idempotent
+  `backfill_probable_cell_links --reason ...` reconstruit les captures
+  existantes depuis les tables sans redécodage NMF.
+- Backfill BC3 lancé sous lock sur les 3 captures Test_6
+  (a4b0c321c52e, daa2b1df250d, ecffb18dbd7f).
+- Front 1.126.5+ affiche déjà les voisines/NR en couleur + pointillés
+  pour `confidence=probable` (bc4/map-point-popup 95cef18).
+- SemVer back : **MINOR 0.118.0** (nouveaux champs optionnels dans la
+  réponse `/metrics/map`, 2 migrations alembic non breaking).
+
 ## 0.117.3 (patch) — BC4 2026-10-31 — /reference/cell/imports tolère les reports legacy (BC3)
 
 Comble l'écart révélé par le déploiement 0.117.2 : les anciens

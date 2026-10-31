@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 
 
 class RadioCellLink(BaseModel):
-    """A radio-identity match proven against ``cell_ref``.
+    """A proven or explicitly probable radio match against ``cell_ref``.
 
     The measurement keeps its exact ARFCN. ``reference_channel`` preserves
     the historical field but now contains the same exact LTE EARFCN or
@@ -16,7 +16,7 @@ class RadioCellLink(BaseModel):
     system: Literal["LTE", "NR"]
     arfcn: int
     reference_channel: int
-    pci: int
+    pci: int | None
     cell_type: int
     cell_ref_id: str
     site_id: str | None = None
@@ -26,7 +26,14 @@ class RadioCellLink(BaseModel):
     distance_m: float
     max_distance_m: float
     candidate_count: int
-    confidence: Literal["radio_arfcn_pci_unique", "radio_arfcn_pci_nearest_within_25000m"]
+    confidence: Literal[
+        "radio_arfcn_pci_unique",
+        "radio_arfcn_pci_nearest_within_25000m",
+        "probable",
+    ]
+    link_method: Literal["band_proximity_pci", "band_proximity"] | None = None
+    band_mhz: int | None = None
+    measured_strength_dbm: float | None = None
 
 
 class MetricMapPoint(BaseModel):

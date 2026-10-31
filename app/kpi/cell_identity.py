@@ -50,14 +50,16 @@ def materialize_capture(db, project_id: str, capture_id: str) -> dict:
           WHERE g.project_id=:pid AND g.capture_id=:cap
             AND g.group_name='cells'
         ), storage_cells AS (
-          SELECT DISTINCT project_id,capture_id,seq_first,event_code,cell_index
+          SELECT project_id,capture_id,seq_first,event_code,cell_index,
+                 MAX(value) FILTER (WHERE metric_code='cell_rsrp') AS cell_rsrp
           FROM nmf_cell_second
           WHERE project_id=:pid AND capture_id=:cap AND event_code='CELLMEAS'
             AND cell_index>=0
+          GROUP BY project_id,capture_id,seq_first,event_code,cell_index
         )
         INSERT INTO nmf_cell_identity (
           project_id,capture_id,seq,event_code,cell_index,system,cell_type,
-          cell_arfcn,cell_pci,decoder_version
+          cell_arfcn,cell_pci,cell_rsrp,decoder_version
         )
         SELECT r.project_id,r.capture_id,r.seq,s.event_code,s.cell_index,
                r.system,r.cell_type,
@@ -69,6 +71,7 @@ def materialize_capture(db, project_id: str, capture_id: str) -> dict:
                       AND r.cell_ch=trunc(r.cell_ch)
                       AND r.cell_pci=trunc(r.cell_pci)
                     THEN r.cell_pci::integer END,
+               s.cell_rsrp,
                :decoder_version
         FROM ranked r
         JOIN cell_enum e USING(system,cell_type)
