@@ -1,3 +1,21 @@
+## 0.117.3 (patch) — BC4 2026-10-31 — /reference/cell/imports tolère les reports legacy (BC3)
+
+Comble l'écart révélé par le déploiement 0.117.2 : les anciens
+`reference_import` (uploadés avant 0.117.2, format legacy
+`sha256/updated_lines/…`) faisaient échouer `ImportReport.model_validate`
+→ 500 sur `GET /reference/cell/imports` → panneau « Référentiel »
+inaccessible dans le front 1.126.6.
+
+- `app/routes/reference.py` : wrapper `_safe_import_report()` renvoie
+  `None` quand la validation échoue (plutôt que de 500 sur toute la
+  liste).
+- `app/schemas/reference.py` : `ReferenceImportEntry.report` passe à
+  `ImportReport | None` (le front 1.126.6 traite déjà ce champ comme
+  nullable côté zod).
+- Aucun contrat modifié pour les nouveaux imports (0.117.2+), seule la
+  tolérance du legacy est ajoutée.
+- SemVer back : **PATCH 0.117.3**.
+
 ## 0.117.2 (patch) — BC4 2026-10-31 — upload du référentiel en job persistant (Agent BC1, numérotation BC3)
 
 Merge `bc1/cell-ref-upload-proxy` (`cdb130d`). Résout le timeout

@@ -51,7 +51,10 @@ class ReferenceImportEntry(BaseModel):
     rows_loaded: int
     rows_rejected: int
     status: str
-    report: ImportReport
+    # 0.117.3 BC3 — nullable pour tolérer les anciens imports (pré-0.117.2)
+    # dont le JSON `report` ne contient pas tous les champs stricts du
+    # nouveau schéma. Le front traitait déjà ce champ comme nullable.
+    report: ImportReport | None
 
 
 class CellSummaryBucket(BaseModel):

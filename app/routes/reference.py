@@ -74,6 +74,20 @@ def upload_cell_reference(
     return report
 
 
+def _safe_import_report(raw: object) -> ImportReport | None:
+    # 0.117.3 BC3 — les imports pré-0.117.2 ont un `report` au format
+    # legacy (sha256/updated_lines/…) qui ne satisfait pas le schéma
+    # strict `ImportReport`. On renvoie `None` pour ces lignes-là plutôt
+    # que de lever un 500 sur toute la liste. Le front gère déjà
+    # `report: null`.
+    if not isinstance(raw, dict):
+        return None
+    try:
+        return ImportReport.model_validate(raw)
+    except Exception:
+        return None
+
+
 @router.get("/cell/imports", response_model=list[ReferenceImportEntry])
 def list_cell_imports(db: Session = Depends(get_db)) -> list[ReferenceImportEntry]:
     rows = db.query(ReferenceImport).order_by(ReferenceImport.uploaded_at.desc()).all()
@@ -88,7 +102,7 @@ def list_cell_imports(db: Session = Depends(get_db)) -> list[ReferenceImportEntr
             rows_loaded=r.rows_loaded,
             rows_rejected=r.rows_rejected,
             status=r.status,
-            report=ImportReport.model_validate(r.report),
+            report=_safe_import_report(r.report),
         )
         for r in rows
     ]
