@@ -140,6 +140,10 @@ services:
       BC4_JWT_SECRET: ${BC4_JWT_SECRET:?BC4_JWT_SECRET required in .env}
       BC4_NMF_DECODER_PATH: /opt/nmf_decoder
       BC4_NMF_SOURCE_DIR: /var/lib/bc4/nmf-source
+      # 0.117.2 — Le worker consomme désormais les jobs cell_ref posés par
+      # l'API dans ce volume partagé (lecture seule suffisante côté worker,
+      # écrit par l'API lors du spool).
+      BC4_REFERENCES_DIR: /var/lib/bc4/references
       BC4_IMPORT_WORKERS_MAX: ${BC4_IMPORT_WORKERS_MAX:-6}
       BC4_IMPORT_RESERVED_MB: ${BC4_IMPORT_RESERVED_MB:-4096}
       BC4_IMPORT_MEMORY_MARGIN_MB: ${BC4_IMPORT_MEMORY_MARGIN_MB:-512}
@@ -152,6 +156,8 @@ services:
     volumes:
       - ./decoder:/opt/nmf_decoder:ro
       - bc4_nmf_source:/var/lib/bc4/nmf-source
+      # 0.117.2 — Partage le spool cell_ref avec l'API (voir service `api`).
+      - bc4_references:/var/lib/bc4/references
     depends_on:
       api:
         condition: service_healthy
