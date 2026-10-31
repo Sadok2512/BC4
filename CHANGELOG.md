@@ -1,3 +1,15 @@
+## 0.119.0 (minor) — Superstream SS-01 domain and CRUD hardening — 2026-10-31 (BC4)
+
+- Superstream writes now use ordered `captureIds`; rename and member
+  replacement have separate endpoints and require optimistic `If-Match`
+  revision control.
+- Alembic 0080 adds the composite Superstream/project foreign key, positive
+  revision/position checks and rejects pre-existing cross-project membership
+  without touching NMF data.
+- Deleting a Superstream still deletes only its grouping metadata. Capture and
+  decoded data remain unchanged.
+- SemVer back: **MINOR 0.119.0**.
+
 ## 0.118.3 (patch) — Signaling overview Task Bar — 2026-10-31 (BC1)
 
 - `/signaling/timeline` ajoute les seuls intervalles HTTP DL/UL matérialisés

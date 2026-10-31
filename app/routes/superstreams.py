@@ -5,13 +5,9 @@ jamais entrelacée par ts (règle d'ordre canonique). Aucune donnée n'est
 copiée : les membres pointent par `(project_id, capture_id)` via FK
 composite vers `nmf_capture`.
 
-Contrat avec le front (schemas front `src/lib/api/superstreams.ts:10-17`) :
-  Superstream = { id, projectId, name, logIds[], createdAt, updatedAt }
-
-`logIds` est le nom de fichier (ou `filename#N` en cas de doublon dans
-le projet). Le serveur résout ces identifiants en `(project_id,
-capture_id)` et refuse en 422 toute résolution ambiguë / inconnue /
-non-terminée.
+Les écritures utilisent exclusivement les identités réelles `captureIds`.
+`logIds` reste exposé en lecture pendant la transition du front, mais n'est
+jamais accepté comme identité d'écriture.
 
 Accès : lecture via `get_accessible_project` (owner + public + share) ;
 écriture via `require_project_write` (owner uniquement). Mêmes règles
@@ -23,9 +19,9 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response
 from pydantic import BaseModel, Field
-from sqlalchemy import select, text
+from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -47,11 +43,23 @@ router = APIRouter(
 # ---------------------------------------------------------------------------
 
 
-class SuperstreamIn(BaseModel):
-    """Body POST/PUT. `logIds` = noms de fichiers (+ `#N` si doublon)."""
+class SuperstreamCreateIn(BaseModel):
+    name: str = Field(min_length=1, max_length=255)
+    captureIds: list[str] = Field(min_length=1)
 
-    name: str = Field(min_length=1)
-    logIds: list[str] = Field(default_factory=list)
+
+class SuperstreamRenameIn(BaseModel):
+    name: str = Field(min_length=1, max_length=255)
+
+
+class SuperstreamMembersIn(BaseModel):
+    captureIds: list[str] = Field(min_length=1)
+
+
+class SuperstreamMemberSummary(BaseModel):
+    position: int
+    captureId: str
+    captureName: str
 
 
 class SuperstreamOut(BaseModel):
@@ -65,82 +73,77 @@ class SuperstreamOut(BaseModel):
     logIds: list[str]
     captureIds: list[str]
     positions: list[int]
+    members: list[SuperstreamMemberSummary]
+    revision: int
     createdAt: str
     updatedAt: str
 
 
 # ---------------------------------------------------------------------------
-# Résolution logIds → (project_id, capture_id)
+# Validation captureIds
 # ---------------------------------------------------------------------------
 
 
-def _resolve_log_ids(
-    db: Session, project_id: str, log_ids: list[str]
-) -> tuple[list[tuple[str, str]], list[str], list[str], list[str]]:
-    """Résout chaque `logId` du front en `(project_id, capture_id)`.
-
-    Règle de nommage : `filename` seul si unique dans le projet ; sinon
-    `filename#N` où N = index zéro-based de l'occurrence (= `src/lib/api/
-    superstreams.ts:30-39`).
-
-    Retourne `(members, unknown, ambiguous, not_done)` où `members` est
-    la liste ordonnée des `(project_id, capture_id)` à insérer. Les trois
-    autres listes sont renvoyées au client en 422 pour qu'il affiche la
-    cause exacte.
-    """
-    # Index files du projet : filename → [(id, status, capture_id)...]
-    rows = db.execute(text("""
-        SELECT f.id, f.filename, f.status, c.capture_id
-        FROM nmf_file f
-        LEFT JOIN nmf_capture c ON c.nmf_file_id = f.id
-        WHERE f.project_id = :pid
-        ORDER BY f.uploaded_at
-    """), {"pid": project_id}).all()
-
-    by_filename: dict[str, list[dict]] = {}
-    for file_id, filename, status, capture_id in rows:
-        by_filename.setdefault(filename, []).append(
-            {"file_id": file_id, "status": status, "capture_id": capture_id}
+def _validate_capture_ids(
+    db: Session, project_id: str, capture_ids: list[str]
+) -> list[tuple[str, str]]:
+    """Validate an ordered member list without guessing or reordering it."""
+    if len(capture_ids) != len(set(capture_ids)):
+        raise HTTPException(
+            422,
+            {"code": "SUPERSTREAM_DUPLICATE_CAPTURE", "message": "Une capture ne peut apparaître qu'une fois."},
         )
+    rows = db.execute(text("""
+        SELECT c.capture_id, f.status
+        FROM nmf_capture c
+        JOIN nmf_file f ON f.id = c.nmf_file_id AND f.project_id = c.project_id
+        WHERE c.project_id = :pid AND c.capture_id = ANY(:caps)
+    """), {"pid": project_id, "caps": capture_ids}).all()
+    states = {str(capture_id): status for capture_id, status in rows}
+    unknown = [capture_id for capture_id in capture_ids if capture_id not in states]
+    not_done = [capture_id for capture_id in capture_ids if states.get(capture_id) != "done" and capture_id in states]
+    if unknown or not_done:
+        raise HTTPException(
+            422,
+            {
+                "code": "SUPERSTREAM_INVALID_CAPTURES",
+                "message": "Toutes les captures doivent exister dans le projet et être terminées.",
+                "unknown": unknown,
+                "not_done": not_done,
+            },
+        )
+    return [(project_id, capture_id) for capture_id in capture_ids]
 
-    members: list[tuple[str, str]] = []
-    unknown: list[str] = []
-    ambiguous: list[str] = []
-    not_done: list[str] = []
 
-    for raw in log_ids:
-        name = raw
-        occurrence = 0
-        if "#" in raw:
-            name, idx_str = raw.rsplit("#", 1)
-            try:
-                occurrence = int(idx_str)
-            except ValueError:
-                unknown.append(raw)
-                continue
-        occurrences = by_filename.get(name, [])
-        if not occurrences:
-            unknown.append(raw)
-            continue
-        # Front envoie `filename` seul uniquement quand il y a 1 occurrence.
-        # Si len>1 et occurrence==0 et "#" absent → ambigu.
-        if "#" not in raw and len(occurrences) > 1:
-            ambiguous.append(raw)
-            continue
-        if occurrence >= len(occurrences):
-            unknown.append(raw)
-            continue
-        entry = occurrences[occurrence]
-        if entry["status"] != "done":
-            not_done.append(raw)
-            continue
-        if entry["capture_id"] is None:
-            # Fichier done mais pas de capture associée (error pré-decode)
-            not_done.append(raw)
-            continue
-        members.append((project_id, entry["capture_id"]))
+def _clean_name(name: str) -> str:
+    clean = name.strip()
+    if not clean:
+        raise HTTPException(422, {"code": "SUPERSTREAM_NAME_REQUIRED", "message": "Le nom est obligatoire."})
+    return clean
 
-    return members, unknown, ambiguous, not_done
+
+def _expected_revision(if_match: str | None) -> int:
+    if if_match is None:
+        raise HTTPException(
+            428,
+            {"code": "PRECONDITION_REQUIRED", "message": "If-Match est obligatoire."},
+        )
+    raw = if_match.strip()
+    if raw.startswith("W/"):
+        raw = raw[2:].strip()
+    if len(raw) >= 2 and raw[0] == raw[-1] == '"':
+        raw = raw[1:-1]
+    try:
+        revision = int(raw)
+    except ValueError as exc:
+        raise HTTPException(400, {"code": "INVALID_IF_MATCH", "message": "If-Match doit contenir une révision entière."}) from exc
+    if revision < 1:
+        raise HTTPException(400, {"code": "INVALID_IF_MATCH", "message": "La révision doit être positive."})
+    return revision
+
+
+def _set_etag(response: Response, revision: int) -> None:
+    response.headers["ETag"] = f'"{revision}"'
 
 
 def _reverse_log_id(db: Session, project_id: str, capture_ids: list[str]) -> list[str]:
@@ -186,11 +189,14 @@ def _reverse_log_id(db: Session, project_id: str, capture_ids: list[str]) -> lis
 
 def _serialize(db: Session, ss: Superstream) -> SuperstreamOut:
     members = db.execute(text("""
-        SELECT capture_id, position
-        FROM superstream_member
-        WHERE superstream_id = :sid
-        ORDER BY position
-    """), {"sid": ss.id}).all()
+        SELECT m.capture_id, m.position, f.filename
+        FROM superstream_member m
+        JOIN nmf_capture c
+          ON c.project_id = m.project_id AND c.capture_id = m.capture_id
+        JOIN nmf_file f ON f.id = c.nmf_file_id AND f.project_id = c.project_id
+        WHERE m.superstream_id = :sid AND m.project_id = :pid
+        ORDER BY m.position
+    """), {"sid": ss.id, "pid": ss.project_id}).all()
     capture_ids = [m[0] for m in members]
     positions = [m[1] for m in members]
     log_ids = _reverse_log_id(db, ss.project_id, capture_ids)
@@ -201,24 +207,13 @@ def _serialize(db: Session, ss: Superstream) -> SuperstreamOut:
         logIds=log_ids,
         captureIds=capture_ids,
         positions=positions,
+        members=[
+            SuperstreamMemberSummary(position=m[1], captureId=m[0], captureName=m[2])
+            for m in members
+        ],
+        revision=ss.revision,
         createdAt=ss.created_at.isoformat().replace("+00:00", "Z"),
         updatedAt=ss.updated_at.isoformat().replace("+00:00", "Z"),
-    )
-
-
-def _reject_resolution(unknown: list[str], ambiguous: list[str], not_done: list[str]) -> None:
-    """Lève 422 avec les 3 listes explicites si une des listes est non vide."""
-    if not (unknown or ambiguous or not_done):
-        return
-    raise HTTPException(
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        detail={
-            "code": "SUPERSTREAM_UNRESOLVED",
-            "message": "Impossible de résoudre tous les logs du superstream.",
-            "unknown": unknown,
-            "ambiguous": ambiguous,
-            "not_done": not_done,
-        },
     )
 
 
@@ -236,7 +231,7 @@ def list_project_superstreams(
     streams = (
         db.query(Superstream)
         .filter(Superstream.project_id == project_id)
-        .order_by(Superstream.created_at)
+        .order_by(Superstream.created_at, Superstream.id)
         .all()
     )
     return [_serialize(db, s) for s in streams]
@@ -250,30 +245,23 @@ def list_project_superstreams(
 )
 def create_project_superstream(
     project_id: str,
-    body: SuperstreamIn,
+    body: SuperstreamCreateIn,
+    response: Response,
     db: Session = Depends(get_db),
     current: AppUser = Depends(get_current_user),
 ) -> SuperstreamOut:
-    """Crée un superstream. 422 si logIds non résolvables ou captures
-    non terminées. 409 si nom déjà pris dans le projet."""
-    members, unknown, ambiguous, not_done = _resolve_log_ids(
-        db, project_id, body.logIds
-    )
-    _reject_resolution(unknown, ambiguous, not_done)
-    if not members:
-        raise HTTPException(
-            422,
-            {"code": "SUPERSTREAM_EMPTY", "message": "Un superstream exige au moins un log."},
-        )
+    """Create an ordered group from real capture identifiers."""
+    members = _validate_capture_ids(db, project_id, body.captureIds)
 
     now = datetime.now(timezone.utc)
     ss = Superstream(
         id=f"ss_{uuid.uuid4().hex[:16]}",
         project_id=project_id,
-        name=body.name.strip(),
+        name=_clean_name(body.name),
         created_by=current.id,
         created_at=now,
         updated_at=now,
+        revision=1,
     )
     db.add(ss)
     try:
@@ -298,6 +286,7 @@ def create_project_superstream(
             {"code": "SUPERSTREAM_INTEGRITY", "message": str(e.orig)},
         )
     db.refresh(ss)
+    _set_etag(response, ss.revision)
     return _serialize(db, ss)
 
 
@@ -305,58 +294,131 @@ def create_project_superstream(
 def get_project_superstream(
     project_id: str,
     ss_id: str,
+    response: Response,
     db: Session = Depends(get_db),
 ) -> SuperstreamOut:
     ss = db.get(Superstream, ss_id)
     if ss is None or ss.project_id != project_id:
         raise HTTPException(404, {"code": "NOT_FOUND", "message": "Superstream introuvable"})
+    _set_etag(response, ss.revision)
     return _serialize(db, ss)
 
 
-@router.put(
+def _raise_missing_or_revision_conflict(
+    db: Session, project_id: str, ss_id: str, expected: int
+) -> None:
+    actual = db.execute(
+        text("SELECT revision FROM superstream WHERE id=:sid AND project_id=:pid"),
+        {"sid": ss_id, "pid": project_id},
+    ).scalar_one_or_none()
+    if actual is None:
+        raise HTTPException(404, {"code": "NOT_FOUND", "message": "Superstream introuvable"})
+    raise HTTPException(
+        409,
+        {
+            "code": "REVISION_CONFLICT",
+            "message": "Le Superstream a été modifié par une autre requête.",
+            "expected": expected,
+            "actual": int(actual),
+        },
+    )
+
+
+@router.patch(
     "/{ss_id}",
     response_model=SuperstreamOut,
     dependencies=[Depends(require_project_write)],
 )
-def update_project_superstream(
+def rename_project_superstream(
     project_id: str,
     ss_id: str,
-    body: SuperstreamIn,
+    body: SuperstreamRenameIn,
+    response: Response,
+    if_match: str | None = Header(default=None, alias="If-Match"),
     db: Session = Depends(get_db),
 ) -> SuperstreamOut:
-    ss = db.get(Superstream, ss_id)
-    if ss is None or ss.project_id != project_id:
-        raise HTTPException(404, {"code": "NOT_FOUND", "message": "Superstream introuvable"})
-
-    members, unknown, ambiguous, not_done = _resolve_log_ids(
-        db, project_id, body.logIds
-    )
-    _reject_resolution(unknown, ambiguous, not_done)
-    if not members:
-        raise HTTPException(
-            422,
-            {"code": "SUPERSTREAM_EMPTY", "message": "Un superstream exige au moins un log."},
-        )
-
-    ss.name = body.name.strip()
-    ss.updated_at = datetime.now(timezone.utc)
-
-    # Replace all members (truncate-and-insert pattern)
-    db.execute(text("DELETE FROM superstream_member WHERE superstream_id=:sid"),
-               {"sid": ss.id})
-    for pos, (pid, cap) in enumerate(members):
-        db.add(SuperstreamMember(
-            superstream_id=ss.id, project_id=pid, capture_id=cap, position=pos
-        ))
+    expected = _expected_revision(if_match)
     try:
+        row = db.execute(text("""
+            UPDATE superstream
+            SET name=:name, updated_at=:now, revision=revision+1
+            WHERE id=:sid AND project_id=:pid AND revision=:expected
+            RETURNING revision
+        """), {
+            "name": _clean_name(body.name),
+            "now": datetime.now(timezone.utc),
+            "sid": ss_id,
+            "pid": project_id,
+            "expected": expected,
+        }).one_or_none()
+        if row is None:
+            _raise_missing_or_revision_conflict(db, project_id, ss_id, expected)
         db.commit()
     except IntegrityError as e:
         db.rollback()
         raise HTTPException(
-            422,
-            {"code": "SUPERSTREAM_INTEGRITY", "message": str(e.orig)},
-        )
+            409,
+            {"code": "SUPERSTREAM_NAME_CONFLICT", "message": "Un Superstream du même nom existe déjà."},
+        ) from e
+    ss = db.get(Superstream, ss_id)
+    assert ss is not None
     db.refresh(ss)
+    _set_etag(response, ss.revision)
+    return _serialize(db, ss)
+
+
+@router.put(
+    "/{ss_id}/members",
+    response_model=SuperstreamOut,
+    dependencies=[Depends(require_project_write)],
+)
+def replace_project_superstream_members(
+    project_id: str,
+    ss_id: str,
+    body: SuperstreamMembersIn,
+    response: Response,
+    if_match: str | None = Header(default=None, alias="If-Match"),
+    db: Session = Depends(get_db),
+) -> SuperstreamOut:
+    expected = _expected_revision(if_match)
+    members = _validate_capture_ids(db, project_id, body.captureIds)
+    row = db.execute(text("""
+        UPDATE superstream
+        SET updated_at=:now, revision=revision+1
+        WHERE id=:sid AND project_id=:pid AND revision=:expected
+        RETURNING revision
+    """), {
+        "now": datetime.now(timezone.utc),
+        "sid": ss_id,
+        "pid": project_id,
+        "expected": expected,
+    }).one_or_none()
+    if row is None:
+        _raise_missing_or_revision_conflict(db, project_id, ss_id, expected)
+
+    db.execute(
+        text("DELETE FROM superstream_member WHERE superstream_id=:sid AND project_id=:pid"),
+        {"sid": ss_id, "pid": project_id},
+    )
+    for position, (member_project_id, capture_id) in enumerate(members):
+        db.add(SuperstreamMember(
+            superstream_id=ss_id,
+            project_id=member_project_id,
+            capture_id=capture_id,
+            position=position,
+        ))
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(
+            422,
+            {"code": "SUPERSTREAM_INTEGRITY", "message": "La liste des membres viole les contraintes d'intégrité."},
+        ) from exc
+    ss = db.get(Superstream, ss_id)
+    assert ss is not None
+    db.refresh(ss)
+    _set_etag(response, ss.revision)
     return _serialize(db, ss)
 
 
@@ -369,12 +431,17 @@ def update_project_superstream(
 def delete_project_superstream(
     project_id: str,
     ss_id: str,
+    if_match: str | None = Header(default=None, alias="If-Match"),
     db: Session = Depends(get_db),
 ) -> Response:
-    ss = db.get(Superstream, ss_id)
-    if ss is None or ss.project_id != project_id:
-        raise HTTPException(404, {"code": "NOT_FOUND", "message": "Superstream introuvable"})
-    db.delete(ss)
+    expected = _expected_revision(if_match)
+    deleted = db.execute(text("""
+        DELETE FROM superstream
+        WHERE id=:sid AND project_id=:pid AND revision=:expected
+        RETURNING id
+    """), {"sid": ss_id, "pid": project_id, "expected": expected}).scalar_one_or_none()
+    if deleted is None:
+        _raise_missing_or_revision_conflict(db, project_id, ss_id, expected)
     db.commit()
     return Response(status_code=204)
 
@@ -494,7 +561,7 @@ def get_project_superstream_bins(
     if ss is None or ss.project_id != project_id:
         raise HTTPException(404, {"code": "NOT_FOUND"})
     members = db.execute(text("""SELECT position,capture_id FROM superstream_member
-      WHERE superstream_id=:sid AND project_id=:pid ORDER BY position,capture_id"""),
+      WHERE superstream_id=:sid AND project_id=:pid ORDER BY position"""),
       {"sid": ss_id, "pid": project_id}).mappings().all()
     output = []
     try:
@@ -509,4 +576,4 @@ def get_project_superstream_bins(
     except (ValueError, LookupError) as exc:
         raise HTTPException(422, {"reason": str(exc)}) from exc
     return {"project_id": project_id, "superstream_id": ss_id,
-            "order": "position,capture_id,seq", "members": output}
+            "order": "position,seq", "members": output}

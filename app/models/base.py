@@ -6,9 +6,11 @@ from sqlalchemy import (
     BigInteger,
     Boolean,
     Column,
+    CheckConstraint,
     DateTime,
     Float,
     ForeignKey,
+    ForeignKeyConstraint,
     Index,
     Integer,
     String,
@@ -127,6 +129,8 @@ class Superstream(Base):
     __tablename__ = "superstream"
     __table_args__ = (
         UniqueConstraint("project_id", "name", name="uq_superstream_project_name"),
+        UniqueConstraint("id", "project_id", name="uq_superstream_id_project"),
+        CheckConstraint("revision >= 1", name="ck_superstream_revision_positive"),
     )
 
     id: Mapped[str] = mapped_column(String, primary_key=True)
@@ -139,6 +143,7 @@ class Superstream(Base):
     )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
 
 
 class SuperstreamMember(Base):
@@ -157,6 +162,13 @@ class SuperstreamMember(Base):
     __table_args__ = (
         UniqueConstraint(
             "superstream_id", "capture_id", name="uq_superstream_member_capture"
+        ),
+        CheckConstraint("position >= 0", name="ck_superstream_member_position_nonnegative"),
+        ForeignKeyConstraint(
+            ["superstream_id", "project_id"],
+            ["superstream.id", "superstream.project_id"],
+            name="fk_superstream_member_superstream_project",
+            ondelete="CASCADE",
         ),
     )
 
