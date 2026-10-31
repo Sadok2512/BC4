@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Manual post-deploy harness for G18b, G24, G24b, G32 and G51."""
+"""Manual post-deploy harness for G18b, G24, G24b, G32, G51 and G56."""
 from __future__ import annotations
 
 import argparse
@@ -12,6 +12,7 @@ import time
 
 DEFAULT_PID = "43e81a34a073"
 DEFAULT_CAPTURE = "a4b0c321c52e"
+G56_PROVEN_CAPTURE = "ecffb18dbd7f"
 ROOT = Path(__file__).resolve().parents[2]
 LEGACY = ROOT / "scripts" / "guards_2026_10"
 VERDICT_RE = re.compile(r"\bVERDICT=(PASS|FAIL)\b")
@@ -63,6 +64,13 @@ def main(argv: list[str] | None = None) -> int:
             python, str(LEGACY / "G51_metrics_catalog_regression.py"),
             "--base-url", args.base_url, "--token", args.token,
             "--project", args.pid, "--capture", args.capture,
+        ]),
+        ("G56", [
+            python, str(ROOT / "scripts" / "guards" / "G56_proven_links.py"),
+            "--base-url", args.base_url, "--token", args.token,
+            "--project", args.pid,
+            "--proven-capture", G56_PROVEN_CAPTURE,
+            "--probable-capture", args.capture,
         ]),
     ]
     rows = []

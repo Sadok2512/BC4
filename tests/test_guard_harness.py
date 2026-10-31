@@ -60,12 +60,19 @@ def test_runner_orders_all_guards_and_passes_required_scope(monkeypatch, capsys)
         "--base-url", "http://127.0.0.1:9182", "--token", "test-token",
     ])
     assert result == 0
-    assert [name for name, _command in seen] == ["G18b", "G24", "G24b", "G32", "G51"]
+    assert [name for name, _command in seen] == [
+        "G18b", "G24", "G24b", "G32", "G51", "G56",
+    ]
     g24 = dict(seen)["G24"]
     assert g24[-2:] == ["--pid", "43e81a34a073"]
     g51 = dict(seen)["G51"]
     assert "--base-url" in g51 and "--capture" in g51
-    assert "GUARDS VERDICT=PASS passed=5/5" in capsys.readouterr().out
+    g56 = dict(seen)["G56"]
+    assert g56[-4:] == [
+        "--proven-capture", "ecffb18dbd7f",
+        "--probable-capture", "a4b0c321c52e",
+    ]
+    assert "GUARDS VERDICT=PASS passed=6/6" in capsys.readouterr().out
 
 
 def test_runner_global_fail_if_one_guard_fails(monkeypatch, capsys):
@@ -77,4 +84,4 @@ def test_runner_global_fail_if_one_guard_fails(monkeypatch, capsys):
     assert run_all.main([
         "--base-url", "http://127.0.0.1:9182", "--token", "test-token",
     ]) == 1
-    assert "GUARDS VERDICT=FAIL passed=4/5" in capsys.readouterr().out
+    assert "GUARDS VERDICT=FAIL passed=5/6" in capsys.readouterr().out

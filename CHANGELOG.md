@@ -1,3 +1,16 @@
+## Unreleased (patch) — G56 proven serving-link regression guard (BC1)
+
+- Adds fail-closed G56 to `scripts/guards/run_all.py`: the Test_6 map must
+  expose exactly 199 `confidence=proven` / `link_method=earfcn_pci` points on
+  `ecffb18dbd7f`, and at least 4,435 probable serving links on
+  `a4b0c321c52e`; HTTP, JSON or count mismatches exit non-zero.
+- Centralizes the idempotent proven marker before every live/materialized
+  branch, including stale caches and fresh caches without a row for the seq.
+- Adds unit coverage for live early-return and every cache branch.
+
+SemVer back: **PATCH** (guard and invariant hardening; HTTP contract unchanged,
+number assigned by BC3).
+
 ## 0.118.1 (patch) — BC4 2026-10-31 — préserve le marquage proven serving dans apply_materialized (BC3)
 
 Comble l'écart révélé par le déploiement 0.118.0 : les 199 serving

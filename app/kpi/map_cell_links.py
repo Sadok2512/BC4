@@ -255,25 +255,31 @@ def _within_distance_box(point: dict, ref) -> bool:
     return abs(float(ref["lng"]) - float(point["lng"])) <= longitude_delta
 
 
+def preserve_proven_serving_links(map_points: list[dict]) -> None:
+    """Keep the public marker invariant for every pre-resolved serving link.
+
+    Map points may reach radio enrichment through the live path, a fresh
+    materialized cache, a stale cache, or a cache with no row for that seq.
+    The marker belongs to the already proven ``serving_cell_ref_id`` and must
+    therefore be applied before any of those paths can return or continue.
+    Existing, more specific values remain untouched.
+    """
+    for point in map_points:
+        if point.get("serving_cell_ref_id"):
+            point.setdefault("link_method", "earfcn_pci")
+            point.setdefault("confidence", "proven")
+
+
 def enrich_radio_links(db, project_id: str, capture_id: str, map_points: list[dict]) -> None:
     """Mutate map points with optional proven links, scoped to one capture."""
     if not map_points:
         return
+    preserve_proven_serving_links(map_points)
     points_by_seq: dict[int, list[dict]] = defaultdict(list)
     for point in map_points:
         points_by_seq[int(point["seq"])].append(point)
         point.setdefault("neighbour_links", [])
         point.setdefault("nr_anchor_link", None)
-        # 0.117.1 BC3 — Marque les serving déjà posés en amont (via
-        # `chi_previous_seq_cell_ref_exact` dans metrics_map.py:build_map_points)
-        # AVANT l'early return `if not wanted` (captures sans CELLMEAS
-        # exploitables, ex. ecffb18dbd7f). Les 199 serving d'ecff étaient
-        # auparavant non marqués car l'early return court-circuitait le
-        # marquage de fin de fonction. Idempotent sur les captures avec
-        # voisines (le `setdefault` conserve la valeur si déjà posée).
-        if point.get("serving_cell_ref_id"):
-            point.setdefault("link_method", "earfcn_pci")
-            point.setdefault("confidence", "proven")
 
     candidate_identities = list(db.execute(text("""
         SELECT DISTINCT system,cell_type,cell_arfcn,cell_pci
@@ -473,11 +479,6 @@ def enrich_radio_links(db, project_id: str, capture_id: str, map_points: list[di
                 point["neighbour_links"].append(link)
     for point in map_points:
         point.pop("_second", None)
-    # 0.117.0 BC3 — Marque les liens serving existants comme 'earfcn_pci / proven'.
-    for point in map_points:
-        if point.get("serving_cell_ref_id"):
-            point.setdefault("link_method", "earfcn_pci")
-            point.setdefault("confidence", "proven")
 
 
 def enrich_probable_serving_links(

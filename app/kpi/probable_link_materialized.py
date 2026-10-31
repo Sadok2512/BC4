@@ -12,6 +12,7 @@ from app.kpi.map_cell_links import (
     enrich_probable_serving_links,
     enrich_radio_links,
     load_probable_reference_lookup,
+    preserve_proven_serving_links,
 )
 
 
@@ -104,6 +105,8 @@ def materialize_project(db, project_id: str, capture_id: str | None = None) -> d
 
 
 def apply_materialized(db, project_id: str, capture_id: str, points: list[dict]) -> bool:
+    # G56 invariant: this runs before empty/stale/missing-row branches.
+    preserve_proven_serving_links(points)
     if not points:
         return True
     version = _reference_version(db)
@@ -131,14 +134,6 @@ def apply_materialized(db, project_id: str, capture_id: str, points: list[dict])
             continue
         if not point.get("serving_cell_ref_id") and stored["serving_link"]:
             point.update(stored["serving_link"])
-        # 0.118.1 BC3 — Préserve le marquage 0.117.1 des serving déjà
-        # posés en amont (chi_previous_seq_cell_ref_exact) : apply_materialized
-        # court-circuite enrich_radio_links, donc le setdefault doit être
-        # répété ici sinon ecffb18dbd7f repasse à confidence=None (199 points
-        # qui étaient 199/199 proven avant 0.118.0). Idempotent (setdefault).
-        if point.get("serving_cell_ref_id"):
-            point.setdefault("link_method", "earfcn_pci")
-            point.setdefault("confidence", "proven")
         proven = {
             (link["system"], link["arfcn"], link.get("pci"), link["cell_type"])
             for link in point.get("neighbour_links", [])
