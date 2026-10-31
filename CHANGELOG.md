@@ -1,3 +1,19 @@
+## 0.118.1 (patch) — BC4 2026-10-31 — préserve le marquage proven serving dans apply_materialized (BC3)
+
+Comble l'écart révélé par le déploiement 0.118.0 : les 199 serving
+d'ecffb18dbd7f (posés via `chi_previous_seq_cell_ref_exact` upstream)
+étaient marqués `confidence=proven` par `enrich_radio_links` depuis
+0.117.1 ; mais `apply_materialized` (nouveau en 0.118.0) court-circuite
+`enrich_radio_links` quand les probable links sont pré-matérialisés
+(après backfill), laissant ces 199 points à `confidence=None`.
+
+- `app/kpi/probable_link_materialized.py:134` : setdefault
+  `link_method='earfcn_pci'` + `confidence='proven'` répété pour tous
+  les points ayant déjà un `serving_cell_ref_id` (même logique
+  idempotente que 0.117.1 dans `enrich_radio_links`).
+- Vérif ecff : revient à **199/199 proven** après backfill.
+- SemVer back : **PATCH 0.118.1**.
+
 ## 0.118.0 (minor) — BC4 2026-10-31 — probable neighbour + NR-anchor links materialized (Agent BC1, numérotation BC3)
 
 Merge `bc1/probable-neighbour-nr-links` (`4e1cc0c`). Étend `/metrics/map`
