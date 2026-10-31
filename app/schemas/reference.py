@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel
 
 
@@ -17,6 +19,26 @@ class ImportReport(BaseModel):
     # JSON). somme(arcep_breakdown.values()) == rows_loaded.
     arcep_breakdown: dict[str, int]
     snapshot_date: str | None
+
+
+class CellReferenceJobAccepted(BaseModel):
+    job_id: str
+    status: str
+    filename: str
+    source_bytes: int
+
+
+class CellReferenceJob(BaseModel):
+    job_id: str
+    filename: str
+    uploaded_at: datetime
+    status: str
+    progress_percent: int
+    rows_read: int
+    rows_loaded: int
+    rows_rejected: int
+    report: ImportReport | None = None
+    error: dict | None = None
 
 
 class ReferenceImportEntry(BaseModel):

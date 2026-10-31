@@ -1,3 +1,13 @@
+## Unreleased (patch) — upload du référentiel en job persistant (Agent BC1, numérotation BC3)
+
+- `POST /settings/cell-ref/upload` spoule le CSV (limite 256 Mio), crée une
+  ligne `reference_import` en attente et répond `202` avec un identifiant de
+  job ; le worker reprend ensuite le même moteur streaming que la commande
+  `reimport_cell_reference` et publie le résultat dans l'historique.
+- `GET /settings/cell-ref/jobs/{job_id}` expose état, progression, compteurs et
+  erreur structurée ; un job interrompu reste reprenable et idempotent.
+- SemVer back : **PATCH** (numéro attribué par BC3).
+
 ## 0.116.0 (minor) — BC4 2026-10-30 — bandes MHz séparées des canaux radio exacts + alembic 0077 (Agent BC1, numérotation BC3)
 
 Merge `bc1/cell-ref-band-vs-earfcn` (`0bee0f0`). Remplace mon `0.115.1`

@@ -182,6 +182,8 @@ def ingest_csv_stream(
     stream: IO[bytes],
     filename: str,
     actor: str,
+    *,
+    import_id: str | None = None,
 ) -> ImportReport:
     """Lit le CSV depuis `stream`, insère par lots, renvoie le rapport."""
     # Decode as UTF-8 (BOM-tolerant) without buffering the entire file.
@@ -203,7 +205,7 @@ def ingest_csv_stream(
     eci_set: set[str] = set()
     nci_set: set[str] = set()
     snapshot_date: str | None = None
-    import_id = uuid.uuid4().hex[:12]
+    import_id = import_id or uuid.uuid4().hex[:12]
 
     # --- Chemin rapide : COPY STDIN → table de staging TEMP → upsert ---
     # Les motifs de rejet et les comptes restent calculés en Python ligne
@@ -445,6 +447,15 @@ def ingest_csv_stream(
                 (:id, :filename, :uploaded_at, :actor, :snapshot_date,
                  :rows_read, :rows_loaded, :rows_rejected, :status,
                  CAST(:report AS JSON))
+            ON CONFLICT (id) DO UPDATE SET
+                filename=EXCLUDED.filename,
+                actor=EXCLUDED.actor,
+                snapshot_date=EXCLUDED.snapshot_date,
+                rows_read=EXCLUDED.rows_read,
+                rows_loaded=EXCLUDED.rows_loaded,
+                rows_rejected=EXCLUDED.rows_rejected,
+                status=EXCLUDED.status,
+                report=EXCLUDED.report
             """
         ),
         {

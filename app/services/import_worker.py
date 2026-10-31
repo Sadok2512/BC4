@@ -311,6 +311,9 @@ def process_next():
         lock.commit()
         try:
             with SessionLocal() as db:
+                from app.services.cell_ref_jobs import process_next as process_cell_ref
+                if process_cell_ref(db):
+                    return True
                 job = db.query(NmfImportJob).filter(NmfImportJob.status.in_(ACTIVE)).order_by(NmfImportJob.created_at).first()
                 if job is None:
                     from app.nmf_decoder.jobs import process_next as decode_next
