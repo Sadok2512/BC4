@@ -348,11 +348,25 @@ def read_timeline(db, project_id, capture_id, *, bucket_s=10, **filters):
         AND upper(COALESCE(e.attrs->>'track','')) IN ('RRC_STATE','UE_STATE')
       ORDER BY e.project_id,e.capture_id,e.seq,e.id
     """), params).mappings()]
+    # The full-capture UI deliberately does not fetch every RF event. Keep the
+    # small, duration-bearing task population in the overview so its bars are
+    # still available before zooming into a detail window.
+    task_events = [dict(row) for row in db.execute(text(f"""
+      SELECT id,lane,type,kind,seq,seq_end,t_rel_s,t_rel_end_s,
+        duration_ms,outcome,cause,label,attrs,pivot_seq,linked_seqs,link_rule,
+        seq_gap,context_id,session_id
+      FROM signaling_materialized_event e
+      WHERE {where}
+        AND lower(COALESCE(e.attrs->>'track','')) IN ('dl','ul')
+        AND e.t_rel_s IS NOT NULL AND e.t_rel_end_s IS NOT NULL
+      ORDER BY e.project_id,e.capture_id,e.seq,e.id
+    """), params).mappings()]
     missing_time = int(db.execute(text(f"""SELECT count(*)
       FROM signaling_materialized_event e WHERE {where} AND e.t_rel_s IS NULL"""),
       params).scalar_one())
     total = sum(sum(bucket["counts"].values()) for bucket in buckets) + missing_time
-    return dict(buckets=buckets,state_events=state_events,bucket_s=float(bucket_s),
+    return dict(buckets=buckets,state_events=state_events,task_events=task_events,
+                bucket_s=float(bucket_s),
                 total=total,missing_time=missing_time,
                 t_rel_end_s=active.get("t_rel_end_s"))
 

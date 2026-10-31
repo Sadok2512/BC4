@@ -1,3 +1,12 @@
+## 0.118.3 (patch) — Signaling overview Task Bar — 2026-10-31 (BC1)
+
+- `/signaling/timeline` ajoute les seuls intervalles HTTP DL/UL matérialisés
+  dans `task_events`, ordonnés par `(project_id, capture_id, seq)`. La vue
+  complète conserve ainsi les Task Bars sans recharger les événements RF de
+  toute la capture ; le contrat existant reste inchangé et le champ est
+  additif.
+- SemVer back : **PATCH 0.118.3**.
+
 ## 0.118.2 (patch) — G56 + deploy holders BC1/BC4 — 2026-10-31 (BC1)
 
 - Adds fail-closed G56 to `scripts/guards/run_all.py`: the Test_6 map must

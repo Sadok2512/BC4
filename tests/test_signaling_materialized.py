@@ -78,6 +78,12 @@ class _TimelineDb:
             ])
         if "upper(COALESCE" in sql:
             return _TimelineResult([{"id": "state-1", "seq": 7}])
+        if "lower(COALESCE" in sql:
+            return _TimelineResult([{
+                "id": "task-1", "seq": 11, "seq_end": 22,
+                "t_rel_s": 1.0, "t_rel_end_s": 5.0,
+                "attrs": {"track": "dl"},
+            }])
         return _TimelineResult(scalar=2)
 
 
@@ -101,7 +107,14 @@ def test_timeline_is_bucketed_from_materialized_capture_without_population(monke
         {"t_rel_s": 10.0, "counts": {"NAS": 2}, "lane_counts": {"radio": 2}},
     ]
     assert result["state_events"] == [{"id": "state-1", "seq": 7}]
+    assert result["task_events"] == [{
+        "id": "task-1", "seq": 11, "seq_end": 22,
+        "t_rel_s": 1.0, "t_rel_end_s": 5.0,
+        "attrs": {"track": "dl"},
+    }]
     assert all(params["pid"] == "project-1" and params["cap"] == "capture-1"
                for _, params in db.sql)
     assert all("ORDER BY e.project_id,e.capture_id,e.seq" in sql
                for sql, _ in db.sql if "upper(COALESCE" in sql)
+    assert all("ORDER BY e.project_id,e.capture_id,e.seq" in sql
+               for sql, _ in db.sql if "lower(COALESCE" in sql)

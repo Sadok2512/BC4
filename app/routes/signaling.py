@@ -85,6 +85,7 @@ class Bucket(BaseModel):
 class Timeline(Envelope):
     buckets:list[Bucket]
     state_events:list[dict[str,Any]]=Field(default_factory=list)
+    task_events:list[dict[str,Any]]=Field(default_factory=list)
     bucket_s:float
     total:int
     missing_time:int
