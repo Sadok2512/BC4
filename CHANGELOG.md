@@ -1,3 +1,18 @@
+## 0.117.1 (patch) — BC4 2026-10-31 — marquage link_method/confidence sur serving posés avant early-return (BC3)
+
+Comble l'écart résiduel signalé en 0.117.0 : les 199 serving déjà
+posés via `chi_previous_seq_cell_ref_exact` sur `ecffb18dbd7f`
+n'étaient pas marqués `confidence=proven` parce que l'early return
+`if not wanted` d'`enrich_radio_links` court-circuitait le marquage
+de fin de fonction (captures sans voisines CELLMEAS exploitables).
+
+- `app/kpi/map_cell_links.py:84-96` : marquage `link_method='earfcn_pci'`
+  + `confidence='proven'` déplacé dans la boucle d'initialisation,
+  **avant** l'early return. Idempotent (`setdefault`) sur les captures
+  avec voisines : conserve la valeur si déjà posée en fin de fonction.
+- SemVer back : **PATCH 0.117.1** (correction cosmétique sur un champ
+  optionnel, aucun contrat modifié).
+
 ## 0.117.0 (minor) — BC4 2026-10-30 — serving link probable par bande + proximité 10 km (BC3)
 
 Rattrape les cellules serving dont le référentiel n'a NI EARFCN exact
