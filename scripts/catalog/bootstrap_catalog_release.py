@@ -426,7 +426,7 @@ def main(argv: list[str] | None = None) -> int:
     mode.add_argument("--prepare-only", action="store_true",
                       help="valide l'artefact sans ouvrir la base (défaut)")
     mode.add_argument("--activate", action="store_true",
-                      help="active la release ; exige un DEPLOY_LOCK holder=BC3")
+                      help="active la release ; exige un DEPLOY_LOCK holder=BC1 ou BC4")
     args = ap.parse_args(argv)
 
     if args.from_version:

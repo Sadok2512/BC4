@@ -1,4 +1,4 @@
-## Unreleased (patch) — G56 proven serving-link regression guard (BC1)
+## 0.118.2 (patch) — G56 + deploy holders BC1/BC4 — 2026-10-31 (BC1)
 
 - Adds fail-closed G56 to `scripts/guards/run_all.py`: the Test_6 map must
   expose exactly 199 `confidence=proven` / `link_method=earfcn_pci` points on
@@ -9,7 +9,14 @@
 - Adds unit coverage for live early-return and every cache branch.
 
 SemVer back: **PATCH** (guard and invariant hardening; HTTP contract unchanged,
-number assigned by BC3).
+released as 0.118.2).
+
+- Deployment-guard policy follows the post-BC3 operating model: only the
+  exclusive lock holders `BC1` and `BC4` are authorized. Missing locks,
+  malformed locks, and every other holder fail before a database session is
+  opened. Compatibility import names remain available to existing scripts.
+- `run_all.py --skip-g51` excludes only the nightly full-catalog guard; all
+  other guards, including G56, still run and remain fail-closed.
 
 ## 0.118.1 (patch) — BC4 2026-10-31 — préserve le marquage proven serving dans apply_materialized (BC3)
 

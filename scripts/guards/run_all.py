@@ -42,6 +42,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--token", default=os.environ.get("G51_TOKEN"))
     parser.add_argument("--pid", default=DEFAULT_PID)
     parser.add_argument("--capture", default=DEFAULT_CAPTURE)
+    parser.add_argument(
+        "--skip-g51", action="store_true",
+        help="exclude the scheduled full catalog guard from this deploy run",
+    )
     args = parser.parse_args(argv)
 
     if not os.environ.get("BC4_DSN"):
@@ -73,6 +77,8 @@ def main(argv: list[str] | None = None) -> int:
             "--probable-capture", args.capture,
         ]),
     ]
+    if args.skip_g51:
+        jobs = [job for job in jobs if job[0] != "G51"]
     rows = []
     for name, command in jobs:
         verdict, duration, returncode = _run(name, command)

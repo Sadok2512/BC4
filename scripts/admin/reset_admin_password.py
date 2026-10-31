@@ -9,7 +9,7 @@ des `UPDATE` ou `INSERT … ON CONFLICT` manuels (incident BC3 2026-10-30
   ou accepte un mot de passe fourni en entrée (`--password-stdin`).
 - Hash en argon2id via `app.services.auth.hash_password`.
 - `UPDATE app_user SET password_hash=:h WHERE email=:e` sous
-  DEPLOY_LOCK (holder=BC3). Pas d'ON CONFLICT, pas de création.
+  DEPLOY_LOCK (holder=BC1 ou BC4). Pas d'ON CONFLICT, pas de création.
 - Trace `scripts/admin/reset_admin_password.log` (append), horodaté UTC,
   avec `email`, `--reason`, `holder`, `pid` du conteneur, et **jamais** le
   hash ni le mot de passe en clair.

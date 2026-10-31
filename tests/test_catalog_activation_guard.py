@@ -1,6 +1,8 @@
 import json
 from unittest.mock import MagicMock
 
+import pytest
+
 from scripts.catalog import bootstrap_catalog_release as bootstrap
 
 
@@ -39,13 +41,13 @@ def test_activate_refuses_without_lock_and_opens_no_session(monkeypatch, tmp_pat
 def test_activate_refuses_lock_held_by_another_and_opens_no_session(
     monkeypatch, tmp_path, capsys,
 ):
-    _configure(monkeypatch, tmp_path, holder="BC4")
+    _configure(monkeypatch, tmp_path, holder="BC3")
     session = MagicMock()
     monkeypatch.setattr(bootstrap, "SessionLocal", session)
 
     assert bootstrap.main(["--version", "9.9.9", "--activate"]) == 1
     session.assert_not_called()
-    assert "holder=BC3 attendu, holder=BC4" in capsys.readouterr().err
+    assert "holder autorise parmi BC1,BC4, holder=BC3" in capsys.readouterr().err
 
 
 def test_prepare_default_and_explicit_open_no_database_session(monkeypatch, tmp_path):
@@ -58,8 +60,9 @@ def test_prepare_default_and_explicit_open_no_database_session(monkeypatch, tmp_
     session.assert_not_called()
 
 
-def test_activate_with_bc3_lock_switches_current(monkeypatch, tmp_path):
-    _configure(monkeypatch, tmp_path, holder="BC3")
+@pytest.mark.parametrize("holder", ["BC1", "BC4"])
+def test_activate_with_authorized_lock_switches_current(monkeypatch, tmp_path, holder):
+    _configure(monkeypatch, tmp_path, holder=holder)
     db = MagicMock()
     monkeypatch.setattr(bootstrap, "SessionLocal", lambda: db)
     invalidate = MagicMock(return_value={

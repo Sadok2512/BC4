@@ -85,3 +85,18 @@ def test_runner_global_fail_if_one_guard_fails(monkeypatch, capsys):
         "--base-url", "http://127.0.0.1:9182", "--token", "test-token",
     ]) == 1
     assert "GUARDS VERDICT=FAIL passed=5/6" in capsys.readouterr().out
+
+
+def test_runner_can_exclude_g51_but_keeps_g56(monkeypatch, capsys):
+    monkeypatch.setenv("BC4_DSN", "postgresql://disposable")
+    seen = []
+    monkeypatch.setattr(
+        run_all, "_run",
+        lambda name, command: (seen.append(name) or ("PASS", 0.01, 0)),
+    )
+    assert run_all.main([
+        "--base-url", "http://127.0.0.1:9182", "--token", "test-token",
+        "--skip-g51",
+    ]) == 0
+    assert seen == ["G18b", "G24", "G24b", "G32", "G56"]
+    assert "GUARDS VERDICT=PASS passed=5/5" in capsys.readouterr().out
