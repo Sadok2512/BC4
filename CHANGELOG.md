@@ -1,3 +1,12 @@
+## 0.120.0 (minor) — Superstream SS-03 analysis scope — 2026-10-31 (BC4)
+
+- Adds a discriminated capture/Superstream `AnalysisScope` contract and a
+  read-only resolver guarded by project access.
+- Resolved members retain `(project_id, capture_id, seq)` identity and expose
+  canonical cross-capture order `(member_position, seq)` without querying or
+  changing Signaling, Metrics or Map engines.
+- SemVer back: **MINOR 0.120.0**.
+
 ## 0.119.0 (minor) — Superstream SS-01 + NMF type classification — 2026-10-31
 
 - Superstream writes now use ordered `captureIds`; rename and member

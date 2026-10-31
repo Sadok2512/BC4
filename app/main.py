@@ -40,7 +40,7 @@ def _documentation_urls(environment: str) -> dict[str, str | None]:
 
 app = FastAPI(
     title="bc4-back",
-    version="0.119.0",
+    version="0.120.0",
     **_documentation_urls(settings.env),
 )
 
@@ -90,7 +90,7 @@ def health() -> dict:
     return {
         "status": status,
         "env": settings.env,
-        "version": "0.119.0",
+        "version": "0.120.0",
         "decoder_version": DECODER_VERSION,
         "catalog": gc1,
     }
@@ -169,6 +169,11 @@ app.include_router(signaling.router, dependencies=PROJECT_ACCESS)
 # ici car POST/PUT/DELETE ont leurs propres gardes `require_project_write`.
 from app.routes import superstreams
 app.include_router(superstreams.router)
+
+# SS-03 : résolution read-only d'un périmètre capture ou Superstream. Les
+# moteurs analytiques l'adopteront dans leurs lots dédiés.
+from app.routes import analysis_scopes
+app.include_router(analysis_scopes.router)
 
 # 0.78.2 — Site layer map (SA1) : /sites?bbox=... lazy par bbox.
 from app.routes import sites as sites_route
