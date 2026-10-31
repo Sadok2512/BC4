@@ -2,7 +2,8 @@
 
 ## Result
 
-Back SemVer: **PATCH**; BC3 assigns the number. The HTTP contract is unchanged.
+Back SemVer: **PATCH 0.118.2**, numbered and deployed by BC1 after BC3 was
+removed from deployment duty. The HTTP contract is unchanged.
 The proven-serving invariant is centralized in
 `preserve_proven_serving_links()` and runs before live/cache branching. G56 is
 fail-closed on missing URL/token, HTTP failure, malformed JSON, any proven
@@ -84,3 +85,13 @@ Final result in the application image: 26 passed, exit 0, no SKIP.
   non-routable values and all 26 tests passed with exit 0.
 
 No test was skipped and no production action was performed.
+
+## Deployment verification
+
+After the disposable proof above, BC1 deployed the accepted lot under the
+exclusive BC1 lock. `scripts/guards/run_all.py --skip-g51` returned PASS for
+G18b, G24, G24b, G32 and G56 (`passed=5/5`, every exit code zero). Public
+Playwright verification through `http://185.248.33.125:5174` returned HTTP
+200 for Overview, KPI, Map and Signaling, with no API failure or console
+error. The report and screenshots are archived under
+`/home/devmat/BC4/audit/deploy-back-0.118.2/`.
