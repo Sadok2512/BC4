@@ -1,3 +1,23 @@
+## 0.117.2 (patch) — BC4 2026-10-31 — upload du référentiel en job persistant (Agent BC1, numérotation BC3)
+
+Merge `bc1/cell-ref-upload-proxy` (`cdb130d`). Résout le timeout
+proxy Nitro 300 s sur les gros CSV (~134 MiB) : la réponse HTTP est
+immédiate (202) et l'ingest se fait côté worker.
+
+- `POST /settings/cell-ref/upload` spoule le CSV (limite 256 Mio),
+  crée une ligne `reference_import` en attente et répond `202` avec un
+  identifiant de job ; le worker reprend ensuite le même moteur streaming
+  que la commande `reimport_cell_reference` et publie le résultat dans
+  l'historique.
+- `GET /settings/cell-ref/jobs/{job_id}` expose état, progression,
+  compteurs et erreur structurée ; un job interrompu reste reprenable
+  et idempotent.
+- Service dédié `app/services/cell_ref_jobs.py` + modifications
+  `app/routes/settings_cell_ref.py` (–462 lignes dans la route http) et
+  `app/services/import_worker.py`.
+- SemVer back : **PATCH 0.117.2** (ajout d'un endpoint + nouveau statut
+  non breaking sur un endpoint existant).
+
 ## 0.117.1 (patch) — BC4 2026-10-31 — marquage link_method/confidence sur serving posés avant early-return (BC3)
 
 Comble l'écart résiduel signalé en 0.117.0 : les 199 serving déjà
