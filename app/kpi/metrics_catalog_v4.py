@@ -825,7 +825,7 @@ def build_catalog_v4(
             continue
         parent["selectable"] = False
         parent["selection"] = None
-        parent["reason"] = None
+        parent["reason"] = "Sélection disponible dans les feuilles par cellule radio"
         parent["n"] = sum(n for _, _, n in identities)
         replaced_metric_codes.add(base_selection)
         for order, (arfcn, pci, count) in enumerate(identities):

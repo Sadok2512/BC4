@@ -13,6 +13,9 @@
 - Recalibre l'enveloppe d'admission Deep a 55 MiB/MiB : le temoin parcours
   (57 930 189 octets) a atteint 4 032,176 MiB sur la pile jetable ; la marge
   d'admission configuree reste ajoutee au-dessus de cette estimation.
+- Les feuilles parentes remplacees par des feuilles de cellule physique
+  exposent maintenant une raison explicite quand elles deviennent non
+  selectionnables, conformement au contrat controle par le garde BC2.
 
 ## 0.120.0 (minor) — Superstream SS-03 analysis scope — 2026-10-31 (BC4)
 
