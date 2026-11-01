@@ -1,3 +1,31 @@
+## 0.123.0 (minor) — Certified KPI procedure engine + L1 cell-scoped RF relation extension — 2026-11-02 (Agent BC5 North Star)
+
+Consolidates on top of the live 0.122.1 (BC1 G18b cache parity, deployed as
+`bc4-api:0.122.1-df56859`) :
+
+- **A — Procedure Engine (BC4 `bc4/kpi-procedure-engine`)** : capture-local
+  deterministic reconstruction for certified LTE/NR RRC, LTE RACH/HO/EPS
+  bearer, NR registration, IMS registration and explicit EN-DC SCG failure
+  evidence without changing raw RF values or decoder rules. Source-scoped
+  procedure catalogue, KPI and paginated procedure APIs ; each row preserves
+  `(project_id, capture_id, seq)`, anonymised capture-local UE identity.
+  Rates use only certified terminal populations ; unknown/truncated attempts
+  are reported and excluded, and an absent denominator returns N/A.
+  Alembic migration `0083_procedure_evidence` (renumbered from 0082 to avoid
+  collision with 0082_metrics_catalog_cache_scope already deployed) extends
+  the existing `signaling_procedure` model for evidence metadata while
+  preserving legacy signaling rows and endpoints.
+  Unsupported E-RAB/S1AP, VoLTE/VoNR call, PDU Session, QoS and Slicing
+  leaves remain explicitly `NOT_CERTIFIED` ; no event or KPI is simulated.
+- **C — L1 Serving/Neighbour extension (BC5 `bc5/catalog-serving-neighbour-l1`)** :
+  `_cell_relation_for_tree` now certifies serving/neighbour on MIMOMEAS, CSI,
+  PMI, PHRATE, PHRATEU in addition to CELLMEAS. Transport/connection events
+  (DCI, MACRATE, TXPC, PLAID, PLAIU, SCELL, SCELLMOD, CQI, CI, TAD) remain
+  `None` since their serving/neighbour relation is not certified at cell
+  level by Nemo NFF 2.50 and is never inferred from a label. Zero RF value
+  modified, zero API key changed.
+- SemVer back: **MINOR 0.123.0**.
+
 ## 0.122.1 (patch) — project/scoped Metrics cache parity — 2026-11-02 (BC1)
 
 - Keys persisted Metrics catalogue payloads by project and deterministic capture

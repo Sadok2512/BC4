@@ -15,6 +15,7 @@ from app.routes import (
     measurements,
     project_dict_v2,
     project_kpi,
+    procedures,
     projects,
     reference,
     settings as settings_routes,
@@ -40,7 +41,7 @@ def _documentation_urls(environment: str) -> dict[str, str | None]:
 
 app = FastAPI(
     title="bc4-back",
-    version="0.122.1",
+    version="0.123.0",
     **_documentation_urls(settings.env),
 )
 
@@ -138,6 +139,9 @@ app.include_router(metrics.router, dependencies=PROJECT_ACCESS)
 app.include_router(metrics_v3.router, dependencies=PROJECT_ACCESS)
 app.include_router(capture_sheet.router, dependencies=PROJECT_ACCESS)
 app.include_router(project_kpi.router, dependencies=PROJECT_ACCESS)
+# Procedure evidence is read-only. Its router enforces authentication and
+# project membership without requiring editor rights.
+app.include_router(procedures.router)
 app.include_router(kpi.router)
 app.include_router(dictionary.router, dependencies=PROJECT_ACCESS)
 app.include_router(dict_identity.router, dependencies=PROJECT_ACCESS)
