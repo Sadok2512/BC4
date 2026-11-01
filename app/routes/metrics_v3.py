@@ -98,11 +98,16 @@ def _apply_intrinsic_map_rat(selected: list[dict], f: dict) -> tuple[list[dict],
 
 
 def _lean_table_allowed(table_only: bool, selected: list[dict], filters: dict) -> bool:
-    """The semantic fast path has no population context and is unfiltered only."""
+    """The semantic fast path has no population context and is unfiltered only.
+
+    Every semantic cell leaf is already closed by ``event_code``, metric and
+    the deterministic cell-index range.  Rebuilding the complete capture
+    clock/context for non-CELLMEAS leaves needlessly retained hundreds of
+    thousands of rows per G51 request and could exhaust an API worker.
+    """
     return (
         table_only and len(selected)==1
         and bool(selected[0].get('cell_type_filter'))
-        and selected[0].get('event')=='CELLMEAS'
         and not any(key != 'capture_id' for key in filters)
     )
 

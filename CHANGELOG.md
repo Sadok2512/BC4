@@ -11,6 +11,9 @@
 - Routes semantic CQI cell series through the same validated
   `nmf_cell_second` projection as Table and the catalogue, removing the prior
   duplicate Graph population without changing decoded RF values.
+- Keeps unfiltered semantic-cell tables on the bounded projection path and
+  closes that query by `event_code`, preventing full-capture context retention
+  and worker loss during the complete G51 catalogue guard.
 - Disables unfiltered SQL pagination for filtered semantic-cell tables, so
   RAT/operator/time populations now match Graph instead of returning the
   complete capture count.

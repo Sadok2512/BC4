@@ -610,9 +610,11 @@ class Dataset:
                 lo, hi = bounds
                 sql = ('SELECT seq_first seq, seq_last, value, reason, second '
                        'FROM nmf_cell_second WHERE project_id=:pid AND capture_id=:cap '
-                       'AND metric_code=:metric AND cell_index BETWEEN :lo AND :hi '
+                       'AND event_code=:event AND metric_code=:metric '
+                       'AND cell_index BETWEEN :lo AND :hi '
                        'ORDER BY seq_first')
                 rows = [dict(r) for r in self.query(sql, {'metric': code,
+                                                          'event': event,
                                                           'lo': lo, 'hi': hi})]
             else:
                 sql = ('SELECT seq_first seq,seq_last,value,reason,second '
