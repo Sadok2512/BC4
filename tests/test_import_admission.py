@@ -14,7 +14,7 @@ def test_uses_lower_cgroup_headroom(tmp_path):
     ) == 2 * admission.MIB
 
 
-def test_admission_rechecks_memory_and_oversize_runs_alone(monkeypatch):
+def test_admission_rechecks_memory_and_never_overcommits(monkeypatch):
     values = iter((5000, 5000, 300))
     monkeypatch.setattr(admission, "available_memory_mb", lambda: next(values))
     monkeypatch.setattr(admission.settings, "import_reserved_mb", 4096)
@@ -22,7 +22,7 @@ def test_admission_rechecks_memory_and_oversize_runs_alone(monkeypatch):
     monkeypatch.setattr(admission, "estimate_memory_mb", lambda *_: 1000)
     assert admission.decide(1, "deep", running=1).decision == "wait"
     solo = admission.decide(1, "deep", running=0)
-    assert (solo.decision, solo.reason) == ("start", "oversize_solo")
+    assert (solo.decision, solo.reason) == ("wait", "oversize_no_headroom")
     guarded = admission.decide(1, "deep", running=0)
     assert (guarded.decision, guarded.reason) == ("wait", "below_margin")
 

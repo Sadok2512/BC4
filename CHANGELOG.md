@@ -1,3 +1,16 @@
+## 0.120.1 (patch) — RC2 bounded NMF recovery — 2026-11-01 (BC1)
+
+- Streams `nmf_cell_second` directly into one atomic PostgreSQL replacement
+  instead of materializing the complete projection and its keys in Python.
+- Releases external-decoder staging objects before deep replay and bounds the
+  transient COPY buffers; admission no longer starts an import that does not
+  fit measured host/cgroup headroom.
+- G48 keeps its exact duplicate/loss checks but spills the millions of keys to
+  a disposable SQLite index instead of reproducing the worker's memory spike.
+- Docker builds now require and validate the real application version and
+  revision before emitting OCI labels.
+- SemVer back: **PATCH 0.120.1**.
+
 ## 0.120.0 (minor) — Superstream SS-03 analysis scope — 2026-10-31 (BC4)
 
 - Adds a discriminated capture/Superstream `AnalysisScope` contract and a

@@ -15,6 +15,16 @@ RUN pip install -r requirements.txt
 
 COPY . /app
 
+ARG VCS_REF
+ARG APP_VERSION
+RUN test -n "$VCS_REF" \
+ && test -n "$APP_VERSION" \
+ && printf '%s' "$VCS_REF" | grep -Eq '^[0-9a-f]{7,40}$' \
+ && python -c "import tomllib; assert tomllib.load(open('pyproject.toml','rb'))['project']['version'] == '$APP_VERSION'"
+LABEL org.opencontainers.image.revision=$VCS_REF \
+      org.opencontainers.image.version=$APP_VERSION \
+      org.opencontainers.image.title="BC4 Backend"
+
 EXPOSE 8000
 
 CMD ["sh", "-c", "alembic upgrade head && python -m app.seed.run && uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4"]
