@@ -42,6 +42,11 @@ def main() -> int:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--workers", type=int, default=1)
     parser.add_argument(
+        "--relation-only",
+        action="store_true",
+        help="Certify only leaves with an explicit serving/neighbour relation",
+    )
+    parser.add_argument(
         "--retry-errors",
         action="store_true",
         help="Reuse successful rows in --output and rerun only explicit API errors",
@@ -144,6 +149,8 @@ def main() -> int:
         for node in catalog["nodes"]:
             if node.get("node_type") != "leaf" or not node.get("cell"):
                 continue
+            if args.relation_only and not node.get("cell_relation"):
+                continue
             event = node.get("event") or ""
             system = 7 if node.get("cell_system") == "LTE" else 9 if node.get("cell_system") == "NR" else None
             raw = node.get("raw_cell_type")
@@ -157,6 +164,8 @@ def main() -> int:
                 "technology": node.get("technology") or "",
                 "metric": node.get("metric_label") or "",
                 "cell": node.get("cell_label") or "",
+                "cell_relation": node.get("cell_relation") or "",
+                "technical_label": node.get("technical_label") or "",
                 "cell_selector": node.get("cell") or "",
                 "raw_cell_type": "" if raw is None else raw,
                 "selection": node.get("selection") or "",

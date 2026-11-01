@@ -76,6 +76,8 @@ class MetricCatalogNode(BaseModel):
     cell_label: str | None = None
     cell_system: Literal['LTE', 'NR'] | None = None
     raw_cell_type: int | None = None
+    cell_relation: Literal['serving', 'neighbour'] | None = None
+    technical_label: str | None = None
     availability_status: Literal[
         'available', 'no_data', 'not_projected', 'not_applicable'
     ] | None = None

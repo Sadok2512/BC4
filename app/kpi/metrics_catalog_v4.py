@@ -141,6 +141,39 @@ def _cell_role_for_tree(event: str, system: int | None, raw: int) -> str:
     return 'PSCell' if label == 'SCG PSCell' else label
 
 
+def _cell_relation_for_tree(event: str, system: int | None, raw: int) -> str | None:
+    """Return the documented RF relation, never inferred from a label.
+
+    Only CELLMEAS has a certified serving/neighbour distinction. Other
+    cell-scoped events keep their direct Metric -> Cell structure.
+    """
+    if event != "CELLMEAS":
+        return None
+    if (system == 7 and raw in {1, 2}) or (
+        system == 9 and raw in {1000, 1001, 1002}
+    ):
+        return "neighbour"
+    if (system == 7 and (raw == 0 or 10 <= raw <= 40)) or (
+        system == 9 and (raw == 0 or 1 <= raw <= 31 or 100 <= raw <= 131 or raw == 199)
+    ):
+        return "serving"
+    return None
+
+
+def _technical_cell_label(
+    technology: str | None,
+    relation: str | None,
+    metric: str | None,
+    cell: str | None,
+) -> str | None:
+    """Stable display aid; canonical metric selectors remain unchanged."""
+    if not technology or not relation or not metric or not cell:
+        return None
+    relation_token = "Serving" if relation == "serving" else "Neighbor"
+    clean = lambda value: re.sub(r"[^A-Za-z0-9]+", "", value)
+    return "_".join((clean(technology), relation_token, clean(metric), clean(cell)))
+
+
 _KIND_MAP = {
     "Float": "numeric",
     "Integer": "numeric",
@@ -819,6 +852,8 @@ def build_catalog_v4(
         cell_label_val = None
         cell_system_val = None
         raw_cell_type_val = None
+        cell_relation_val = None
+        technical_label_val = None
         if is_leaf and ct_node is not None:
             field_name = label_val.split(" @ ", 1)[0]
             ev_lf = (node.get("event") or "").lstrip("#")
@@ -828,11 +863,17 @@ def build_catalog_v4(
             cell_label_val = _cell_role_for_tree(
                 ev_lf, _leaf_system(node), raw_cell_type_val
             )
+            cell_relation_val = _cell_relation_for_tree(
+                ev_lf, _leaf_system(node), raw_cell_type_val
+            )
             cell_label = _label_per_type(
                 ev_lf, _leaf_system(node), int(ct_node), node.get("cell_label") or str(ct_node)
             )
             label_val = f"{field_name} @ {cell_label}"
             metric_label_val = _tree_metric_label(field_name)
+            technical_label_val = _technical_cell_label(
+                technology_val, cell_relation_val, metric_label_val, cell_label_val
+            )
         if not is_leaf:
             availability_status = None
         elif not has_col:
@@ -869,6 +910,8 @@ def build_catalog_v4(
                 cell_label=cell_label_val,
                 cell_system=cell_system_val,
                 raw_cell_type=raw_cell_type_val,
+                cell_relation=cell_relation_val,
+                technical_label=technical_label_val,
                 availability_status=availability_status,
                 n=n_val,
                 proof=node.get("proof") or "open",
@@ -956,6 +999,11 @@ def build_catalog_v4(
                 cell_label=label,
                 cell_system=parent.get("cell_system"),
                 raw_cell_type=parent.get("raw_cell_type"),
+                cell_relation="neighbour",
+                technical_label=_technical_cell_label(
+                    parent.get("technology"), "neighbour",
+                    parent.get("metric_label"), label,
+                ),
                 availability_status="available",
                 n=count,
                 proof="physical-cell-identity",
@@ -1063,6 +1111,13 @@ def build_catalog_v4(
                 cell_label=_cell_role_for_tree(ev, system, ct),
                 cell_system={7: "LTE", 9: "NR"}.get(system),
                 raw_cell_type=ct,
+                cell_relation=_cell_relation_for_tree(ev, system, ct),
+                technical_label=_technical_cell_label(
+                    {7: "LTE", 9: "NR"}.get(system),
+                    _cell_relation_for_tree(ev, system, ct),
+                    _tree_metric_label(field_name),
+                    _cell_role_for_tree(ev, system, ct),
+                ),
                 availability_status="available",
                 n=int(nn),
                 proof="observed-cell-second",
