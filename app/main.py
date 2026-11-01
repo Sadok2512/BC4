@@ -91,7 +91,7 @@ def health() -> dict:
     return {
         "status": status,
         "env": settings.env,
-        "version": "0.122.1",
+        "version": app.version,
         "decoder_version": DECODER_VERSION,
         "catalog": gc1,
     }
