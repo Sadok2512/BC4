@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from bisect import bisect_right
 from decimal import Decimal, InvalidOperation
+import json
 from threading import RLock
 from typing import Any
 
@@ -133,6 +134,117 @@ def _capture_stamp(db: Session, project_id: str, capture_id: str) -> tuple[Any, 
     if row is None:
         raise HTTPException(404, {"code": "CAPTURE_NOT_FOUND", "message": "Capture not found in project."})
     return (project_id, capture_id, *row)
+
+
+def _engine_version(stamp: tuple[Any, ...]) -> str:
+    values = [value.isoformat() if hasattr(value, "isoformat") else str(value) for value in stamp[2:]]
+    return "procedure-v1|" + "|".join(values)
+
+
+def _stored(db: Session, project_id: str, capture_id: str, engine_version: str) -> list[Procedure]:
+    rows = _rows(
+        db,
+        """SELECT id,project_id,capture_id,ue_key,session_key,technology,type,
+                  seq_start,seq_end,start_time,end_time,duration_ms,
+                  source_pci,source_arfcn,target_pci,target_arfcn,bearer_id,ebi,qci,qfi,five_qi,s_nssai,
+                  result,failure_cause,evidence_level,source_event_ids,latitude,longitude,gps_seq
+           FROM signaling_procedure
+           WHERE project_id=:project_id AND capture_id=:capture_id
+             AND engine_version=:engine_version
+           ORDER BY project_id,capture_id,seq_start,type,id""",
+        {"project_id": project_id, "capture_id": capture_id, "engine_version": engine_version},
+    )
+    return [
+        Procedure(
+            procedure_id=row["id"],
+            project_id=row["project_id"],
+            capture_id=row["capture_id"],
+            ue_key=row["ue_key"],
+            session_key=row["session_key"],
+            rat=row["technology"],
+            procedure_type=row["type"],
+            start_seq=row["seq_start"],
+            end_seq=row["seq_end"],
+            start_time=row["start_time"],
+            end_time=row["end_time"],
+            duration_ms=row["duration_ms"],
+            source_pci=row["source_pci"],
+            source_arfcn=row["source_arfcn"],
+            target_pci=row["target_pci"],
+            target_arfcn=row["target_arfcn"],
+            bearer_id=row["bearer_id"],
+            ebi=row["ebi"],
+            qci=row["qci"],
+            qfi=row["qfi"],
+            five_qi=row["five_qi"],
+            s_nssai=row["s_nssai"],
+            result=row["result"],
+            failure_cause=row["failure_cause"],
+            evidence_level=row["evidence_level"],
+            source_event_ids=tuple(row["source_event_ids"] or []),
+            latitude=row["latitude"],
+            longitude=row["longitude"],
+            gps_seq=row["gps_seq"],
+        )
+        for row in rows
+    ]
+
+
+def _persist(
+    db: Session,
+    project_id: str,
+    capture_id: str,
+    engine_version: str,
+    procedures: tuple[Procedure, ...],
+) -> None:
+    db.execute(
+        text(
+            """DELETE FROM signaling_procedure
+               WHERE project_id=:project_id AND capture_id=:capture_id
+                 AND engine_version LIKE 'procedure-v1|%'"""
+        ),
+        {"project_id": project_id, "capture_id": capture_id},
+    )
+    if procedures:
+        db.execute(
+            text(
+                """INSERT INTO signaling_procedure(
+                     id,project_id,capture_id,type,technology,seq_start,seq_end,duration_ms,outcome,cause,boundary_seqs,
+                     ue_key,session_key,start_time,end_time,source_pci,source_arfcn,target_pci,target_arfcn,
+                     bearer_id,ebi,qci,qfi,five_qi,s_nssai,result,failure_cause,evidence_level,
+                     source_event_ids,latitude,longitude,gps_seq,engine_version)
+                   VALUES(
+                     :procedure_id,:project_id,:capture_id,:procedure_type,:rat,:start_seq,:end_seq,:duration_ms,
+                     :outcome,:failure_cause,:boundary_seqs,:ue_key,:session_key,:start_time,:end_time,
+                     :source_pci,:source_arfcn,:target_pci,:target_arfcn,:bearer_id,:ebi,:qci,:qfi,:five_qi,:s_nssai,
+                     :result,:failure_cause,:evidence_level,CAST(:source_event_ids AS jsonb),:latitude,:longitude,
+                     :gps_seq,:engine_version)"""
+            ),
+            [
+                {
+                    **procedure.as_dict(),
+                    "outcome": (
+                        "ok"
+                        if procedure.result == "SUCCESS"
+                        else "incomplete"
+                        if procedure.result in {"ATTEMPT", "UNKNOWN"}
+                        else "fail"
+                    ),
+                    "boundary_seqs": list(
+                        dict.fromkeys(
+                            [
+                                procedure.start_seq,
+                                *([procedure.end_seq] if procedure.end_seq is not None else []),
+                            ]
+                        )
+                    ),
+                    "source_event_ids": json.dumps(list(procedure.source_event_ids)),
+                    "engine_version": engine_version,
+                }
+                for procedure in procedures
+            ],
+        )
+    db.commit()
 
 
 def _gps_index(db: Session, project_id: str, capture_id: str) -> tuple[list[int], list[dict[str, Any]]]:
@@ -273,13 +385,28 @@ def load_events(db: Session, project_id: str, capture_id: str) -> list[EvidenceE
 
 def procedures_for_capture(db: Session, project_id: str, capture_id: str) -> list[Procedure]:
     stamp = _capture_stamp(db, project_id, capture_id)
+    engine_version = _engine_version(stamp)
     with _CACHE_LOCK:
         cached = _PROCEDURE_CACHE.get(stamp)
         if cached is not None:
             return list(cached)
+        stored = _stored(db, project_id, capture_id, engine_version)
+        if stored:
+            _PROCEDURE_CACHE[stamp] = tuple(stored)
+            return stored
+        # Cross-worker single flight. The second check after acquiring the
+        # transaction-scoped lock observes rows written by the winning worker.
+        lock_key = f"{project_id}:{capture_id}:procedure-v1"
+        db.execute(text("SELECT pg_advisory_xact_lock(hashtextextended(:key,0))"), {"key": lock_key})
+        stored = _stored(db, project_id, capture_id, engine_version)
+        if stored:
+            db.commit()
+            _PROCEDURE_CACHE[stamp] = tuple(stored)
+            return stored
         procedures = tuple(
             reconstruct_procedures(project_id, capture_id, load_events(db, project_id, capture_id))
         )
+        _persist(db, project_id, capture_id, engine_version, procedures)
         if len(_PROCEDURE_CACHE) >= _CACHE_LIMIT:
             _PROCEDURE_CACHE.pop(next(iter(_PROCEDURE_CACHE)))
         # Remove stale generations for the same project/capture before insert.

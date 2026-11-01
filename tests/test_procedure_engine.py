@@ -189,11 +189,19 @@ def test_capture_cache_is_decode_stamp_scoped(monkeypatch):
 
     monkeypatch.setattr(service, "_capture_stamp", lambda *_args: tuple(stamp))
     monkeypatch.setattr(service, "load_events", load)
-    assert len(service.procedures_for_capture(object(), PID, CAP)) == 1
-    assert len(service.procedures_for_capture(object(), PID, CAP)) == 1
+    monkeypatch.setattr(service, "_stored", lambda *_args: [])
+    monkeypatch.setattr(service, "_persist", lambda *_args: None)
+
+    class FakeDb:
+        def execute(self, *_args, **_kwargs):
+            return None
+
+    db = FakeDb()
+    assert len(service.procedures_for_capture(db, PID, CAP)) == 1
+    assert len(service.procedures_for_capture(db, PID, CAP)) == 1
     assert calls["load"] == 1
 
     stamp[-1] = 3
-    assert len(service.procedures_for_capture(object(), PID, CAP)) == 1
+    assert len(service.procedures_for_capture(db, PID, CAP)) == 1
     assert calls["load"] == 2
     service._PROCEDURE_CACHE.clear()

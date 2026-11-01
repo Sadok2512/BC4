@@ -25,6 +25,7 @@ _TYPES = (
 
 
 def upgrade() -> None:
+    op.execute("ALTER TABLE signaling_procedure ALTER COLUMN id TYPE varchar(64)")
     op.execute("ALTER TABLE signaling_procedure DROP CONSTRAINT IF EXISTS signaling_procedure_type_check")
     allowed = ",".join("'%s'" % value for value in _TYPES)
     op.execute(f"ALTER TABLE signaling_procedure ADD CONSTRAINT signaling_procedure_type_check CHECK(type IN ({allowed}))")
@@ -57,6 +58,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    op.execute("DELETE FROM signaling_procedure WHERE engine_version LIKE 'procedure-v1|%'")
     op.execute("DROP INDEX IF EXISTS ix_signaling_procedure_scope_result")
     op.execute("ALTER TABLE signaling_procedure DROP CONSTRAINT IF EXISTS signaling_procedure_result_check")
     op.execute("ALTER TABLE signaling_procedure DROP CONSTRAINT IF EXISTS signaling_procedure_evidence_check")
@@ -70,3 +72,4 @@ def downgrade() -> None:
     op.execute("ALTER TABLE signaling_procedure DROP CONSTRAINT IF EXISTS signaling_procedure_type_check")
     op.execute("""ALTER TABLE signaling_procedure ADD CONSTRAINT signaling_procedure_type_check
       CHECK(type IN ('rrc_setup','rrc_connection','ho','call','data_session','attach','bearer','reestablishment'))""")
+    op.execute("ALTER TABLE signaling_procedure ALTER COLUMN id TYPE varchar(24)")
