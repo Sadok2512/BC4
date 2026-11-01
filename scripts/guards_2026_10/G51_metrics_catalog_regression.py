@@ -36,7 +36,6 @@ reste lecture pure.
 from __future__ import annotations
 
 import argparse
-from concurrent.futures import ThreadPoolExecutor
 import json
 import os
 import sys
@@ -73,10 +72,12 @@ def main():
     ap.add_argument("--capture", required=True)
     ap.add_argument("--limit", type=int, default=None,
                     help="Max number of leaves to probe (default: all)")
-    ap.add_argument("--workers", type=int, default=1, choices=range(1, 17),
-                    help="Bounded concurrent leaves (default: 1, max: 16)")
-    ap.add_argument("--timeout", type=int, default=60,
-                    help="Per-request timeout in seconds (default: 60)")
+    ap.add_argument(
+        "--workers", type=int, default=1, choices=(1,),
+        help="Strictly sequential G51; values above 1 fail before any request",
+    )
+    ap.add_argument("--timeout", type=int, default=120,
+                    help="Per-request timeout in seconds (production baseline: 120)")
     ap.add_argument("--allow-422", action="store_true",
                     help="Treat 422 as pass (default: pass only on 200)")
     ap.add_argument("--mixed-pairs", nargs="*",
@@ -136,23 +137,26 @@ def main():
                                    timeout=args.timeout)
         return code, (s, sz, el, err), (s2, sz2, el2, err2)
 
-    with ThreadPoolExecutor(max_workers=args.workers) as executor:
-        for i, (code, table_result, series_result) in enumerate(
-            executor.map(probe, leaves), 1
-        ):
-            s, _sz, el, err = table_result
-            s2, _sz2, el2, err2 = series_result
-            results[("table", s)] += 1
-            if s not in accepted:
-                failures.append(("table", code, s, el, err))
-            results[("series", s2)] += 1
-            if s2 not in accepted:
-                failures.append(("series", code, s2, el2, err2))
+    # G51 is deliberately sequential.  Eight concurrent leaves retained
+    # several GiB across the four Uvicorn workers and produced transport-level
+    # disconnects under host pressure, while the canonical production guard
+    # completed the same 1,937 leaves sequentially.  A 599 must remain a real
+    # failure; do not hide it with retries or parallel replacement requests.
+    for i, code in enumerate(leaves, 1):
+        code, table_result, series_result = probe(code)
+        s, _sz, el, err = table_result
+        s2, _sz2, el2, err2 = series_result
+        results[("table", s)] += 1
+        if s not in accepted:
+            failures.append(("table", code, s, el, err))
+        results[("series", s2)] += 1
+        if s2 not in accepted:
+            failures.append(("series", code, s2, el2, err2))
 
-            if i % 50 == 0 or i == len(leaves):
-                print(f"  … {i}/{len(leaves)} table[200]={results[('table',200)]} "
-                      f"table[422]={results[('table',422)]} table[500]={results[('table',500)]} "
-                      f"series[500]={results[('series',500)]}", flush=True)
+        if i % 50 == 0 or i == len(leaves):
+            print(f"  … {i}/{len(leaves)} table[200]={results[('table',200)]} "
+                  f"table[422]={results[('table',422)]} table[500]={results[('table',500)]} "
+                  f"series[500]={results[('series',500)]}", flush=True)
 
     print(f"\nG51 mixed combinations ({len(args.mixed_pairs)}):", flush=True)
     for codes in args.mixed_pairs:

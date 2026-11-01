@@ -1,3 +1,6 @@
+from pathlib import Path
+import subprocess
+import sys
 from types import SimpleNamespace
 
 from scripts.guards import run_all
@@ -67,6 +70,8 @@ def test_runner_orders_all_guards_and_passes_required_scope(monkeypatch, capsys)
     assert g24[-2:] == ["--pid", "43e81a34a073"]
     g51 = dict(seen)["G51"]
     assert "--base-url" in g51 and "--capture" in g51
+    assert g51[g51.index("--workers") + 1] == "1"
+    assert g51[g51.index("--timeout") + 1] == "120"
     g56 = dict(seen)["G56"]
     assert g56[-4:] == [
         "--proven-capture", "ecffb18dbd7f",
@@ -100,3 +105,18 @@ def test_runner_can_exclude_g51_but_keeps_g56(monkeypatch, capsys):
     ]) == 0
     assert seen == ["G18b", "G24", "G24b", "G32", "G56"]
     assert "GUARDS VERDICT=PASS passed=5/5" in capsys.readouterr().out
+
+
+def test_g51_rejects_parallel_workers_before_network_access():
+    script = Path(__file__).parents[1] / "scripts/guards_2026_10/G51_metrics_catalog_regression.py"
+    completed = subprocess.run(
+        [
+            sys.executable, str(script), "--base-url", "http://127.0.0.1:1",
+            "--token", "not-used", "--project", "project", "--capture", "capture",
+            "--workers", "8",
+        ],
+        text=True, capture_output=True, check=False,
+    )
+    assert completed.returncode == 2
+    assert "invalid choice:" in completed.stderr
+    assert "choose from 1" in completed.stderr

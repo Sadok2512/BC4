@@ -68,6 +68,7 @@ def main(argv: list[str] | None = None) -> int:
             python, str(LEGACY / "G51_metrics_catalog_regression.py"),
             "--base-url", args.base_url, "--token", args.token,
             "--project", args.pid, "--capture", args.capture,
+            "--workers", "1", "--timeout", "120",
         ]),
         ("G56", [
             python, str(ROOT / "scripts" / "guards" / "G56_proven_links.py"),
