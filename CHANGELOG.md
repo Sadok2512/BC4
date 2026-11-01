@@ -1,3 +1,14 @@
+## 0.121.1 (patch) — semantic RAT map fast path — 2026-11-01 (BC4)
+
+- Pushes LTE/NR selection into catalogue-proven semantic CELLMEAS leaves for
+  `/metrics/map`, avoiding the lossy full-capture context aggregation.
+- Repeated `rat=LTE&rat=NR` remains a union: LTE leaves retain the same 4,935
+  Test_6 points as an unfiltered request; an NR-only selection returns no LTE
+  leaf instead of intersecting unrelated per-sequence context.
+- Keeps untyped and mixed metrics on the existing generic filter path. Metric
+  values, radio-link association and map response schemas are unchanged.
+- SemVer back: **PATCH 0.121.1**.
+
 ## 0.121.0 (minor) — KPI workspace templates — 2026-11-01 (BC4)
 
 - Adds durable, personal and project-scoped KPI workspace templates with a

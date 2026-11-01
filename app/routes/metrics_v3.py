@@ -63,6 +63,39 @@ class MetricMapResponse(BaseModel):
     project_id:str;capture_id:str;result_id:str;decoder_version:str
     total_points:int;map_points:list[MetricMapPoint]
 
+
+def _intrinsic_metric_rat(metric: dict) -> str | None:
+    """Return a RAT only when the selected leaf proves it structurally.
+
+    Semantic CELLMEAS leaves carry their radio system in ``cell_display``.
+    Applying the generic context predicate to those rows is both redundant
+    and lossy: a sequence with several measurement populations has a NULL
+    aggregate context RAT even though the selected leaf itself is proven LTE
+    or NR.
+    """
+    system=(metric.get('cell_display') or {}).get('system')
+    return system if system in {'LTE','NR'} else None
+
+
+def _apply_intrinsic_map_rat(selected: list[dict], f: dict) -> tuple[list[dict],dict]:
+    """Push a RAT selection into semantic map leaves without a context scan.
+
+    Query parameters are a union (SQL ``ANY``/``IN``), never an intersection.
+    The rewrite is deliberately limited to leaves whose RAT is explicit in
+    the decoder/catalogue contract.  Mixed or untyped leaves keep the generic
+    context path unchanged.
+    """
+    rats=f.get('rat') or []
+    if not rats or not selected or not set(rats).issubset({'LTE','NR'}):
+        return selected,f
+    intrinsic=[_intrinsic_metric_rat(metric) for metric in selected]
+    if any(rat is None for rat in intrinsic):
+        return selected,f
+    filtered=[metric for metric,rat in zip(selected,intrinsic) if rat in rats]
+    map_filters=dict(f)
+    map_filters.pop('rat',None)
+    return filtered,map_filters
+
 @router.get('/projects/{project_id}/metrics/map',response_model=MetricMapResponse)
 def metric_map(project_id:str,capture_id:str,codes:str,cell:str='all',attr:str|None=None,
                from_seq:int|None=Query(None,ge=0),to_seq:int|None=Query(None,ge=0),
@@ -75,21 +108,25 @@ def metric_map(project_id:str,capture_id:str,codes:str,cell:str='all',attr:str|N
     tokens=list(dict.fromkeys(codes.split(',')))
     if len(tokens)>64:raise HTTPException(422,'too_many_metrics')
     selected=[parse_selection(code,definitions(),cell,attr) for code in tokens]
+    selected,map_filters=_apply_intrinsic_map_rat(selected,f)
     started=time.perf_counter()
-    dataset=Dataset(db,project_id,capture_id,f,from_seq,to_seq,lean_series=True)
+    dataset=Dataset(db,project_id,capture_id,map_filters,from_seq,to_seq,lean_series=True)
     after_init=time.perf_counter()
-    with ThreadPoolExecutor(max_workers=1,thread_name_prefix='metrics-map-gps') as executor:
-        gps_future=executor.submit(load_gps_fixes_scoped,project_id,capture_id)
-        loaded=[(metric,dataset.load(
-            metric,
-            cell_pci=metric.get('cell_pci',cell_pci),
-            cell_arfcn=metric.get('cell_arfcn',cell_arfcn),
-            include_total=False,
-        )) for metric in selected]
-        after_load=time.perf_counter()
-        gps_fixes=gps_future.result()
+    if selected:
+        with ThreadPoolExecutor(max_workers=1,thread_name_prefix='metrics-map-gps') as executor:
+            gps_future=executor.submit(load_gps_fixes_scoped,project_id,capture_id)
+            loaded=[(metric,dataset.load(
+                metric,
+                cell_pci=metric.get('cell_pci',cell_pci),
+                cell_arfcn=metric.get('cell_arfcn',cell_arfcn),
+                include_total=False,
+            )) for metric in selected]
+            after_load=time.perf_counter()
+            gps_fixes=gps_future.result()
+    else:
+        loaded=[];gps_fixes=[];after_load=time.perf_counter()
     after_gps=time.perf_counter()
-    points=build_map_points(dataset,loaded,gps_fixes)
+    points=build_map_points(dataset,loaded,gps_fixes) if loaded else []
     after_map=time.perf_counter()
     basis=':'.join((project_id,capture_id,dataset.state['decoder_version'],codes,
                     str(len(points)),str(points[0]['seq'] if points else ''),
