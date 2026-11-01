@@ -96,6 +96,16 @@ def _apply_intrinsic_map_rat(selected: list[dict], f: dict) -> tuple[list[dict],
     map_filters.pop('rat',None)
     return filtered,map_filters
 
+
+def _lean_table_allowed(table_only: bool, selected: list[dict], filters: dict) -> bool:
+    """The semantic fast path has no population context and is unfiltered only."""
+    return (
+        table_only and len(selected)==1
+        and bool(selected[0].get('cell_type_filter'))
+        and selected[0].get('event')=='CELLMEAS'
+        and not any(key != 'capture_id' for key in filters)
+    )
+
 @router.get('/projects/{project_id}/metrics/map',response_model=MetricMapResponse)
 def metric_map(project_id:str,capture_id:str,codes:str,cell:str='all',attr:str|None=None,
                from_seq:int|None=Query(None,ge=0),to_seq:int|None=Query(None,ge=0),
@@ -157,11 +167,10 @@ def analysis(project_id:str,capture_id:str,codes:str,cell:str='all',attr:str|Non
     tokens=list(dict.fromkeys(codes.split(',')))
     if len(tokens)>64:raise HTTPException(422,'too_many_metrics')
     selected=[parse_selection(c,definitions(),cell,attr) for c in tokens]
-    lean_table=(
-        table_only and len(selected)==1
-        and bool(selected[0].get('cell_type_filter'))
-        and selected[0].get('event')=='CELLMEAS'
-    )
+    # The lean semantic-cell path intentionally skips context population. It
+    # is valid only for an unfiltered capture. RAT/operator/band/etc. must use
+    # the full Dataset so Table and Graph apply one predicate.
+    lean_table=_lean_table_allowed(table_only,selected,f)
     return Dataset(db,project_id,capture_id,f,from_seq,to_seq,lean_table=lean_table).response(
         selected,max_points,group_by,x,include_map,page,page_size,table_only,
         cell_pci,cell_arfcn,

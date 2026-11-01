@@ -67,6 +67,18 @@ class MetricCatalogNode(BaseModel):
     source_column: str | None = None
     unit: str = ''
     cell: str | None = None
+    # Structured presentation identity.  These fields come from the NFF
+    # catalog enum and decoder projection, never from parsing translated UI
+    # labels.  They let the client render Technology -> Metric -> Cell while
+    # keeping storage cell_index and physical radio identity separate.
+    technology: str | None = None
+    metric_label: str | None = None
+    cell_label: str | None = None
+    cell_system: Literal['LTE', 'NR'] | None = None
+    raw_cell_type: int | None = None
+    availability_status: Literal[
+        'available', 'no_data', 'not_projected', 'not_applicable'
+    ] | None = None
     n: int = 0
     # 0.80.1 — proof en str libre (idem MetricInfo).
     proof: str
@@ -312,7 +324,11 @@ def metric_aggregate(
 
 
 @router.get('/projects/{project_id}/metrics', response_model=MetricCatalogResponse)
-def catalog(project_id: str, db: Session=Depends(get_db)):
+def catalog(
+    project_id: str,
+    capture_id: list[str] = Query(default=[]),
+    db: Session=Depends(get_db),
+):
     """0.80.0 (Phase 3a) — contrat Phase 3a :
     si `catalog_release.is_current` est posé → chemin **v4** (lit
     `catalog_<v>.json`, servit 5115 feuilles affichées, enveloppe
@@ -321,6 +337,18 @@ def catalog(project_id: str, db: Session=Depends(get_db)):
     `reason='fallback_legacy_no_catalog_release'`, enveloppe `catalog_release`
     forcée à `None` — jamais de default silencieux."""
     project(db,project_id)
+    capture_ids = tuple(dict.fromkeys(capture_id))
+    if capture_ids:
+        known = set(db.execute(text("""
+          SELECT capture_id FROM nmf_capture
+          WHERE project_id=:pid AND capture_id=ANY(:capture_ids)
+        """), {'pid': project_id, 'capture_ids': list(capture_ids)}).scalars())
+        missing = sorted(set(capture_ids) - known)
+        if missing:
+            raise HTTPException(404, {
+                'reason': 'capture_not_found_in_project',
+                'capture_ids': missing,
+            })
     from app.kpi.catalog_release.registry import current_catalog
     cur = current_catalog(db)
     stamp=db.execute(text("""SELECT md5(coalesce(string_agg(
@@ -335,8 +363,10 @@ def catalog(project_id: str, db: Session=Depends(get_db)):
     # catalog invalide automatiquement sans TRUNCATE manuel. L'identité
     # physique est reconstruite sans re-décodage : son empreinte invalide
     # aussi le cache afin que les nouvelles voisines apparaissent aussitôt.
+    scope_stamp = ','.join(capture_ids) if capture_ids else 'project'
     cache_stamp = (
       f"{stamp}|identity={identity_stamp}|cat={cur.version if cur else 'legacy'}"
+      f"|scope={scope_stamp}"
     )
     cached=db.execute(text("""SELECT payload FROM metrics_catalog_cache
       WHERE project_id=:pid AND decode_stamp=:stamp"""),
@@ -344,7 +374,7 @@ def catalog(project_id: str, db: Session=Depends(get_db)):
     if cached is not None:return _with_analytics_tabs(cached)
     if cur:
         from app.kpi.metrics_catalog_v4 import build_catalog_v4
-        payload = build_catalog_v4(db, project_id, cur)
+        payload = build_catalog_v4(db, project_id, cur, capture_ids=capture_ids)
     else:
         from app.kpi.metrics_v3 import catalog as catalog_v3
         from app.kpi.metrics_catalogue_v6 import catalogue as catalogue_v6

@@ -1,3 +1,21 @@
+## 0.122.0 (minor) — capture-scoped Metrics availability contract — 2026-11-01 (BC4)
+
+- Adds repeatable `capture_id` scoping to `GET /projects/{pid}/metrics`; every
+  catalogue count is now computed from non-NULL projected values in the active
+  capture set instead of the whole project.
+- Exposes structured technology, metric and semantic cell-role metadata while
+  preserving the existing selection tokens. Public cell types remain distinct
+  from decoder storage indexes and physical PCI/ARFCN identities.
+- Distinguishes available, no-data, not-projected and not-applicable leaves;
+  no NULL value is converted to zero and no cell is synthesized.
+- Routes semantic CQI cell series through the same validated
+  `nmf_cell_second` projection as Table and the catalogue, removing the prior
+  duplicate Graph population without changing decoded RF values.
+- Disables unfiltered SQL pagination for filtered semantic-cell tables, so
+  RAT/operator/time populations now match Graph instead of returning the
+  complete capture count.
+- SemVer back: **MINOR 0.122.0**.
+
 ## 0.121.1 (patch) — semantic RAT map fast path — 2026-11-01 (BC4)
 
 - Pushes LTE/NR selection into catalogue-proven semantic CELLMEAS leaves for
