@@ -180,6 +180,36 @@ class SuperstreamMember(Base):
     capture_id: Mapped[str] = mapped_column(String, nullable=False)
 
 
+class WorkspaceTemplate(Base):
+    """Personal, project-scoped KPI workspace presentation template.
+
+    The JSON configuration contains presentation metadata only. It never owns
+    captures, measurements, decoded NMF rows or authentication material.
+    """
+
+    __tablename__ = "workspace_template"
+    __table_args__ = (
+        CheckConstraint("revision >= 1", name="ck_workspace_template_revision_positive"),
+        CheckConstraint("schema_version >= 1", name="ck_workspace_template_schema_positive"),
+        Index("ix_workspace_template_project_owner", "project_id", "owner_id"),
+    )
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    project_id: Mapped[str] = mapped_column(
+        ForeignKey("projects.id", ondelete="CASCADE"), nullable=False
+    )
+    owner_id: Mapped[str] = mapped_column(
+        ForeignKey("app_user.id", ondelete="CASCADE"), nullable=False
+    )
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    schema_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    configuration: Mapped[dict] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
 class NmfFile(Base):
     __tablename__ = "nmf_file"
     __table_args__ = (

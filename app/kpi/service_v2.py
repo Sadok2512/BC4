@@ -635,7 +635,9 @@ _GEO_DIMS: tuple[tuple[str, str], ...] = (
 )
 
 
-def build_filters_v2(db: Session, project_id: str) -> dict[str, Any]:
+def build_filters_v2(
+    db: Session, project_id: str, capture_ids: tuple[str, ...] = ()
+) -> dict[str, Any]:
     """Filtres réels issus de ``measurement_points`` du projet.
 
     0.41.0 — Chaque dimension porte ``{available, reason, values}``.
@@ -658,11 +660,15 @@ def build_filters_v2(db: Session, project_id: str) -> dict[str, Any]:
         mp_select_parts.append(
             f"bool_or({col} IS NULL) AS {col}_has_null"
         )
+    capture_clause = " AND capture_id = ANY(:capture_ids)" if capture_ids else ""
     mp_sql = (
         "SELECT " + ", ".join(mp_select_parts) +
-        " FROM measurement_points WHERE project_id = :pid"
+        " FROM measurement_points WHERE project_id = :pid" + capture_clause
     )
-    mp_row = db.execute(text(mp_sql), {"pid": project_id}).first()
+    params: dict[str, Any] = {"pid": project_id}
+    if capture_ids:
+        params["capture_ids"] = list(capture_ids)
+    mp_row = db.execute(text(mp_sql), params).first()
     assert mp_row is not None  # COUNT(*) ne renvoie jamais 0 ligne
     mp_total = int(mp_row.mp_total or 0)
     mp_with_ecgi = int(mp_row.mp_with_ecgi or 0)
@@ -690,9 +696,10 @@ def build_filters_v2(db: Session, project_id: str) -> dict[str, Any]:
             "SELECT " + ", ".join(geo_select_parts) +
             " FROM measurement_points mp "
             " JOIN cell_ref cr ON cr.eci = mp.ecgi "
-            " WHERE mp.project_id = :pid"
+            " WHERE mp.project_id = :pid" +
+            (" AND mp.capture_id = ANY(:capture_ids)" if capture_ids else "")
         )
-        geo_row = db.execute(text(geo_sql), {"pid": project_id}).first()
+        geo_row = db.execute(text(geo_sql), params).first()
     else:
         geo_row = None
 

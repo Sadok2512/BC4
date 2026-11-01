@@ -31,6 +31,7 @@ from app.models.base import (
     Superstream,
     SuperstreamMember,
     User,
+    WorkspaceTemplate,
 )
 
 __all__ = [
@@ -66,6 +67,7 @@ __all__ = [
     "StgEventRaw",
     "StgMeasurementRaw",
     "User",
+    "WorkspaceTemplate",
 ]
 
 from app.models.import_job import NmfImportJob

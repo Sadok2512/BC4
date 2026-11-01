@@ -91,9 +91,29 @@ def kpi_catalog(
 
 
 @router.get("/{project_id}/kpi/filters", response_model=ProjectKpiFilters)
-def kpi_filters(project_id: str, db: Session = Depends(get_db)) -> dict:
+def kpi_filters(
+    project_id: str,
+    capture_id: list[str] = Query(default_factory=list),
+    db: Session = Depends(get_db),
+) -> dict:
     _require_project(db, project_id)
-    return english_response(build_filters_v2(db, project_id))
+    captures = tuple(dict.fromkeys(capture_id))
+    if captures:
+        existing = set(db.execute(text("""
+            SELECT capture_id FROM nmf_capture
+            WHERE project_id=:pid AND capture_id=ANY(:capture_ids)
+        """), {"pid": project_id, "capture_ids": list(captures)}).scalars())
+        unknown = [capture for capture in captures if capture not in existing]
+        if unknown:
+            raise HTTPException(
+                422,
+                {
+                    "code": "CAPTURE_SCOPE_INVALID",
+                    "message": "Une capture n'appartient pas au projet.",
+                    "unknown": unknown,
+                },
+            )
+    return english_response(build_filters_v2(db, project_id, captures))
 
 
 @router.post("/{project_id}/kpi/_rebuild_param_occurrence")

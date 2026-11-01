@@ -1,3 +1,15 @@
+## 0.121.0 (minor) — KPI workspace templates — 2026-11-01 (BC4)
+
+- Adds durable, personal and project-scoped KPI workspace templates with a
+  strictly validated presentation-only JSON v1 contract.
+- Create/list/read/update/rename/delete are authenticated; updates, renames and
+  deletes require `If-Match`, return 428 when absent and 409 on stale revision.
+- Alembic 0081 creates template metadata only. No NMF, capture, event,
+  measurement or KPI row is copied or modified, and deleting a template is
+  non-destructive.
+- CORS now allows `If-Match` and exposes `ETag` for browser concurrency control.
+- SemVer back: **MINOR 0.121.0**.
+
 ## 0.120.0 (minor) — Superstream SS-03 analysis scope — 2026-10-31 (BC4)
 
 - Adds a discriminated capture/Superstream `AnalysisScope` contract and a

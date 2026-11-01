@@ -40,7 +40,7 @@ def _documentation_urls(environment: str) -> dict[str, str | None]:
 
 app = FastAPI(
     title="bc4-back",
-    version="0.120.0",
+    version="0.121.0",
     **_documentation_urls(settings.env),
 )
 
@@ -55,8 +55,8 @@ app.add_middleware(
     allow_origins=settings.cors_list,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
-    allow_headers=["Authorization", "Content-Type", "Accept", "Origin"],
-    expose_headers=["Content-Length", "Content-Type"],
+    allow_headers=["Authorization", "Content-Type", "Accept", "Origin", "If-Match"],
+    expose_headers=["Content-Length", "Content-Type", "ETag"],
     max_age=600,
 )
 # 0.99.1 (incident 2026-10-29 21:35Z) : GZipMiddleware RETIRÉ.
@@ -90,7 +90,7 @@ def health() -> dict:
     return {
         "status": status,
         "env": settings.env,
-        "version": "0.120.0",
+        "version": "0.121.0",
         "decoder_version": DECODER_VERSION,
         "catalog": gc1,
     }
@@ -174,6 +174,11 @@ app.include_router(superstreams.router)
 # moteurs analytiques l'adopteront dans leurs lots dédiés.
 from app.routes import analysis_scopes
 app.include_router(analysis_scopes.router)
+
+# Durable, personal KPI workspace presentation templates. This API stores no
+# measurements, captures or credentials and is isolated by project + owner.
+from app.routes import workspace_templates
+app.include_router(workspace_templates.router)
 
 # 0.78.2 — Site layer map (SA1) : /sites?bbox=... lazy par bbox.
 from app.routes import sites as sites_route
