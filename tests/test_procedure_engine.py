@@ -1,5 +1,6 @@
 from app.procedures.catalog import BY_CODE, aggregate
 from app.procedures.engine import EvidenceEvent, reconstruct_procedures
+from app.procedures import service
 
 
 PID = "project"
@@ -175,3 +176,24 @@ def test_zero_denominator_is_na_not_zero_percent():
     assert summary["value"] is None
     assert summary["denominator"] == 0
     assert "N/A" in summary["reason"]
+
+
+def test_capture_cache_is_decode_stamp_scoped(monkeypatch):
+    service._PROCEDURE_CACHE.clear()
+    stamp = [PID, CAP, "decoder-1", "schema-1", "decoded-at", "deep-at", 2]
+    calls = {"load": 0}
+
+    def load(*_args):
+        calls["load"] += 1
+        return [event(1, "RRCSM", message="RRCConnectionRequest")]
+
+    monkeypatch.setattr(service, "_capture_stamp", lambda *_args: tuple(stamp))
+    monkeypatch.setattr(service, "load_events", load)
+    assert len(service.procedures_for_capture(object(), PID, CAP)) == 1
+    assert len(service.procedures_for_capture(object(), PID, CAP)) == 1
+    assert calls["load"] == 1
+
+    stamp[-1] = 3
+    assert len(service.procedures_for_capture(object(), PID, CAP)) == 1
+    assert calls["load"] == 2
+    service._PROCEDURE_CACHE.clear()

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from bisect import bisect_right
 from decimal import Decimal, InvalidOperation
+from threading import RLock
 from typing import Any
 
 from fastapi import HTTPException
@@ -57,6 +58,16 @@ SUPPORTED_MESSAGES = (
     "503 Service Unavailable",
 )
 
+# Procedure reconstruction is deterministic for a decoded capture. KPI panels
+# request several leaves concurrently, so rebuilding the same evidence chain
+# once per leaf would multiply the SQL and CPU cost. The key includes the
+# capture's decode stamp and record count; a re-import/deep decode naturally
+# creates a new entry. Cache remains process-local, bounded and contains no raw
+# payload beyond the already-anonymised Procedure rows.
+_CACHE_LOCK = RLock()
+_PROCEDURE_CACHE: dict[tuple[Any, ...], tuple[Procedure, ...]] = {}
+_CACHE_LIMIT = 128
+
 
 def _rows(db: Session, sql: str, params: dict[str, Any]) -> list[dict[str, Any]]:
     return [dict(row) for row in db.execute(text(sql), params).mappings()]
@@ -108,6 +119,20 @@ def _capture_exists(db: Session, project_id: str, capture_id: str) -> None:
     ).scalar_one_or_none()
     if exists is None:
         raise HTTPException(404, {"code": "CAPTURE_NOT_FOUND", "message": "Capture not found in project."})
+
+
+def _capture_stamp(db: Session, project_id: str, capture_id: str) -> tuple[Any, ...]:
+    row = db.execute(
+        text(
+            """SELECT decoder_version,schema_version,decoded_at,deep_decoded_at,n_records
+               FROM nmf_capture
+               WHERE project_id=:project_id AND capture_id=:capture_id"""
+        ),
+        {"project_id": project_id, "capture_id": capture_id},
+    ).one_or_none()
+    if row is None:
+        raise HTTPException(404, {"code": "CAPTURE_NOT_FOUND", "message": "Capture not found in project."})
+    return (project_id, capture_id, *row)
 
 
 def _gps_index(db: Session, project_id: str, capture_id: str) -> tuple[list[int], list[dict[str, Any]]]:
@@ -247,7 +272,21 @@ def load_events(db: Session, project_id: str, capture_id: str) -> list[EvidenceE
 
 
 def procedures_for_capture(db: Session, project_id: str, capture_id: str) -> list[Procedure]:
-    return reconstruct_procedures(project_id, capture_id, load_events(db, project_id, capture_id))
+    stamp = _capture_stamp(db, project_id, capture_id)
+    with _CACHE_LOCK:
+        cached = _PROCEDURE_CACHE.get(stamp)
+        if cached is not None:
+            return list(cached)
+        procedures = tuple(
+            reconstruct_procedures(project_id, capture_id, load_events(db, project_id, capture_id))
+        )
+        if len(_PROCEDURE_CACHE) >= _CACHE_LIMIT:
+            _PROCEDURE_CACHE.pop(next(iter(_PROCEDURE_CACHE)))
+        # Remove stale generations for the same project/capture before insert.
+        for key in [key for key in _PROCEDURE_CACHE if key[:2] == stamp[:2]]:
+            _PROCEDURE_CACHE.pop(key, None)
+        _PROCEDURE_CACHE[stamp] = procedures
+        return list(procedures)
 
 
 def procedures_for_scope(db: Session, project_id: str, capture_ids: list[str]) -> list[Procedure]:
