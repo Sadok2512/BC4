@@ -1,14 +1,4 @@
-## 0.123.0 (minor) — Metrics RF relation metadata — 2026-11-01 (BC4)
-
-- Extends Metrics catalogue leaves with `cell_relation` and a presentation-only
-  `technical_label`, derived exclusively from CELLMEAS event/system/raw enum.
-- Certifies LTE/NR PCell, SCell and PSCell as serving and documented CELLMEAS
-  neighbour enums as neighbour; unclassified or unrelated events remain unset.
-- Preserves canonical metric selectors, RF values, null semantics and physical
-  PCI/EARFCN identity. No decoder, formula or NMF data changes are included.
-- SemVer back: **MINOR 0.123.0**.
-
-## 0.122.0 (minor) — capture-scoped Metrics availability contract — 2026-11-01 (BC4)
+## 0.122.0 (minor) — Metrics availability and RF relations — 2026-11-01 (BC4)
 
 - Adds repeatable `capture_id` scoping to `GET /projects/{pid}/metrics`; every
   catalogue count is now computed from non-NULL projected values in the active
@@ -24,6 +14,12 @@
 - Disables unfiltered SQL pagination for filtered semantic-cell tables, so
   RAT/operator/time populations now match Graph instead of returning the
   complete capture count.
+- Extends Metrics catalogue leaves with `cell_relation` and a presentation-only
+  `technical_label`, derived exclusively from CELLMEAS event/system/raw enum.
+- Certifies LTE/NR PCell, SCell and PSCell as serving and documented CELLMEAS
+  neighbour enums as neighbour; unclassified or unrelated events remain unset.
+- Preserves canonical metric selectors, RF values, null semantics and physical
+  PCI/EARFCN identity. No decoder, formula or NMF data changes are included.
 - SemVer back: **MINOR 0.122.0**.
 
 ## 0.121.1 (patch) — semantic RAT map fast path — 2026-11-01 (BC4)
