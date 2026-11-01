@@ -28,6 +28,8 @@ import hashlib
 import importlib
 import importlib.util
 import json as _json_module
+import gc
+import logging
 import os
 import shutil
 import sys
@@ -53,6 +55,19 @@ from app.nmf_decoder.classification import classify_other
 MAX_FILE_BYTES = 2 * 1024 * 1024 * 1024  # 2 GiB par fichier NMF
 SPOOL_THRESHOLD = 32 * 1024 * 1024       # bascule disque au-delà de 32 MiB
 BATCH_SIZE = settings.import_batch_size
+log = logging.getLogger(__name__)
+
+
+def _current_rss_mb() -> float:
+    """Linux current RSS for phase evidence (not the monotonic peak)."""
+    try:
+        with open("/proc/self/status", encoding="ascii") as status:
+            for line in status:
+                if line.startswith("VmRSS:"):
+                    return int(line.split()[1]) / 1024
+    except OSError:
+        pass
+    return -1.0
 
 # 0.30.0 — Dossier persistant du .nmf source. Volume Docker nommé
 # `bc4_nmf_source` monté sur `/var/lib/bc4/nmf-source` (défaut), surchargeable
@@ -548,6 +563,7 @@ def ingest_upload(
         db.commit()
 
         result = decode_nmf_file(tmp_path, handle)
+        log.info("nmf_memory phase=external_decode_complete rss_mb=%.3f", _current_rss_mb())
 
         # 0.30.0 — meta file-level (header `#...` + env depuis le nom).
         if result.meta:
@@ -609,6 +625,14 @@ def ingest_upload(
                 {"pid": project.id, "fid": nmf.id},
             )
 
+        n_events = len(result.events)
+        capture_ids = sorted({ev["capture_id"] for ev in result.raw_events})
+        has_raw_events = bool(result.raw_events)
+        has_measurements = any(
+            ev["category"] in {"cellmeas", "data_summary"}
+            for ev in result.raw_events
+        )
+
         if result.events:
             # Insertion par lots. `project_id` est copié explicitement sur
             # chaque event ; `nmf_file_id` idem — scoping dur par projet.
@@ -633,13 +657,18 @@ def ingest_upload(
                         "lon": e["lon"],
                     }
                 )
-            for i in range(0, len(rows), BATCH_SIZE):
-                batch = rows[i : i + BATCH_SIZE]
-                _copy_rows(db, "stg_event", [
+                if len(rows) >= BATCH_SIZE:
+                    _copy_rows(db, "stg_event", [
+                        "project_id", "nmf_file_id", "capture_id", "seq", "ts",
+                        "event_code", "system", "channel", "direction", "message",
+                        "freq", "pci", "payload_hex", "lat", "lon",
+                    ], rows)
+                    rows = []
+            _copy_rows(db, "stg_event", [
                     "project_id", "nmf_file_id", "capture_id", "seq", "ts",
                     "event_code", "system", "channel", "direction", "message",
                     "freq", "pci", "payload_hex", "lat", "lon",
-                ], batch)
+                ], rows)
 
         # 0.30.0 — Stream TOUT ce qui n'est pas signalling dans `stg_event_raw`
         # avec `raw_fields` **dict** nommé (fallback cN sur les positions
@@ -666,6 +695,12 @@ def ingest_upload(
                         "raw_fields": _json_module.dumps(redact_raw(ev["event_code"],ev["raw_fields"])),
                     }
                 )
+                if len(raw_rows) >= BATCH_SIZE:
+                    _copy_rows(db, "stg_event_raw", [
+                        "project_id", "nmf_file_id", "capture_id", "seq", "category",
+                        "event_code", "ts", "system", "lat", "lon", "raw_fields",
+                    ], raw_rows)
+                    raw_rows = []
                 # Mirror BC1 : CELLMEAS → stg_measurement_raw (category='measurement')
                 # pour que `populate_measurements` crée les skeleton MP et que
                 # `populate_measurement_points` puisse UPDATE dessus.
@@ -706,37 +741,46 @@ def ingest_upload(
                             "raw_fields": _json_module.dumps(rf_list),
                         }
                     )
-            for i in range(0, len(raw_rows), BATCH_SIZE):
-                batch = raw_rows[i : i + BATCH_SIZE]
-                _copy_rows(db, "stg_event_raw", [
+                if len(mirror_rows) >= BATCH_SIZE:
+                    _copy_rows(db, "stg_measurement_raw", [
+                        "project_id", "nmf_file_id", "capture_id", "seq", "ts",
+                        "event_code", "category", "system", "lat", "lon", "raw_fields",
+                    ], mirror_rows)
+                    mirror_rows = []
+            _copy_rows(db, "stg_event_raw", [
                     "project_id", "nmf_file_id", "capture_id", "seq", "category",
                     "event_code", "ts", "system", "lat", "lon", "raw_fields",
-                ], batch)
-            for i in range(0, len(mirror_rows), BATCH_SIZE):
-                batch = mirror_rows[i : i + BATCH_SIZE]
-                _copy_rows(db, "stg_measurement_raw", [
+                ], raw_rows)
+            _copy_rows(db, "stg_measurement_raw", [
                     "project_id", "nmf_file_id", "capture_id", "seq", "ts",
                     "event_code", "category", "system", "lat", "lon", "raw_fields",
-                ], batch)
-            # Alimente le flag "measurements" du résultat pour que la logique
-            # de populate ci-dessous soit déclenchée comme en 0.24.0 BC1.
-            result.measurements = mirror_rows
+                ], mirror_rows)
 
         # Staging complet et source_path doivent être visibles avant le parsing
         # potentiellement long. decode_capture ferme ensuite sa propre lecture
         # de métadonnées avant de parcourir le fichier.
         db.commit()
+        # The source is replayed below by the deep decoder.  Do not retain a
+        # second in-memory copy of every raw/signalling event while Light and
+        # cell projections are accumulated.
+        result.events.clear()
+        result.raw_events.clear()
+        result.measurements.clear()
+        gc.collect()
+        log.info("nmf_memory phase=staging_released rss_mb=%.3f", _current_rss_mb())
         from app.nmf_decoder.store import decode_capture
-        for cap in sorted({ev["capture_id"] for ev in result.raw_events}):
+        for cap in capture_ids:
             decode_capture(
                 db, project.id, cap,
                 (parsing_snapshot or {}).get('decode_level', project.parse_decode_level),
                 parsing_snapshot=parsing_snapshot,
             )
+            log.info("nmf_memory phase=deep_capture_complete capture_id=%s rss_mb=%.3f",
+                     cap, _current_rss_mb())
 
         nmf.status = "done"
         nmf.n_captures = result.captures
-        nmf.n_events = len(result.events)
+        nmf.n_events = n_events
         nmf.n_gps = result.gps_count
         # Accumulation des PLMN vus (comptage réel event-par-event).
         # bc4_decoder 1.0.0 n'expose pas `plmn` → `operators` est vide ;
@@ -754,7 +798,7 @@ def ingest_upload(
         # Appelé après le commit stg_event pour que `_build_sib1_index`
         # ait accès aux SIB1 à jour. Erreur ici → NMF reste `done` mais
         # un warning est émis (pas de rollback d'ingestion).
-        if populate and result.measurements:
+        if populate and has_measurements:
             try:
                 from app.services.populate_measurements import populate_measurements
                 populate_measurements(db, project.id, purge=True)
@@ -766,7 +810,7 @@ def ingest_upload(
         # UPDATE sur les skeleton rows (CELLMEAS) et INSERT pour les autres
         # catégories (CMDREQ, data_*, tx_power, cqi, lock, other).
         # Appelé APRÈS le skeleton BC1 pour profiter des lignes insérées.
-        if populate and result.raw_events:
+        if populate and has_raw_events:
             try:
                 from app.measure.populate import populate_measurement_points
                 populate_measurement_points(db, project.id, purge=False)

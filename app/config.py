@@ -63,7 +63,7 @@ class Settings(BaseSettings):
         1370.0, ge=0, alias="BC4_IMPORT_MEMORY_BASE_MB_DEEP"
     )
     import_memory_slope_mb_per_mib_deep: float = Field(
-        46.0, gt=0, alias="BC4_IMPORT_MEMORY_SLOPE_MB_PER_MIB_DEEP"
+        55.0, gt=0, alias="BC4_IMPORT_MEMORY_SLOPE_MB_PER_MIB_DEEP"
     )
     import_memory_base_mb_light: float = Field(
         1370.0, ge=0, alias="BC4_IMPORT_MEMORY_BASE_MB_LIGHT"
@@ -72,9 +72,8 @@ class Settings(BaseSettings):
         46.0, gt=0, alias="BC4_IMPORT_MEMORY_SLOPE_MB_PER_MIB_LIGHT"
     )
     import_memory_model_source: str = Field(
-        "BC1 2026-10-28 disposable Deep/Light NMF 5078863..17040816 bytes; "
-        "conservative envelope checked against supplied production reference "
-        "64 MiB / 4.2 GiB",
+        "BC1 2026-11-01 disposable Deep NMF 57930189 bytes / 4032 MiB peak; "
+        "55 MiB/MiB envelope plus the configured 512 MiB admission margin",
         alias="BC4_IMPORT_MEMORY_MODEL_SOURCE",
     )
     spatial_fix_max_gap_s: float = Field(

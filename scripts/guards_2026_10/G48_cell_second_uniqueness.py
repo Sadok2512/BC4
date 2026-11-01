@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import sqlite3
 import sys
 from collections import Counter
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
@@ -31,9 +33,7 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def expected_projection(light: Light):
-    expected = Counter()
-    unsupported = Counter()
+def expected_projection(light: Light, unsupported: Counter):
     for bucket in light.buckets.values():
         if bucket["second"] < 0:
             continue
@@ -56,7 +56,7 @@ def expected_projection(light: Light):
                     _cell_index_for(raw, system, occurrence)
                     for metric, stat in group["stats"].items():
                         if metric != "cell_type" and stat.value() is not None:
-                            expected[(bucket["second"], event, system, raw, occurrence, metric)] += 1
+                            yield (bucket["second"], event, system, raw, occurrence, metric)
             continue
         schema = schema_for(event, system)
         if not schema.get("cell_scoped"):
@@ -84,8 +84,27 @@ def expected_projection(light: Light):
             if (definition.get("dimension") or metric == "phrate_ph_ch_type"
                     or metric.endswith("_cell_type") or stat.value() is None):
                 continue
-            expected[(bucket["second"], event, system, raw, 0, metric)] += 1
-    return expected, unsupported
+            yield (bucket["second"], event, system, raw, 0, metric)
+
+
+def flush_rows(connection, key_rows, actual_rows):
+    if key_rows:
+        connection.executemany(
+            """INSERT INTO cell_key VALUES(?,?,?,?,1)
+               ON CONFLICT(second,event,metric,cell_index)
+               DO UPDATE SET n=n+1""",
+            key_rows,
+        )
+        key_rows.clear()
+    if actual_rows:
+        connection.executemany(
+            """INSERT INTO actual VALUES(?,?,?,?,?,?,1)
+               ON CONFLICT(second,event,system,raw,occurrence,metric)
+               DO UPDATE SET n=n+1""",
+            actual_rows,
+        )
+        actual_rows.clear()
+    connection.commit()
 
 
 def audit(path: Path) -> bool:
@@ -97,52 +116,106 @@ def audit(path: Path) -> bool:
             light.add(record)
             decoded += 1
 
-    rows = list(cell_rows(light))
-    keys = Counter(
-        (row["second"], row["event_code"], row["metric_code"], row["cell_index"])
-        for row in rows
-    )
-    duplicates = {key: count for key, count in keys.items() if count > 1}
-    expected, unsupported = expected_projection(light)
-    actual = Counter()
-    for row in rows:
-        if row["cell_index"] < 0:
-            continue
-        source = cell_source_for_index(row["cell_index"])
-        if source is not None:
-            system, raw, occurrence = source
-            actual[(row["second"], row["event_code"], system, raw,
-                    occurrence, row["metric_code"])] += 1
-
-    missing = expected - actual
-    extra = actual - expected
+    unsupported = Counter()
     expected_by_type = Counter()
     actual_by_type = Counter()
-    for (_second, event, system, raw, _occurrence, _metric), count in expected.items():
-        expected_by_type[(event, system, raw)] += count
-    for (_second, event, system, raw, _occurrence, _metric), count in actual.items():
-        actual_by_type[(event, system, raw)] += count
+    row_count = 0
+    with TemporaryDirectory(prefix="g48-") as directory:
+        connection = sqlite3.connect(str(Path(directory) / "projection.sqlite"))
+        connection.executescript("""
+          PRAGMA journal_mode=OFF;
+          PRAGMA synchronous=OFF;
+          CREATE TABLE cell_key(
+            second INTEGER,event TEXT,metric TEXT,cell_index INTEGER,n INTEGER,
+            PRIMARY KEY(second,event,metric,cell_index)) WITHOUT ROWID;
+          CREATE TABLE actual(
+            second INTEGER,event TEXT,system INTEGER,raw INTEGER,
+            occurrence INTEGER,metric TEXT,n INTEGER,
+            PRIMARY KEY(second,event,system,raw,occurrence,metric)) WITHOUT ROWID;
+          CREATE TABLE expected(
+            second INTEGER,event TEXT,system INTEGER,raw INTEGER,
+            occurrence INTEGER,metric TEXT,n INTEGER,
+            PRIMARY KEY(second,event,system,raw,occurrence,metric)) WITHOUT ROWID;
+        """)
+        key_rows = []
+        actual_rows = []
+        for row in cell_rows(light):
+            row_count += 1
+            key_rows.append((row["second"], row["event_code"],
+                             row["metric_code"], row["cell_index"]))
+            if row["cell_index"] >= 0:
+                source = cell_source_for_index(row["cell_index"])
+                if source is not None:
+                    system, raw, occurrence = source
+                    actual_rows.append((row["second"], row["event_code"], system,
+                                        raw, occurrence, row["metric_code"]))
+                    actual_by_type[(row["event_code"], system, raw)] += 1
+            if len(key_rows) >= 5000:
+                flush_rows(connection, key_rows, actual_rows)
+        flush_rows(connection, key_rows, actual_rows)
+
+        expected_rows = []
+        for key in expected_projection(light, unsupported):
+            expected_rows.append(key)
+            expected_by_type[(key[1], key[2], key[3])] += 1
+            if len(expected_rows) >= 5000:
+                connection.executemany(
+                    """INSERT INTO expected VALUES(?,?,?,?,?,?,1)
+                       ON CONFLICT(second,event,system,raw,occurrence,metric)
+                       DO UPDATE SET n=n+1""", expected_rows)
+                expected_rows.clear()
+        if expected_rows:
+            connection.executemany(
+                """INSERT INTO expected VALUES(?,?,?,?,?,?,1)
+                   ON CONFLICT(second,event,system,raw,occurrence,metric)
+                   DO UPDATE SET n=n+1""", expected_rows)
+        connection.commit()
+        unique_keys = connection.execute("SELECT count(*) FROM cell_key").fetchone()[0]
+        duplicate_count = connection.execute(
+            "SELECT count(*) FROM cell_key WHERE n>1").fetchone()[0]
+        duplicates = connection.execute(
+            "SELECT second,event,metric,cell_index,n FROM cell_key WHERE n>1 ORDER BY second,event,metric,cell_index LIMIT 20"
+        ).fetchall()
+        difference_sql = """SELECT e.second,e.event,e.system,e.raw,e.occurrence,e.metric,e.n-coalesce(a.n,0)
+               FROM expected e LEFT JOIN actual a USING(second,event,system,raw,occurrence,metric)
+               WHERE e.n<>coalesce(a.n,0)"""
+        missing_count = connection.execute(
+            f"SELECT count(*) FROM ({difference_sql})").fetchone()[0]
+        missing = connection.execute(
+            difference_sql + " ORDER BY 1,2,3,4,5,6 LIMIT 20"
+        ).fetchall()
+        extra_sql = """SELECT a.second,a.event,a.system,a.raw,a.occurrence,a.metric,a.n-coalesce(e.n,0)
+               FROM actual a LEFT JOIN expected e USING(second,event,system,raw,occurrence,metric)
+               WHERE a.n<>coalesce(e.n,0)"""
+        extra_count = connection.execute(
+            f"SELECT count(*) FROM ({extra_sql})").fetchone()[0]
+        extra = connection.execute(
+            extra_sql + " ORDER BY 1,2,3,4,5,6 LIMIT 20"
+        ).fetchall()
+        connection.close()
 
     print(f"G48 file={path.name} sha256={digest} decoded_records={decoded}")
-    print(f"G48 cell_rows={len(rows)} unique_keys={len(keys)} duplicate_keys={len(duplicates)}")
+    print(f"G48 cell_rows={row_count} unique_keys={unique_keys} duplicate_keys={duplicate_count}")
     for (event, system, raw), count in sorted(expected_by_type.items()):
         print(
             f"G48 event={event} system={system} raw_cell_type={raw} "
             f"expected={count} actual={actual_by_type[(event, system, raw)]}"
         )
     if duplicates:
-        for key, count in sorted(duplicates.items())[:20]:
-            print(f"DUPLICATE key={key} count={count}")
+        for *key, count in duplicates[:20]:
+            print(f"DUPLICATE key={tuple(key)} count={count}")
     if missing:
-        for key, count in sorted(missing.items())[:20]:
-            print(f"MISSING source={key} count={count}")
+        for *key, count in missing[:20]:
+            print(f"MISSING source={tuple(key)} count={count}")
     if extra:
-        for key, count in sorted(extra.items())[:20]:
-            print(f"EXTRA source={key} count={count}")
+        for *key, count in extra[:20]:
+            print(f"EXTRA source={tuple(key)} count={count}")
     if unsupported:
         for key, count in sorted(unsupported.items(), key=lambda item: str(item[0])):
             print(f"UNSUPPORTED system_raw={key} groups={count}")
-    passed = not duplicates and not missing and not extra and not unsupported and bool(expected)
+    passed = (duplicate_count == 0 and missing_count == 0 and extra_count == 0
+              and not unsupported
+              and bool(expected_by_type))
     print(f"G48 file={path.name} VERDICT: {'PASS' if passed else 'FAIL'}")
     return passed
 

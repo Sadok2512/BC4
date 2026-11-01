@@ -14,7 +14,7 @@ def test_uses_lower_cgroup_headroom(tmp_path):
     ) == 2 * admission.MIB
 
 
-def test_admission_rechecks_memory_and_oversize_runs_alone(monkeypatch):
+def test_admission_rechecks_memory_and_never_overcommits(monkeypatch):
     values = iter((5000, 5000, 300))
     monkeypatch.setattr(admission, "available_memory_mb", lambda: next(values))
     monkeypatch.setattr(admission.settings, "import_reserved_mb", 4096)
@@ -22,7 +22,7 @@ def test_admission_rechecks_memory_and_oversize_runs_alone(monkeypatch):
     monkeypatch.setattr(admission, "estimate_memory_mb", lambda *_: 1000)
     assert admission.decide(1, "deep", running=1).decision == "wait"
     solo = admission.decide(1, "deep", running=0)
-    assert (solo.decision, solo.reason) == ("start", "oversize_solo")
+    assert (solo.decision, solo.reason) == ("wait", "oversize_no_headroom")
     guarded = admission.decide(1, "deep", running=0)
     assert (guarded.decision, guarded.reason) == ("wait", "below_margin")
 
@@ -32,3 +32,9 @@ def test_affine_memory_estimate_has_fixed_base(monkeypatch):
     monkeypatch.setattr(admission.settings, "import_memory_slope_mb_per_mib_deep", 50.0)
     assert admission.estimate_memory_mb(0, "deep") == 500
     assert admission.estimate_memory_mb(10 * admission.MIB, "deep") == 1000
+
+
+def test_default_deep_envelope_covers_measured_parcours_peak():
+    """The 57.9 MB witness peaked at 4032.176 MiB on the disposable stack."""
+    witness_bytes = 57_930_189
+    assert admission.estimate_memory_mb(witness_bytes, "deep") >= 4033

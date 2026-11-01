@@ -95,6 +95,35 @@ def copy_rows(db,table,columns,rows):
     # duplicates while no transaction spans the next CPU-heavy batch build.
     db.commit()
 
+def replace_cell_rows(db,pid,cap,rows):
+    """Replace one cell projection while consuming ``rows`` exactly once.
+
+    The former implementation expanded the generator into ``cell_values``
+    and then built a second list of all primary keys.  The parcours witness
+    has more than a million projected values, so those two unbounded Python
+    allocations exhausted the measured headroom before the worker terminated.
+    PostgreSQL's
+    primary key is the duplicate guard: DELETE and streaming COPY share one
+    transaction, therefore a duplicate rolls the whole replacement back and
+    the previous projection remains visible.
+    """
+    columns=['project_id','capture_id','decoder_version','second','event_code',
+             'metric_code','cell_index','seq_first','seq_last','value','weight','reason']
+    db.execute(text('DELETE FROM nmf_cell_second WHERE project_id=:pid AND capture_id=:cap'),
+               {'pid':pid,'cap':cap})
+    connection=db.connection().connection.dbapi_connection
+    try:
+        with connection.cursor() as cursor:
+            with cursor.copy('COPY nmf_cell_second ('+','.join(columns)+') FROM STDIN') as copy:
+                for row in rows:
+                    projected=dict(project_id=pid,capture_id=cap,
+                                   decoder_version=DECODER_VERSION,**row)
+                    copy.write_row(tuple(projected.get(column) for column in columns))
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+
 def write_light(db,pid,cap,light,*,persist=True):
     db.execute(text('DELETE FROM nmf_event_light WHERE project_id=:pid AND capture_id=:cap'),{'pid':pid,'cap':cap})
     db.execute(text('DELETE FROM nmf_event_light_group WHERE project_id=:pid AND capture_id=:cap'),{'pid':pid,'cap':cap})
@@ -112,18 +141,7 @@ def write_light(db,pid,cap,light,*,persist=True):
             if len(rows)>=1000:copy_rows(db,'nmf_event_light',LIGHT_BASE+ALL,rows);rows=[]
         copy_rows(db,'nmf_event_light',LIGHT_BASE+ALL,rows)
         copy_rows(db,'nmf_event_light_group',GROUP_BASE+['identity','n_records']+GROUPS,groups)
-    cell_values=[dict(project_id=pid,capture_id=cap,decoder_version=DECODER_VERSION,**r) for r in cell_rows(light)]
-    cell_keys=[(r['project_id'],r['capture_id'],r['second'],r['event_code'],
-                r['metric_code'],r['cell_index']) for r in cell_values]
-    if len(set(cell_keys))!=len(cell_keys):
-        # Fail before DELETE/COPY: never merge two physical cells silently and
-        # leave the previously committed projection untouched.
-        raise ValueError('duplicate_nmf_cell_second_key_before_copy')
-    # Build the CPU-heavy projection before opening its replacement
-    # transaction.  DELETE + COPY remain atomic and no transaction sits idle.
-    db.execute(text('DELETE FROM nmf_cell_second WHERE project_id=:pid AND capture_id=:cap'),{'pid':pid,'cap':cap})
-    if cell_values:copy_rows(db,'nmf_cell_second',list(cell_values[0]),cell_values)
-    else:db.commit()
+    replace_cell_rows(db,pid,cap,cell_rows(light))
 
 def write_native_rows(db,pid,cap,rows):
     if not rows:return

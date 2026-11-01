@@ -20,7 +20,24 @@
   non-destructive.
 - CORS now allows `If-Match` and exposes `ETag` for browser concurrency control.
 - SemVer back: **MINOR 0.121.0**.
+## 0.120.1 (patch) — RC2 bounded NMF recovery — 2026-11-01 (BC1)
 
+- Streams `nmf_cell_second` directly into one atomic PostgreSQL replacement
+  instead of materializing the complete projection and its keys in Python.
+- Releases external-decoder staging objects before deep replay and bounds the
+  transient COPY buffers; admission no longer starts an import that does not
+  fit measured host/cgroup headroom.
+- G48 keeps its exact duplicate/loss checks but spills the millions of keys to
+  a disposable SQLite index instead of reproducing the worker's memory spike.
+- Docker builds now require and validate the real application version and
+  revision before emitting OCI labels.
+- SemVer back: **PATCH 0.120.1**.
+- Recalibre l'enveloppe d'admission Deep a 55 MiB/MiB : le temoin parcours
+  (57 930 189 octets) a atteint 4 032,176 MiB sur la pile jetable ; la marge
+  d'admission configuree reste ajoutee au-dessus de cette estimation.
+- Les feuilles parentes remplacees par des feuilles de cellule physique
+  exposent maintenant une raison explicite quand elles deviennent non
+  selectionnables, conformement au contrat controle par le garde BC2.
 ## 0.120.0 (minor) — Superstream SS-03 analysis scope — 2026-10-31 (BC4)
 
 - Adds a discriminated capture/Superstream `AnalysisScope` contract and a

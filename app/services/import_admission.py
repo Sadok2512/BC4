@@ -65,6 +65,10 @@ def decide(size_bytes: int, level: str, running: int) -> AdmissionDecision:
         return AdmissionDecision("wait", available, estimate, running, "below_margin")
     if usable >= estimate + margin:
         return AdmissionDecision("start", available, estimate, running, "fits")
+    # A lone worker is not permission to exceed measured host/cgroup
+    # headroom.  The old oversize_solo path admitted the parcours witness
+    # with less memory than its estimate; its child then terminated abruptly.
+    # Keep it pending until the same fit invariant is actually true.
     if running == 0:
-        return AdmissionDecision("start", available, estimate, running, "oversize_solo")
+        return AdmissionDecision("wait", available, estimate, running, "oversize_no_headroom")
     return AdmissionDecision("wait", available, estimate, running, "insufficient_headroom")
