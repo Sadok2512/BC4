@@ -32,3 +32,9 @@ def test_affine_memory_estimate_has_fixed_base(monkeypatch):
     monkeypatch.setattr(admission.settings, "import_memory_slope_mb_per_mib_deep", 50.0)
     assert admission.estimate_memory_mb(0, "deep") == 500
     assert admission.estimate_memory_mb(10 * admission.MIB, "deep") == 1000
+
+
+def test_default_deep_envelope_covers_measured_parcours_peak():
+    """The 57.9 MB witness peaked at 4032.176 MiB on the disposable stack."""
+    witness_bytes = 57_930_189
+    assert admission.estimate_memory_mb(witness_bytes, "deep") >= 4033

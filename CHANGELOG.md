@@ -10,6 +10,9 @@
 - Docker builds now require and validate the real application version and
   revision before emitting OCI labels.
 - SemVer back: **PATCH 0.120.1**.
+- Recalibre l'enveloppe d'admission Deep a 55 MiB/MiB : le temoin parcours
+  (57 930 189 octets) a atteint 4 032,176 MiB sur la pile jetable ; la marge
+  d'admission configuree reste ajoutee au-dessus de cette estimation.
 
 ## 0.120.0 (minor) — Superstream SS-03 analysis scope — 2026-10-31 (BC4)
 
