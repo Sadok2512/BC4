@@ -99,6 +99,13 @@ def _cell_label_for_type(event: str, system: int | None, cell_type: int) -> str:
             return "Serving"
         if 10 <= cell_type <= 40:
             return f"SCell {cell_type - 9}"
+    # L3 — raw cell_type > 40 n'est pas documenté comme SCell LTE dans NFF 2.50.
+    # Les valeurs 100, 199, 1000-1002 sont des enums NR (SCG SCell / SCG PSCell /
+    # Listed/Detected/Scanner neighbour) et ne doivent pas être étiquetées
+    # "SCell N" côté LTE. On les expose comme "LTE cell type N" (= UNKNOWN label
+    # explicite), sans toucher aux valeurs RF projetées ni au sélecteur API.
+    if system == 7 and (cell_type < 0 or cell_type > 40):
+        return f"LTE cell type {cell_type}"
     return "PCell" if cell_type == 0 else f"SCell {cell_type}"
 
 
@@ -144,10 +151,20 @@ def _cell_role_for_tree(event: str, system: int | None, raw: int) -> str:
 def _cell_relation_for_tree(event: str, system: int | None, raw: int) -> str | None:
     """Return the documented RF relation, never inferred from a label.
 
-    Only CELLMEAS has a certified serving/neighbour distinction. Other
-    cell-scoped events keep their direct Metric -> Cell structure.
+    L1 — étendu aux événements RF-cell-scopés qui héritent de la même
+    convention cell_type que CELLMEAS :
+        - MIMOMEAS : mesure MIMO par cellule, enum identique
+        - CSI, PMI : mesures canal par cellule, enum identique
+        - PHRATE, PHRATEU : power headroom par cellule
+
+    Les événements liés à la couche connexion/transport (DCI, MACRATE,
+    MACRATEU, TXPC, PLAID, PLAIU, SCELL, SCELLMOD, CQI, CI, TAD)
+    conservent ``None`` : leur sémantique serving/neighbour n'est pas
+    certifiée au niveau cellule par Nemo NFF 2.50 et n'est pas déduite
+    du libellé de la cellule.
     """
-    if event != "CELLMEAS":
+    rf_cell_scoped_events = {"CELLMEAS", "MIMOMEAS", "CSI", "PMI", "PHRATE", "PHRATEU"}
+    if event not in rf_cell_scoped_events:
         return None
     if (system == 7 and raw in {1, 2}) or (
         system == 9 and raw in {1000, 1001, 1002}
