@@ -152,6 +152,46 @@ CATALOG: tuple[ProcedureKpi, ...] = tuple(
 
 BY_CODE = {definition.code: definition for definition in CATALOG}
 
+# Existing catalogue leaves that this certified engine now implements. The
+# mapping is contract metadata, never a frontend label heuristic. The canonical
+# legacy code remains visible in KPI Analytics while its value comes from the
+# explicitly named procedure definition.
+REPLACES_CODE: dict[str, str] = {
+    "PROC_LTE_RRC_SETUP_ATTEMPTS": "LTE_RRC_ATTEMPTS",
+    "PROC_LTE_RRC_SETUP_SUCCESS": "LTE_RRC_SUCCESS",
+    "PROC_LTE_RRC_SETUP_FAILURES": "LTE_RRC_FAILURES",
+    "PROC_LTE_RRC_SETUP_SUCCESS_RATE": "LTE_RRC_SETUP_SR",
+    "PROC_LTE_RACH_ATTEMPTS": "LTE_RACH_ATTEMPTS",
+    "PROC_LTE_RACH_SUCCESS": "LTE_RACH_SUCCESS",
+    "PROC_LTE_RACH_FAILURES": "LTE_RACH_FAILURES",
+    "PROC_LTE_RACH_SUCCESS_RATE": "LTE_RACH_ACCESS_SR",
+    "PROC_LTE_NAS_ATTACH_SUCCESS_RATE": "LTE_EPS_ATTACH_SR",
+    "PROC_LTE_RRC_REEST_SUCCESS_RATE": "LTE_RRC_REESTABLISHMENT_SR",
+    "PROC_LTE_HO_INTRA_ATTEMPTS": "LTE_HO_INTRA_ATTEMPTS",
+    "PROC_LTE_HO_INTRA_SUCCESS": "LTE_HO_INTRA_SUCCESS",
+    "PROC_LTE_HO_INTRA_FAILURES": "LTE_HO_INTRA_FAILURES",
+    "PROC_LTE_HO_INTRA_SUCCESS_RATE": "LTE_HO_INTRA_SR",
+    "PROC_LTE_HO_INTER_ATTEMPTS": "LTE_HO_INTER_ATTEMPTS",
+    "PROC_LTE_HO_INTER_SUCCESS": "LTE_HO_INTER_SUCCESS",
+    "PROC_LTE_HO_INTER_FAILURES": "LTE_HO_INTER_FAILURES",
+    "PROC_LTE_HO_INTER_SUCCESS_RATE": "LTE_HO_INTER_SR",
+    "PROC_LTE_RLF_RATE": "LTE_RADIO_LINK_FAILURE_SR",
+    "PROC_LTE_ERAB_SETUP": "LTE_ERAB_SR",
+    "PROC_LTE_ERAB_ABNORMAL_RELEASE": "LTE_RRC_ABNORMAL_RELEASE_SR",
+    "PROC_VOLTE_CALL_SETUP_SUCCESS_RATE": "LTE_VOLTE_CALL_SETUP_SR",
+    "PROC_VOLTE_DROP": "LTE_CALL_DROP_SR",
+    "PROC_NR_RRC_SETUP_ATTEMPTS": "NR_RRC_ATTEMPTS",
+    "PROC_NR_RRC_SETUP_SUCCESS": "NR_RRC_SUCCESS",
+    "PROC_NR_RRC_SETUP_FAILURES": "NR_RRC_FAILURES",
+    "PROC_NR_RRC_SETUP_SUCCESS_RATE": "NR_RRC_SETUP_SR",
+    "PROC_NR_RRC_REEST_SUCCESS_RATE": "NR_RRC_REESTABLISHMENT_SR",
+    "PROC_NR_REGISTRATION_SUCCESS_RATE": "NR_5G_REGISTRATION_SR",
+    "PROC_NR_RLF_RATE": "NR_RADIO_LINK_FAILURE_SR",
+    "PROC_NR_PDU_SESSION_SETUP": "NR_PDU_SESSION_SR",
+    "PROC_VONR_CALL_SETUP_SUCCESS_RATE": "NR_VONR_CALL_SETUP_SR",
+    "PROC_VONR_DROP": "NR_CALL_DROP_SR",
+}
+
 
 def _evidence_rank(level: str) -> int:
     return {"UNKNOWN": 0, "PROBABLE": 1, "PROVEN": 2}.get(level, 0)
@@ -238,6 +278,7 @@ def catalog_tree(procedures: list[Procedure]) -> dict[str, Any]:
             "reason": summary["reason"],
             "available": summary["status"] == "AVAILABLE",
             "map_supported": definition.map_supported,
+            "replaces_code": REPLACES_CODE.get(definition.code),
             "counts": {
                 "attempts": summary["attempts"],
                 "success": summary["success"],

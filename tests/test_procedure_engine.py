@@ -1,4 +1,4 @@
-from app.procedures.catalog import BY_CODE, aggregate
+from app.procedures.catalog import BY_CODE, aggregate, catalog_tree
 from app.procedures.engine import EvidenceEvent, reconstruct_procedures
 from app.procedures import service
 
@@ -205,3 +205,15 @@ def test_capture_cache_is_decode_stamp_scoped(monkeypatch):
     assert len(service.procedures_for_capture(db, PID, CAP)) == 1
     assert calls["load"] == 2
     service._PROCEDURE_CACHE.clear()
+
+
+def test_catalog_declares_canonical_replacement_without_label_matching():
+    catalog = catalog_tree([])
+    items = {
+        item["code"]: item
+        for technology in catalog["tree"]
+        for family in technology["families"]
+        for item in family["kpis"]
+    }
+    assert items["PROC_LTE_RRC_SETUP_SUCCESS_RATE"]["replaces_code"] == "LTE_RRC_SETUP_SR"
+    assert items["PROC_LTE_EPS_BEARER_SUCCESS_RATE"]["replaces_code"] is None
