@@ -339,7 +339,7 @@ def catalog(
     `reason='fallback_legacy_no_catalog_release'`, enveloppe `catalog_release`
     forcée à `None` — jamais de default silencieux."""
     project(db,project_id)
-    capture_ids = tuple(dict.fromkeys(capture_id))
+    capture_ids = tuple(sorted(set(capture_id)))
     if capture_ids:
         known = set(db.execute(text("""
           SELECT capture_id FROM nmf_capture
@@ -353,26 +353,18 @@ def catalog(
             })
     from app.kpi.catalog_release.registry import current_catalog
     cur = current_catalog(db)
-    stamp=db.execute(text("""SELECT md5(coalesce(string_agg(
-      capture_id || ':' || decoder_version || ':' || coalesce(decoded_at::text,''),
-      ',' ORDER BY capture_id),'')) FROM nmf_capture WHERE project_id=:pid"""),
-      {'pid':project_id}).scalar_one()
-    identity_stamp=db.execute(text("""SELECT md5(
-      count(*)::text || ':' || coalesce(max(built_at)::text,''))
-      FROM nmf_cell_identity WHERE project_id=:pid"""),
-      {'pid':project_id}).scalar_one()
+    from app.kpi.catalog_cache import cache_generation_stamp, cache_scope_key
     # Clé de cache inclut la version catalog_release pour qu'un bump
     # catalog invalide automatiquement sans TRUNCATE manuel. L'identité
     # physique est reconstruite sans re-décodage : son empreinte invalide
     # aussi le cache afin que les nouvelles voisines apparaissent aussitôt.
-    scope_stamp = ','.join(capture_ids) if capture_ids else 'project'
-    cache_stamp = (
-      f"{stamp}|identity={identity_stamp}|cat={cur.version if cur else 'legacy'}"
-      f"|scope={scope_stamp}"
+    scope_key = cache_scope_key(capture_ids)
+    cache_stamp = cache_generation_stamp(
+      db, project_id, cur.version if cur else 'legacy', scope_key=scope_key
     )
     cached=db.execute(text("""SELECT payload FROM metrics_catalog_cache
-      WHERE project_id=:pid AND decode_stamp=:stamp"""),
-      {'pid':project_id,'stamp':cache_stamp}).scalar_one_or_none()
+      WHERE project_id=:pid AND scope_key=:scope AND decode_stamp=:stamp"""),
+      {'pid':project_id,'scope':scope_key,'stamp':cache_stamp}).scalar_one_or_none()
     if cached is not None:return _with_analytics_tabs(cached)
     if cur:
         from app.kpi.metrics_catalog_v4 import build_catalog_v4
@@ -386,10 +378,11 @@ def catalog(
         payload['catalog_release'] = None
         payload['decoder_version'] = DECODER_VERSION
         payload['reason'] = 'fallback_legacy_no_catalog_release'
-    db.execute(text("""INSERT INTO metrics_catalog_cache(project_id,decode_stamp,payload)
-      VALUES(:pid,:stamp,CAST(:payload AS jsonb)) ON CONFLICT(project_id) DO UPDATE SET
+    db.execute(text("""INSERT INTO metrics_catalog_cache(project_id,scope_key,decode_stamp,payload)
+      VALUES(:pid,:scope,:stamp,CAST(:payload AS jsonb))
+      ON CONFLICT(project_id,scope_key) DO UPDATE SET
       decode_stamp=excluded.decode_stamp,payload=excluded.payload,updated_at=now()"""),
-      {'pid':project_id,'stamp':cache_stamp,'payload':json.dumps(payload)})
+      {'pid':project_id,'scope':scope_key,'stamp':cache_stamp,'payload':json.dumps(payload)})
     db.commit()
     return _with_analytics_tabs(payload)
 

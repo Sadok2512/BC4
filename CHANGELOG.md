@@ -1,3 +1,15 @@
+## 0.122.1 (patch) — project/scoped Metrics cache parity — 2026-11-02 (BC1)
+
+- Keys persisted Metrics catalogue payloads by project and deterministic capture
+  scope, so a capture-filtered request cannot replace the project-wide G18b
+  witness.
+- Uses one generation fingerprint for the route, guarded cache rebuild and
+  G18b; stale pre-contract payloads now fail explicitly until the traced,
+  deploy-lock-protected rebuild runs.
+- Removes no RF measurement: physical ARFCN/PCI identities remain table/graph
+  row details while the catalogue exposes their semantic CELLMEAS role once.
+- SemVer back: **PATCH 0.122.1**.
+
 ## 0.122.0 (minor) — Metrics availability and RF relations — 2026-11-01 (BC4)
 
 - Adds repeatable `capture_id` scoping to `GET /projects/{pid}/metrics`; every

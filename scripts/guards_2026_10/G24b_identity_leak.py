@@ -53,7 +53,7 @@ def main():
             FROM metrics_catalog_cache c, jsonb_array_elements(c.payload->'nodes') m
             WHERE m->>'node_type'='leaf'
               AND m->>'source_column' LIKE 'cap\\_%' ESCAPE '\\'
-              AND c.project_id=:pid
+              AND c.project_id=:pid AND c.scope_key='project'
             ORDER BY c.project_id, nid
         """), {"pid": project_id}).mappings().all()
         fails, warns = [], []

@@ -21,35 +21,33 @@ from app.scripts.deploy_guard import guard_bc3_deploy_lock
 def _rebuild_project_cache(db, project_id: str) -> None:
     """Warm one v4 row so fail-closed parity guards keep a witness."""
     from app.kpi.catalog_release.registry import current_catalog
+    from app.kpi.catalog_cache import PROJECT_SCOPE, cache_generation_stamp
     from app.kpi.metrics_catalog_v4 import build_catalog_v4
 
     current = current_catalog(db)
     if current is None:
         raise RuntimeError("cannot rebuild catalogue cache without an active release")
-    decode_stamp = db.execute(text("""
-        SELECT md5(coalesce(string_agg(
-          capture_id || ':' || decoder_version || ':' || coalesce(decoded_at::text,''),
-          ',' ORDER BY capture_id),''))
-        FROM nmf_capture WHERE project_id=:pid
-    """), {"pid": project_id}).scalar_one()
-    identity_stamp = db.execute(text("""
-        SELECT md5(count(*)::text || ':' || coalesce(max(built_at)::text,''))
-        FROM nmf_cell_identity WHERE project_id=:pid
-    """), {"pid": project_id}).scalar_one()
-    stamp = f"{decode_stamp}|identity={identity_stamp}|cat={current.version}"
+    stamp = cache_generation_stamp(
+        db, project_id, current.version, scope_key=PROJECT_SCOPE
+    )
     payload = build_catalog_v4(db, project_id, current)
     db.execute(text("""
-        INSERT INTO metrics_catalog_cache(project_id,decode_stamp,payload)
-        VALUES(:pid,:stamp,CAST(:payload AS jsonb))
-        ON CONFLICT(project_id) DO UPDATE SET decode_stamp=excluded.decode_stamp,
+        INSERT INTO metrics_catalog_cache(project_id,scope_key,decode_stamp,payload)
+        VALUES(:pid,:scope,:stamp,CAST(:payload AS jsonb))
+        ON CONFLICT(project_id,scope_key) DO UPDATE SET decode_stamp=excluded.decode_stamp,
           payload=excluded.payload,updated_at=now()
-    """), {"pid": project_id, "stamp": stamp, "payload": json.dumps(payload)})
+    """), {
+        "pid": project_id,
+        "scope": PROJECT_SCOPE,
+        "stamp": stamp,
+        "payload": json.dumps(payload),
+    })
 
 
 def invalidate_catalog_cache(db, *, reason: str, source: str) -> dict:
     """Delete and rebuild cache witnesses in the caller transaction."""
     project_ids = list(db.execute(text(
-        "SELECT project_id FROM metrics_catalog_cache ORDER BY project_id"
+        "SELECT DISTINCT project_id FROM metrics_catalog_cache ORDER BY project_id"
     )).scalars())
     before = int(db.execute(text("SELECT count(*) FROM metrics_catalog_cache")).scalar_one())
     result = db.execute(text("DELETE FROM metrics_catalog_cache"))
