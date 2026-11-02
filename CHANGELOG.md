@@ -1,3 +1,16 @@
+## 0.123.3 (patch) — Idempotent procedure catalogue persistence — 2026-11-02 (Agent BC4)
+
+- Replaces every persisted `procedure-v1*` generation for a capture before
+  inserting its deterministic reconstruction. This includes the current
+  `procedure-v1-gps|...` generation, which the previous narrower
+  `procedure-v1|%` predicate did not remove and could therefore collide on
+  `signaling_procedure_pkey` during catalogue hydration.
+- Adds a regression test that starts with a stale GPS generation and persists
+  the same deterministic procedure twice, proving a single resulting row and
+  no duplicate-key failure.
+- No migration, raw-event rewrite, re-decode or reference import is required.
+- SemVer back: **PATCH 0.123.3**; frontend remains independently managed.
+
 ## 0.123.2 (patch) — LTE CELLMEAS SINR + Srxlev positional alignment — 2026-11-02 (Agent BC5)
 
 - `app/nmf_decoder/schemas/CELLMEAS.yaml` extended from NFF 2.19 to

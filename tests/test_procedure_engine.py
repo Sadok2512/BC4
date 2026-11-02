@@ -223,6 +223,50 @@ def test_capture_cache_is_decode_stamp_scoped(monkeypatch):
     service._PROCEDURE_CACHE.clear()
 
 
+def test_persist_replaces_all_v1_generations_idempotently():
+    procedures = tuple(
+        reconstruct_procedures(
+            PID,
+            CAP,
+            [event(1, "RRCSM", message="RRCConnectionRequest")],
+        )
+    )
+    procedure_id = procedures[0].procedure_id
+
+    class FakeDb:
+        def __init__(self):
+            self.rows = {procedure_id: "procedure-v1-gps|old-stamp"}
+            self.commits = 0
+
+        def execute(self, statement, params):
+            query = " ".join(str(statement).split())
+            if query.startswith("DELETE FROM signaling_procedure"):
+                assert "engine_version LIKE 'procedure-v1%'" in query
+                self.rows = {
+                    row_id: version
+                    for row_id, version in self.rows.items()
+                    if not version.startswith("procedure-v1")
+                }
+                return None
+            if query.startswith("INSERT INTO signaling_procedure"):
+                for row in params:
+                    assert row["procedure_id"] not in self.rows
+                    self.rows[row["procedure_id"]] = row["engine_version"]
+                return None
+            raise AssertionError(f"Unexpected statement: {query}")
+
+        def commit(self):
+            self.commits += 1
+
+    db = FakeDb()
+    engine_version = "procedure-v1-gps|new-stamp"
+    service._persist(db, PID, CAP, engine_version, procedures)
+    service._persist(db, PID, CAP, engine_version, procedures)
+
+    assert db.rows == {procedure_id: engine_version}
+    assert db.commits == 2
+
+
 def test_catalog_declares_canonical_replacement_without_label_matching():
     catalog = catalog_tree([])
     items = {

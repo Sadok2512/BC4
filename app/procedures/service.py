@@ -203,7 +203,7 @@ def _persist(
         text(
             """DELETE FROM signaling_procedure
                WHERE project_id=:project_id AND capture_id=:capture_id
-                 AND engine_version LIKE 'procedure-v1|%'"""
+                 AND engine_version LIKE 'procedure-v1%'"""
         ),
         {"project_id": project_id, "capture_id": capture_id},
     )
