@@ -114,7 +114,10 @@ def _make(
     rat: str | None = None,
     attrs: dict[str, Any] | None = None,
 ) -> Procedure:
-    attrs = attrs or {}
+    # Location and cell context belong to the observed start event. Procedure-
+    # specific attributes may override them, but an omitted attrs mapping must
+    # not silently discard real evidence loaded from that event.
+    attrs = {**start.attrs, **(attrs or {})}
     chain = [start, *events]
     if end is not None and all(event.source_id != end.source_id for event in chain):
         chain.append(end)

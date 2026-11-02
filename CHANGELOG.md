@@ -1,3 +1,18 @@
+## 0.123.1 (patch) — Geolocated procedure incidents (Map Failures source) — 2026-11-02 (Agent BC5 North Star D)
+
+- Propagates the last real GPS fix published at or before an L3 procedure
+  event into its derived procedure row; no interpolation, nearest-cell lookup
+  or invented coordinate is used.
+- Invalidates the previous procedure-derived cache generation so RLF and SCG
+  failure rows are reconstructed with their real capture position.
+- Raw NMF events, RF values, procedure classification and KPI formulas remain
+  unchanged.
+- Source-side for the front 1.133.0 Map Failures layers : RLF/HO Failure/
+  Drops/SCG Failure are hydrated from this GPS-propagated procedure
+  evidence ; markers appear **only** when the backend attached a real
+  `(lat, lon)` from the capture GPS timeline.
+- SemVer back: **PATCH 0.123.1**.
+
 ## 0.123.0 (minor) — Certified KPI procedure engine + L1 cell-scoped RF relation extension — 2026-11-02 (Agent BC5 North Star)
 
 Consolidates on top of the live 0.122.1 (BC1 G18b cache parity, deployed as

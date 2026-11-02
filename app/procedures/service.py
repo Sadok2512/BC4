@@ -138,7 +138,9 @@ def _capture_stamp(db: Session, project_id: str, capture_id: str) -> tuple[Any, 
 
 def _engine_version(stamp: tuple[Any, ...]) -> str:
     values = [value.isoformat() if hasattr(value, "isoformat") else str(value) for value in stamp[2:]]
-    return "procedure-v1|" + "|".join(values)
+    # The GPS projection is part of derived procedure data. Changing this
+    # generation tag invalidates v1 rows that legitimately had null geometry.
+    return "procedure-v1-gps|" + "|".join(values)
 
 
 def _stored(db: Session, project_id: str, capture_id: str, engine_version: str) -> list[Procedure]:
@@ -303,7 +305,13 @@ def load_events(db: Session, project_id: str, capture_id: str) -> list[EvidenceE
             message=row["message"],
             time=row["ts"],
             t_rel_s=_relative(row["ts"], origin),
-            attrs=dict(row["attrs"] or {}),
+            attrs={
+                **dict(row["attrs"] or {}),
+                # Use the capture's last published GPS fix at or before the
+                # message sequence. This is the same real-position rule used
+                # for marker records; no interpolation or inferred location.
+                **_position(gps_sequences, gps_points, int(row["seq"])),
+            },
         )
         for row in staged
     ]

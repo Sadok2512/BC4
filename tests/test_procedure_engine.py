@@ -124,7 +124,12 @@ def test_reestablishment_creates_separate_probable_rlf_evidence():
         1,
         "RRCSM",
         message="RRCConnectionReestablishmentRequest",
-        attrs={"x/reestablishmentCause": "otherFailure"},
+        attrs={
+            "x/reestablishmentCause": "otherFailure",
+            "latitude": 50.3786125,
+            "longitude": 3.0115819,
+            "gps_seq": 78016,
+        },
     )
     rows = reconstruct_procedures(
         PID,
@@ -136,6 +141,7 @@ def test_reestablishment_creates_separate_probable_rlf_evidence():
     assert reest.result == "SUCCESS" and reest.evidence_level == "PROVEN"
     assert rlf.result == "FAILURE" and rlf.evidence_level == "PROBABLE"
     assert rlf.failure_cause == "otherFailure"
+    assert (rlf.latitude, rlf.longitude, rlf.gps_seq) == (50.3786125, 3.0115819, 78016)
 
 
 def test_scg_failure_requires_explicit_message_and_preserves_cause():
@@ -147,7 +153,12 @@ def test_scg_failure_requires_explicit_message_and_preserves_cause():
                 1,
                 "RRCSM",
                 message="SCGFailureInformationNR",
-                attrs={"failureReport/failureType-r15": "randomAccessProblem"},
+                attrs={
+                    "failureReport/failureType-r15": "randomAccessProblem",
+                    "latitude": 50.3926163,
+                    "longitude": 2.9771998,
+                    "gps_seq": 9997,
+                },
             )
         ],
     )
@@ -155,6 +166,11 @@ def test_scg_failure_requires_explicit_message_and_preserves_cause():
     assert rows[0].procedure_type == "endc_scg_failure"
     assert rows[0].result == "FAILURE"
     assert rows[0].failure_cause == "randomAccessProblem"
+    assert (rows[0].latitude, rows[0].longitude, rows[0].gps_seq) == (
+        50.3926163,
+        2.9771998,
+        9997,
+    )
 
 
 def test_capture_identity_is_isolated_and_anonymised():
