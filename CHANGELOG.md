@@ -1,3 +1,30 @@
+## 0.123.2 (patch) — LTE CELLMEAS SINR + Srxlev positional alignment — 2026-11-02 (Agent BC5)
+
+- `app/nmf_decoder/schemas/CELLMEAS.yaml` extended from NFF 2.19 to
+  NFF 2.50 (`min_format` bumped). Two new per-cell fields declared:
+  - `cell.srxlev` (#10 of the LTE cell block, 3GPP TS 36.304 §5.2.3)
+  - `cell.sinr`   (#11 of the LTE cell block, 3GPP TS 36.214 §5.1.23,
+    range `-23..40 dB`)
+- Alignment proven by the Keysight NFF 2.50 PDF (page 605, « Parameters
+  for LTE », published June 2022) and by the NMF file itself which
+  declares `#Params/cell = 11` in its own CELLMEAS record header. The
+  real-measurement value ranges match the specification exactly
+  (-14..+33.7 dB observed, moy 7.5 dB on 8 308 serving samples of
+  Test_6).
+- `cell_sinr` DB column was already provisioned by migration 0053
+  (decoder 1.7.0 NR cols) — no new alembic migration is required for
+  this release; SINR values now land directly in
+  `nmf_event_light.cell_sinr`. `cell_srxlev` is decoded for positional
+  alignment but silently dropped at store time until a dedicated
+  column is published in a later patch.
+- Re-decode light required for the 3 project captures (Test_6, ikea.2,
+  ikea.6) to populate the new SINR projection. The 3 oracle KPIs
+  `LTE_SERVING_SINR_PCELL`, `LTE_SERVING_SINR_SCELL5` and
+  `LTE_SERVING_SINR_SCELL6` move from `availability_status=not_projected`
+  to `available` / `no_data` according to their actual observation
+  count.
+- SemVer back: **PATCH 0.123.2**; front remains **1.133.7**.
+
 ## 0.123.1 (patch) — Geolocated procedure incidents (Map Failures source) — 2026-11-02 (Agent BC5 North Star D)
 
 - Propagates the last real GPS fix published at or before an L3 procedure

@@ -4,7 +4,7 @@
     7
   ],
   "system_col": 4,
-  "min_format": "2.19",
+  "min_format": "2.50",
   "schema_version": "1.0.0",
   "unknown_tail": "keep",
   "header": [
@@ -124,6 +124,28 @@
             170
           ],
           "category": "neighbours"
+        },
+        {
+          "code": "cell.srxlev",
+          "label": "Srxlev (LTE)",
+          "type": "float",
+          "unit": "dB",
+          "agg": "mean",
+          "proof": "NFF 2.50 CELLMEAS Parameters for LTE cell #10 (Srxlev, 3GPP TS 36.304 subclause 5.2.3). Declared to keep positional alignment with the NFF 2.50 cell block; the value is dropped at store time until a dedicated cell_srxlev column is added by alembic migration.",
+          "category": "radio_serving"
+        },
+        {
+          "code": "cell.sinr",
+          "label": "SINR (LTE)",
+          "type": "float",
+          "unit": "dB",
+          "agg": "mean",
+          "proof": "NFF 2.50 CELLMEAS Parameters for LTE cell #11 (SINR, 3GPP TS 36.214 subclause 5.1.23).",
+          "range": [
+            -23,
+            40
+          ],
+          "category": "radio_serving"
         }
       ],
       "start": {
