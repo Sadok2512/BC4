@@ -168,7 +168,7 @@ services:
     # (serveur-à-serveur, pas de CORS). Pour builder : depuis
     # franco-focus-forge/ `docker build -f Dockerfile.v2 -t bc4-front-v2:<ver>
     # --build-arg VCS_REF=<sha> --build-arg APP_VERSION=<ver> .`
-    image: bc4-front-v2:1.133.13-299b0be
+    image: bc4-front-v2:1.133.14-bdcea7a
     restart: unless-stopped
     # Host port 5174 → container 5173. Port historique du handover
     # Codex67 ; ne pas changer sans prévenir.
