@@ -920,10 +920,9 @@ def build_catalog_v4(
             )
         )
 
-    # 4.a) Real CELLMEAS neighbours.  A repeated-set occurrence is local to
-    # one record and therefore must never be exposed as a catalog leaf.  Turn
-    # each selectable neighbour-type leaf into a branch and append one leaf
-    # per stable radio identity observed in this project.
+    # 4.a) Real CELLMEAS neighbours. A repeated-set occurrence and its
+    # PCI/ARFCN identity remain row details; the catalogue exposes one leaf
+    # for the documented semantic neighbour role.
     node_input_by_id = {node["node_id"]: node for node in nodes_in}
     metrics_by_code = {metric["code"]: metric for metric in metrics_out}
     # Physical PCI/ARFCN identities are details of a semantic neighbour role,
