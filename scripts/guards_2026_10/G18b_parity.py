@@ -20,6 +20,7 @@ from collections import Counter
 sys.path.insert(0, "/app")
 from sqlalchemy import text
 from app.kpi.catalog_release.registry import current_catalog
+from app.kpi.catalog_cache import PROJECT_SCOPE, cache_generation_stamp
 from guard_runtime import session_local_or_fail
 from scope_args import add_scope_args, resolve_scope
 
@@ -59,17 +60,23 @@ def main():
 
         pids = [r[0] for r in db.execute(text(
             "SELECT project_id FROM metrics_catalog_cache "
-            "WHERE project_id=:pid ORDER BY project_id"
-        ), {"pid": project_id}).all()]
+            "WHERE project_id=:pid AND scope_key=:scope ORDER BY project_id"
+        ), {"pid": project_id, "scope": PROJECT_SCOPE}).all()]
         divergent = 0
         print(f"{'project_id':<20} {'cached':>7} {'fresh':>7} {'dup_cache':>10} "
               f"{'dup_fresh':>10} {'only_cache':>11} {'only_fresh':>11}")
         for pid in pids:
-            cached_nodes = db.execute(text(
-                "SELECT payload->'nodes' FROM metrics_catalog_cache WHERE project_id=:pid"
-            ), {"pid": pid}).scalar_one() or []
+            cached_row = db.execute(text(
+                "SELECT decode_stamp,payload->'nodes' AS nodes "
+                "FROM metrics_catalog_cache WHERE project_id=:pid AND scope_key=:scope"
+            ), {"pid": pid, "scope": PROJECT_SCOPE}).mappings().one()
+            cached_nodes = cached_row["nodes"] or []
             cached_list = _leaves_list(cached_nodes)
             fresh_list = _leaves_list(fresh_fn(pid).get("nodes", []))
+            expected_stamp = cache_generation_stamp(
+                db, pid, cur.version if cur else "legacy", scope_key=PROJECT_SCOPE
+            )
+            stale_generation = cached_row["decode_stamp"] != expected_stamp
 
             cached_counts = Counter(cached_list)
             fresh_counts = Counter(fresh_list)
@@ -84,13 +91,15 @@ def main():
                   f"{dup_cache:>10} {dup_fresh:>10} "
                   f"{sum(only_cache.values()):>11} {sum(only_fresh.values()):>11}")
 
-            is_div = (
+            is_div = stale_generation or (
                 len(cached_list) != len(fresh_list)
                 or dup_cache > 0 or dup_fresh > 0
                 or len(only_cache) > 0 or len(only_fresh) > 0
             )
             if is_div:
                 divergent += 1
+                if stale_generation:
+                    print("    reason=stale_cache_generation scope=project")
                 if only_cache:
                     print(f"    only_cache[:3]={list(only_cache.keys())[:3]}")
                 if only_fresh:

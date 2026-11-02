@@ -108,7 +108,8 @@ def main():
     db = SessionLocal()
     try:
         rows = db.execute(text(
-            "SELECT project_id, payload FROM metrics_catalog_cache ORDER BY project_id"
+            "SELECT project_id, payload FROM metrics_catalog_cache "
+            "WHERE scope_key='project' ORDER BY project_id"
         )).all()
         avail_cols = _available_columns(db)
         avail_light_cols = {

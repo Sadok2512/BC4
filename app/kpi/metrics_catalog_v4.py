@@ -26,6 +26,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from functools import lru_cache
+import re
 from typing import Any
 
 from sqlalchemy import text
@@ -126,6 +127,53 @@ def cell_type_display(event: str, system: int, raw: int) -> dict[str, Any]:
     }
 
 
+def _cell_role_for_tree(event: str, system: int | None, raw: int) -> str:
+    """Cell role shown by the Analytics tree.
+
+    This is based on the event's documented enum member.  It deliberately
+    does not use ``cell_index`` (an internal occurrence key) or PCI/ARFCN (a
+    physical identity).  CELLMEAS LTE type 0 is the primary serving cell in
+    this tree; types 1/2 remain neighbours and are never mislabeled SCells.
+    """
+    if system == 7 and event in {'CELLMEAS', 'MIMOMEAS'} and raw == 0:
+        return 'PCell'
+    label = _cell_label_for_type(event, system, raw)
+    return 'PSCell' if label == 'SCG PSCell' else label
+
+
+def _cell_relation_for_tree(event: str, system: int | None, raw: int) -> str | None:
+    """Return the documented RF relation, never inferred from a label.
+
+    Only CELLMEAS has a certified serving/neighbour distinction. Other
+    cell-scoped events keep their direct Metric -> Cell structure.
+    """
+    if event != "CELLMEAS":
+        return None
+    if (system == 7 and raw in {1, 2}) or (
+        system == 9 and raw in {1000, 1001, 1002}
+    ):
+        return "neighbour"
+    if (system == 7 and (raw == 0 or 10 <= raw <= 40)) or (
+        system == 9 and (raw == 0 or 1 <= raw <= 31 or 100 <= raw <= 131 or raw == 199)
+    ):
+        return "serving"
+    return None
+
+
+def _technical_cell_label(
+    technology: str | None,
+    relation: str | None,
+    metric: str | None,
+    cell: str | None,
+) -> str | None:
+    """Stable display aid; canonical metric selectors remain unchanged."""
+    if not technology or not relation or not metric or not cell:
+        return None
+    relation_token = "Serving" if relation == "serving" else "Neighbor"
+    clean = lambda value: re.sub(r"[^A-Za-z0-9]+", "", value)
+    return "_".join((clean(technology), relation_token, clean(metric), clean(cell)))
+
+
 _KIND_MAP = {
     "Float": "numeric",
     "Integer": "numeric",
@@ -209,7 +257,10 @@ _N_PER_COLUMN_CHUNK = 50
 
 
 def _n_per_column(
-    db: Session, project_id: str, columns: set[str]
+    db: Session,
+    project_id: str,
+    columns: set[str],
+    capture_ids: tuple[str, ...] = (),
 ) -> dict[str, int]:
     """COUNT per column — rows with col IS NOT NULL.
 
@@ -232,8 +283,10 @@ def _n_per_column(
             f'COUNT(*) FILTER (WHERE "{c}" IS NOT NULL) AS "c_{idx}"'
             for idx, c in enumerate(chunk)
         )
-        sql = f"SELECT {expr} FROM nmf_event_light WHERE project_id=:pid"
-        row = db.execute(text(sql), {"pid": project_id}).first()
+        scope = " AND capture_id=ANY(:capture_ids)" if capture_ids else ""
+        sql = f"SELECT {expr} FROM nmf_event_light WHERE project_id=:pid{scope}"
+        params = {"pid": project_id, "capture_ids": list(capture_ids)}
+        row = db.execute(text(sql), params).first()
         if row is None:
             continue
         for idx, c in enumerate(chunk):
@@ -247,8 +300,10 @@ def _n_per_column(
             f'COUNT(*) FILTER (WHERE "{c}" IS NOT NULL) AS "c_{idx}"'
             for idx, c in enumerate(chunk)
         )
-        sql = f"SELECT {expr} FROM nmf_event_light_group WHERE project_id=:pid"
-        row = db.execute(text(sql), {"pid": project_id}).first()
+        scope = " AND capture_id=ANY(:capture_ids)" if capture_ids else ""
+        sql = f"SELECT {expr} FROM nmf_event_light_group WHERE project_id=:pid{scope}"
+        params = {"pid": project_id, "capture_ids": list(capture_ids)}
+        row = db.execute(text(sql), params).first()
         if row is None:
             continue
         for idx, c in enumerate(chunk):
@@ -260,6 +315,7 @@ def _cell_index_counts_per_project(
     db: Session,
     project_id: str,
     event_columns: dict[str, set[str]],
+    capture_ids: tuple[str, ...] = (),
 ) -> dict[tuple[str, int | None, int, str], int]:
     """Compte les projections réellement sélectionnables.
 
@@ -274,32 +330,56 @@ def _cell_index_counts_per_project(
         safe = sorted(c for c in columns if c.replace("_", "").isalnum())
         if not safe:
             continue
-        rows = db.execute(text("""
-            WITH light_system AS (
-                SELECT project_id, capture_id, seq, event_code, system
-                FROM nmf_event_light
-                UNION
-                SELECT project_id, capture_id, seq, event_code, system
-                FROM nmf_event_light_native
-            )
-            SELECT s.event_code, l.system, s.cell_index, s.metric_code,
-                   COUNT(DISTINCT (s.capture_id, s.second)) AS n
-            FROM nmf_cell_second s
-            LEFT JOIN light_system l
-              ON l.project_id=s.project_id
-             AND l.capture_id=s.capture_id
-             AND l.seq=s.seq_first
-             AND l.event_code=s.event_code
-            WHERE s.project_id=:pid AND s.event_code=:event
-              AND s.metric_code=ANY(:columns) AND s.value IS NOT NULL
-              AND s.cell_index >= 0
-            GROUP BY s.event_code, l.system, s.cell_index, s.metric_code
-        """), {"pid": project_id, "event": event, "columns": safe}).mappings()
+        capture_scope = " AND s.capture_id=ANY(:capture_ids)" if capture_ids else ""
+        if event == "CELLMEAS":
+            # Exact parity with Dataset._load_semantic_cell: one exploitable
+            # point per (seq, physical identity), after the same authoritative
+            # nmf_cell_identity join.  Summing storage occurrences inflated
+            # PCell/SCell counts and made the tree disagree with Graph/Table.
+            query = """
+                SELECT s.event_code, i.system, i.cell_type AS raw_cell_type,
+                       s.metric_code,
+                       COUNT(DISTINCT (s.capture_id,s.seq_first,
+                                             i.cell_arfcn,i.cell_pci)) AS n
+                FROM nmf_cell_second s
+                JOIN nmf_cell_identity i
+                  ON i.project_id=s.project_id AND i.capture_id=s.capture_id
+                 AND i.seq=s.seq_first AND i.event_code=s.event_code
+                 AND i.cell_index=s.cell_index
+                 AND i.decoder_version=s.decoder_version
+                WHERE s.project_id=:pid AND s.event_code=:event
+                  {capture_scope}
+                  AND s.metric_code=ANY(:columns) AND s.value IS NOT NULL
+                  AND s.cell_index >= 0
+                GROUP BY s.event_code,i.system,i.cell_type,s.metric_code
+            """
+        else:
+            query = """
+                SELECT s.event_code,NULL::integer AS system,
+                       s.cell_index,s.metric_code,COUNT(*) AS n
+                FROM nmf_cell_second s
+                WHERE s.project_id=:pid AND s.event_code=:event
+                  {capture_scope}
+                  AND s.metric_code=ANY(:columns) AND s.value IS NOT NULL
+                  AND s.cell_index >= 0
+                GROUP BY s.event_code,s.cell_index,s.metric_code
+            """
+        rows = db.execute(text(query.format(capture_scope=capture_scope)), {
+            "pid": project_id,
+            "event": event,
+            "columns": safe,
+            "capture_ids": list(capture_ids),
+        }).mappings()
         for row in rows:
-            system = int(row["system"]) if row["system"] is not None else None
-            index = int(row["cell_index"])
-            source = cell_source_for_index(index)
-            source_system, raw, _occurrence = source if source is not None else (system, index, 0)
+            if event == "CELLMEAS":
+                source_system = int(row["system"])
+                raw = int(row["raw_cell_type"])
+            else:
+                index = int(row["cell_index"])
+                source = cell_source_for_index(index)
+                source_system, raw, _occurrence = (
+                    source if source is not None else (None, index, 0)
+                )
             # The enum member is public identity. Occurrence is only the
             # storage discriminator needed by nmf_cell_second's primary key.
             out[(row["event_code"], source_system, raw,
@@ -339,7 +419,10 @@ def _is_physical_neighbour(event: str, system: int | None, cell_type: int) -> bo
 
 
 def _physical_neighbour_counts(
-    db: Session, project_id: str, metric_codes: set[str]
+    db: Session,
+    project_id: str,
+    metric_codes: set[str],
+    capture_ids: tuple[str, ...] = (),
 ) -> dict[tuple[str, int, int, str], list[tuple[int, int, int]]]:
     """Return series-point counts by real radio cell for catalog leaves.
 
@@ -350,6 +433,7 @@ def _physical_neighbour_counts(
     safe = sorted(code for code in metric_codes if code.replace("_", "").isalnum())
     if not safe:
         return {}
+    capture_scope = " AND s.capture_id=ANY(:capture_ids)" if capture_ids else ""
     rows = db.execute(text("""
         SELECT s.event_code,i.system,i.cell_type,s.metric_code,
                i.cell_arfcn,i.cell_pci,
@@ -361,6 +445,7 @@ def _physical_neighbour_counts(
          AND i.cell_index=s.cell_index
          AND i.decoder_version=s.decoder_version
         WHERE s.project_id=:pid AND s.event_code='CELLMEAS'
+          {capture_scope}
           AND s.metric_code=ANY(:metrics) AND s.value IS NOT NULL
           AND ((i.system=7 AND i.cell_type IN (1,2))
             OR (i.system=9 AND i.cell_type IN (1000,1001,1002)))
@@ -369,9 +454,10 @@ def _physical_neighbour_counts(
                  i.cell_arfcn,i.cell_pci
         ORDER BY s.event_code,i.system,i.cell_type,s.metric_code,
                  i.cell_arfcn,i.cell_pci
-    """), {
+    """.format(capture_scope=capture_scope)), {
         "pid": project_id,
         "metrics": safe,
+        "capture_ids": list(capture_ids),
     }).mappings()
     out: dict[tuple[str, int, int, str], list[tuple[int, int, int]]] = defaultdict(list)
     for row in rows:
@@ -407,6 +493,30 @@ def _category_label(nodes_by_id: dict, start_parent_id: str | None) -> str | Non
     return None
 
 
+def _root_technology(nodes_by_id: dict, node: dict) -> str | None:
+    system = node.get('field_system')
+    if system == 7:
+        return 'LTE'
+    if system == 9:
+        return 'NR'
+    current = node
+    seen: set[str] = set()
+    while current and current.get('node_id') not in seen:
+        seen.add(current.get('node_id'))
+        if current.get('node_type') == 'tech':
+            label = str(current.get('label') or '').strip()
+            return 'EN-DC' if label.upper() == 'ENDC' else label or None
+        current = nodes_by_id.get(current.get('parent_id'))
+    return None
+
+
+def _tree_metric_label(label: str) -> str:
+    value = label.split(' @ ', 1)[0].strip()
+    # Technology is already the parent.  Strip only an exact trailing marker;
+    # semantic names such as SS-RSRP are preserved.
+    return re.sub(r'\s+\((?:LTE|NR|EN-DC)\)$', '', value, flags=re.IGNORECASE)
+
+
 def _ancestors(nodes_by_id: dict, start_id: str) -> set[str]:
     """Return {start_id, parent, grandparent, …} up to root (cycle-safe)."""
     out: set[str] = set()
@@ -421,7 +531,11 @@ def _ancestors(nodes_by_id: dict, start_id: str) -> set[str]:
 
 
 def build_catalog_v4(
-    db: Session, project_id: str, current: CurrentCatalog
+    db: Session,
+    project_id: str,
+    current: CurrentCatalog,
+    *,
+    capture_ids: tuple[str, ...] = (),
 ) -> dict[str, Any]:
     """Build the /metrics payload from `catalog_release.is_current` JSON.
 
@@ -475,7 +589,7 @@ def build_catalog_v4(
         col = _column_for_leaf(lf)
         if col and col in avail_cols:
             candidate_cols.add(col)
-    counts = _n_per_column(db, project_id, candidate_cols)
+    counts = _n_per_column(db, project_id, candidate_cols, capture_ids)
 
     # 1.a) 2.56.0 — disponibilité par cell_index projeté. Le champ Light
     # brut sert à documenter l'événement ; la sélection est consommée dans
@@ -496,7 +610,9 @@ def build_catalog_v4(
         if not col or col not in avail_cols:
             continue
         event_columns[ev].add(col)
-    cell_index_counts = _cell_index_counts_per_project(db, project_id, event_columns)
+    cell_index_counts = _cell_index_counts_per_project(
+        db, project_id, event_columns, capture_ids
+    )
 
     def _n_per_cell(ev: str, system: int | None, ct: int, col: str) -> int:
         return sum(
@@ -730,13 +846,44 @@ def build_catalog_v4(
         else:
             reason_val = "No observations in project"
         label_val = node.get("label") or ""
+        technology_val = _root_technology(nodes_by_id, node) if is_leaf else None
+        metric_label_val = _tree_metric_label(label_val) if is_leaf else None
+        cell_selector_val = None
+        cell_label_val = None
+        cell_system_val = None
+        raw_cell_type_val = None
+        cell_relation_val = None
+        technical_label_val = None
         if is_leaf and ct_node is not None:
             field_name = label_val.split(" @ ", 1)[0]
             ev_lf = (node.get("event") or "").lstrip("#")
+            raw_cell_type_val = int(ct_node)
+            cell_selector_val = cell_type_selector(_leaf_system(node), raw_cell_type_val)
+            cell_system_val = {7: "LTE", 9: "NR"}.get(_leaf_system(node))
+            cell_label_val = _cell_role_for_tree(
+                ev_lf, _leaf_system(node), raw_cell_type_val
+            )
+            cell_relation_val = _cell_relation_for_tree(
+                ev_lf, _leaf_system(node), raw_cell_type_val
+            )
             cell_label = _label_per_type(
                 ev_lf, _leaf_system(node), int(ct_node), node.get("cell_label") or str(ct_node)
             )
             label_val = f"{field_name} @ {cell_label}"
+            metric_label_val = _tree_metric_label(field_name)
+            technical_label_val = _technical_cell_label(
+                technology_val, cell_relation_val, metric_label_val, cell_label_val
+            )
+        if not is_leaf:
+            availability_status = None
+        elif not has_col:
+            availability_status = "not_projected"
+        elif n_val > 0:
+            availability_status = "available"
+        elif baked_sel is False:
+            availability_status = "not_applicable"
+        else:
+            availability_status = "no_data"
         nodes_out.append(
             dict(
                 node_id=node["node_id"],
@@ -757,7 +904,15 @@ def build_catalog_v4(
                 field_idx=field_idx,
                 source_column=col if has_col else None,
                 unit=node.get("unit") or "",
-                cell=None,
+                cell=cell_selector_val,
+                technology=technology_val,
+                metric_label=metric_label_val,
+                cell_label=cell_label_val,
+                cell_system=cell_system_val,
+                raw_cell_type=raw_cell_type_val,
+                cell_relation=cell_relation_val,
+                technical_label=technical_label_val,
+                availability_status=availability_status,
                 n=n_val,
                 proof=node.get("proof") or "open",
                 selectable=selectable_flag,
@@ -765,29 +920,19 @@ def build_catalog_v4(
             )
         )
 
-    # 4.a) Real CELLMEAS neighbours.  A repeated-set occurrence is local to
-    # one record and therefore must never be exposed as a catalog leaf.  Turn
-    # each selectable neighbour-type leaf into a branch and append one leaf
-    # per stable radio identity observed in this project.
+    # 4.a) Real CELLMEAS neighbours. A repeated-set occurrence and its
+    # PCI/ARFCN identity remain row details; the catalogue exposes one leaf
+    # for the documented semantic neighbour role.
     node_input_by_id = {node["node_id"]: node for node in nodes_in}
     metrics_by_code = {metric["code"]: metric for metric in metrics_out}
-    physical_count_index = _physical_neighbour_counts(
-        db,
-        project_id,
-        {
-            column
-            for node in nodes_in
-            if node.get("node_type") == "leaf"
-            and node.get("cell_type") is not None
-            and _leaf_system(node) is not None
-            and _is_physical_neighbour(
-                (node.get("event") or "").lstrip("#"),
-                _leaf_system(node),
-                int(node["cell_type"]),
-            )
-            and (column := _column_for_leaf(node))
-        },
-    )
+    # Physical PCI/ARFCN identities are details of a semantic neighbour role,
+    # not extra cells in the Technology -> Metric -> Cell catalogue.  Keep the
+    # role leaf selectable and let Graph/Table expose physical identity in
+    # their rows.  Expanding every observed neighbour here both confused the
+    # two identities and made a capture switch rebuild thousands of leaves.
+    physical_count_index: dict[
+        tuple[str, int, int, str], list[tuple[int, int, int]]
+    ] = {}
     replaced_metric_codes: set[str] = set()
     physical_metrics: list[dict] = []
     physical_nodes: list[dict] = []
@@ -847,7 +992,18 @@ def build_catalog_v4(
                 field_idx=parent.get("field_idx"),
                 source_column=metric_code,
                 unit=parent.get("unit") or "",
-                cell=None,
+                cell=parent.get("cell"),
+                technology=parent.get("technology"),
+                metric_label=parent.get("metric_label"),
+                cell_label=label,
+                cell_system=parent.get("cell_system"),
+                raw_cell_type=parent.get("raw_cell_type"),
+                cell_relation="neighbour",
+                technical_label=_technical_cell_label(
+                    parent.get("technology"), "neighbour",
+                    parent.get("metric_label"), label,
+                ),
+                availability_status="available",
                 n=count,
                 proof="physical-cell-identity",
                 selectable=True,
@@ -948,7 +1104,20 @@ def build_catalog_v4(
                 field_idx=None,
                 source_column=col,
                 unit="",
-                cell=None,
+                cell=selector,
+                technology={7: "LTE", 9: "NR"}.get(system),
+                metric_label=_tree_metric_label(field_name),
+                cell_label=_cell_role_for_tree(ev, system, ct),
+                cell_system={7: "LTE", 9: "NR"}.get(system),
+                raw_cell_type=ct,
+                cell_relation=_cell_relation_for_tree(ev, system, ct),
+                technical_label=_technical_cell_label(
+                    {7: "LTE", 9: "NR"}.get(system),
+                    _cell_relation_for_tree(ev, system, ct),
+                    _tree_metric_label(field_name),
+                    _cell_role_for_tree(ev, system, ct),
+                ),
+                availability_status="available",
                 n=int(nn),
                 proof="observed-cell-second",
                 selectable=True,

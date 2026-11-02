@@ -587,21 +587,6 @@ class Dataset:
             scale=1e-6 if fields().get(code,{}).get('unit')=='bit/s' else 100 if code=='scell_throughput_share' else 1
             for r in rows:
                 if r['value'] is not None:r['value']*=scale
-        elif m['base_code']=='cqi_n_params' and m.get('cell_type_filter'):
-            spec=m['cell_type_filter']
-            table='nmf_event_deep' if self.state['decode_level']=='deep' else 'nmf_event_light'
-            rows=[dict(r) for r in self.query(f"""
-                SELECT seq,{code} AS value,
-                       {'seq_last' if table.endswith('light') else 'seq AS seq_last'}
-                FROM {table}
-                WHERE project_id=:pid AND capture_id=:cap AND event_code='CQI'
-                  AND system=:system AND cqi_cell_type=:raw AND {code} IS NOT NULL
-                ORDER BY project_id,capture_id,seq
-            """,{'system':spec['system'],'raw':spec['raw_cell_type']})]
-            display=m.get('cell_display')
-            for row in rows:
-                if display:
-                    row['cell_label']=display['label'];row['cell_system']=display['system']
         elif m['cell_scoped'] or m['base_code'] in DERIVED:
             # 0.99.2 (hotfix 2026-10-29 22:00Z, régression 0.97.3 catalog 2.56.2) :
             # cette branche gère TOUT metric cell_scoped qui n'est pas CELLMEAS
@@ -625,9 +610,11 @@ class Dataset:
                 lo, hi = bounds
                 sql = ('SELECT seq_first seq, seq_last, value, reason, second '
                        'FROM nmf_cell_second WHERE project_id=:pid AND capture_id=:cap '
-                       'AND metric_code=:metric AND cell_index BETWEEN :lo AND :hi '
+                       'AND event_code=:event AND metric_code=:metric '
+                       'AND cell_index BETWEEN :lo AND :hi '
                        'ORDER BY seq_first')
                 rows = [dict(r) for r in self.query(sql, {'metric': code,
+                                                          'event': event,
                                                           'lo': lo, 'hi': hi})]
             else:
                 sql = ('SELECT seq_first seq,seq_last,value,reason,second '
@@ -767,6 +754,10 @@ class Dataset:
             table_only and len(selections)==1
             and bool(selections[0].get('cell_type_filter'))
             and selections[0].get('event')=='CELLMEAS'
+            # SQL pagination counts the unfiltered semantic projection. When
+            # a population/time predicate exists, load the canonical rows,
+            # apply admissible(seq), then paginate the filtered table.
+            and self.allowed is None and self.lo is None and self.hi is None
         )
         loaded=[(
             m,

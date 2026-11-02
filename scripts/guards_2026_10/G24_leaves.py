@@ -53,7 +53,8 @@ def main():
         print(f"G24 scope: project_id={pid} captures={capture_ids}")
         # 1) Stats globales par projet
         pids = [r[0] for r in db.execute(text(
-            "SELECT project_id FROM metrics_catalog_cache ORDER BY project_id"
+            "SELECT project_id FROM metrics_catalog_cache "
+            "WHERE scope_key='project' ORDER BY project_id"
         )).all()]
         print(f"{'project_id':<20} {'reason':<36} {'leaves_total':>12} {'selectable':>11} {'n>0':>5}")
         for p in pids:
@@ -63,7 +64,7 @@ def main():
                        COUNT(*) FILTER (WHERE m->>'node_type'='leaf' AND (m->>'selectable')='true') AS leaves_selectable,
                        COUNT(*) FILTER (WHERE m->>'node_type'='leaf' AND (m->>'n')::int>0) AS leaves_n_gt0
                 FROM metrics_catalog_cache c, jsonb_array_elements(c.payload->'nodes') m
-                WHERE c.project_id=:pid
+                WHERE c.project_id=:pid AND c.scope_key='project'
                 GROUP BY payload->>'reason'
             """), {"pid": p}).first()
             if row is None:
@@ -84,7 +85,8 @@ def main():
         candidates = db.execute(text("""
             SELECT m->>'source_column' AS col, m->>'label' AS lbl, m->>'node_id' AS nid
             FROM metrics_catalog_cache c, jsonb_array_elements(c.payload->'nodes') m
-            WHERE c.project_id=:pid AND m->>'node_type'='leaf'
+            WHERE c.project_id=:pid AND c.scope_key='project'
+              AND m->>'node_type'='leaf'
               AND (m->>'n')::int=0
               AND m->>'source_column' IS NOT NULL AND m->>'source_column' <> ''
               AND coalesce(m->>'metric_id','') NOT LIKE '%@%'

@@ -1,3 +1,42 @@
+## 0.122.1 (patch) — project/scoped Metrics cache parity — 2026-11-02 (BC1)
+
+- Keys persisted Metrics catalogue payloads by project and deterministic capture
+  scope, so a capture-filtered request cannot replace the project-wide G18b
+  witness.
+- Uses one generation fingerprint for the route, guarded cache rebuild and
+  G18b; stale pre-contract payloads now fail explicitly until the traced,
+  deploy-lock-protected rebuild runs.
+- Removes no RF measurement: physical ARFCN/PCI identities remain table/graph
+  row details while the catalogue exposes their semantic CELLMEAS role once.
+- SemVer back: **PATCH 0.122.1**.
+
+## 0.122.0 (minor) — Metrics availability and RF relations — 2026-11-01 (BC4)
+
+- Adds repeatable `capture_id` scoping to `GET /projects/{pid}/metrics`; every
+  catalogue count is now computed from non-NULL projected values in the active
+  capture set instead of the whole project.
+- Exposes structured technology, metric and semantic cell-role metadata while
+  preserving the existing selection tokens. Public cell types remain distinct
+  from decoder storage indexes and physical PCI/ARFCN identities.
+- Distinguishes available, no-data, not-projected and not-applicable leaves;
+  no NULL value is converted to zero and no cell is synthesized.
+- Routes semantic CQI cell series through the same validated
+  `nmf_cell_second` projection as Table and the catalogue, removing the prior
+  duplicate Graph population without changing decoded RF values.
+- Keeps unfiltered semantic-cell tables on the bounded projection path and
+  closes that query by `event_code`, preventing full-capture context retention
+  and worker loss during the complete G51 catalogue guard.
+- Disables unfiltered SQL pagination for filtered semantic-cell tables, so
+  RAT/operator/time populations now match Graph instead of returning the
+  complete capture count.
+- Extends Metrics catalogue leaves with `cell_relation` and a presentation-only
+  `technical_label`, derived exclusively from CELLMEAS event/system/raw enum.
+- Certifies LTE/NR PCell, SCell and PSCell as serving and documented CELLMEAS
+  neighbour enums as neighbour; unclassified or unrelated events remain unset.
+- Preserves canonical metric selectors, RF values, null semantics and physical
+  PCI/EARFCN identity. No decoder, formula or NMF data changes are included.
+- SemVer back: **MINOR 0.122.0**.
+
 ## 0.121.1 (patch) — semantic RAT map fast path — 2026-11-01 (BC4)
 
 - Pushes LTE/NR selection into catalogue-proven semantic CELLMEAS leaves for
