@@ -1,3 +1,13 @@
+## OUVERT — SCELL NR (NFF 2.50 p.345-349) — layout nested variable non supporté
+
+- **Spec** : header 5 fields (#Header params=5, #Serving cells, #Params/serving cell, #Params/BWP, C-RNTI) suivi d'un **groupe serving cells** dont chaque variable contient 16 params + un **sous-groupe BWPs** de #BWPs × 7 params ({BWP type, BWP ID, Numerology, BW, NR-ARFCN, …}).
+- **2 records réels** (NFF 2.50 p.345-349, sample ikea.6) :
+  - `SCELL,17:25:27.067,,9,5,1,16,7,46519,,199,90078,638688,440,638066,638066,,,20,1,140,104,32,,,,4,0,0,1,189,638066,189,640334,0,1,1,189,638066,189,640334,1,0,1,189,638066,189,640334,1,1,1,189,638066,189,640334` → #Hdr=5, #Serving cells=1, #Params/cell=16, #Params/BWP=7, C-RNTI=46519. Serving cell : Cell type=**199** (SCG PSCell), SSB band=90078 (NR n78), SSB NR-ARFCN=638688, PCI=440, DL PointA=638066, UL PointA=638066, SSB periodicity=20, #BWPs=**1**. Puis 4 BWPs vars × 7 params (140, 104, 32, …, 4, 0, 0, 1, …).
+  - `SCELL,17:26:47.358,,9,5,1,16,7,44281,,…` → même structure, C-RNTI=44281, PCI=440 inchangé.
+- **Blocage** : le décodeur `app/nmf_decoder/decoder.py:244-264` traite les groupes au niveau 1 (header_col OU previous_end) mais ne supporte pas de **sous-groupe variable à l'intérieur d'un group variable** (le #BWPs par serving cell nécessite un nested count+params/variable). Les flavors `layout:variable` (ligne 225) sont pour les pairs (ex. SCELLMEAS), pas pour les 2 niveaux de nesting.
+- **Effort** : extension du décodeur pour supporter 2 niveaux de nesting (~ 1 jour) + 1 migration ajoutant les colonnes `scell_*` + `scell_bwp_*` + schéma SCELL_NR.yaml + re-décodage captures + garde par capture + par cellule.
+- **Garde actuelle** (live) : 425 records SCELL system=9 présents dans `nmf_event_light` (411+4+10 par capture) mais 0 colonne décodée (schéma vide actuel).
+
 ## 0.126.7 (patch) — décodeur 1.10.8 : SCELLMOD schema + migration 0090 — 2026-11-03 (Agent BC2, LOT 1 FINAL SCELLMOD)
 
 - Back **0.126.6 → 0.126.7** (patch). Décodeur **1.10.7 → 1.10.8**.
