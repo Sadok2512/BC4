@@ -1,3 +1,23 @@
+## 0.126.5 (patch) — décodeur 1.10.6 : CQI_NR schema + colonnes migration — 2026-11-03 (Agent BC2, LOT 1 FINAL CQI_NR)
+
+- Back **0.126.4 → 0.126.5** (patch). Décodeur **1.10.5 → 1.10.6**.
+- **CQI_NR** schéma `app/nmf_decoder/schemas/CQI_NR.yaml` (NFF 2.50 p.579-581) :
+  header 5 fields (#Header params, Scope, Cell type, RI, WB CQI) + 2 groupes
+  (RI distribution `{Count, RI}`, WB CQI distribution `{Count, WB CQI}`).
+  `cell_scoped: true`, systems=[9], system_col=4.
+- Migration **0088_cqi_nr_scope_count** : ajoute `cqi_scope`, `cqi_cell_type`,
+  `cqi_ri_count`, `cqi_wb_cqi_count` sur nmf_event_light / _deep /
+  _light_group / nmf_event_group (ADD COLUMN IF NOT EXISTS).
+- Re-décodage 3 captures Test_6 (déclencheur force=True + commit).
+- **2 records réels vérifiés** NFF 2.50 p.579-580 (sample ikea.6) :
+  - `CQI,17:25:27.260,,9,4,16,199,,,0,2,0,2` → system=9, #Hdr=4, Scope=16, Cell type=**199** (SCG PSCell), RI=∅, WB CQI=∅, group1 RI dist=0 vars, group2 WB CQI dist=0 vars.
+  - `CQI,17:26:48.313,,9,4,16,199,2,7,1,2,4,2,4,2,1,7,1,8,1,9,1,11` → system=9, #Hdr=4, Scope=16, Cell type=199, RI=2, WB CQI=7, group1 : 1 var × 2 params = {Count=4, RI=2}, group2 : 4 vars × 2 params = {1,7},{1,8},{1,9},{1,11}.
+- **Garde par capture + par cellule** (cell_index=9670 NR PSCell 199) :
+  - Test_6 : cqi_rank 2835, cqi_wb_cqi_0 2835, cqi_ri_count 2835, cqi_wb_cqi_count 2835.
+  - ikea.6 : 12/12/12/12.
+  - ikea.2 : 106/106/106/106.
+  - LTE cell_index<9000 : LTE cqi_rank/cw0_subband/wb_cqi_0 préservés (voir §Garde).
+
 ## 0.126.4 (patch) — catalog 2.65.0 : CHI reparent LTE/NR/Other + dedup bloc — 2026-11-03 (Agent BC2, REPRISE 8 Point 4)
 
 - Back **0.126.3 → 0.126.4** (patch). Catalog **2.64.1 → 2.65.0**.
