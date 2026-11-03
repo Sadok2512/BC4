@@ -224,3 +224,44 @@ WHERE project_id='43e81a34a073' AND event_code='PLAID' AND system=9 GROUP BY 1 O
 8. CHI_NR + corriger projection `chi_rrc_state/emm_substate/opmode/serving_system` (actuellement 0 non-null sur Test_6)
 
 **Dernière mise à jour** : 2026-11-03 (lot 1 PLAID NR partiel)
+
+---
+
+## Commit 2 — décodeur 1.10.1, O-A closed (PLAID NR header filter)
+
+**Fichiers** :
+- `app/nmf_decoder/store.py:40-80` : `normalize_for_stored_deep` utilise `header_filter` du schéma actif au lieu de `HEADER_SET` global
+- `app/nmf_decoder/__init__.py` : `DECODER_VERSION = '1.10.1'`
+- `pyproject.toml` + `app/main.py` : back 0.124.0 → 0.124.1
+- `CHANGELOG.md`
+
+**Cause O-A localisée** : `app/nmf_decoder/store.py:62-67` (avant patch) — filter sur `HEADER_SET` globale. `HEADER_SET = frozenset(HEADERS)` où `HEADERS = sorted(k for k,v in fields().items() if v['group'] is None)`. Comme `fields()` registre les codes via `setdefault`, LTE wins → `plaid.rank` reste à `group='pla'` même quand il est header en NR → exclu de HEADER_SET → light.add(r) n'agrège jamais → DB NULL.
+
+**Fix** : construire le header filter PAR SCHÉMA ACTIF via `schema_for(record.event_code, record.system).get('header')`. Fallback sur `HEADER_SET` global si le schéma n'a pas de header.
+
+**Garde Test_6 complet (3 captures re-decodées force=True, 2026-11-03)** :
+```sql
+SELECT system,
+ COUNT(*) FILTER (WHERE plaid_cell_type IS NOT NULL) AS cell_type,
+ COUNT(*) FILTER (WHERE plaid_rank IS NOT NULL)      AS rank,
+ COUNT(*) FILTER (WHERE plaid_prbs IS NOT NULL)      AS prbs,
+ COUNT(*) FILTER (WHERE plaid_mcs0 IS NOT NULL)      AS mcs0,
+ COUNT(*) FILTER (WHERE plaid_mod0 IS NOT NULL)      AS mod0,
+ COUNT(*) FILTER (WHERE plaid_scope IS NOT NULL)     AS scope
+FROM nmf_event_light WHERE project_id='43e81a34a073' AND event_code='PLAID' GROUP BY 1;
+```
+```
+ 7 | 16024 | 13767 | 13767 | 3243 | 3227 |    0   ← LTE identique au baseline
+ 9 |  2973 |  1878 |  1878 | 1878 | 1878 | 2973   ← O-A fermé
+```
+
+Répartition par cell_type NR :
+```
+ cell_type |  n   | rank | prbs | mcs0
+         0 |    1 |    1 |    1 |    1   ← PCell NR
+       199 | 2972 | 1877 | 1877 | 1877   ← SCG PSCell
+```
+
+**Garde LTE non régressé** : rank 13767, prbs 13767, mcs0 3243 — identique à la baseline 1.9.0 (pre-chantier).
+
+**Prochain commit** : rebuild image bc4-api 0.124.1-<sha>, pin compose, up -d, puis PLAIU_NR (lot 1 continue).

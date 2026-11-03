@@ -1,3 +1,26 @@
+## 0.124.1 (patch) — Decoder 1.10.1 : fix PLAID NR header filter (O-A closed) — 2026-11-03 (Agent BC5, Lot 1a-bis)
+
+- Ferme l'écart O-A ouvert en 1.10.0.
+- Décodeur **1.10.0 → 1.10.1** (patch).
+- Back **0.124.0 → 0.124.1** (patch).
+- Fichier modifié : `app/nmf_decoder/store.py:40-80` dans
+  `normalize_for_stored_deep`. Le filter sur `HEADER_SET` globale droppait
+  les champs NR header dont le code est aussi group field en LTE (ex.
+  `plaid.rank` = header NR mais group `pla` en LTE PLAID). `fields()` est
+  construit avec `setdefault` donc LTE wins → le code est registré avec
+  `group != None` → exclu de `HEADER_SET` → `light.add(r)` n'agrège jamais
+  la valeur NR → DB NULL.
+- Fix : construire le header filter PAR SCHÉMA ACTIF
+  (`schema_for(event, system).get('header')`) et ne retomber sur
+  `HEADER_SET` global que si le schéma ne déclare aucun header.
+- **Garde Test_6 PLAID après re-decode daa2b1df250d (small capture)** :
+  ```
+  system | cell_type | rank | prbs | mcs0 | mod0 | scope
+       7 |      808  |  494 |  494 |  110 |   98 |    0   ← LTE inchangé
+       9 |       13  |    2 |    2 |    2 |    2 |   13   ← NR fields désormais projetés
+  ```
+  Avant 1.10.1 : NR rank/prbs/mcs0/mod0 étaient tous à 0.
+
 ## 0.124.0 (minor) — Decoder 1.10.0 : PLAID NR variant partial, framework live — 2026-11-03 (Agent BC5, Lot 1 autonome)
 
 - Décodeur bump **1.9.0 → 1.10.0** (minor, premier commit du chantier

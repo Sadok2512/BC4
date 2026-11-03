@@ -5,7 +5,7 @@ from pathlib import Path
 from sqlalchemy import text
 from psycopg.types.json import Jsonb
 from . import DECODER_VERSION
-from .schema import fields
+from .schema import fields, column
 from .source import records
 from .light import Light
 from .cells import cell_rows
@@ -44,6 +44,16 @@ def normalize_for_stored_deep(record, float_fields=None):
     COPY adapter discarded textual values for legacy numeric columns, so the
     readback exposed NULL.  Normalizing the in-memory record preserves that
     exact behaviour while avoiding the database round trip.
+
+    1.10.1 — Le filter sur HEADER_SET globale droppe les champs NR header dont
+    le code est aussi déclaré comme group field en LTE (ex : plaid.rank
+    est header en NR PLAID mais group ``pla`` en LTE PLAID). ``fields()``
+    est construit avec ``setdefault`` donc LTE wins et le code est registré
+    avec group != None → exclu de HEADER_SET → light.add(r) n'agrège jamais
+    la valeur NR → DB NULL.
+    Fix : construire le header filter PAR SCHÉMA ACTIF
+    (``schema_for(event, system)``) et ne retomber sur HEADER_SET global que
+    si le schéma n'a aucun header déclaré.
     """
     for name, value in record.values.items():
         if name in LEGACY_NUMERIC_STRING_FIELDS and isinstance(value, str):
@@ -55,6 +65,13 @@ def normalize_for_stored_deep(record, float_fields=None):
     float_fields = float_fields or {}
     header_floats = float_fields.get('nmf_event_deep', ())
     group_floats = float_fields.get('nmf_event_group', ())
+    # Per-schema header set — 1.10.1. Si le schéma actif n'expose aucun
+    # header (ex: event hors scope ou variant minimal), on retombe sur
+    # HEADER_SET global pour préserver le comportement historique.
+    from .schema import schema_for
+    active_schema = schema_for(record.event_code, record.system) or {}
+    active_headers = frozenset(column(f['code']) for f in active_schema.get('header', []))
+    header_filter = active_headers if active_headers else HEADER_SET
     # Reproduce the stored Deep projection exactly.  Some format-dependent
     # codes occur once as a header and once as a group field; the global SQL
     # layout assigns each code to only one side.  The historical readback
@@ -63,7 +80,7 @@ def normalize_for_stored_deep(record, float_fields=None):
         name: float(value) if name in header_floats and isinstance(value, int)
         and not isinstance(value, bool) else value
         for name, value in record.values.items()
-        if name in HEADER_SET and value is not None
+        if name in header_filter and value is not None
     }
     for group in record.groups:
         group['values'] = {
