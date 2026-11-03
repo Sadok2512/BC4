@@ -204,7 +204,12 @@ def decode(line,system=None,format_version='unknown',*,capture_id='',seq=0,line_
             value=(tokens[idx] if tokens[idx] != '' else None) if textual else numeric(tokens[idx],f['type'])
             if value is not None:
                 lo,hi=f.get('range',[None,None])
-                if (lo is not None and value<lo) or (hi is not None and value>hi) or ('enum' in f and value not in f['enum']):raise ValueError('range')
+                # 1.11.1 — fix enum lookup : JSON ne supporte que les clés
+                # string, mais le decodeur reçoit la valeur numérique.
+                # Accepter l'une OU l'autre forme pour éviter false `range`.
+                enum=f.get('enum')
+                enum_ok=enum is None or value in enum or str(value) in enum
+                if (lo is not None and value<lo) or (hi is not None and value>hi) or not enum_ok:raise ValueError('range')
             dest[name]=value
         except (ValueError,InvalidOperation) as exc:
             tag=str(exc) if str(exc) in ('range','type') else 'type'
