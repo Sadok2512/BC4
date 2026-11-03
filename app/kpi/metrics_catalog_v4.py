@@ -1130,7 +1130,26 @@ def build_catalog_v4(
                 # anciennes n'exposent que des feuilles Metrics sur cette
                 # route ; 2.57.0 devient ensuite la source explicite.
                 analytics_tab=(node.get("analytics_tab") or analytics_fallback) if is_leaf else None,
-                metric_id=(selection if ct_node is not None and selection else metric_id),
+                # 2.67.1 (Étape 3c) — Préserver l'IDENTITÉ baked pour les
+                # feuilles spécialisées (ex. `dci_dci_format_f10@6` dont la col
+                # est la générique `dci_dci_format` — le sélecteur
+                # `col@typed-cell` entre en collision avec la feuille générique
+                # `dci_dci_format@6` qui partage col/cell_type). Sans ce test,
+                # 3 feuilles DCI SCell 6 ikea.6 (n=90/165/165) devenaient
+                # invisibles pour tout consumer keying sur `metric_id` (ex.
+                # guard_catalog, snapshot JSON, CSV export). Règle : si la mid
+                # baked diffère du pattern standard `col@raw_cell_type` →
+                # spécialisation, on préserve. Sinon `col@typed-cell` reste le
+                # sélecteur unifié. Le token API /metrics/table est dans
+                # `selection` (séparé).
+                metric_id=(
+                    metric_id if (
+                        ct_node is not None
+                        and metric_id
+                        and col
+                        and metric_id != f"{col}@{int(ct_node)}"
+                    ) else (selection if ct_node is not None and selection else metric_id)
+                ),
                 selection=selection,
                 event=(node.get("event") or "").lstrip("#") if is_leaf else None,
                 field_idx=field_idx,

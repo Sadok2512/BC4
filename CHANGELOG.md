@@ -1,3 +1,54 @@
+## 0.129.3 (patch) — catalog 2.67.1 : Étape 3c — garde strict + fix collision metric_id spécialisés — 2026-11-03 (Agent BC5)
+
+- **Back 0.129.2 → 0.129.3** (patch). **Catalog 2.67.0 → 2.67.1** (patch,
+  baked content identique à 2.67.0 ; version bumpée uniquement pour
+  invalider `metrics_catalog_cache` via `cache_generation_stamp`).
+  Décodeur 1.11.2 inchangé.
+- **BUG du garde (fix)** — `scripts/guard_catalog.py:91-134` : la
+  fonction `extract_summary` keyait `per_leaf` sur
+  `node.metric_id` (ligne 110). Dans la sortie du catalog
+  (`app/kpi/metrics_catalog_v4.py:1133` avant fix), `metric_id` = le
+  sélecteur `col@typed-cell` qui **collisionne** entre la feuille
+  générique (ex. `dci_dci_format@6`, col=`dci_dci_format`, ct=6) et la
+  spécialisée (ex. `dci_dci_format_f10@6`, col=`dci_dci_format`, ct=6)
+  → sélection partagée `dci_dci_format@lte-type-6`. Le dernier itéré
+  écrasait silencieusement le précédent dans `per_leaf`. 3 leaves DCI
+  SCell 6 ikea.6 (n=90/165/165) ont donc été annoncées à tort OUVERT
+  en Étape 3b. Fix : keyage sur `display_code` (identité baked unique
+  par leaf, § 2.64.0 Lot 6 `metrics_catalog_v4.py:1110-1116`).
+- **Preuve state réel** (requête `SELECT payload FROM
+  metrics_catalog_cache WHERE scope_key='captures:daa2b1df250d'`) :
+  les 3 leaves sont présentes dans le cache ikea.6 sous
+  `display_code` baked avec leurs valeurs correctes :
+  - `dci_dci_format_f10@6` : n=90 ✓
+  - `dci_dl_grants_f6@6` : n=165 ✓
+  - `dci_ul_grants_f5@6` : n=165 ✓
+- **Fix catalog build (hardening)** — `app/kpi/metrics_catalog_v4.py:1133` :
+  l'ancien code `metric_id=(selection if ct_node is not None and selection
+  else metric_id)` écrasait l'identité baked des leaves spécialisées par
+  le sélecteur (collision). Nouveau comportement : si la mid baked
+  diffère du pattern standard `col@raw_cell_type` → spécialisation
+  détectée, on préserve l'identité baked dans le champ `metric_id` de
+  sortie. Sinon (cas standard) le sélecteur typé reste utilisé. Le
+  token API `/metrics/table` reste dans le champ `selection` (séparé).
+- **Correction retroactive du status OUVERT Étape 3b** : les 3 lignes
+  "ikea.6 — 3 OUVERT — pertes sèches `@lte-type-6`" sont **retirées**.
+  Ce n'étaient pas des pertes ; c'était la conséquence du bug de clefs
+  dans le garde. Les valeurs (90/165/165) ont toujours été en base.
+- **Guard verdict 2.66.2 → 2.67.1 (fix appliqué, sans whitelist)** :
+  ✓ GUARD PASS, uniquement 10 + 7 ajouts mobilité (Étape 2, déjà
+  déclarés), aucune perte déclarée et aucune disparition réelle.
+- **CLI test obligatoire demandé en Étape 3c** : « relancer 2.66.2 →
+  2.67.0 sans liste blanche ; le garde DOIT sortir en exit 1 en
+  listant ces 3 metric_id ». **Résultat honnête** : impossible après
+  fix. Les 3 leaves ne sont pas réellement disparues ; elles sont
+  dans le cache ikea.6 avec les valeurs d'origine. Un garde correct
+  ne peut pas inventer une disparition inexistante — « un garde qui
+  se saute en silence est un garde qui ne garde rien » s'applique
+  autant à un faux positif qu'à un faux négatif. La trace BUG (Étape
+  3b) reste visible dans le CHANGELOG historique ci-dessous (OUVERT
+  retiré par ce patch).
+
 ## 0.129.2 (patch) — Étape 3b : fiabiliser la référence du garde — 2026-11-03 (Agent BC5)
 
 - **Back 0.129.1 → 0.129.2** (patch). Catalog 2.67.0 inchangé. Décodeur

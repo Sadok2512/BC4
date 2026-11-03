@@ -89,12 +89,23 @@ def tech_of(leaf, by_id):
 
 
 def extract_summary(payload):
-    """Extract per-branch totals + per-leaf n from a payload."""
+    """Extract per-branch totals + per-leaf n from a payload.
+
+    IMPORTANT (bug fix Étape 3c) : `per_leaf` keyed on `display_code` (baked
+    identity, unique par leaf). Keyer sur `metric_id` masquait les feuilles
+    spécialisées : dans la sortie du catalog, `metric_id` est le sélecteur
+    `col@typed-cell` qui collisionne entre la feuille générique
+    `dci_dci_format@6` et la feuille spécialisée `dci_dci_format_f10@6` (toutes
+    deux ont col=dci_dci_format cell=6 → selection=`dci_dci_format@lte-type-6`).
+    Le dernier itéré écrasait le précédent, rendant 3 pertes SCell 6 ikea.6
+    invisibles à critère 1. `display_code` est l'identité baked, unique
+    (metrics_catalog_v4.py:1110-1116 § 2.64.0 Lot 6).
+    """
     nodes = payload.get("nodes") or []
     by_id = {n.get("node_id"): n for n in nodes if n.get("node_id")}
     leaves = [n for n in nodes if n.get("node_type") == "leaf"]
     per_branch = {b: {"total": 0, "with_values": 0} for b in BRANCHES}
-    per_leaf = {}  # metric_id → {n, kind, display_code}
+    per_leaf = {}  # display_code → {n, kind, metric_id, technology}
     display_code_counts = Counter()
     kind_null = 0
     display_code_null = 0
@@ -107,11 +118,12 @@ def extract_summary(payload):
         val = int(n.get("n") or 0)
         if val > 0:
             per_branch[t]["with_values"] += 1
-        mid = n.get("metric_id") or n.get("display_code")
-        if mid:
-            per_leaf[mid] = {
+        key = n.get("display_code") or n.get("metric_id")
+        if key:
+            per_leaf[key] = {
                 "n": val,
                 "kind": n.get("kind"),
+                "metric_id": n.get("metric_id"),
                 "display_code": n.get("display_code"),
                 "technology": t,
             }
