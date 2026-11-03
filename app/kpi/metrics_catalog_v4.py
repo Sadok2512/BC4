@@ -1009,12 +1009,22 @@ def build_catalog_v4(
             availability_status = "not_applicable"
         else:
             availability_status = "no_data"
+        display_code_val = None
+        if is_leaf:
+            # 2.64.0 — Lot 6 : display_code UNIQUE par baked leaf. Deux leaves
+            # avec `source_column` identique mais `metric_id` différent
+            # (ex. dci_ul_grants@6 vs dci_ul_grants_f5@6, même `source_column`
+            # `dci_ul_grants`) collideraient si on utilisait `selection`
+            # (col@selector). On préfère `metric_id` qui est l'identité
+            # baked unique par node ; `selection` reste utilisée côté table/graph.
+            display_code_val = metric_id or (col and selection) or col
         nodes_out.append(
             dict(
                 node_id=node["node_id"],
                 parent_id=parent_id,
                 order=order,
                 label=label_val,
+                display_code=display_code_val,
                 note=node.get("description"),
                 source=None,
                 node_type=node.get("node_type"),
@@ -1203,11 +1213,20 @@ def build_catalog_v4(
          _column_for_leaf(lf))
         for lf in displayed_leaves if lf.get("cell_type") is not None
     }
+    # 2.64.0 (REPRISE 7 Lot 6) — un leaf baked avec `field_system=None`
+    # (multi-system, ex. DCI avec cell_type=6 et pas de bloc tech explicite)
+    # masque TOUTES les émissions dynamiques pour la même (event, cell_type,
+    # col) peu importe le system observé — sinon display_code dupliqué entre
+    # baked (sel.=`col@lte-type-N`) et dynamic (sel.=`col@lte-type-N`).
+    baked_cells_no_sys = {
+        (ev, ct, col) for (ev, sys_, ct, col) in baked_cells if sys_ is None
+    }
     dynamic_entries = sorted(
         (ev, system, ct, col, nn)
         for (ev, system, ct, col), nn in cell_index_counts.items()
         if nn > 0
         and (ev, system, ct, col) not in baked_cells
+        and (ev, ct, col) not in baked_cells_no_sys
         and _series_visible(ev, f"{col}@{cell_type_selector(system, ct)}")
     )
     for ev, system, ct, col, nn in dynamic_entries:
@@ -1229,6 +1248,7 @@ def build_catalog_v4(
                 parent_id=parent_id,
                 order=order,
                 label=label_full,
+                display_code=selection,
                 note="Cellule observée dans nmf_cell_second",
                 source=None,
                 node_type="leaf",
@@ -1269,7 +1289,7 @@ def build_catalog_v4(
             seen_codes.add(selection)
             cat_label = _category_label(nodes_by_id, ev_nid) or "Undocumented"
             metrics_out.append(dict(
-                code=selection, label=label_full, unit="",
+                code=selection, display_code=selection, label=label_full, unit="",
                 source_table="nmf_cell_second", source_tables=["nmf_cell_second"],
                 source_column=col, tech="BOTH", kind="numeric",
                 n_in_project=int(nn), decoder_version=DECODER_VERSION,

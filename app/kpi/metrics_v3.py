@@ -118,7 +118,7 @@ def definitions():
         f=fs[m.source_column];s=ss[f['event']]
         scoped=bool(s.get('cell_scoped')) and not f.get('dimension') and not code.endswith('_cell_type') and code!='phrate_ph_ch_type'
         category=f.get('category') or 'session'
-        result[code]=dict(code=code,label=english_text(FIELD_LABELS.get(m.source_column,_humanize_label(m.label))),unit=m.unit or '',source_table=m.source_table,
+        result[code]=dict(code=code,display_code=code,label=english_text(FIELD_LABELS.get(m.source_column,_humanize_label(m.label))),unit=m.unit or '',source_table=m.source_table,
             source_tables=[m.source_table],source_column=m.source_column,tech=m.tech,kind=m.kind,
             event=f['event'],event_code=f['event'],category=category,category_label=CATEGORIES.get(category,category),
             cell_scoped=scoped,cells=[],cell_options=[],attributes=[],proof='documented',proof_ref=f['proof'],
@@ -134,7 +134,7 @@ def definitions():
         scoped=(bool(schema.get('cell_scoped')) and not f.get('dimension'))
         kind='numeric' if code in NUMERIC_EVENT_FIELDS else 'categorical'
         result[code]=dict(
-            code=code,label=english_text(f.get('label') or _humanize_label(code)),
+            code=code,display_code=code,label=english_text(f.get('label') or _humanize_label(code)),
             unit=f.get('unit') or '',source_table='nmf_event_group' if f.get('group') else 'nmf_event_deep',
             source_tables=['nmf_event_group','nmf_event_light_group'] if f.get('group') else ['nmf_event_deep','nmf_event_light'],
             source_column=code,tech='BOTH',kind=kind,event=event,event_code=event,
@@ -167,9 +167,9 @@ def definitions():
                 if key.startswith('ho_') and event not in {'HOA','HOS','HOI'}:continue
                 attrs.append(dict(code=key,label=label,unit=unit,kind='categorical' if key=='outcome' else 'numeric',proof='content',proof_ref='nmf_event_pair; capture-local context state machine; no cross-capture pairing'))
         code='evt_'+event
-        result[code]=dict(code=code,label=event,unit='occurrence',source_table='nmf_event_deep',source_tables=['nmf_event_deep','nmf_event_light'],source_column='event_code',tech='BOTH',kind='event',event=event,event_code=event,category='signalling_states',category_label='Events',event_group=next(k for k,v in EVENT_GROUPS.items() if event in v),cell_scoped=False,cells=[],cell_options=[],attributes=attrs,proof='documented' if s and s.get('proof')!='none' else 'none',proof_ref='NFF 2.19; YAML '+event+'; occurrence only when undocumented',decoder_version=DECODER_VERSION,n_in_project=0,available=True,reason=None,alias_of=None,agg='count')
+        result[code]=dict(code=code,display_code=code,label=event,unit='occurrence',source_table='nmf_event_deep',source_tables=['nmf_event_deep','nmf_event_light'],source_column='event_code',tech='BOTH',kind='event',event=event,event_code=event,category='signalling_states',category_label='Events',event_group=next(k for k,v in EVENT_GROUPS.items() if event in v),cell_scoped=False,cells=[],cell_options=[],attributes=attrs,proof='documented' if s and s.get('proof')!='none' else 'none',proof_ref='NFF 2.19; YAML '+event+'; occurrence only when undocumented',decoder_version=DECODER_VERSION,n_in_project=0,available=True,reason=None,alias_of=None,agg='count')
     for code,(label,unit,category,event) in DERIVED.items():
-        result[code]=dict(code=code,label=label,unit=unit,source_table='nmf_cell_second',source_tables=['nmf_cell_second'],source_column=code,tech='LTE',kind='numeric',event=event,event_code=event,category=category,category_label=CATEGORIES[category],cell_scoped=False,cells=[],cell_options=[],attributes=[],proof='content',proof_ref='nmf_cell_second; observed cells only, no configured state inferred',decoder_version=DECODER_VERSION,n_in_project=0,available=True,reason=None,alias_of=None,agg='last')
+        result[code]=dict(code=code,display_code=code,label=label,unit=unit,source_table='nmf_cell_second',source_tables=['nmf_cell_second'],source_column=code,tech='LTE',kind='numeric',event=event,event_code=event,category=category,category_label=CATEGORIES[category],cell_scoped=False,cells=[],cell_options=[],attributes=[],proof='content',proof_ref='nmf_cell_second; observed cells only, no configured state inferred',decoder_version=DECODER_VERSION,n_in_project=0,available=True,reason=None,alias_of=None,agg='last')
     # 2.53.0 — CAPTURE Phase 2 : inject 27 feuilles (hors MASKED filtrées
     # côté metrics_catalog_v4). Codes `cap_{group}_{slug}` dispatchent
     # vers metrics_v3_capture.load_capture() dans Dataset.load().

@@ -84,6 +84,7 @@ def capture_definitions() -> dict[str, dict]:
     for code, spec in CAPTURE_SPEC.items():
         out[code] = dict(
             code=code,
+            display_code=code,
             label=spec["label"],
             unit=spec["unit"] or "",
             source_table="capture",

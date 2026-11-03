@@ -1,3 +1,40 @@
+## 0.126.0 (minor) — catalog 2.64.0 : display_code émis par le back (Lot 6) — 2026-11-03 (Agent BC2, REPRISE 7 Lot 6)
+
+- Back **0.125.3 → 0.126.0** (minor — nouvelle feuille `display_code` sur
+  toutes les émissions). Catalog **2.63.2 → 2.64.0**.
+- **metrics_v3** (`app/kpi/metrics_v3.py:121,136,170,172`,
+  `app/kpi/metrics_v3_capture.py:86`) — ajout `display_code=code` sur chaque
+  entrée du dict `definitions()` + `evt_*` + `DERIVED` + `CAPTURE_SPEC`.
+- **metrics_catalog_v4** (`app/kpi/metrics_catalog_v4.py:1028+`,
+  `:1200+`, `:1271+`) — ajout `display_code` sur nodes_out baked
+  (= metric_id ou selection) et dynamic (= selection) + metrics_out
+  dynamiques (= selection).
+- **catalog_release 2.64.0** — `scripts/catalog/patch_2_64_0.py` enrichit
+  les 5 323 leaves baked avec `display_code=metric_id`.
+  sha256 `5fc6a0064ea40eb16143c09a9c0924d1a834241fac424df41ae1930a35eaa480`.
+- Garde doublons display_code baked : 0 / 5 323 ✓
+
+### Garde Lot 6
+
+```sql
+WITH nodes AS (
+  SELECT scope_key, jsonb_array_elements(payload->'nodes') AS n
+  FROM metrics_catalog_cache WHERE scope_key LIKE 'captures:%'
+)
+SELECT scope_key,
+       COUNT(DISTINCT n->>'display_code') FILTER (WHERE n->>'node_type'='leaf' AND n->>'display_code' IS NOT NULL) AS unique_display_codes,
+       COUNT(*) FILTER (WHERE n->>'node_type'='leaf' AND n->>'display_code' IS NOT NULL) AS leaf_rows,
+       (SELECT COUNT(*) FROM (
+         SELECT n->>'display_code' AS dc, COUNT(*) AS k
+         FROM jsonb_array_elements(payload->'nodes') n
+         WHERE n->>'node_type'='leaf' AND n->>'display_code' IS NOT NULL
+         GROUP BY n->>'display_code' HAVING COUNT(*)>1
+       ) t) AS duplicates
+FROM metrics_catalog_cache WHERE scope_key LIKE 'captures:%'
+GROUP BY scope_key, payload ORDER BY scope_key;
+```
+Attendu post-rebuild : duplicates=0 par capture.
+
 ## 0.125.3 (patch) — dynamic entries pour TOUTE colonne cell_scoped observée — 2026-11-03 (Agent BC2, REPRISE 7 Lot 1 + fix écart Point 1)
 
 - Back **0.125.2 → 0.125.3** (patch). Catalog release inchangé (2.63.2).
