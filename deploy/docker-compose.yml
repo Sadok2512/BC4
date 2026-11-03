@@ -52,7 +52,7 @@ services:
       start_period: 20s
 
   api:
-    image: bc4-api:0.126.0-74e17dc
+    image: bc4-api:0.126.1-49f8e31
     build: ./bc4-back
     restart: unless-stopped
     environment:
@@ -130,7 +130,7 @@ services:
       retries: 20
 
   import-worker:
-    image: bc4-api:0.126.0-74e17dc
+    image: bc4-api:0.126.1-49f8e31
     command: python -m app.services.import_worker
     restart: unless-stopped
     environment:
