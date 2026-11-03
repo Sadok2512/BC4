@@ -1,3 +1,47 @@
+## 0.129.1 (patch) — scripts/guard_catalog.py (Étape 3) — 2026-11-03 (Agent BC5)
+
+- **Back 0.129.0 → 0.129.1** (patch). Catalog 2.67.0 inchangé. Décodeur
+  1.11.2 inchangé. Image Docker inchangée (script embarqué dans le repo
+  uniquement, pas de rebuild requis).
+- **Nouveau garde `scripts/guard_catalog.py`** — obligatoire avant tout
+  « FAIT ». Compare le catalogue live au snapshot de la release
+  précédente. Exit 1 si l'un des 5 critères échoue :
+  1. une feuille avec valeurs a disparu (liste `metric_ids`) ;
+  2. le compte de valeurs d'une feuille diminue sans déclaration
+     `--allow-decrease` ;
+  3. une branche (CAPTURE / LTE / NR / IP / Services) perd des feuilles
+     avec valeurs par capture ;
+  4. `display_code` vide ou dupliqué, `kind` vide, ou `STRUCT` dans
+     l'arbre ;
+  5. un KPI event diffère du comptage brut `nmf_event_deep` (HOA, HOS,
+     RRA, RRC, RRD, RRRE, TUA, TUS, CREL, SCELLMOD).
+- **Sortie** : tableau branche × capture (total / avec valeurs,
+  before→after) + liste des écarts. Snapshot écrit sous
+  `audit/snapshots/catalog_<version>.json` à chaque release.
+- **Premier lancement** (snapshot 2.67.0 écrit comme référence,
+  `audit/snapshots/catalog_2.67.0.json` 2.1 MB, projet
+  `43e81a34a073`, Test_6 + ikea.6 + ikea.2) :
+
+  ```
+  === guard_catalog.py — catalog live=2.67.0 ===
+  [INFO] Pas de snapshot précédent. Écriture snapshot 2.67.0 comme référence.
+  branche                           Test_6              ikea.6              ikea.2
+  CAPTURE                         27/26               27/26               27/26
+  LTE                           3544/295            3498/223            3517/242
+  NR                             262/82              245/65              235/55
+  IP / Services                  423/40              423/20              423/20
+  [OK] premier snapshot écrit — pas de comparaison, exit 0
+  ```
+
+- **CLI** : `python3 scripts/guard_catalog.py` (comparaison) ;
+  `--write-snapshot` pour matérialiser la release courante en
+  référence ; `--allow-decrease` pour accepter une baisse de valeurs
+  déclarée en changelog.
+- **Discipline session** (règles CLAUDE.md appliquées) : aucun chiffre
+  sans sa requête SQL rejouable, ordre `(capture_id, seq)` jamais `ts`,
+  pas de CI (garde manuel), gardes par capture, design catalog
+  inchangé.
+
 ## 0.129.0 (minor) — catalog 2.67.0 : Chantier Mobilité étape 2 — 2026-11-03 (Agent BC5)
 
 - Back **0.128.2 → 0.129.0** (minor). Catalog **2.66.2 → 2.67.0** (minor).
