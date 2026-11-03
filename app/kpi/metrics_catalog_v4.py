@@ -1727,16 +1727,43 @@ def build_catalog_v4(
             ("lte_rrc_retry_count",         "LTE RRC retry count (RRF/RRRE→RRA before RRC)", rrc_retry, "n", "KPI", _mob_cat_id),
             ("lte_lau_retry_count",         "LTE LAU retry count (LUF→LUA before LUS)",   lau_retry, "n", "KPI", _mob_cat_id),
         ]
-        # SCG under cat_LTE_scg (if exists)
+        # SCG under cat_LTE_scg (baked ou injecté). Si la cat est baked mais
+        # vide (aucune leaf baked en dépend), elle est hors keep_ids → on
+        # l'ajoute explicitement à nodes_out pour que les KPI dynamiques
+        # trouvent leur parent.
         _scg_cat_id = "cat_LTE_scg"
+        _scg_baked = nodes_by_id.get(_scg_cat_id)
+        if _scg_baked and not any(n.get("node_id") == _scg_cat_id for n in nodes_out):
+            nodes_out.append(dict(
+                node_id=_scg_cat_id, parent_id=_scg_baked.get("parent_id"),
+                order=0, node_type="category",
+                label=_scg_baked.get("label") or "ENDC SCG",
+                event=None, source_column=None,
+                metric_id=None, display_code=None, cell=None, cell_label=None,
+                cell_system=None, technology="LTE", unit="", analytics_tab=None,
+                availability_status=None, n=0, proof=None, selectable=False,
+                reason=None, kind=None,
+            ))
         if any(n.get("node_id") == _scg_cat_id for n in nodes_out):
             MOBILITY_KPI.extend([
                 ("endc_scg_mod_count",     "ENDC SCG modification count (SCELLMOD result=1 ; OUVERT ADD vs RELEASE)", n_scg_mod, "n", "KPI", _scg_cat_id),
                 ("endc_scg_failure_count", "ENDC SCG failure count (SCELLMOD result ∈ {2,10..15})", n_scg_fail, "n", "KPI", _scg_cat_id),
                 ("endc_scg_failure_rate_pct", "ENDC SCG failure rate (failure / total SCELLMOD)",   scg_fail_rate, "%", "KPI", _scg_cat_id),
             ])
-        # Access/NAS under cat_LTE_access (if exists)
+        # Access/NAS under cat_LTE_access (même pattern que SCG).
         _acc_cat_id = "cat_LTE_access"
+        _acc_baked = nodes_by_id.get(_acc_cat_id)
+        if _acc_baked and not any(n.get("node_id") == _acc_cat_id for n in nodes_out):
+            nodes_out.append(dict(
+                node_id=_acc_cat_id, parent_id=_acc_baked.get("parent_id"),
+                order=0, node_type="category",
+                label=_acc_baked.get("label") or "Accessibilité et NAS",
+                event=None, source_column=None,
+                metric_id=None, display_code=None, cell=None, cell_label=None,
+                cell_system=None, technology="LTE", unit="", analytics_tab=None,
+                availability_status=None, n=0, proof=None, selectable=False,
+                reason=None, kind=None,
+            ))
         if any(n.get("node_id") == _acc_cat_id for n in nodes_out):
             MOBILITY_KPI.extend([
                 ("lte_rrc_setup_success_rate_pct", "LTE RRC setup success rate (RRC / RRA)", rrc_setup_rate, "%", "KPI", _acc_cat_id),
