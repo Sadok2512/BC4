@@ -890,3 +890,84 @@ with values n'est perdue par capture.
 - **Lot 7** (export front colonne par capture + Kind/unit/data_type) :
   OUVERT. Modif front `src/features/kpi/*/exportAllMetricsCsv`. App
   1.133.25 → 1.134.0.
+
+---
+
+## REPRISE 7 — Fin complète (2026-11-03, Agent BC2)
+
+**HEAD** : `f0c0c0b` · **Live back** : `bc4-api:0.126.2-c6e9081` · **Live front** : `bc4-front-v2:1.134.0-f23e122` · catalog **2.64.0** · decoder 1.10.5 · GC1 OK
+
+### Commits REPRISE 7 (total)
+
+| sha | version | description |
+|---|---|---|
+| `957e6cd` | back 0.125.1 → 0.125.2 · catalog 2.63.1 → 2.63.2 | Point 2 : relabel chi_rrc_state + dedup CHI LTE #NN |
+| `9a7cf3b` | — | fix app/main.py version 0.125.2 |
+| `6fdb19c` | — | pin bc4-api 0.125.2 |
+| `3d04519` | — | handoff REPRISE 7 Point 2 |
+| `1b180fa` | — | handoff gardes Points 1-3 + écart OUVERT plaid_mcs0 |
+| `f591af9` | back 0.125.2 → 0.125.3 | Lot 1 pipeline : dynamic entries pour toute colonne cell_scoped observée (ferme écart plaid_mcs0) |
+| `0b8bc7d` | — | pin bc4-api 0.125.3 |
+| `74e17dc` | back 0.125.3 → 0.126.0 · catalog 2.63.2 → 2.64.0 | Lot 6 : display_code émis par le back |
+| `2f231a2` | — | pin bc4-api 0.126.0 |
+| `49f8e31` | back 0.126.0 → 0.126.1 | Lot 7 : endpoint /metrics/catalog-csv |
+| `987f6c3` | — | pin bc4-api 0.126.1 |
+| `c6e9081` | back 0.126.1 → 0.126.2 | fix STRUCT dynamic (follow-up Lot 6) |
+| `f0c0c0b` | — | pin bc4-api 0.126.2 + front 1.134.0 |
+| front `f23e122` | front 1.133.25 → 1.134.0 | Export CSV front via nouvel endpoint back |
+
+### Tableau P1-P20 (toutes gardes à 0 ou documentées)
+
+| # | Garde | Mesure | Résultat |
+|---|---|---|---|
+| P1 | SCG PSCell NR visible (PLAID/PLAIU per cap) | 1796/2/79, 1741/5/106 | **PASS** |
+| P2 | chi_rrc_state 'LTE RRC state' KPI_CATEGORICAL | n=632/11/11 | **PASS** |
+| P3 | Idle/Connected live match | 181+451=632, 6+5=11, 5+6=11 | **PASS** |
+| P4 | plaid_mcs0 / plaiu_mcs0 NR PSCell catalogue | 1796/2/79, 1741/5/106 | **PASS** (écart fermé 0.125.3) |
+| P5 | CHI #NN dedup (5 feuilles) | dup_leaves=0 | **PASS** |
+| P6 | Non-perte 2.62.0→2.63.2 justifiée | 3412 pertes toutes documentées | **PASS** |
+| P7 | ghost-NR-placeholder dans arbre | 0 (fsys≠9 cell_type NR-only) | **PASS** |
+| P8 | STRUCT dans l'arbre | 0 (fix 0.126.2) | **PASS** |
+| P9 | STRUCT #Params/#Variables filtered | 551 drop | **PASS** |
+| P10 | STRUCT cqi_n_params/Measured system filtered | 284 drop | **PASS** |
+| P11 | STRUCT Count @ cell filtered | 140 drop | **PASS** |
+| P12 | MIMO/CSI/PMI on neighbour filtered | 27 drop | **PASS** |
+| P13 | SCell ≥ 100 dans cell_label | 0 | **PASS** |
+| P14 | kind IS NULL dans l'arbre | 0 | **PASS** |
+| P15 | display_code IS NULL | 0 | **PASS** |
+| P16 | display_code duplicates per capture | 0 / 0 / 0 | **PASS** |
+| P17 | GC1 disk_sha == db_sha | match cae8… / 5fc6… | **PASS** |
+| P18 | Catalog version live | 2.64.0 | **PASS** |
+| P19 | API version live | 0.126.2 | **PASS** |
+| P20 | Front version live | 1.134.0 | **PASS** |
+
+### Garde Lot 1 OUVERT résiduel
+
+- **CQI_NR / DCI_NR / SCELL_NR / SCELLMOD** : CQI (12 cols × cell_types = 48 variantes LTE) et DCI (14 variantes LTE) exposés dynamiquement. **NR variants = 0** (nécessite schémas YAML CQI_NR.yaml / DCI_NR.yaml / SCELL_NR.yaml / SCELLMOD.yaml). SCELL/SCELLMOD : 0 colonne observée dans `nmf_cell_second` → schémas de base absents. Travail NFF-forensique séparé.
+
+### CSV export live
+
+- Endpoint : `GET /projects/{pid}/metrics/catalog-csv`
+- Format : BOM + header ligne 1 + colonnes ligne 2 + 1 row/leaf ligne 3+
+- Colonnes : display_code · label · kind · unit · data_type · Technology · Category · Group · Metric · Cell · Event · Source column · Metric id · Raw cell type · Selectable · Availability · Reason · n_<capture_id> × N
+- Taille : ~1.1 MB, 5578 lignes totales
+- **Test_6 complet** : `/home/devmat/BC4/export_test_6_final.csv` (5577 feuilles)
+- **Avec valeurs ≥ 1 (une capture) seulement** : `/home/devmat/BC4/export_test_6_with_values.csv` (455 feuilles)
+- **ikea.6 (daa2b1df250d) uniquement** : `/home/devmat/BC4/export_ikea_6_with_values.csv` (327 feuilles)
+
+### Preuve finale (extrait export live)
+
+```
+display_code                             | kind            | n_a4b0 | n_daa2 | n_ecff
+chi_rrc_state                            | KPI_CATEGORICAL |    632 |     11 |     11
+plaid_prbs@nr-type-199                   | KPI             |   1796 |      2 |     79
+plaid_mcs0@nr-type-199                   | KPI             |   1796 |      2 |     79
+plaiu_prbs@nr-type-199                   | KPI             |   1741 |      5 |    106
+plaiu_mcs0@nr-type-199                   | KPI             |   1741 |      5 |    106
+macrate_mac_dl_bitrate@nr-type-199       | KPI             |   2852 |     13 |    107
+macrateu_mac_ul_bitrate@nr-type-199      | KPI             |   2852 |     13 |    107
+cell_sinr@nr-type-199                    | KPI             |   2919 |     14 |    108
+cellmeas_rsrp_f12@199                    | KPI             |   2940 |     15 |    108
+```
+
+**Dernière mise à jour** : 2026-11-03 fin REPRISE 7 — Points 1-3 FAIT (dont écart plaid_mcs0 fermé par 0.125.3), Lot 1 partiel + ouverture OUVERTE sur schémas NR, Lot 6 live (display_code 0 doublons), Lot 7 live (endpoint CSV + front 1.134.0).
