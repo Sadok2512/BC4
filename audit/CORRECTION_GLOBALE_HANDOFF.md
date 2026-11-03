@@ -492,3 +492,56 @@ Tous poussés sur origin + github.
 - **Lot 7** export colonne par capture + kind/unit/data_type dans en-tête, catalog_release 2.63.0, app 1.134.0.
 
 **Dernière mise à jour** : 2026-11-03 ~09:15 (REPRISE 2 fin, Lot 1 5/9 schémas + CHI LTE)
+
+---
+
+## REPRISE 3 — fin de passe (2026-11-03)
+
+**HEAD final** : `15d8625` (pin 0.124.7)
+**Live prod** : `bc4-api:0.124.7-0e1245e` (decoder 1.10.5, Lot 3 + Lot 5 live)
+**Catalog cache** : régénéré 2026-11-03, 5 680 leaves (−840 STRUCT, −2 400 ghost placeholders)
+
+### Commits REPRISE 3
+
+| sha | version | description |
+|---|---|---|
+| `aea85f4` | back 0.124.5 → 0.124.6 | Lot 3 : filter 2 405 ghost NR placeholders (SCell 100/199/1000-1002 avec field_system ≠ 9) |
+| `4d5f840` | — | pin bc4-api 0.124.6 |
+| `0e1245e` | back 0.124.6 → 0.124.7 | Lot 5 : champ `kind` KPI/KPI_CATEGORICAL/DIMENSION + STRUCT hors arbre (−840) |
+| `15d8625` | — | pin bc4-api 0.124.7 |
+
+### Garde global P20
+
+| mesure | attendu | obtenu |
+|---|---|---|
+| SCell ≥ 100 dans cell_label | 0 | **0** ✓ |
+| STRUCT dans l'arbre | 0 | **0** ✓ |
+| lignes sans metric_id | 0 | **0** ✓ |
+| Bloc étranger sous LTE | 0 | **916** (réduit de 1 967, labels catalog_release 2.62.0) |
+| doublons display_code | 0 | 0 par absence de colonne (Lot 6 non commencé) |
+
+### KPI NR avec valeurs sur Test_6 (via cache régénéré, sélection)
+
+```
+cell_rsrp PSCell NR : 3 063 (SCG PSCell = 199)
+cell_rsrp SCG SCell 17 : 11
+cell_rsrp PCell NR  :     3
+cell_sinr PSCell NR : 3 041
+cell_rssi PSCell NR : 3 043
+plaid_prbs PSCell NR : 1 877
+plaiu_prbs PSCell NR : 1 852
+macrate_mac_dl_bitrate PSCell NR : 2 972
+macrateu_mac_ul_bitrate PSCell NR : 2 972
+chi_rrc_state LTE : 654 (Idle=192, Connected=462)
+```
+
+### Lots restants (non commencés dans REPRISE 3)
+
+- **Lot 1 encore** : SCELLMOD, CQI_NR, SCELL, DCI (handoff cite les pages PDF).
+- **Lot 2 NR** : NR_RRC_STATE / NR_EMM_STATE = **NOT_APPLICABLE** sur Test_6 (EN-DC NSA, 1 seul RRC LTE, 0 record CHI system=9). Marquer dans le catalog comme `availability_status='not_applicable'` + `reason='en-dc_nsa_single_rrc'`.
+- **Lot 4** : "Bloc étranger sous LTE" encore 916 — labels hérités de catalog_release 2.62.0. À corriger via catalog_release 2.63.0 (regen avec labels nettoyés) OU filtre analogue à Lot 3.
+- **Lot 6** : `display_code` émis par back (encore absent du payload). Nécessite ajout colonne + computation à partir de hn.
+- **Lot 7** : export CSV avec colonne par capture + kind/unit/data_type dans en-tête — nécessite modifs front (`src/features/kpi/MetricsCatalogSidebar.tsx:exportAllMetricsCsv`).
+- **Versions** : catalog_release 2.62.0 → 2.63.0 (après tous les patches) et app 1.133.25 → 1.134.0 à faire.
+
+**Dernière mise à jour** : 2026-11-03 fin REPRISE 3 (Lot 3 + Lot 5 live, 5 680 leaves, 0 STRUCT, 0 ghost placeholder)
