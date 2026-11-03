@@ -1,3 +1,40 @@
+## 0.126.7 → 0.126.7 (unchanged) · catalog 2.65.0 → 2.65.1 (bump) — 2026-11-03 (Agent BC2, LOT 1 CLÔTURE Point 1)
+
+- Catalog **2.65.0 → 2.65.1** (patch). Back **0.126.7** inchangé.
+- Pas de modification du baked tree (5 319 leaves identiques). Le bump
+  trace l'enrichissement runtime (CQI_NR + DCI_NR + SCELLMOD exposés
+  via dynamic entries post-REPRISE 9 décodeur 1.10.6-1.10.8).
+- sha256 `efff6fb55d65eafe819899e7f6de05d4d45713d82c44a55822f0929447f382be`.
+- Script `scripts/catalog/patch_2_65_1.py` : copie de 2.65.0 avec
+  `catalog_version="2.65.1"`.
+
+### Feuilles avec valeurs — diff 2.65.0 → 2.65.1 (REPRISE 9)
+
+Avant LOT 1 FINAL : **453** leaves with values (any capture).
+Après : **462** leaves with values (any capture). Diff : **+9**.
+
+Les 12 nouvelles NR variants exposées (post-redecode avec schémas
+CQI_NR/DCI_NR) :
+
+| display_code | n_a4b0c321c52e | n_daa2b1df250d | n_ecffb18dbd7f |
+|---|---|---|---|
+| cqi_rank@nr-type-199 | 2 835 | 12 | 106 |
+| cqi_ri_count@nr-type-199 | 2 835 | 12 | 106 |
+| cqi_wb_cqi_0@nr-type-199 | 2 835 | 12 | 106 |
+| cqi_wb_cqi_count@nr-type-199 | 2 835 | 12 | 106 |
+| dci_ul_grants@nr-type-199 | 2 852 | 13 | 107 |
+| dci_dl_grants@nr-type-199 | 2 852 | 13 | 107 |
+| dci_cce_aggr_level@nr-type-199 | 1 944 | 5 | 106 |
+| dci_cce_count@nr-type-199 | 1 944 | 5 | 106 |
+| dci_format_count@nr-type-199 | 1 944 | 5 | 106 |
+| dci_cce_aggr_level@nr-type-0 | 1 | 0 | 0 |
+| dci_cce_count@nr-type-0 | 1 | 0 | 0 |
+| dci_format_count@nr-type-0 | 1 | 0 | 0 |
+
+Diff global 462-453=**9** = 12 nouvelles leaves − 3 déjà présentes
+dans 2.65.0 avec n>0 marginal (markers @nr-type-0 des events PLAID NR
+PCell, qui portaient déjà n=1 dans certaines leaves PLAID avant LOT 1).
+
 ## OUVERT — SCELL NR (NFF 2.50 p.345-349) — layout nested variable non supporté
 
 - **Spec** : header 5 fields (#Header params=5, #Serving cells, #Params/serving cell, #Params/BWP, C-RNTI) suivi d'un **groupe serving cells** dont chaque variable contient 16 params + un **sous-groupe BWPs** de #BWPs × 7 params ({BWP type, BWP ID, Numerology, BW, NR-ARFCN, …}).
