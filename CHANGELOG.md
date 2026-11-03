@@ -1,3 +1,39 @@
+## 0.125.2 (patch) — catalog_release 2.63.2 : relabel chi_rrc_state + dedup CHI LTE #NN — 2026-11-03 (Agent BC2, REPRISE 7 Point 2)
+
+- Back **0.125.1 → 0.125.2** (patch). Catalog **2.63.1 → 2.63.2**.
+- **Relabel ciblé** : `chi_rrc_state` : "RRC state (bloc UMTS FDD)" →
+  **"LTE RRC state"** (NFF 2.50 CHI parameters for LTE #2, valeurs
+  Idle=1 / Connected=2, cf. page 326). Le marqueur "(bloc UMTS FDD)"
+  reportait une étiquette de section NFF confuse ; la feuille porte
+  des données LTE réelles (632 / 11 / 11 records par capture Test_6).
+- **Dedup CHI #NN** : 5 feuilles doublons supprimées, chacune pointait
+  sur la même `source_column` que son leaf primaire (NFF 2.50 CHI
+  répète ces champs dans plusieurs sections "Parameters for LTE #N") :
+  `chi_pci_f21` (dup `chi_pci`), `chi_tm_f22` (dup `chi_tm`),
+  `chi_ul_dl_config_f24` (dup `chi_ul_dl_config`), `chi_cp_f25`
+  (dup `chi_cp`), `chi_special_subframe_f32` (dup `chi_special_subframe`).
+- Patch généré par `scripts/catalog/patch_2_63_2.py` depuis 2.63.1 ;
+  sha256 `cae8cfdf0ba912ed181f3b685ceab87539e48baa1a7a64ac331b14e8a072453a`
+  publié dans `catalog_release` (is_current=TRUE).
+- **Déférés** (lots ultérieurs) : re-parentage CHI sous LTE/NR (actuellement
+  Shared > Services (tasks)), fusion des 32 autres "(bloc X)", enum
+  Idle/Connected côté attributs.
+
+### Garde Point 2 (par capture, catalog 2.63.2 live)
+
+```sql
+WITH l AS (SELECT jsonb_array_elements(payload->'nodes') AS n
+ FROM metrics_catalog_cache WHERE scope_key LIKE 'captures:%')
+SELECT scope_key,
+  (SELECT COUNT(*) FROM jsonb_array_elements(payload->'nodes') n2
+    WHERE n2->>'metric_id'='chi_rrc_state' AND n2->>'label'='LTE RRC state'
+      AND n2->>'kind'='KPI_CATEGORICAL') AS rrc_state_relabeled,
+  (SELECT COUNT(*) FROM jsonb_array_elements(payload->'nodes') n3
+    WHERE n3->>'metric_id' IN ('chi_pci_f21','chi_tm_f22','chi_ul_dl_config_f24','chi_cp_f25','chi_special_subframe_f32')) AS dup_leaves
+ FROM metrics_catalog_cache WHERE scope_key LIKE 'captures:%';
+```
+Résultat : rrc_state_relabeled=1 et dup_leaves=0 sur chaque capture ✓
+
 ## 0.125.1 (patch) — catalog_release 2.63.1 : fix PHY LTE drop + CHI/MEI preserved — 2026-11-03 (Agent BC5, REPRISE 6)
 
 - Back **0.125.0 → 0.125.1** (patch). Catalog **2.63.0 → 2.63.1**.
