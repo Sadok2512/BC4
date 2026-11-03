@@ -1,3 +1,19 @@
+## 0.126.1 (patch) — endpoint /metrics/catalog-csv (REPRISE 7 Lot 7) — 2026-11-03 (Agent BC2)
+
+- Back **0.126.0 → 0.126.1** (patch). Nouvel endpoint
+  `GET /projects/{pid}/metrics/catalog-csv` : export CSV complet avec
+  colonne `n_<capture_id>` par capture + display_code / label / kind /
+  unit / data_type / Technology / Category / Group / Metric / Cell /
+  Event / Source column / Metric id / Raw cell type / Selectable /
+  Availability / Reason.
+- Fichier:ligne : `app/routes/metrics.py:395-517` (nouvelle fonction
+  `catalog_csv`). Pipeline : récupère toutes les captures du projet,
+  pour chacune load/build via `build_catalog_v4` (cache DB réutilisé si
+  valide), merge les feuilles par `display_code` (fallback `metric_id`),
+  émet une ligne par feuille avec N colonnes `n_<cap>`.
+- Jamais inventé : chaque `n_<cap>` vient de `payload.nodes[].n` servi
+  par le même pipeline que `/metrics?capture_id=<cap>`.
+
 ## 0.126.0 (minor) — catalog 2.64.0 : display_code émis par le back (Lot 6) — 2026-11-03 (Agent BC2, REPRISE 7 Lot 6)
 
 - Back **0.125.3 → 0.126.0** (minor — nouvelle feuille `display_code` sur

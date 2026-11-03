@@ -392,6 +392,151 @@ def catalog(
     db.commit()
     return _with_analytics_tabs(payload)
 
+@router.get('/projects/{project_id}/metrics/catalog-csv')
+def catalog_csv(project_id: str, db: Session = Depends(get_db)):
+    """REPRISE 7 Lot 7 — export catalog en CSV avec colonne par capture.
+
+    Colonnes : display_code, label, kind, unit, data_type, Technology,
+    Category, Group, Metric, Cell, Event, Source column, Metric id,
+    Raw cell type, Selectable, Availability, Reason, puis n_<capture_id>
+    pour chaque capture du projet.
+
+    Jamais inventé : chaque n_<cap> vient de `payload.nodes[].n` servie
+    par `GET /projects/{pid}/metrics?capture_id=<cap>` (même pipeline
+    `build_catalog_v4` + cache DB). Les feuilles sans valeurs dans
+    une capture reportent n=0 (jamais omis).
+    """
+    from fastapi.responses import Response
+    project(db, project_id)
+    from app.kpi.catalog_release.registry import current_catalog
+    from app.kpi.catalog_cache import cache_scope_key, cache_generation_stamp
+    from app.kpi.metrics_catalog_v4 import build_catalog_v4
+
+    cur = current_catalog(db)
+    if not cur:
+        raise HTTPException(503, {"reason": "no_catalog_release_is_current"})
+
+    # 1) Liste des captures du projet (ordre stable)
+    cap_rows = db.execute(text(
+        "SELECT capture_id, kind FROM nmf_capture WHERE project_id=:pid "
+        "ORDER BY capture_id"
+    ), {"pid": project_id}).mappings().all()
+    captures = [dict(r) for r in cap_rows]
+    if not captures:
+        raise HTTPException(404, {"reason": "project_has_no_captures"})
+
+    # 2) Pour chaque capture, charger payload (cache ou build)
+    def load_payload(cap_id: str) -> dict:
+        scope_key = cache_scope_key([cap_id])
+        stamp = cache_generation_stamp(db, project_id, cur.version, scope_key=scope_key)
+        cached = db.execute(text(
+            "SELECT payload FROM metrics_catalog_cache "
+            "WHERE project_id=:pid AND scope_key=:scope AND decode_stamp=:stamp"
+        ), {"pid": project_id, "scope": scope_key, "stamp": stamp}).scalar_one_or_none()
+        if cached is not None:
+            return cached
+        payload = build_catalog_v4(db, project_id, cur, capture_ids=(cap_id,))
+        db.execute(text(
+            "INSERT INTO metrics_catalog_cache(project_id,scope_key,decode_stamp,payload) "
+            "VALUES(:pid,:scope,:stamp,CAST(:payload AS jsonb)) "
+            "ON CONFLICT(project_id,scope_key) DO UPDATE SET "
+            "decode_stamp=excluded.decode_stamp, payload=excluded.payload, updated_at=now()"
+        ), {"pid": project_id, "scope": scope_key, "stamp": stamp, "payload": json.dumps(payload)})
+        db.commit()
+        return payload
+
+    per_cap = {c["capture_id"]: load_payload(c["capture_id"]) for c in captures}
+
+    # 3) Merge leaves par display_code (fallback metric_id)
+    #    Chaque entrée = (display_code, meta first-seen, n per capture dict)
+    def key(node: dict) -> str | None:
+        return node.get("display_code") or node.get("metric_id")
+
+    def tech_path(node: dict, by_id: dict) -> tuple[str, str, str, str]:
+        tech = cat = grp = met = ""
+        cur_n = by_id.get(node.get("parent_id"))
+        while cur_n:
+            nt = cur_n.get("node_type") or ""
+            lbl = cur_n.get("label") or ""
+            if nt == "metric" and not met:
+                met = lbl
+            elif nt == "group" and not grp:
+                grp = lbl
+            elif nt == "category" and not cat:
+                cat = lbl
+            elif nt == "tech" and not tech:
+                tech = lbl
+            cur_n = by_id.get(cur_n.get("parent_id"))
+        return tech, cat, grp, met
+
+    merged: dict[str, dict] = {}
+    for cap_id, payload in per_cap.items():
+        nodes = payload.get("nodes") or []
+        by_id = {n.get("node_id"): n for n in nodes if n.get("node_id")}
+        for n in nodes:
+            if n.get("node_type") != "leaf":
+                continue
+            k = key(n)
+            if not k:
+                continue
+            entry = merged.get(k)
+            if entry is None:
+                tech, cat, grp, met = tech_path(n, by_id)
+                entry = {
+                    "display_code": k,
+                    "label": n.get("label") or "",
+                    "kind": n.get("kind") or "",
+                    "unit": n.get("unit") or "",
+                    "data_type": n.get("type") or "",
+                    "tech": tech, "cat": cat, "grp": grp, "met": met,
+                    "cell": n.get("cell_label") or "",
+                    "event": n.get("event") or "",
+                    "source_column": n.get("source_column") or "",
+                    "metric_id": n.get("metric_id") or "",
+                    "raw_cell_type": n.get("raw_cell_type"),
+                    "selectable": "yes" if n.get("selectable") else "no",
+                    "availability": n.get("availability_status") or "",
+                    "reason": n.get("reason") or "",
+                    "n_per_cap": {},
+                }
+                merged[k] = entry
+            entry["n_per_cap"][cap_id] = int(n.get("n") or 0)
+
+    # 4) CSV
+    import io, csv as _csv
+    buf = io.StringIO()
+    buf.write("﻿")  # BOM pour Excel
+    cap_cols = [f"n_{c['capture_id']}" for c in captures]
+    cols = [
+        "display_code", "label", "kind", "unit", "data_type",
+        "Technology", "Category", "Group", "Metric",
+        "Cell", "Event", "Source column", "Metric id",
+        "Raw cell type", "Selectable", "Availability", "Reason",
+    ] + cap_cols
+    header_line = f"# BC4 catalog export · catalog_release {cur.version} · {len(captures)} captures"
+    buf.write(header_line + "\n")
+    w = _csv.writer(buf, delimiter=";", quoting=_csv.QUOTE_ALL)
+    w.writerow(cols)
+    for k in sorted(merged):
+        e = merged[k]
+        row = [
+            e["display_code"], e["label"], e["kind"], e["unit"], e["data_type"],
+            e["tech"], e["cat"], e["grp"], e["met"],
+            e["cell"], e["event"], e["source_column"], e["metric_id"],
+            e["raw_cell_type"] if e["raw_cell_type"] is not None else "",
+            e["selectable"], e["availability"], e["reason"],
+        ] + [e["n_per_cap"].get(c["capture_id"], 0) for c in captures]
+        w.writerow(row)
+    return Response(
+        content=buf.getvalue(),
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition":
+                f'attachment; filename="bc4-metrics-catalog-{cur.version}.csv"',
+        },
+    )
+
+
 @router.get('/projects/{project_id}/metrics/captures', response_model=list[CaptureInfo])
 def captures(project_id: str,f: dict=Depends(filters),db: Session=Depends(get_db)):
     project(db,project_id)
