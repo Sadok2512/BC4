@@ -13,20 +13,20 @@
 
 ## 1. VERSIONS
 
-### État live final
+### État live final (post REPRISE 9)
 
 ```
-back            : 0.126.4
+back            : 0.126.7
 front           : 1.134.0
 catalogue       : 2.65.0 (sha 36da300ca1b15ffbaff7a87e82361b9c5a80b9286fddd50e3664bed6bf1f591f)
-décodeur        : 1.10.5
-alembic head    : 0087_macrate_nr_scope
+décodeur        : 1.10.8  (était 1.10.5 avant REPRISE 9)
+alembic head    : 0090_scellmod_cols
 ```
 
 ### Images
 
 ```
-bc4-api:0.126.4-697992b       sha256:…
+bc4-api:0.126.7-1d58215       (décodeur 1.10.8 LOT 1 FINAL CQI_NR + DCI_NR + SCELLMOD)
 bc4-front-v2:1.134.0-f23e122  sha256:cae021f062860549b28c0ac99516479a887fcaa9c53290c69b3b2cc96ed5fa16
 ```
 
@@ -104,7 +104,36 @@ Doublons `(bloc X)` restants : **0** (garde Point 4).
 
 ## 3. PAR LOT (1 à 7) — mis à jour
 
-### Lot 1 — Schémas NR + exposition catalogue — **PARTIEL (FAIT générique) + OUVERT (schémas CQI_NR/DCI_NR/SCELLMOD/SCELL_NR)**
+### Lot 1 — Schémas NR + exposition catalogue — **FAIT 3/4 post REPRISE 9 (CQI_NR + DCI_NR + SCELLMOD) + OUVERT (SCELL NR)**
+
+**Mise à jour REPRISE 9 (LOT 1 FINAL)** — 3 schémas livrés avec byte-level forensic :
+
+- **CQI_NR** (`app/nmf_decoder/schemas/CQI_NR.yaml`, décodeur **1.10.6**, back **0.126.5**) :
+  NFF 2.50 p.579-581. Header 5 fields (#Header, Scope, Cell type, RI, WB CQI) + 2 groups (RI dist + WB CQI dist). Migration **0088**. 2 records réels ikea.6 vérifiés octet par octet. **Garde cell_index=9670 (NR PSCell 199)** : cqi_rank=**2835/12/106**, cqi_wb_cqi_0=**2835/12/106**, cqi_ri_count=**2835/12/106**, cqi_wb_cqi_count=**2835/12/106**. LTE préservé (cell_index<9000).
+
+- **DCI_NR** (`app/nmf_decoder/schemas/DCI_NR.yaml`, décodeur **1.10.7**, back **0.126.6**) :
+  NFF 2.50 p.553-555. Header 6 fields (#Header, Scope, Cell type, CCE aggr, UL, DL) + 2 groups (DCI format dist + CCE dist). Migration **0089** (9 colonnes). 2 records réels vérifiés (Count DCI format = UL+DL = 16, Count CCE total = 16 ✓). **Garde cell_index=9670** : dci_ul_grants=**2852/13/107**, dci_dl_grants=**2852/13/107**, dci_cce_aggr_level=**1944/5/106**, dci_format_count=**1944/5/106**. LTE préservé.
+
+- **SCELLMOD** (`app/nmf_decoder/schemas/SCELLMOD.yaml`, décodeur **1.10.8**, back **0.126.7**) :
+  NFF 2.50 p.424-429. Header 2 fields (#Header, Result) + 2 groups (added/removed SCells, chacun avec `{Cell type, Band, ARFCN, PCI}`). Migration **0090** (13 colonnes). 2 records réels vérifiés — Result=**11** (Random access problem) puis Result=**1** (Succeeded) sur même SCG PSCell NR cell 199 band 90078 ARFCN 638688 PCI 440. **Garde `nmf_event_group` (per cell_type)** : Test_6 added=211/removed=211 @ cell 199 ; ikea.6 add=1@117+2@199, remove=1@117+2@199 ; ikea.2 add=5/remove=5 @ 199. Limitation : non projeté à `nmf_cell_second` car `cells.py:88-92` ne cherche cell_type qu'au header-level, pas au group-level (SCELLMOD met Cell type dans les groupes). Fichier:ligne pour extension future : `app/nmf_decoder/cells.py:88-99`.
+
+**Commits REPRISE 9** :
+```
+2526c89 chore(deploy): pin bc4-api 0.126.7-1d58215 (décodeur 1.10.8 LOT 1 FINAL)
+1d58215 docs(changelog): SCELL NR OUVERT — layout nested variable non supporté
+<SCELLMOD commit> feat(decoder): SCELLMOD schema + migration 0090 (1.10.8, back 0.126.7)
+<DCI_NR commit>   feat(decoder): DCI_NR schema + migration 0089 (1.10.7, back 0.126.6)
+<CQI_NR commit>   feat(decoder): CQI_NR schema + migration 0088 (1.10.6, back 0.126.5)
+```
+
+**OUVERT résiduel — SCELL NR** (p.345-349) :
+- **Spec vérifiée** : header 5 fields (#Header=5, #Serving cells, #Params/serving cell=16, #Params/BWP=7, C-RNTI) + **nested variable** (#BWPs par serving cell).
+- **2 records réels** extraits : `SCELL,17:25:27.067,,9,5,1,16,7,46519,,199,90078,638688,440,…` (SCG PSCell 199, band 90078, ARFCN 638688, PCI 440, 1 serving cell × 16 params × 1 BWP × 7 params × 4 BWP vars observed).
+- **Blocage** : décodeur `app/nmf_decoder/decoder.py:244-264` supporte 1 niveau de group variable (header_col ou previous_end). Les 2 niveaux de nesting (serving cells × BWPs) nécessitent extension décodeur.
+- **Effort** : 1 jour (extension nested + migration `scell_*` + schéma + re-decode + guards).
+- **Live** : 425 records SCELL system=9 présents dans `nmf_event_light` (411+4+10 par capture) mais 0 colonne décodée.
+
+### Lot 1 ANCIEN STATUT — remplacé par REPRISE 9 ci-dessus
 
 **Commits** : `4951569`, `cb64e46`, `954117d`, `2bc6f95`, `0248c6e`, `f591af9`, `697992b` (CHI pipeline).
 
@@ -365,7 +394,16 @@ Détail des 150 "source_column préservée" : les 5 dedup CHI #NN (REPRISE 7 Poi
 | 7.7 | ~~Enum Idle/Connected~~ | ✅ **FERMÉ REPRISE 8** | enum YAML + propagation runtime + baked JSON | — | — |
 | 7.8 | ~~plaid_mcs0 unit=""~~ | ✅ **FERMÉ REPRISE 8** | fallback v3_defs | — | — |
 
-**Reste 4 écarts OUVERTS** : les 4 schémas NR Lot 1 (CQI_NR, DCI_NR, SCELL, SCELLMOD). Travail NFF-forensic byte-level, hors du scope REPRISE 8.
+### Mise à jour post REPRISE 9 (LOT 1 FINAL)
+
+| # | Écart | État | Détail |
+|---|---|---|---|
+| 7.1 | **CQI_NR** | ✅ FERMÉ REPRISE 9 | Décodeur 1.10.6, migration 0088, schéma `CQI_NR.yaml`, 2 records vérifiés, garde par capture + par cellule PASS. |
+| 7.2 | **DCI_NR** | ✅ FERMÉ REPRISE 9 | Décodeur 1.10.7, migration 0089, schéma `DCI_NR.yaml`, garde par capture + par cellule PASS. |
+| 7.3 | **SCELL** | ⚠️ OUVERT | SCELL_NR nécessite support nested variable groups dans `cells.py:88-92` + `decoder.py:244-264`. |
+| 7.4 | **SCELLMOD** | ✅ FERMÉ REPRISE 9 | Décodeur 1.10.8, migration 0090, schéma `SCELLMOD.yaml`, garde `nmf_event_group` par cell_type (Test_6=211/211 @199, ikea.6=3/3 @{117,199}, ikea.2=5/5 @199). Projection `nmf_cell_second` différée (cells.py extension pour group-level cell_type). |
+
+**Reste 1 écart OUVERT** : SCELL NR (nested variable layout, effort 1 jour).
 
 ---
 
