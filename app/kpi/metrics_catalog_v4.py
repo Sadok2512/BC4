@@ -620,10 +620,16 @@ def build_catalog_v4(
         mid = (n.get("metric_id") or "").lower()
         src = (n.get("source_column") or "").lower()
         joined = f"{label}|{mlabel}|{mid}|{src}"
-        # Hash-prefixed labels (#Ranks, #Params, #Variables, #PRBs …) sont des
-        # compteurs structurels NFF, pas des mesures. Capturés AVANT les patterns
-        # KPI_CATEGORICAL/DIMENSION pour éviter que "#Ranks" matche "rank".
-        if label.startswith("#") or mlabel.startswith("#"):
+        # STRUCT ciblé : compteurs/paramètres structurels NFF uniquement.
+        # #PRBs, #SCells added, #Ranks, #RSRP results etc. sont des KPI/
+        # dimensions DATA, pas des structs. Les vrais structs ont des codes
+        # finissant par `_n_params`, `_params_*`, `_n_variables`, `cqi_n_params`.
+        # Les labels "#Params…" / "#Variables" / "#Header params" sont les
+        # seuls hash-prefix qui sont vraiment structurels.
+        _STRUCT_LABEL = (
+            "#params", "#variables", "#header params",
+        )
+        if any(label.startswith(p) or mlabel.startswith(p) for p in _STRUCT_LABEL):
             return "STRUCT"
         if "cqi_n_params" in mid or any(p in label or p in mlabel for p in _STRUCT_PAT):
             return "STRUCT"
@@ -636,22 +642,24 @@ def build_catalog_v4(
             return "DIMENSION"
         return "KPI"
 
-    # Lot 4 — bloc étranger sous LTE/NR : les events multi-système NFF (CELLSCAN,
-    # CI, CQI, CREL, etc.) exposent un bloc par cellular system. Les blocs
-    # UMTS/GSM/CDMA/WiMAX/AMPS/TETRA/iDEN/DAMPS n'ont rien à faire sous techno
-    # LTE/NR du projet. On drop ces feuilles. "(bloc NR)" sous LTE est
-    # reconduit vers techno NR via le flag ci-dessous.
-    import re as _re
-    _FOREIGN_BLOC_RE = _re.compile(
-        r'\(bloc (UMTS FDD|UMTS TD-SCDMA|UMTS|GSM|CDMA|WiMAX|AMPS|TETRA|iDEN|DAMPS|'
-        r'cdmaOne|EVDO|DVB-H|GAN WLAN|WLAN|NB-IoT|BL RS|SMS|USSD|VoIP|'
-        r'non-VoIP|spectrum scanning)[^)]*\)'
-    )
-    _NR_BLOC_RE = _re.compile(r'\(bloc NR[^)]*\)')
+    # Lot 4 (patch 2.63.1) — bloc étranger : drop UNIQUEMENT les feuilles
+    # dont `field_system` est explicitement un système étranger (NFF
+    # measured_system codes). Les feuilles multi-system (field_system=None)
+    # sont CONSERVÉES — leur label "(bloc X)" est un marqueur de section
+    # NFF mais la feuille porte des valeurs réelles pour LTE/NR (ex.
+    # `mei_measurement_event` = 15 valeurs ikea.6).
+    # Codes NFF measured_system : 1=GSM, 2=TETRA, 5=UMTS FDD, 6=UMTS TD-SCDMA,
+    # 7=LTE FDD, 8=LTE TDD, 9=NR, 10=cdmaOne, 11=CDMA 1x, 12=EVDO, 13=DVB-H,
+    # 21=GAN WLAN, 25=WiMAX, 51/52/53/55=AMPS/NAMPS/DAMPS/iDEN.
+    _FOREIGN_SYSTEM_IDS = {1, 2, 5, 6, 10, 11, 12, 13, 21, 25, 51, 52, 53, 55}
     def _is_foreign_bloc(n: dict) -> bool:
-        lab = n.get('label') or ''
-        ml = n.get('metric_label') or ''
-        return bool(_FOREIGN_BLOC_RE.search(lab) or _FOREIGN_BLOC_RE.search(ml))
+        fs = n.get('field_system')
+        if fs is None:
+            return False
+        try:
+            return int(fs) in _FOREIGN_SYSTEM_IDS
+        except (TypeError, ValueError):
+            return False
 
     # Lot 4 — MIMOMEAS/CSI/PMI sur voisines : ces events n'ont pas de sens
     # sur les cellules voisines (NFF 2.50 : events par cellule serving).

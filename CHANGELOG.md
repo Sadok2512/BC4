@@ -1,3 +1,36 @@
+## 0.125.1 (patch) — catalog_release 2.63.1 : fix PHY LTE drop + CHI/MEI preserved — 2026-11-03 (Agent BC5, REPRISE 6)
+
+- Back **0.125.0 → 0.125.1** (patch). Catalog **2.63.0 → 2.63.1**.
+- **Régression PHY LTE** fermée : mon filtre `label.startswith('#')` du
+  2.63.0 (`app/kpi/metrics_catalog_v4.py:_kind_for_leaf`) catégorisait
+  `#PRBs @ PCell`, `#SCells added`, `#Ranks`, `#RSRP results` etc. en
+  STRUCT → droppés de l'arbre. **Corrigé** : STRUCT ne retient que
+  `#Params/#Variables/#Header params` et `cqi_n_params` + "Count /
+  Measured system".
+- **Régression bloc étranger** fermée : mon filtre regex `(bloc X)` du
+  2.63.0 dropait aussi `mei_measurement_event` (MEI event LTE sous bloc
+  "UMTS FDD" dans sa section NFF), `chi_rrc_state` (CHI event sous bloc
+  UMTS FDD), etc. — alors que ces feuilles portent des valeurs LTE
+  réelles. **Corrigé** : foreign filter se base sur `field_system`
+  explicite (codes NFF 1/2/5/6/10/11/12/13/21/25/51/52/53/55) et
+  **conserve** les feuilles `field_system=NULL` qui sont des sections
+  multi-system.
+- **Garde PLAID/PLAIU LTE après fix** (cache régénéré) :
+  ```
+   src         |  cell   | sys | cnt
+   plaid_prbs  | PCell   | LTE | 3991
+   plaid_prbs  | SCell 1 | LTE | 3981
+   plaid_prbs  | PCell   | NR  |    1
+   plaid_percentage | PCell | LTE | 3991
+   plaiu_prbs  | PCell   | LTE | 3991
+   plaiu_prbs  | SCell 1 | LTE | 3006
+  ```
+- **Garde CHI/MEI** :
+  ```
+   chi_rrc_state         (KPI_CATEGORICAL) | 654
+   mei_measurement_event (KPI)             | 324
+  ```
+- 2.63.1 live : disk sha = db sha = `fa11b58ad781…`.
 ## 0.125.0 (minor) — catalog_release 2.63.0 + Lot 3+4+5 — 2026-11-03 (Agent BC5)
 
 - Back **0.124.7 → 0.125.0** (minor — contrat catalog changé).
