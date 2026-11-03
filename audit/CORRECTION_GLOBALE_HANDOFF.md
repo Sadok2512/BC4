@@ -387,3 +387,108 @@ MACRATEU : macrateu_mac_ul_bitrate=13, macrateu_mac_ul_retr=13
 PLAID    : plaid_rank=2, plaid_prbs=2, plaid_mcs0=2, plaid_scope=13
 PLAIU    : plaiu_rank=5, plaiu_prbs=5, plaiu_percentage=13
 ```
+
+---
+
+## REPRISE 2 — Point courant (2026-11-03 ~08:00)
+
+**HEAD** : `0248c6e` (CHI LTE fix pending deploy, bg decode big captures in progress)
+**Live prod** : `bc4-api:0.124.4-2bc6f95` déployé (cell_scoped NR fix)
+**Catalog cache** : régénéré avec données NR (`updated_at 2026-11-03 ~08:48`)
+**NR visibilité confirmée** (requête + sortie collée) :
+```sql
+WITH l AS (SELECT jsonb_array_elements(payload->'nodes') AS n
+ FROM metrics_catalog_cache WHERE project_id='43e81a34a073' AND scope_key='project')
+SELECT n->>'source_column', n->>'cell_label', (n->>'n')::int
+FROM l WHERE n->>'node_type'='leaf' AND n->>'cell_system'='NR' AND
+ n->>'source_column' IN ('plaid_mcs0','plaid_prbs','macrate_mac_dl_bler',
+  'macrate_mac_dl_bitrate','plaiu_prbs','macrateu_mac_ul_bitrate')
+ORDER BY 1,2;
+```
+```
+ macrate_mac_dl_bitrate  | PCell  |    1
+ macrate_mac_dl_bitrate  | PSCell | 2972
+ macrateu_mac_ul_bitrate | PCell  |    1
+ macrateu_mac_ul_bitrate | PSCell | 2972
+ plaid_prbs              | PCell  |    1
+ plaid_prbs              | PSCell | 1877
+ plaiu_prbs              | PCell  |    1
+ plaiu_prbs              | PSCell | 1852
+```
+→ Garde user section 1 **validée** : visibilité catalog = valeurs live `nmf_event_light` ×1 (ratio 1:1).
+
+**Commits REPRISE 2** :
+| # | Composant | Version | Commit | Description |
+|---|---|---|---|---|
+| 5 | décodeur | 1.10.3 → 1.10.4 | `2bc6f95` | cell_scoped=true sur 4 variantes NR |
+| 5a | deploy | — | `c02f6e8` | pin bc4-api 0.124.4 |
+| 6 | décodeur | 1.10.4 → 1.10.5 | `0248c6e` | CHI LTE schema fix (system_col=4 + offsets +1) |
+| 6a | deploy | — | pending | pin bc4-api 0.124.5 (après re-decode CHI complet) |
+
+**Reste Lot 1** :
+- CHI NR : 0 record system=9 sur Test_6 → variant non projetable localement (OUVERT, besoin capture ailleurs)
+- SCELLMOD : 347 records (system NULL) ; schéma actuel `systems: any_numeric` + `header: []`. PDF p.424-426 bloc partagé LTE+NR.
+- CQI_NR : 2972 records NR, PDF p.579-581 (RI + WB CQI header + 2 groupes variables).
+- SCELL : 425 records NR only, nf=55. Besoin colonnes `scell_*` **neuves** (massive migration).
+- DCI : 4542 LTE + 2972 NR. Groupes layout variable (NFF p.551-554).
+
+---
+
+## REPRISE 2 — fin de passe (2026-11-03 ~09:15)
+
+**HEAD final** : `fb2ad88` (pin 0.124.5)
+**Live prod** : `bc4-api:0.124.5-0248c6e` (decoder 1.10.5)
+**Catalog cache** : régénéré 2026-11-03 ~09:15 avec décodeur 1.10.5
+
+### Garde finale catalog Test_6 (après re-decode CHI + regen cache)
+
+```sql
+WITH l AS (SELECT jsonb_array_elements(payload->'nodes') AS n FROM metrics_catalog_cache WHERE project_id='43e81a34a073' AND scope_key='project')
+SELECT n->>'source_column' src, n->>'cell_label' cell, n->>'cell_system' sys, (n->>'n')::int cnt
+FROM l WHERE n->>'node_type'='leaf' AND n->>'cell_system'='NR' AND n->>'source_column' IN ('plaid_prbs','plaiu_prbs','macrate_mac_dl_bitrate','macrateu_mac_ul_bitrate');
+```
+
+```
+plaid_prbs              PSCell NR  1877
+plaid_prbs              PCell  NR     1
+plaiu_prbs              PSCell NR  1852
+plaiu_prbs              PCell  NR     1
+macrate_mac_dl_bitrate  PSCell NR  2972
+macrate_mac_dl_bitrate  PCell  NR     1
+macrateu_mac_ul_bitrate PSCell NR  2972
+macrateu_mac_ul_bitrate PCell  NR     1
+```
+
+### Garde CHI LTE
+```sql
+SELECT chi_rrc_state, COUNT(*) FROM nmf_event_light
+WHERE project_id='43e81a34a073' AND event_code='CHI' GROUP BY 1 ORDER BY 1;
+```
+```
+ 1 (Idle)      192
+ 2 (Connected) 462
+```
+CHI LTE : 654/654 records projetés (band, ch, pci, cell_id=643, tac=643).
+
+### Commits REPRISE 2 total
+
+| sha | version | description |
+|---|---|---|
+| `8c0eaf5` | — | handoff reset §Point courant |
+| `2bc6f95` | décodeur 1.10.4 / back 0.124.4 | cell_scoped=true sur 4 variants NR (fix visibilité) |
+| `c02f6e8` | — | pin bc4-api 0.124.4 |
+| `0248c6e` | décodeur 1.10.5 / back 0.124.5 | CHI LTE schema fix (system_col=4 + offsets+1) |
+| `fb2ad88` | — | pin bc4-api 0.124.5 |
+
+Tous poussés sur origin + github.
+
+### Reste pour future session
+
+- **Lot 1 encore** : SCELLMOD (p.424-426, schéma vide actuel), CQI_NR (p.579-581, RI+WB CQI header + groupes), SCELL (NR only 425 records, besoin colonnes `scell_*` neuves), DCI (LTE+NR groupes layout variable), CHI_NR (0 record sur Test_6 — à retester ailleurs).
+- **Lot 3** enum cell_label (100+n → SCG SCell n etc.) — à faire dans `app/kpi/metrics_catalog_v4.py` et oracle front `metrics-tree-reference.json`. Le catalog actuel surface encore `SCell 100/199/1000/1001/1002` avec `cell_system=NULL` et count=0 (placeholders).
+- **Lot 4** reclassement TUA/TUS/TUF/RRRE/EMM/TAC, Measurement event bloc UMTS FDD, retrait CSI/PMI/MIMOMEAS des voisines.
+- **Lot 5** champ `kind` KPI/KPI_CATEGORICAL/DIMENSION/STRUCT.
+- **Lot 6** émission `display_code` par le back + fusion Sample dur./duration.
+- **Lot 7** export colonne par capture + kind/unit/data_type dans en-tête, catalog_release 2.63.0, app 1.134.0.
+
+**Dernière mise à jour** : 2026-11-03 ~09:15 (REPRISE 2 fin, Lot 1 5/9 schémas + CHI LTE)
