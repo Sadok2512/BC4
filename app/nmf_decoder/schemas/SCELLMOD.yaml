@@ -1,13 +1,129 @@
 {
   "event": "SCELLMOD",
-  "systems": "any_numeric",
-  "system_col": null,
-  "min_format": "2.19",
-  "schema_version": "1.2.0",
+  "spec_version": "2.50",
+  "systems": [7, 8, 9],
+  "system_col": 4,
+  "min_format": "2.50",
+  "schema_version": "1.10.8",
   "unknown_tail": "keep",
-  "kind": "event",
-  "header": [],
-  "groups": [],
-  "proof": "none",
-  "attributes_reason": "Position non prouvée; occurrence only"
+  "cell_scoped": true,
+  "context_count": 0,
+  "header": [
+    {
+      "col": 5,
+      "code": "scellmod.n_params",
+      "label": "#Header params",
+      "type": "int",
+      "unit": "n",
+      "proof": "NFF 2.50 SCELLMOD Parameters for LTE and NR p.424 #1",
+      "agg": "last",
+      "metric": false,
+      "category": "terminal_cell"
+    },
+    {
+      "col": 6,
+      "code": "scellmod.result",
+      "label": "Modification result",
+      "type": "int",
+      "unit": "enum",
+      "proof": "NFF 2.50 SCELLMOD Parameters for LTE and NR p.424 #2; 1=Succeeded, 2=Failed, 10=Timer expiry, 11=Random access problem, 12=RLC max retx, 13=Sync reconfig fail SCG, 14=SCG reconfig fail, 15=SRB3 integrity fail",
+      "agg": "dominant",
+      "metric": true,
+      "category": "terminal_cell"
+    }
+  ],
+  "groups": [
+    {
+      "name": "added",
+      "fields": [
+        {
+          "code": "scellmod.cell_type",
+          "label": "SCell added — Cell type",
+          "type": "int",
+          "unit": "enum",
+          "agg": "dominant",
+          "proof": "NFF 2.50 SCELLMOD Added SCell p.424-425 #1 Cell type; enum 0..31=SCell N, 98=SCell, 100..131=SCG SCell N, 198=SCG SCell, 199=SCG PSCell",
+          "category": "terminal_cell",
+          "dimension": true
+        },
+        {
+          "code": "scellmod.added_band",
+          "label": "SCell added — Band",
+          "type": "int",
+          "unit": "enum",
+          "agg": "dominant",
+          "proof": "NFF 2.50 SCELLMOD Added SCell p.425-429 #2 Band",
+          "category": "terminal_cell"
+        },
+        {
+          "code": "scellmod.added_arfcn",
+          "label": "SCell added — ARFCN",
+          "type": "int",
+          "unit": "earfcn",
+          "agg": "last",
+          "proof": "NFF 2.50 SCELLMOD Added SCell p.429 #3 ARFCN (E-ARFCN LTE / NR-ARFCN NR)",
+          "category": "terminal_cell"
+        },
+        {
+          "code": "scellmod.added_pci",
+          "label": "SCell added — PCI",
+          "type": "int",
+          "unit": "id",
+          "agg": "last",
+          "proof": "NFF 2.50 SCELLMOD Added SCell p.429 #4 Physical cell identity",
+          "category": "terminal_cell"
+        }
+      ],
+      "start": {"header_col": 5},
+      "count_code": "scellmod.n_scells_added",
+      "params_code": "scellmod.params_per_added",
+      "proof": "NFF 2.50 SCELLMOD #SCells added / #Params/SCell"
+    },
+    {
+      "name": "removed",
+      "fields": [
+        {
+          "code": "scellmod.cell_type",
+          "label": "SCell removed — Cell type",
+          "type": "int",
+          "unit": "enum",
+          "agg": "dominant",
+          "proof": "NFF 2.50 SCELLMOD Removed SCell p.429 #1 Cell type",
+          "category": "terminal_cell",
+          "dimension": true
+        },
+        {
+          "code": "scellmod.removed_band",
+          "label": "SCell removed — Band",
+          "type": "int",
+          "unit": "enum",
+          "agg": "dominant",
+          "proof": "NFF 2.50 SCELLMOD Removed SCell p.429 #2 Band",
+          "category": "terminal_cell"
+        },
+        {
+          "code": "scellmod.removed_arfcn",
+          "label": "SCell removed — ARFCN",
+          "type": "int",
+          "unit": "earfcn",
+          "agg": "last",
+          "proof": "NFF 2.50 SCELLMOD Removed SCell p.429 #3 ARFCN",
+          "category": "terminal_cell"
+        },
+        {
+          "code": "scellmod.removed_pci",
+          "label": "SCell removed — PCI",
+          "type": "int",
+          "unit": "id",
+          "agg": "last",
+          "proof": "NFF 2.50 SCELLMOD Removed SCell p.429 #4 Physical cell identity",
+          "category": "terminal_cell"
+        }
+      ],
+      "start": "previous_end",
+      "count_code": "scellmod.n_scells_removed",
+      "params_code": "scellmod.params_per_removed",
+      "proof": "NFF 2.50 SCELLMOD #SCells removed / #Params/SCell"
+    }
+  ]
 }

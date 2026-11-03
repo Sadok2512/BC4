@@ -1,3 +1,24 @@
+## 0.126.7 (patch) — décodeur 1.10.8 : SCELLMOD schema + migration 0090 — 2026-11-03 (Agent BC2, LOT 1 FINAL SCELLMOD)
+
+- Back **0.126.6 → 0.126.7** (patch). Décodeur **1.10.7 → 1.10.8**.
+- **SCELLMOD** schéma `app/nmf_decoder/schemas/SCELLMOD.yaml` (NFF 2.50 p.424-429) :
+  header 2 fields (#Header params + Result) + 2 groupes :
+  - added SCells : `{Cell type, Band, ARFCN, PCI}` × #Variables × 4 params
+  - removed SCells : `{Cell type, Band, ARFCN, PCI}` × #Variables × 4 params
+- Migration **0090_scellmod_cols** : ajoute 13 colonnes (`scellmod_n_params`,
+  `scellmod_result`, `scellmod_cell_type`, `scellmod_added_*`, `scellmod_removed_*`,
+  `scellmod_n_scells_*`, `scellmod_params_per_*`).
+- Re-décodage 3 captures.
+- **2 records réels vérifiés** NFF 2.50 p.424-429 (sample ikea.6) :
+  - `SCELLMOD,17:25:27.347,,9,1,11,1,4,199,90078,638688,440,0,4` → #Hdr=1, Result=**11** (Random access problem), added=1 SCell × 4 params = {199, 90078, 638688, 440} (SCG PSCell, NR n78 band 90078, ARFCN 638688, PCI 440), removed=0.
+  - `SCELLMOD,17:25:27.411,,9,1,1,0,4,1,4,199,90078,638688,440` → #Hdr=1, Result=**1** (Succeeded), added=0, removed=1 × 4 = {199, 90078, 638688, 440} (même SCell retirée après échec RACH).
+- **Garde par capture + par cellule** (nmf_event_group, group_name='added'|'removed'):
+  - Test_6 : added=211 @ cell 199 (NR SCG PSCell), removed=211 @ 199.
+  - ikea.6 : added=1 @ cell 117 + 2 @ 199, removed=1 @ 117 + 2 @ 199.
+  - ikea.2 : added=5 @ 199, removed=5 @ 199.
+- **Limitation** : SCELLMOD events portent le Cell type dans les GROUPES, pas le header.
+  `cells.py:88-92` ne projette que les events dont le header contient un `.cell_type` dimension — SCELLMOD reste donc visible dans `nmf_event_group` (per-cell via `scellmod_cell_type` colonne) mais pas dans `nmf_cell_second`. Déféré : extension `cells.py` pour projeter aussi les groupes avec cell_type dimension.
+
 ## 0.126.6 (patch) — décodeur 1.10.7 : DCI_NR schema + migration 0089 — 2026-11-03 (Agent BC2, LOT 1 FINAL DCI_NR)
 
 - Back **0.126.5 → 0.126.6** (patch). Décodeur **1.10.6 → 1.10.7**.
