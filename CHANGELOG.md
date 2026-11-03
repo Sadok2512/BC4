@@ -1,3 +1,60 @@
+## 0.128.0 (minor) — catalog 2.66.0 : arbre cible 4 branches CAPTURE/LTE/NR/IP — 2026-11-03 (Agent BC5, REPRISE 11)
+
+- Back **0.127.0 → 0.128.0** (minor). Catalog **2.65.2 → 2.66.0** (minor).
+  Décodeur **1.11.0** inchangé.
+- **Arbre restructuré 4 branches** (`scripts/catalog/patch_2_66_0.py` sur
+  `catalog_2.65.2.json`) :
+  - **CAPTURE** : 27 feuilles inchangées (11 fichier + 6 device + 4 script + 5 task + 1 identité).
+  - **LTE** : 11 catégories inchangées (Allocation & MCS, Carrier aggregation,
+    Link quality, MIMO per port, Neighbours, Scanner, Serving radio, Signalling,
+    Throughput per layer, UL power).
+  - **NR** : 2 catégories (CSI, Signalling).
+  - **IP / Services** (nouvelle tech, remplace Shared) avec 6 catégories :
+    - Services data (12 events : DREQ DCOMP DAA DAC DAD DAF DNSQUERY DSUMMARY RBI CMDREQ CMDCOMP SCRIPT)
+    - Application throughput (2 events : PPPRATE APPLIST)
+    - SIP / IMS signalling (3 events : SIPSM SIPREGA SIPREGD)
+    - Voice (7 events : RTPJITTER RTPSM AQDL AQI AQRX AMRS QOSFLOW)
+    - Events réseau (19 events : PAA PAC PAD PBA PBC PBD RABA RABC RABD LUA
+      LUS SEI PSM PSMI PSMR ROAM LOCK DEVI MEI)
+    - Position (5 events : GPS GAA GAC GAD MARK)
+- **Branches retirées** : `Shared` (migré sous IP) et `Other` (141 events +
+  1 415 descendants complètement retirés : CHI, PCHI, ADJMEAS, legacy UMTS/CDMA,
+  etc. — exclus de l'arbre selon spec cible).
+- sha256 catalog_2.66.0 : `f27d1c51b41ff8e519eb278c360f7fd07af42f8e8ec543b103d9ad5552a5e251`.
+
+### Garde par capture (post 2.66.0 live, metrics_catalog_cache)
+Par branche, feuilles totales / avec valeurs :
+
+| capture | CAPTURE | LTE | NR | IP / Services |
+|---|---|---|---|---|
+| Test_6 (a4b0) | 27 / **26** | 3 714 / **357** | 58 / **2** | 414 / **33** |
+| ikea.6 (daa2) | 27 / **26** | 3 651 / **279** | 58 / **2** | 414 / **20** |
+| ikea.2 (ecff) | 27 / **26** | 3 660 / **282** | 58 / **2** | 414 / **20** |
+
+Note : NR with_values=2 reflète les dynamic entries ; cf. nmf_cell_second
+cell_index=9670 (cell_pci + cell_ch + cell_rsrp + cell_sinr) pour la couverture
+NR réelle (Test_6=2875 PCI/EARFCN NR-ARFCN PSCell, ikea.6=15, ikea.2=108).
+
+### Gardes P20 (toutes captures)
+
+```sql
+WITH l AS (SELECT jsonb_array_elements(payload->'nodes') AS n
+  FROM metrics_catalog_cache WHERE scope_key LIKE 'captures:%')
+SELECT
+ (SELECT COUNT(*) FROM l WHERE n->>'node_type'='leaf' AND n->>'kind' IS NULL) AS kind_null,
+ (SELECT COUNT(*) FROM l WHERE n->>'node_type'='leaf' AND n->>'kind'='STRUCT') AS struct_in_tree,
+ (SELECT COUNT(*) FROM l WHERE n->>'node_type'='leaf' AND n->>'display_code' IS NULL) AS display_code_null;
+```
+Résultat : kind_null=**0**, struct_in_tree=**0**, display_code_null=**0**, duplicates display_code=**0** ✓
+
+### Legacy catalog (audit Point 0)
+Endpoint `/projects/{pid}/kpi/catalog` (`app/routes/project_kpi.py:71-91` →
+`app/kpi/service_v2.py:build_catalog_v2_response`) émet encore un catalogue
+legacy 194/89 KPI (header `canonical_count`). Appelé par le panneau
+Settings > KPI Catalog (`src/features/settings/kpi-catalog/`). **OUVERT** :
+le panneau Settings reste branché sur le legacy ; non impacté par l'arbre
+Métriques workspace qui lit `/projects/{pid}/metrics` (catalog 2.66.0).
+
 ## 0.127.0 (minor) — décodeur 1.11.0 : SCELL_NR + moteur count_header_col — 2026-11-03 (Agent BC2, LOT 1 CLÔTURE Point 2)
 
 - Back **0.126.7 → 0.127.0** (minor — nouveau mode décodeur). Décodeur **1.10.8 → 1.11.0** (minor — moteur étendu).
