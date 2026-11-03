@@ -13,20 +13,20 @@
 
 ## 1. VERSIONS
 
-### État live final (post REPRISE 9)
+### État live final (post REPRISE 10 CLÔTURE LOT 1)
 
 ```
-back            : 0.126.7
+back            : 0.127.0
 front           : 1.134.0
-catalogue       : 2.65.0 (sha 36da300ca1b15ffbaff7a87e82361b9c5a80b9286fddd50e3664bed6bf1f591f)
-décodeur        : 1.10.8  (était 1.10.5 avant REPRISE 9)
-alembic head    : 0090_scellmod_cols
+catalogue       : 2.65.2 (sha 80636d1276ca3dc373d97d5e8b08b167b9db0fe324c45fab8cf1ea23cc52326a)
+décodeur        : 1.11.0  (minor — moteur étendu count_header_col pour SCELL NR)
+alembic head    : 0091_scell_nr_cols
 ```
 
 ### Images
 
 ```
-bc4-api:0.126.7-1d58215       (décodeur 1.10.8 LOT 1 FINAL CQI_NR + DCI_NR + SCELLMOD)
+bc4-api:0.127.0-70b3f86       (décodeur 1.11.0 LOT 1 CLÔTURE CQI_NR + DCI_NR + SCELLMOD + SCELL_NR)
 bc4-front-v2:1.134.0-f23e122  sha256:cae021f062860549b28c0ac99516479a887fcaa9c53290c69b3b2cc96ed5fa16
 ```
 
@@ -104,7 +104,32 @@ Doublons `(bloc X)` restants : **0** (garde Point 4).
 
 ## 3. PAR LOT (1 à 7) — mis à jour
 
-### Lot 1 — Schémas NR + exposition catalogue — **FAIT 3/4 post REPRISE 9 (CQI_NR + DCI_NR + SCELLMOD) + OUVERT (SCELL NR)**
+### Lot 1 — Schémas NR + exposition catalogue — **FAIT 4/4 (CLÔTURE LOT 1)**
+
+**Mise à jour REPRISE 10 CLÔTURE LOT 1** — SCELL NR livré :
+
+- **SCELL_NR** (`app/nmf_decoder/schemas/SCELL_NR.yaml`, décodeur **1.11.0**, back **0.127.0**) :
+  NFF 2.50 p.345-349. Header 5 fields (#Header params=5, #Serving cells, #Params/serving cell, #Params/BWP, C-RNTI) + group `serving_cells` avec 10 fields (Cell type, SSB band, SSB NR-ARFCN, PCI, DL PointA, UL PointA, DSS LTE offset, DSS LTE bw, SSB periodicity, #BWPs).
+  **Moteur étendu** : `app/nmf_decoder/decoder.py:244-280` — nouveau mode `count_header_col`/`params_header_col` qui lit count+params à positions header fixes (indépendamment du `start` des données). Nécessaire car SCELL NR a header-interleaved layout (count col 6, params col 7, data col 11).
+  **Backward-compat** : si clés nouvelles absentes → ancien mode unchanged.
+  Migration **0091_scell_nr_cols** (17 colonnes).
+  **Test non-régression** : CQI LTE / CQI NR / DCI NR counts **unchanged** après re-decode 1.11.0 (14 989 / 510 / 517 LTE, 2 835 / 12 / 106 CQI NR, 2 852 / 13 / 107 DCI NR par capture).
+  **2 records réels vérifiés octet par octet** : `SCELL,17:25:27.067,,9,5,1,16,7,46519,,199,90078,638688,440,…` → Cell type=199, SSB band=90078 (NR n78 TDD), SSB NR-ARFCN=638688, PCI=440, DL PointA=638066, UL PointA=638066, SSB periodicity=20 ms, #BWPs=1. Et `SCELL,17:25:27.411,,9,5,0,16,7,,` → #Serving cells=0, pas de group émis.
+  **Garde par capture (`nmf_event_group serving_cells`)** :
+  - Test_6 : 298 @ cell_type=**199** (SCG PSCell, 32 PCIs 440..991) + 3 @ cell_type=**0** (PCell).
+  - ikea.6 : 3 @ cell_type=**199** (PCI 440) + 1 @ cell_type=**4** (SCell 4 PCI 1).
+  - ikea.2 : 5 @ cell_type=**199** (PCI 557).
+
+**Lot 1 — 4 schémas livrés** :
+
+| Schéma | Décodeur | Migration | Garde cell 199 (Test_6/ikea.6/ikea.2) |
+|---|---|---|---|
+| CQI_NR | 1.10.6 | 0088 | cqi_rank 2835/12/106 |
+| DCI_NR | 1.10.7 | 0089 | dci_ul_grants 2852/13/107 |
+| SCELLMOD | 1.10.8 | 0090 | added=211/3/5, removed=211/3/5 @ 199 |
+| **SCELL_NR** | **1.11.0** | **0091** | **serving_cells 298+3/3+1/5 @ 199** |
+
+### Lot 1 ancien statut (remplacé par REPRISE 10 CLÔTURE)
 
 **Mise à jour REPRISE 9 (LOT 1 FINAL)** — 3 schémas livrés avec byte-level forensic :
 
@@ -400,10 +425,17 @@ Détail des 150 "source_column préservée" : les 5 dedup CHI #NN (REPRISE 7 Poi
 |---|---|---|---|
 | 7.1 | **CQI_NR** | ✅ FERMÉ REPRISE 9 | Décodeur 1.10.6, migration 0088, schéma `CQI_NR.yaml`, 2 records vérifiés, garde par capture + par cellule PASS. |
 | 7.2 | **DCI_NR** | ✅ FERMÉ REPRISE 9 | Décodeur 1.10.7, migration 0089, schéma `DCI_NR.yaml`, garde par capture + par cellule PASS. |
-| 7.3 | **SCELL** | ⚠️ OUVERT | SCELL_NR nécessite support nested variable groups dans `cells.py:88-92` + `decoder.py:244-264`. |
+| 7.3 | **SCELL** | ✅ FERMÉ REPRISE 10 | Décodeur 1.11.0 avec extension `count_header_col`/`params_header_col` (header-interleaved), migration 0091, schéma `SCELL_NR.yaml`. 2 records réels vérifiés. Garde `nmf_event_group serving_cells` par cell_type : Test_6=298 @ 199, ikea.6=3 @ 199 + 1 @ 4, ikea.2=5 @ 199. Non-régression CQI/DCI/LTE unchanged. |
 | 7.4 | **SCELLMOD** | ✅ FERMÉ REPRISE 9 | Décodeur 1.10.8, migration 0090, schéma `SCELLMOD.yaml`, garde `nmf_event_group` par cell_type (Test_6=211/211 @199, ikea.6=3/3 @{117,199}, ikea.2=5/5 @199). Projection `nmf_cell_second` différée (cells.py extension pour group-level cell_type). |
 
-**Reste 1 écart OUVERT** : SCELL NR (nested variable layout, effort 1 jour).
+**Lot 1 : 0 écart OUVERT. CLÔTURE LOT 1 complète.**
+
+| Composant | État final |
+|---|---|
+| CQI_NR | ✅ FERMÉ (REPRISE 9, décodeur 1.10.6) |
+| DCI_NR | ✅ FERMÉ (REPRISE 9, décodeur 1.10.7) |
+| SCELLMOD | ✅ FERMÉ (REPRISE 9, décodeur 1.10.8) |
+| SCELL_NR | ✅ FERMÉ (REPRISE 10, décodeur 1.11.0 + moteur étendu) |
 
 ---
 
