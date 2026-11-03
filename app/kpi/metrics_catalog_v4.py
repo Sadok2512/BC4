@@ -1597,31 +1597,29 @@ def build_catalog_v4(
         n_hoa_intra = _ndeep("event_code='HOA' AND hoa_hoa_type=901")
         n_hoa_inter = _ndeep("event_code='HOA' AND hoa_hoa_type IN (902,903)")
         n_hoa_irat  = _ndeep("event_code='HOA' AND hoa_hoa_type IN (904,1104)")
-        # 2.68.0 (Mobilité 2b) — Durations HOI (ms) : AVG, P95, MAX SANS filtre.
-        # Le filtre `<= 10 000 ms` antérieur masquait 150/276 records Test_6
-        # à cause d'un bug du décodeur sur format 2.59 : `hoi.ho_duration`
-        # porte un timestamp monotone (ex. 551 914 533 ms) au lieu du delta.
-        # Spec `app/nmf_decoder/schemas/HOI.yaml:22-34` dit unit=ms type=int,
-        # mais format 2.59 publie en fait un timestamp absolu. **OUVERT**
-        # (lot décodeur 1.11.3) : soit les 3 timestamps (ho_duration /
-        # ho_to / ho_u_plane) sont pris comme delta = u_plane - to, soit
-        # le schema HOI est versionné par format NFF. Règle « aucune valeur
-        # cachée par un filtre » (Mobilité 2b point 5) : le garde PAR
-        # CAPTURE expose aussi `lte_ho_duration_aberrant_count` = records
-        # > 10 000 ms, permettant de tracer l'écart sans l'effacer.
-        try:
-            r_dur = db.execute(text(
-                f"SELECT AVG(hoi_ho_duration), MAX(hoi_ho_duration), "
-                f"percentile_cont(0.95) WITHIN GROUP (ORDER BY hoi_ho_duration) "
-                f"FROM nmf_event_deep WHERE project_id=:pid{caps_scope} "
-                f"AND event_code='HOI' AND hoi_ho_duration IS NOT NULL"
-            ), caps_param).first()
-            avg_dur = float(r_dur[0]) if r_dur and r_dur[0] is not None else 0.0
-            max_dur = float(r_dur[1]) if r_dur and r_dur[1] is not None else 0.0
-            p95_dur = float(r_dur[2]) if r_dur and r_dur[2] is not None else 0.0
-        except Exception:
-            avg_dur = max_dur = p95_dur = 0.0
+        # 2.68.1 (Mobilité 2c point 1) — Durées HOI : NOT_AVAILABLE jusqu'à
+        # preuve. Le schema `app/nmf_decoder/schemas/HOI.yaml:22-34` cite
+        # NFF 2.19 `HOI Parameters #2..#4` et déclare les 3 champs comme
+        # durées en ms. Les captures présentes sont format_version=2.59
+        # (decode_status='partial', reasons=['format_extensions_unproven']).
+        # Le spec NFF 2.59 **n'est pas dans le dépôt** → sémantique des 3
+        # champs (ho_duration / ho_to / ho_u_plane) non prouvable
+        # formellement pour 2.59. Règle session Mobilité 2c : « un écart
+        # se ferme ou se déclare OUVERT avec fichier:ligne, jamais déduit
+        # des données seules ». Donc : aucun chiffre publié jusqu'à preuve.
+        # Le compteur `lte_ho_duration_aberrant_count` (hoi_ho_duration >
+        # 10000 ms) reste exposé comme preuve de l'anomalie.
+        avg_dur = None
+        p95_dur = None
+        max_dur = None
         n_hoi_aberrant = _ndeep("event_code='HOI' AND hoi_ho_duration > 10000")
+        HOI_NOT_AVAILABLE_REASON = (
+            "NFF 2.59 spec absente du dépôt ; schema HOI.yaml:22-34 cite NFF "
+            "2.19 (delta en ms) mais captures=format_version 2.59 avec "
+            "reasons=['format_extensions_unproven']. Sémantique des 3 champs "
+            "(ho_duration / ho_to / ho_u_plane) non prouvable — lot décodeur "
+            "1.11.3 : OUVERT."
+        )
 
         # 2.68.0 — RLF détaillé (RRRE breakdown par cause et status) :
         # NFF 2.50 RRRE p.399-400 : `rrre_re_est_cause` ∈ {0:reconfig fail,
@@ -1634,24 +1632,46 @@ def build_catalog_v4(
         n_rrre_s3 = _ndeep("event_code='RRRE' AND rrre_re_est_status=3")
         reest_rate = (n_rrre_s1 / n_rrre * 100.0) if n_rrre else 0.0
 
-        # 2.68.0 — SCG (NFF 2.50 SCELLMOD p.424) :
-        # scellmod_result ∈ {1: add success, 2: release, 10..15: failure causes}.
-        # Les champs scellmod_cell_type / scells_added / scells_removed ne
-        # sont pas peuplés en NFF 2.59 → OUVERT : distinction ADD vs RELEASE
-        # non disponible dans `nmf_event_deep` (voir schema SCELLMOD §3).
-        # Détail des causes dispo via la query ventilation.
+        # 2.68.1 (Mobilité 2c point 4) — SCG (NFF 2.50 SCELLMOD p.424).
+        # Correction de 2b : les champs ADD/REMOVE d'une occurrence SCELLMOD
+        # sont dans `nmf_event_group` (schema groups added/removed), pas
+        # dans `nmf_event_deep`. Les figures REPRISE 9 (211 / 3 / 5 par
+        # capture) sont correctes. ENDC_SCG_ADD = occurrences de groupes
+        # 'added' avec PSCell cell_type=199 ; ENDC_SCG_RELEASE = idem
+        # pour 'removed'.
+        try:
+            def _scg_groups(group_name: str, pscell_only: bool) -> int:
+                extra = " AND g.scellmod_cell_type=199" if pscell_only else ""
+                return int(db.execute(text(
+                    f"SELECT COUNT(*) FROM nmf_event_group g "
+                    f"JOIN nmf_event_deep d USING (project_id, capture_id, seq) "
+                    f"WHERE d.project_id=:pid{caps_scope.replace('capture_id','d.capture_id')} "
+                    f"AND d.event_code='SCELLMOD' AND g.group_name=:gn{extra}"
+                ), {**caps_param, "gn": group_name}).scalar() or 0)
+            n_scg_add_pscell = _scg_groups("added", True)
+            n_scg_rel_pscell = _scg_groups("removed", True)
+            n_scg_add_all = _scg_groups("added", False)
+            n_scg_rel_all = _scg_groups("removed", False)
+        except Exception:
+            n_scg_add_pscell = n_scg_rel_pscell = 0
+            n_scg_add_all = n_scg_rel_all = 0
         n_scg_mod = _ndeep("event_code='SCELLMOD' AND scellmod_result=1")
         n_scg_fail = _ndeep("event_code='SCELLMOD' AND (scellmod_result=2 OR (scellmod_result>=10 AND scellmod_result<=15))")
         n_scg_total = _ndeep("event_code='SCELLMOD'")
         scg_fail_rate = (n_scg_fail / n_scg_total * 100.0) if n_scg_total else 0.0
 
-        # 2.68.0 — Accessibilité (RRA / RRC / RRD / RRF) :
-        # Setup success rate = RRC / RRA. Abnormal release = RRD cause ≠ 1
-        # (NFF 2.50 RRD p.418-420 : cause 1 = normal release).
+        # 2.68.1 (Mobilité 2c point 2) — Accessibilité (RRA / RRC / RRD / RRF).
+        # LTE_RRC_ABNORMAL_RELEASE : seulement les causes CONNUES ≠ 1 (normal).
+        # Les records avec `rrd_rrc_rel_cause IS NULL` sont comptés à part dans
+        # LTE_RRC_RELEASE_CAUSE_UNKNOWN. Schema `RRD.yaml` cite NFF 2.19 RRD
+        # Parameters for LTE #2 (p.418-420 d'après le proof du schema SCELLMOD
+        # qui référence la même source) sans fournir le mapping enum :
+        # convention retenue = cause=1 est normal (release UE-initiated).
         n_rra = _ndeep("event_code='RRA'")
         n_rrc_cnt = _ndeep("event_code='RRC'")
         n_rrd = _ndeep("event_code='RRD'")
-        n_rrd_abnormal = _ndeep("event_code='RRD' AND (rrd_rrc_rel_cause IS NULL OR rrd_rrc_rel_cause<>1)")
+        n_rrd_abnormal_known = _ndeep("event_code='RRD' AND rrd_rrc_rel_cause IS NOT NULL AND rrd_rrc_rel_cause<>1")
+        n_rrd_cause_unknown = _ndeep("event_code='RRD' AND rrd_rrc_rel_cause IS NULL")
         rrc_setup_rate = (n_rrc_cnt / n_rra * 100.0) if n_rra else 0.0
 
         # 2.68.0 — NAS (TAU / LAU) :
@@ -1664,29 +1684,45 @@ def build_catalog_v4(
         tau_rate = (n_tus / n_tua * 100.0) if n_tua else 0.0
         lau_rate = (n_lus / n_lua * 100.0) if n_lua else 0.0
 
-        # 2.68.0 — Retries : séquences fail→attempt par (capture_id, seq),
-        # sans succès intercalé. TUF→TUA (reset TUS), LUF→LUA (reset LUS),
-        # RRF→RRA (reset RRC), RRRE→RRA (reset RRC).
-        def _retry_count(fail: str, attempt: str, succ: str) -> int:
-            """Count retry-attempts within capture_ids scope, (capture_id, seq)
-            ordered. Jamais `ts` (règle session Mobilité 2b)."""
+        # 2.68.1 (Mobilité 2c point 3) — Retries : séquences fail→attempt
+        # par (capture_id, seq) JAMAIS `ts`, sans succès intercalé. Un RRRE
+        # au statut 1 (reussi) n'est pas un échec : il doit être traité
+        # comme un succès dans la séquence RRC retry. TUF→TUA (reset TUS),
+        # LUF→LUA (reset LUS), RRF→RRA (reset RRC), RRRE[status≠1]→RRA
+        # (reset RRC).
+        def _retry_count(fail: str, attempt: str, succ: str,
+                         fail_filter_col: str | None = None,
+                         fail_filter_val: str | None = None) -> int:
+            """Count retry-attempts, (capture_id, seq) ordered. Si
+            `fail_filter_col/val` est fourni, filtre les fails sur
+            (col = val) ; les non-matchs sont traités comme un succès
+            (reset le pending)."""
+            extra_cols = ", " + fail_filter_col if fail_filter_col else ""
             rows = db.execute(text(
-                f"SELECT capture_id, seq, event_code FROM nmf_event_deep "
+                f"SELECT capture_id, seq, event_code{extra_cols} FROM nmf_event_deep "
                 f"WHERE project_id=:pid{caps_scope} AND event_code IN (:f,:a,:s) "
                 f"ORDER BY capture_id, seq"
             ), {**caps_param, "f":fail, "a":attempt, "s":succ}).all()
             from collections import defaultdict
             per = defaultdict(list)
-            for cid, seq, ev in rows:
-                per[cid].append(ev)
+            for row in rows:
+                cid, seq, ev = row[0], row[1], row[2]
+                col_val = row[3] if fail_filter_col and len(row) > 3 else None
+                per[cid].append((ev, col_val))
             total = 0
             for cid, evs in per.items():
                 fail_pending = False
-                for ev in evs:
+                for ev, col_val in evs:
                     if ev == succ:
                         fail_pending = False
                     elif ev == fail:
-                        fail_pending = True
+                        # Si filtre présent : exclure les fails où
+                        # (col = fail_filter_val). Ex. RRRE status=1 est en
+                        # fait un succès → reset le pending.
+                        if fail_filter_col and col_val == fail_filter_val:
+                            fail_pending = False
+                        else:
+                            fail_pending = True
                     elif ev == attempt:
                         if fail_pending:
                             total += 1
@@ -1696,7 +1732,11 @@ def build_catalog_v4(
         tau_retry = _retry_count("TUF", "TUA", "TUS")
         lau_retry = _retry_count("LUF", "LUA", "LUS")
         rrc_retry_rrf = _retry_count("RRF", "RRA", "RRC")
-        rrc_retry_rrre = _retry_count("RRRE", "RRA", "RRC")
+        # RRRE status=1 (reussi) exclu : ce n'est pas un échec, c'est un succès
+        # de re-établissement → ne déclenche pas de retry.
+        rrc_retry_rrre = _retry_count("RRRE", "RRA", "RRC",
+                                     fail_filter_col="rrre_re_est_status",
+                                     fail_filter_val=1.0)
         rrc_retry = rrc_retry_rrf + rrc_retry_rrre
 
         rate = (n_hos / n_hoa * 100.0) if n_hoa else 0.0
@@ -1710,10 +1750,10 @@ def build_catalog_v4(
             ("lte_ho_attempts_intra_freq",  "LTE HO attempts intra-fréquence",  n_hoa_intra, "n", "KPI", _mob_cat_id),
             ("lte_ho_attempts_inter_freq",  "LTE HO attempts inter-fréquence",  n_hoa_inter, "n", "KPI", _mob_cat_id),
             ("lte_ho_attempts_inter_rat",   "LTE HO attempts inter-RAT",        n_hoa_irat,  "n", "KPI", _mob_cat_id),
-            ("lte_ho_duration_avg_ms",      "LTE HO duration average (HOI, SANS filtre)",  avg_dur, "ms", "KPI", _mob_cat_id),
-            ("lte_ho_duration_p95_ms",      "LTE HO duration P95 (HOI, SANS filtre)",       p95_dur, "ms", "KPI", _mob_cat_id),
-            ("lte_ho_duration_max_ms",      "LTE HO duration max (HOI, SANS filtre)",       max_dur, "ms", "KPI", _mob_cat_id),
-            ("lte_ho_duration_aberrant_count", "LTE HO duration aberrant (>10000 ms, OUVERT décodeur 1.11.3)", n_hoi_aberrant, "n", "KPI", _mob_cat_id),
+            ("lte_ho_duration_avg_ms",      "LTE HO duration average — NOT AVAILABLE (NFF 2.59 unproven)", None, "ms", "KPI", _mob_cat_id),
+            ("lte_ho_duration_p95_ms",      "LTE HO duration P95 — NOT AVAILABLE",              None, "ms", "KPI", _mob_cat_id),
+            ("lte_ho_duration_max_ms",      "LTE HO duration max — NOT AVAILABLE",              None, "ms", "KPI", _mob_cat_id),
+            ("lte_ho_duration_aberrant_count", "LTE HO duration aberrant (hoi_ho_duration >10000 ms — preuve bug décodeur 1.11.3)", n_hoi_aberrant, "n", "KPI", _mob_cat_id),
             # RLF détaillé (RRRE breakdown)
             ("lte_rlf_count",               "LTE RLF count (RRRE cause=2)",       n_rrre_c2, "n", "KPI", _mob_cat_id),
             ("lte_reest_ho_failure",        "LTE RRC Re-est HO failure (cause=1)", n_rrre_c1, "n", "KPI", _mob_cat_id),
@@ -1746,9 +1786,13 @@ def build_catalog_v4(
             ))
         if any(n.get("node_id") == _scg_cat_id for n in nodes_out):
             MOBILITY_KPI.extend([
-                ("endc_scg_mod_count",     "ENDC SCG modification count (SCELLMOD result=1 ; OUVERT ADD vs RELEASE)", n_scg_mod, "n", "KPI", _scg_cat_id),
-                ("endc_scg_failure_count", "ENDC SCG failure count (SCELLMOD result ∈ {2,10..15})", n_scg_fail, "n", "KPI", _scg_cat_id),
-                ("endc_scg_failure_rate_pct", "ENDC SCG failure rate (failure / total SCELLMOD)",   scg_fail_rate, "%", "KPI", _scg_cat_id),
+                ("endc_scg_add_count",        "ENDC SCG add count (SCELLMOD + group added PSCell 199)",      n_scg_add_pscell, "n", "KPI", _scg_cat_id),
+                ("endc_scg_release_count",    "ENDC SCG release count (SCELLMOD + group removed PSCell 199)", n_scg_rel_pscell, "n", "KPI", _scg_cat_id),
+                ("endc_scg_add_count_all",    "ENDC SCG add count (all cell_types, via nmf_event_group)",    n_scg_add_all,    "n", "KPI", _scg_cat_id),
+                ("endc_scg_release_count_all","ENDC SCG release count (all cell_types)",                      n_scg_rel_all,    "n", "KPI", _scg_cat_id),
+                ("endc_scg_mod_count",        "ENDC SCG modification count (SCELLMOD result=1 header)",       n_scg_mod,    "n", "KPI", _scg_cat_id),
+                ("endc_scg_failure_count",    "ENDC SCG failure count (SCELLMOD result ∈ {2,10..15})",        n_scg_fail,   "n", "KPI", _scg_cat_id),
+                ("endc_scg_failure_rate_pct", "ENDC SCG failure rate (failure / total SCELLMOD)",             scg_fail_rate,"%", "KPI", _scg_cat_id),
             ])
         # Access/NAS under cat_LTE_access (même pattern que SCG).
         _acc_cat_id = "cat_LTE_access"
@@ -1769,7 +1813,8 @@ def build_catalog_v4(
                 ("lte_rrc_setup_success_rate_pct", "LTE RRC setup success rate (RRC / RRA)", rrc_setup_rate, "%", "KPI", _acc_cat_id),
                 ("lte_rrc_setup_failure",          "LTE RRC setup failure (RRF)",            n_rrf,   "n", "KPI", _acc_cat_id),
                 ("rrf_count",                      "RRF count",                              n_rrf,   "n", "KPI", _acc_cat_id),
-                ("lte_rrc_abnormal_release",       "LTE RRC abnormal release (RRD cause≠1)", n_rrd_abnormal, "n", "KPI", _acc_cat_id),
+                ("lte_rrc_abnormal_release",       "LTE RRC abnormal release (RRD cause CONNUE ≠ 1)", n_rrd_abnormal_known, "n", "KPI", _acc_cat_id),
+                ("lte_rrc_release_cause_unknown",  "LTE RRC release cause UNKNOWN (rrd_rrc_rel_cause IS NULL)", n_rrd_cause_unknown, "n", "KPI", _acc_cat_id),
                 ("tuf_count",                      "TUF count",                              n_tuf,   "n", "KPI", _acc_cat_id),
                 ("luf_count",                      "LUF count",                              n_luf,   "n", "KPI", _acc_cat_id),
                 ("lte_tau_success_rate_pct",       "LTE TAU success rate (TUS / TUA)",       tau_rate, "%", "KPI", _acc_cat_id),
@@ -1780,10 +1825,27 @@ def build_catalog_v4(
             node_id = f"lf_{mid}"
             _order = siblings_counter.get(cat_id, 0)
             siblings_counter[cat_id] = _order + 1
+            # 2.68.1 (Mobilité 2c point 1) — val=None = NOT_AVAILABLE
+            # (durations HOI non prouvables en NFF 2.59). Jamais de chiffre
+            # faux : la raison est portée sur la leaf.
+            if val is None:
+                availability = "not_available"
+                n_val = 0
+                selectable_flag = False
+                reason_val = HOI_NOT_AVAILABLE_REASON if mid.startswith("lte_ho_duration_") else "Donnée non prouvable dans NFF 2.59"
+            else:
+                try:
+                    n_int = int(val) if isinstance(val, int) else int(round(val))
+                except (TypeError, ValueError):
+                    n_int = 0
+                availability = "available" if n_int > 0 else "no_data"
+                n_val = n_int
+                selectable_flag = bool(n_int > 0)
+                reason_val = None
             nodes_out.append(dict(
                 node_id=node_id, parent_id=cat_id, order=_order,
                 label=label, display_code=mid, enum_values={},
-                note="KPI dérivé — nmf_event_deep raw (ordre (capture_id, seq), jamais ts)",
+                note="KPI dérivé — nmf_event_deep/nmf_event_group raw (ordre (capture_id, seq), jamais ts)",
                 source=None, node_type="leaf",
                 analytics_tab="metrics", metric_id=mid, selection=mid,
                 event=None, field_idx=None,
@@ -1791,22 +1853,23 @@ def build_catalog_v4(
                 cell=None, technology="LTE", metric_label=label,
                 cell_label=None, cell_system=None,
                 raw_cell_type=None, cell_relation=None, technical_label=None,
-                availability_status="available" if val > 0 else "no_data",
-                n=int(val) if isinstance(val, int) else int(round(val)),
-                proof="nmf_event_deep aggregate",
-                selectable=bool(val > 0),
-                reason=None, kind=kind,
+                availability_status=availability,
+                n=n_val,
+                proof="nmf_event_deep/group aggregate",
+                selectable=selectable_flag,
+                reason=reason_val, kind=kind,
             ))
             metrics_out.append(dict(
                 code=mid, display_code=mid, label=label, unit=unit,
-                source_table="nmf_event_deep", source_tables=["nmf_event_deep"],
+                source_table="nmf_event_deep", source_tables=["nmf_event_deep","nmf_event_group"],
                 source_column=None, tech="LTE", kind=kind,
-                n_in_project=int(val) if isinstance(val, int) else int(round(val)),
+                n_in_project=n_val,
                 decoder_version=DECODER_VERSION,
                 event=None, category_label="Mobilité / Access / NAS", cell_scoped=False,
                 cells=[], cell_options=[], attributes=[],
-                proof="nmf_event_deep aggregate", available=bool(val > 0),
-                reason=None, alias_of=None, event_group=None,
+                proof="nmf_event_deep aggregate",
+                available=(availability == "available"),
+                reason=reason_val, alias_of=None, event_group=None,
                 unproven_cells=[], root_notices=[], event_code=None,
                 proof_ref="nmf_event_deep per-capture aggregation",
                 category="mobility",

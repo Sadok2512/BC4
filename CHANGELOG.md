@@ -1,3 +1,71 @@
+## 0.130.1 (patch) — catalog 2.68.1 : Mobilité 2c — 4 corrections + inventaire format — 2026-11-03 (Agent BC5)
+
+- **Back 0.130.0 → 0.130.1** (patch). **Catalog 2.68.0 → 2.68.1** (patch,
+  baked content identique, version bumpée pour invalider le cache).
+  Décodeur 1.11.2 inchangé.
+- **Point 1 — Durée HO = NOT_AVAILABLE** (`metrics_catalog_v4.py:1622-1641`) :
+  les 3 KPI `lte_ho_duration_avg_ms` / `_p95_ms` / `_max_ms` publient
+  désormais `availability_status=not_available` avec `reason` explicite
+  (plus de chiffre faux : 301 M ms retirés). **Preuve requise** NFF 2.59
+  (sémantique des 3 champs `ho_duration / ho_to / ho_u_plane`) absente
+  du dépôt : `app/nmf_decoder/schemas/HOI.yaml:22-34` cite NFF 2.19
+  (unit=ms type=int), captures=format_version 2.59 avec
+  `reasons=['format_extensions_unproven']`. **OUVERT** : lot décodeur
+  1.11.3. Le compteur `lte_ho_duration_aberrant_count` (hoi_ho_duration
+  > 10000 ms, Test_6=150/276) reste exposé comme preuve.
+- **Point 2 — RRC release causes** (`metrics_catalog_v4.py:1713-1725`) :
+  `lte_rrc_abnormal_release` ne compte désormais QUE les causes
+  **CONNUES ≠ 1** (normal). Les records `rrd_rrc_rel_cause IS NULL`
+  partent dans un nouveau KPI séparé `lte_rrc_release_cause_unknown`.
+  Résultat :
+  - Test_6 : abnormal=**0** (était 3 : faux positif), unknown=**3**
+  - ikea.6 : abnormal=0, unknown=0
+  - ikea.2 : abnormal=0, unknown=0
+  Table de causes NFF 2.19 §RRD Parameters for LTE #2 (p.418-420) —
+  mapping enum non inclus dans `RRD.yaml` (schema cite la source sans
+  fournir le dict). Convention retenue : cause=1 = normal ; cause CONNUE
+  autre que 1 = abnormal ; NULL = unknown (jamais déduit du vide).
+- **Point 3 — RRC retry filtré** (`metrics_catalog_v4.py:1762-1807`) :
+  les RRRE au statut 1 (réussi) sont EXCLUS du compteur retry (c'est
+  un succès de re-établissement, pas un échec). Ordre `(capture_id,
+  seq)` JAMAIS `ts`. Résultat Test_6 = **3** (correction de 4 → 3) :
+  - seq=79223 : RRRE cause=2 status=3 (rejeté) → RRA
+  - seq=139633 : RRRE cause=2 status=3 (rejeté) → RRA
+  - seq=297927 : RRF → RRA
+  Le RRRE à seq=80311 (status=1 succès) ne génère plus de retry.
+- **Point 4 — SCELLMOD contradiction fermée** (`metrics_catalog_v4.py:
+  1660-1685`) : les groupes ADD/REMOVE sont dans `nmf_event_group` (pas
+  dans `nmf_event_deep` — c'est pour ça que 2b les voyait NULL). Les
+  figures REPRISE 9 (211 / 3 / 5) sont **confirmées**. 2 records byte
+  par byte (joined) :
+  - Test_6 seq=162 : tokens `['SCELLMOD','15:59:43.334','','9','1','1',
+    '1','4','199','90078','643392','889','0','4']`, groupe added
+    (set_index=0) : `scellmod_cell_type=199`, `scellmod_added_band=
+    90078`, `scellmod_added_arfcn=643392`, `scellmod_added_pci=889`.
+  - Test_6 seq=693 : groupe added `pci=534`, groupe removed `pci=889`
+    (le PCI ajouté au record précédent est maintenant removed).
+  Nouveaux KPI (sous `cat_LTE_scg`) :
+  - `endc_scg_add_count` (PSCell 199 = cell_type=199) :
+    Test_6=**211**, ikea.6=**2**, ikea.2=**5**
+  - `endc_scg_release_count` (PSCell 199) : Test_6=**211**,
+    ikea.6=**2**, ikea.2=**5**
+  - `endc_scg_add_count_all` / `endc_scg_release_count_all` (toutes
+    cellules) : Test_6=211/211, ikea.6=3/3, ikea.2=5/5.
+- **Point 5 — Inventaire format NFF réel par capture** :
+  Les 3 captures sont **format_version = 2.59** (uniforme). Les 103
+  schémas du décodeur ont `min_format ≤ 2.50` donc **tous** sont
+  marqués `format_extensions_unproven` sur les captures présentes.
+  Les 9 schémas explicitement `spec_version='2.50'` qui gagneraient
+  une vérif NFF 2.59 prioritaire : **CELLMEAS, CQI, DCI, MACRATEU,
+  MACRATE, PLAID, PLAIU, SCELLMOD, SCELL** (schema_version dans
+  nmf_decoder/schemas/). Les autres (94) héritent de NFF 2.19
+  historique et n'ont pas été re-prouvés.
+- **Liste blanche `--allow-decrease` pour guard 2.68.0 → 2.68.1** :
+  `lte_ho_duration_avg_ms`, `lte_ho_duration_p95_ms`,
+  `lte_ho_duration_max_ms` (NOT_AVAILABLE, baisse 301M/555M/556M → 0
+  déclarée), `lte_rrc_abnormal_release` (3 → 0, correction du faux
+  positif), `lte_rrc_retry_count` (4 → 3, exclusion RRRE status=1).
+
 ## 0.130.0 (minor) — catalog 2.68.0 : Mobilité 2b — RLF détaillé, SCG, Access/NAS, Retries, HO duration sans filtre — 2026-11-03 (Agent BC5)
 
 - **Back 0.129.3 → 0.130.0** (minor — nouveaux KPI dérivés).
