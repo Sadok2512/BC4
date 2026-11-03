@@ -1632,47 +1632,80 @@ def build_catalog_v4(
         n_rrre_s3 = _ndeep("event_code='RRRE' AND rrre_re_est_status=3")
         reest_rate = (n_rrre_s1 / n_rrre * 100.0) if n_rrre else 0.0
 
-        # 2.68.1 (Mobilité 2c point 4) — SCG (NFF 2.50 SCELLMOD p.424).
-        # Correction de 2b : les champs ADD/REMOVE d'une occurrence SCELLMOD
-        # sont dans `nmf_event_group` (schema groups added/removed), pas
-        # dans `nmf_event_deep`. Les figures REPRISE 9 (211 / 3 / 5 par
-        # capture) sont correctes. ENDC_SCG_ADD = occurrences de groupes
-        # 'added' avec PSCell cell_type=199 ; ENDC_SCG_RELEASE = idem
-        # pour 'removed'.
+        # 2.68.2 (Mobilité 2d point 1) — SCG split PAR EVENT SCELLMOD.
+        # Dans `nmf_event_group` (jointure (project_id, capture_id, seq) avec
+        # `nmf_event_deep` event_code='SCELLMOD'), on classe chaque event
+        # SCELLMOD selon la présence de groupes 'added' et/ou 'removed' au
+        # PSCell (scellmod_cell_type=199) :
+        #   PSCELL_CHANGE  = add ET remove dans le même event
+        #   SCG_ADD        = add sans remove
+        #   SCG_RELEASE    = remove sans add
+        # Garde : somme(CHANGE + ADD + RELEASE) == total events SCELLMOD avec
+        # au moins un groupe PSCell 199 (vérifié par la query de contrôle).
         try:
-            def _scg_groups(group_name: str, pscell_only: bool) -> int:
-                extra = " AND g.scellmod_cell_type=199" if pscell_only else ""
+            d_scope = caps_scope.replace("capture_id", "d.capture_id")
+            per_event = db.execute(text(
+                f"SELECT BOOL_OR(g.group_name='added' AND g.scellmod_cell_type=199) AS a, "
+                f"BOOL_OR(g.group_name='removed' AND g.scellmod_cell_type=199) AS r "
+                f"FROM nmf_event_deep d "
+                f"LEFT JOIN nmf_event_group g USING (project_id, capture_id, seq) "
+                f"WHERE d.project_id=:pid{d_scope} AND d.event_code='SCELLMOD' "
+                f"GROUP BY d.capture_id, d.seq"
+            ), caps_param).all()
+            n_scg_pscell_change = sum(1 for a, r in per_event if a and r)
+            n_scg_add_pscell = sum(1 for a, r in per_event if a and not r)
+            n_scg_rel_pscell = sum(1 for a, r in per_event if r and not a)
+        except Exception:
+            n_scg_pscell_change = n_scg_add_pscell = n_scg_rel_pscell = 0
+        try:
+            def _scg_groups_all(group_name: str) -> int:
                 return int(db.execute(text(
                     f"SELECT COUNT(*) FROM nmf_event_group g "
                     f"JOIN nmf_event_deep d USING (project_id, capture_id, seq) "
-                    f"WHERE d.project_id=:pid{caps_scope.replace('capture_id','d.capture_id')} "
-                    f"AND d.event_code='SCELLMOD' AND g.group_name=:gn{extra}"
+                    f"WHERE d.project_id=:pid{d_scope} "
+                    f"AND d.event_code='SCELLMOD' AND g.group_name=:gn"
                 ), {**caps_param, "gn": group_name}).scalar() or 0)
-            n_scg_add_pscell = _scg_groups("added", True)
-            n_scg_rel_pscell = _scg_groups("removed", True)
-            n_scg_add_all = _scg_groups("added", False)
-            n_scg_rel_all = _scg_groups("removed", False)
+            n_scg_add_all = _scg_groups_all("added")
+            n_scg_rel_all = _scg_groups_all("removed")
         except Exception:
-            n_scg_add_pscell = n_scg_rel_pscell = 0
             n_scg_add_all = n_scg_rel_all = 0
         n_scg_mod = _ndeep("event_code='SCELLMOD' AND scellmod_result=1")
         n_scg_fail = _ndeep("event_code='SCELLMOD' AND (scellmod_result=2 OR (scellmod_result>=10 AND scellmod_result<=15))")
         n_scg_total = _ndeep("event_code='SCELLMOD'")
         scg_fail_rate = (n_scg_fail / n_scg_total * 100.0) if n_scg_total else 0.0
 
-        # 2.68.1 (Mobilité 2c point 2) — Accessibilité (RRA / RRC / RRD / RRF).
-        # LTE_RRC_ABNORMAL_RELEASE : seulement les causes CONNUES ≠ 1 (normal).
-        # Les records avec `rrd_rrc_rel_cause IS NULL` sont comptés à part dans
-        # LTE_RRC_RELEASE_CAUSE_UNKNOWN. Schema `RRD.yaml` cite NFF 2.19 RRD
-        # Parameters for LTE #2 (p.418-420 d'après le proof du schema SCELLMOD
-        # qui référence la même source) sans fournir le mapping enum :
-        # convention retenue = cause=1 est normal (release UE-initiated).
+        # 2.68.2 (Mobilité 2d point 2) — Accessibilité (RRA / RRC / RRD / RRF).
+        # LTE_RRC_ABNORMAL_RELEASE = NOT_AVAILABLE : la table des causes de
+        # libération RRC n'est pas documentée dans `app/nmf_decoder/schemas/
+        # RRD.yaml` (schema cite « NFF 2.19 RRD Parameters for LTE #2 » sans
+        # fournir le mapping enum). La convention « cause=1 = normal »
+        # retenue en 2c n'est pas une PREUVE. Règle session 2d : « une
+        # convention n'est pas une preuve ». Sans table : abnormal publié
+        # en NOT_AVAILABLE avec la distribution brute conservée.
         n_rra = _ndeep("event_code='RRA'")
         n_rrc_cnt = _ndeep("event_code='RRC'")
         n_rrd = _ndeep("event_code='RRD'")
-        n_rrd_abnormal_known = _ndeep("event_code='RRD' AND rrd_rrc_rel_cause IS NOT NULL AND rrd_rrc_rel_cause<>1")
+        # Distribution brute conservée dans le label du KPI dédié.
+        rrd_cause_dist = db.execute(text(
+            f"SELECT capture_id, rrd_rrc_rel_cause, COUNT(*) "
+            f"FROM nmf_event_deep WHERE project_id=:pid{caps_scope} "
+            f"AND event_code='RRD' GROUP BY capture_id, rrd_rrc_rel_cause "
+            f"ORDER BY capture_id, rrd_rrc_rel_cause"
+        ), caps_param).all()
         n_rrd_cause_unknown = _ndeep("event_code='RRD' AND rrd_rrc_rel_cause IS NULL")
         rrc_setup_rate = (n_rrc_cnt / n_rra * 100.0) if n_rra else 0.0
+        RRD_ABNORMAL_REASON = (
+            "Table des causes NFF absente du dépôt (app/nmf_decoder/schemas/"
+            "RRD.yaml:30-33 cite 'NFF 2.19 RRD Parameters for LTE #2' sans "
+            "fournir le mapping enum). Convention 'cause=1 = normal' non "
+            "prouvée — donnée NON publiée jusqu'à preuve (lot décodeur / "
+            "NFF 2.59 à déposer dans docs/specs/). Distribution brute dispo "
+            "dans le KPI lte_rrd_cause_distribution."
+        )
+        rrd_dist_label = "; ".join(
+            f"{r[0][:4]}:cause={r[1] if r[1] is not None else 'NULL'}={r[2]}"
+            for r in rrd_cause_dist
+        ) or "(no RRD)"
 
         # 2.68.0 — NAS (TAU / LAU) :
         n_tua = _ndeep("event_code='TUA'")
@@ -1786,13 +1819,14 @@ def build_catalog_v4(
             ))
         if any(n.get("node_id") == _scg_cat_id for n in nodes_out):
             MOBILITY_KPI.extend([
-                ("endc_scg_add_count",        "ENDC SCG add count (SCELLMOD + group added PSCell 199)",      n_scg_add_pscell, "n", "KPI", _scg_cat_id),
-                ("endc_scg_release_count",    "ENDC SCG release count (SCELLMOD + group removed PSCell 199)", n_scg_rel_pscell, "n", "KPI", _scg_cat_id),
-                ("endc_scg_add_count_all",    "ENDC SCG add count (all cell_types, via nmf_event_group)",    n_scg_add_all,    "n", "KPI", _scg_cat_id),
-                ("endc_scg_release_count_all","ENDC SCG release count (all cell_types)",                      n_scg_rel_all,    "n", "KPI", _scg_cat_id),
-                ("endc_scg_mod_count",        "ENDC SCG modification count (SCELLMOD result=1 header)",       n_scg_mod,    "n", "KPI", _scg_cat_id),
-                ("endc_scg_failure_count",    "ENDC SCG failure count (SCELLMOD result ∈ {2,10..15})",        n_scg_fail,   "n", "KPI", _scg_cat_id),
-                ("endc_scg_failure_rate_pct", "ENDC SCG failure rate (failure / total SCELLMOD)",             scg_fail_rate,"%", "KPI", _scg_cat_id),
+                ("endc_pscell_change_count",  "ENDC PSCell change count (SCELLMOD avec add ET remove @PSCell 199 dans le même event)", n_scg_pscell_change, "n", "KPI", _scg_cat_id),
+                ("endc_scg_add_count",        "ENDC SCG add count (SCELLMOD avec add seul @PSCell 199)",         n_scg_add_pscell, "n", "KPI", _scg_cat_id),
+                ("endc_scg_release_count",    "ENDC SCG release count (SCELLMOD avec remove seul @PSCell 199)",  n_scg_rel_pscell, "n", "KPI", _scg_cat_id),
+                ("endc_scg_add_groups_all",   "ENDC SCG add GROUPS (toutes cellules, nmf_event_group)",          n_scg_add_all,    "n", "KPI", _scg_cat_id),
+                ("endc_scg_release_groups_all","ENDC SCG release GROUPS (toutes cellules)",                       n_scg_rel_all,    "n", "KPI", _scg_cat_id),
+                ("endc_scg_mod_count",        "ENDC SCG modification count (SCELLMOD result=1 header)",           n_scg_mod,    "n", "KPI", _scg_cat_id),
+                ("endc_scg_failure_count",    "ENDC SCG failure count (SCELLMOD result ∈ {2,10..15})",            n_scg_fail,   "n", "KPI", _scg_cat_id),
+                ("endc_scg_failure_rate_pct", "ENDC SCG failure rate (failure / total SCELLMOD)",                 scg_fail_rate,"%", "KPI", _scg_cat_id),
             ])
         # Access/NAS under cat_LTE_access (même pattern que SCG).
         _acc_cat_id = "cat_LTE_access"
@@ -1813,8 +1847,9 @@ def build_catalog_v4(
                 ("lte_rrc_setup_success_rate_pct", "LTE RRC setup success rate (RRC / RRA)", rrc_setup_rate, "%", "KPI", _acc_cat_id),
                 ("lte_rrc_setup_failure",          "LTE RRC setup failure (RRF)",            n_rrf,   "n", "KPI", _acc_cat_id),
                 ("rrf_count",                      "RRF count",                              n_rrf,   "n", "KPI", _acc_cat_id),
-                ("lte_rrc_abnormal_release",       "LTE RRC abnormal release (RRD cause CONNUE ≠ 1)", n_rrd_abnormal_known, "n", "KPI", _acc_cat_id),
-                ("lte_rrc_release_cause_unknown",  "LTE RRC release cause UNKNOWN (rrd_rrc_rel_cause IS NULL)", n_rrd_cause_unknown, "n", "KPI", _acc_cat_id),
+                ("lte_rrc_abnormal_release",       "LTE RRC abnormal release — NOT AVAILABLE (table enum NFF absente)", None, "n", "KPI", _acc_cat_id),
+                ("lte_rrc_release_cause_unknown",  "LTE RRC release cause NULL (count brut)", n_rrd_cause_unknown, "n", "KPI", _acc_cat_id),
+                ("lte_rrd_cause_distribution",     f"RRD cause distribution brute par capture : {rrd_dist_label}", n_rrd, "n", "KPI", _acc_cat_id),
                 ("tuf_count",                      "TUF count",                              n_tuf,   "n", "KPI", _acc_cat_id),
                 ("luf_count",                      "LUF count",                              n_luf,   "n", "KPI", _acc_cat_id),
                 ("lte_tau_success_rate_pct",       "LTE TAU success rate (TUS / TUA)",       tau_rate, "%", "KPI", _acc_cat_id),
@@ -1832,7 +1867,12 @@ def build_catalog_v4(
                 availability = "not_available"
                 n_val = 0
                 selectable_flag = False
-                reason_val = HOI_NOT_AVAILABLE_REASON if mid.startswith("lte_ho_duration_") else "Donnée non prouvable dans NFF 2.59"
+                if mid.startswith("lte_ho_duration_"):
+                    reason_val = HOI_NOT_AVAILABLE_REASON
+                elif mid == "lte_rrc_abnormal_release":
+                    reason_val = RRD_ABNORMAL_REASON
+                else:
+                    reason_val = "Donnée non prouvable dans NFF 2.59"
             else:
                 try:
                     n_int = int(val) if isinstance(val, int) else int(round(val))

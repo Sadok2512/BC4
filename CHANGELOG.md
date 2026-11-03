@@ -1,3 +1,65 @@
+## 0.130.2 (patch) — catalog 2.68.2 : Mobilité 2d — SCG split par event + RRD NOT_AVAILABLE — 2026-11-03 (Agent BC5)
+
+- **Back 0.130.1 → 0.130.2** (patch). **Catalog 2.68.1 → 2.68.2** (patch,
+  baked identique, version bumpée pour invalider le cache).
+  Décodeur 1.11.2 inchangé.
+- **Point 1 — SCG split PAR EVENT SCELLMOD** (`metrics_catalog_v4.py:
+  1660-1699`) : classification sur `nmf_event_group` (join par
+  `(project_id, capture_id, seq)`) selon la présence de groupes
+  `added`/`removed` au PSCell 199 (`scellmod_cell_type=199`) :
+  - `endc_pscell_change_count` = add ET remove dans le même event
+  - `endc_scg_add_count` = add sans remove
+  - `endc_scg_release_count` = remove sans add
+  Les KPI `endc_scg_add_count_all` / `_release_count_all` de 2c sont
+  renommés `endc_scg_add_groups_all` / `_release_groups_all`
+  (compteurs de groupes, pas d'events — rename déclaré `--allow-decrease`).
+  Garde par capture (somme == events SCELLMOD avec ≥ 1 groupe PSCell 199) :
+
+  | capture | CHANGE | ADD | RELEASE | SUM | total SCELLMOD |
+  |---|---|---|---|---|---|
+  | Test_6 | **85** | **126** | **126** | 337 | 337 ✓ |
+  | ikea.6 | **0** | **2** | **2** | 4 | 5 (1 event sans PSCell 199) |
+  | ikea.2 | **0** | **5** | **5** | 10 | 10 ✓ |
+
+  1 record exemple par type (Test_6) :
+  - CHANGE seq=693 tokens `['SCELLMOD','15:59:49.126','','9','1','1',
+    '1','4','199','90078','643392','534','1','4','199','90078','643392',
+    '889']` — group added pci=534, group removed pci=889.
+  - ADD seq=162 tokens `['SCELLMOD','15:59:43.334','','9','1','1','1',
+    '4','199','90078','643392','889','0','4']` — group added pci=889
+    (`n_scells_removed`=0).
+  - RELEASE seq=1684 tokens `['SCELLMOD','16:00:02.800','','9','1','1',
+    '0','4','1','4','199','90078','643392','534']` — group removed
+    pci=534 (`n_scells_added`=0).
+- **Point 2 — RRD `lte_rrc_abnormal_release` = NOT_AVAILABLE**
+  (`metrics_catalog_v4.py:1713-1745`) : la table des causes de libération
+  n'est pas dans `app/nmf_decoder/schemas/RRD.yaml:30-33` (schema cite
+  « NFF 2.19 RRD Parameters for LTE #2 » sans fournir le mapping enum).
+  La convention « cause=1 = normal » retenue en 2c **n'est pas une
+  preuve**. Règle session 2d : « une convention n'est pas une preuve ».
+  - `lte_rrc_abnormal_release` = **NOT_AVAILABLE** avec `reason` explicite.
+  - `lte_rrc_release_cause_unknown` = count brut (`rrd_rrc_rel_cause IS NULL`).
+  - **Nouveau** `lte_rrd_cause_distribution` (count total RRD + label
+    distribution brute par capture, format `cap:cause=N`) :
+    - Test_6 : cause=1 → 132, cause=NULL → 3 (total 135)
+    - ikea.6 : cause=1 → 5
+    - ikea.2 : cause=1 → 5
+- **Liste blanche `--allow-decrease` 2.68.1 → 2.68.2** :
+  `endc_scg_add_count` (211 → 126 pour Test_6 : nouveau sens « add sans
+  remove » ≠ « add au moins »), `endc_scg_release_count` (211 → 126 pour
+  Test_6, idem), `endc_scg_add_count_all` et `endc_scg_release_count_all`
+  (renommés `endc_scg_add_groups_all` / `_release_groups_all`),
+  `lte_rrc_abnormal_release` (0 → NOT_AVAILABLE).
+- **Point 4 — Deposit NFF 2.59** : quand `docs/specs/NFF-2.59.pdf` sera
+  présent, lot dédié :
+  - HOI decoder 1.11.3 (preuve des 3 champs `ho_duration` / `ho_to` /
+    `ho_u_plane` ; calcul duration = u_plane - to confirmé ou autre)
+  - Revalidation des 9 schémas `spec_version='2.50'` (CELLMEAS, CQI, DCI,
+    MACRATEU, MACRATE, PLAID, PLAIU, SCELLMOD, SCELL) et mise à jour
+    de `min_format='2.59'` quand confirmé.
+  - Enum table pour `rrd_rrc_rel_cause` — débloquera
+    `lte_rrc_abnormal_release` (actuellement NOT_AVAILABLE).
+
 ## 0.130.1 (patch) — catalog 2.68.1 : Mobilité 2c — 4 corrections + inventaire format — 2026-11-03 (Agent BC5)
 
 - **Back 0.130.0 → 0.130.1** (patch). **Catalog 2.68.0 → 2.68.1** (patch,
