@@ -1,3 +1,14 @@
+## 0.126.2 (patch) — fix STRUCT dynamic (REPRISE 7 follow-up) — 2026-11-03 (Agent BC2)
+
+- Back **0.126.1 → 0.126.2** (patch).
+- `app/kpi/metrics_catalog_v4.py:1240+` — ajouté le filtre
+  `kind=="STRUCT" → continue` sur les dynamic entries (compteurs NFF
+  type `Count @ cell` qui étaient émis dans l'arbre). Même logique que
+  la boucle displayed_leaves ligne 687.
+- Gardes globales P20 toutes à 0 : scell_ge_100=0, kind_null=0,
+  struct_in_tree=0, mimo_csi_on_neigh=0, chi_lte_NN_dup=0,
+  display_code_null=0.
+
 ## 0.126.1 (patch) — endpoint /metrics/catalog-csv (REPRISE 7 Lot 7) — 2026-11-03 (Agent BC2)
 
 - Back **0.126.0 → 0.126.1** (patch). Nouvel endpoint

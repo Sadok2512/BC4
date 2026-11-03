@@ -1240,6 +1240,17 @@ def build_catalog_v4(
         node_id = f"lf_observed_{ev.lower()}_{selector}_{col}"
         selection = f"{col}@{selector}"
         parent_id = ev_nid
+        # 2.64.0 (REPRISE 7 Lot 6) — filtrer STRUCT dynamic (ex. compteurs
+        # NFF cqi_count/dci_count @ cell). Même logique que la boucle
+        # displayed_leaves ligne 687 : STRUCT = hors arbre.
+        _dyn_kind = _kind_for_leaf({
+            "label": label_full,
+            "metric_label": _tree_metric_label(field_name),
+            "metric_id": selection,
+            "source_column": col,
+        })
+        if _dyn_kind == "STRUCT":
+            continue
         order = siblings_counter.get(parent_id, 0)
         siblings_counter[parent_id] = order + 1
         nodes_out.append(
