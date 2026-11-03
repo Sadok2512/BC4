@@ -1,3 +1,24 @@
+## 0.124.4 (patch) — Decoder 1.10.4 : cell_scoped=true sur variantes NR — 2026-11-03 (Agent BC5, visibility fix)
+
+- Décodeur **1.10.3 → 1.10.4** (patch), back **0.124.3 → 0.124.4** (patch).
+- Les 4 variantes NR livrées (PLAID_NR, PLAIU_NR, MACRATE_NR, MACRATEU_NR)
+  manquaient le flag `cell_scoped: true`. `app/nmf_decoder/cells.py:88`
+  filtre `if not schema.get('cell_scoped')` → les records NR ne
+  produisaient PAS de lignes `nmf_cell_second` malgré la projection
+  `nmf_event_light` correcte. Résultat : catalog ne surfaçait aucune
+  cellule NR dans la sidebar (via `dynamic_entries` dans
+  `metrics_catalog_v4.py:1088`).
+- Fix : ajouter `"cell_scoped": true` dans les 4 YAML.
+- **Garde `nmf_cell_second` après fix + re-decode daa2b1df250d** :
+  ```
+  event    | metric_code              | cell_index=9670 (NR SCG PSCell)
+  MACRATE  | macrate_mac_dl_bitrate   |  13
+  MACRATEU | macrateu_mac_ul_bitrate  |  13
+  PLAID    | plaid_rank               |   2
+  PLAIU    | plaiu_rank               |   5
+  ```
+  (cell_index=9670 = _cell_index_for(199, 9) via `cells.py:28-34`).
+
 ## 0.124.3 (patch) — Decoder 1.10.3 : MACRATE/MACRATEU NR variants — 2026-11-03 (Agent BC5, Lot 1 schemas 3-4)
 
 - Décodeur **1.10.2 → 1.10.3** (patch), back **0.124.2 → 0.124.3** (patch).

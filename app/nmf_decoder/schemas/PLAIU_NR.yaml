@@ -1,25 +1,188 @@
 {
   "event": "PLAIU",
   "spec_version": "2.50",
-  "systems": [9],
+  "systems": [
+    9
+  ],
   "system_col": 4,
   "min_format": "2.50",
   "schema_version": "1.10.2-NR",
   "unknown_tail": "keep",
   "header": [
-    {"col": 5, "code": "plaiu.hdr_n", "label": "#Header params (NR)", "type": "int", "unit": "n", "proof": "NFF 2.50 PLAIU NR p.570 #1", "agg": "last", "metric": false, "category": "terminal_cell"},
-    {"col": 6, "code": "plaiu.scope", "label": "Scope (NR)", "type": "int", "unit": "enum", "proof": "NFF 2.50 PLAIU NR p.570 #2", "agg": "last", "metric": false, "category": "terminal_cell"},
-    {"col": 7, "code": "plaiu.cell_type", "label": "Cell type (NR)", "type": "int", "unit": "enum", "proof": "NFF 2.50 PLAIU NR p.570-571 #3; enum 0..31=SCell N, 98=SCell, 100..131=SCG SCell N, 198=SCG SCell, 199=SCG PSCell", "agg": "dominant", "category": "terminal_cell", "dimension": true},
-    {"col": 8, "code": "plaiu.rank", "label": "PUSCH rank (NR)", "type": "int", "unit": "", "range": [0, 8], "proof": "NFF 2.50 PLAIU NR p.571 #4", "agg": "mean", "category": "allocation_mcs"},
-    {"col": 9, "code": "plaiu.prbs", "label": "PUSCH PRBs (NR)", "type": "int", "unit": "", "range": [0, 275], "proof": "NFF 2.50 PLAIU NR p.571 #5", "agg": "mean", "category": "allocation_mcs"},
-    {"col": 10, "code": "plaiu.mod0", "label": "PUSCH modulation CW0 (NR)", "type": "int", "unit": "enum", "range": [0, 4], "proof": "NFF 2.50 PLAIU NR p.571 #6; 0=BPSK 1=QPSK 2=16QAM 3=64QAM 4=256QAM", "agg": "dominant", "category": "allocation_mcs"},
-    {"col": 11, "code": "plaiu.mcs0", "label": "PUSCH MCS CW0 (NR)", "type": "int", "unit": "", "range": [0, 31], "proof": "NFF 2.50 PLAIU NR p.572 #7", "agg": "mean", "category": "allocation_mcs"},
-    {"col": 12, "code": "plaiu.tbs0", "label": "PUSCH TBS CW0 (NR)", "type": "int", "unit": "bit", "range": [0, null], "proof": "NFF 2.50 PLAIU NR p.572 #8", "agg": "mean", "category": "allocation_mcs"},
-    {"col": 13, "code": "plaiu.percentage", "label": "PUSCH slot utilization (NR)", "type": "float", "unit": "%", "range": [0, 100], "proof": "NFF 2.50 PLAIU NR p.572 #9 (bind on plaiu_percentage, LTE uses it as PUSCH PRB percentage)", "agg": "mean", "category": "allocation_mcs"},
-    {"col": 14, "code": "plaiu.prb_util_ul", "label": "PUSCH bit/s/Hz (NR)", "type": "float", "unit": "bit/s/Hz", "range": [0, null], "proof": "NFF 2.50 PLAIU NR p.572 #10 (bind on plaiu_prb_util_ul)", "agg": "mean", "category": "throughput_layers"},
-    {"col": 15, "code": "plaiu.prb_percentage", "label": "Max PUSCH bit/s/Hz (NR)", "type": "float", "unit": "bit/s/Hz", "range": [0, null], "proof": "NFF 2.50 PLAIU NR p.572 #11 (bind on plaiu_prb_percentage, LTE uses it as PRB percentage)", "agg": "max", "category": "throughput_layers"},
-    {"col": 16, "code": "plaiu.n_pla", "label": "PUSCH BWP ID (NR)", "type": "int", "unit": "", "range": [0, 4], "proof": "NFF 2.50 PLAIU NR p.572 #12 (bind on plaiu_n_pla, LTE uses it as #PLA sets)", "agg": "dominant", "category": "allocation_mcs"},
-    {"col": 17, "code": "plaiu.params_pla", "label": "UL type (NR)", "type": "int", "unit": "enum", "range": [1, 2], "proof": "NFF 2.50 PLAIU NR p.572 #13; 1=UL 2=SUL (bind on plaiu_params_pla, LTE uses it as #Params/PLA set)", "agg": "dominant", "category": "allocation_mcs"}
+    {
+      "col": 5,
+      "code": "plaiu.hdr_n",
+      "label": "#Header params (NR)",
+      "type": "int",
+      "unit": "n",
+      "proof": "NFF 2.50 PLAIU NR p.570 #1",
+      "agg": "last",
+      "metric": false,
+      "category": "terminal_cell"
+    },
+    {
+      "col": 6,
+      "code": "plaiu.scope",
+      "label": "Scope (NR)",
+      "type": "int",
+      "unit": "enum",
+      "proof": "NFF 2.50 PLAIU NR p.570 #2",
+      "agg": "last",
+      "metric": false,
+      "category": "terminal_cell"
+    },
+    {
+      "col": 7,
+      "code": "plaiu.cell_type",
+      "label": "Cell type (NR)",
+      "type": "int",
+      "unit": "enum",
+      "proof": "NFF 2.50 PLAIU NR p.570-571 #3; enum 0..31=SCell N, 98=SCell, 100..131=SCG SCell N, 198=SCG SCell, 199=SCG PSCell",
+      "agg": "dominant",
+      "category": "terminal_cell",
+      "dimension": true
+    },
+    {
+      "col": 8,
+      "code": "plaiu.rank",
+      "label": "PUSCH rank (NR)",
+      "type": "int",
+      "unit": "",
+      "range": [
+        0,
+        8
+      ],
+      "proof": "NFF 2.50 PLAIU NR p.571 #4",
+      "agg": "mean",
+      "category": "allocation_mcs"
+    },
+    {
+      "col": 9,
+      "code": "plaiu.prbs",
+      "label": "PUSCH PRBs (NR)",
+      "type": "int",
+      "unit": "",
+      "range": [
+        0,
+        275
+      ],
+      "proof": "NFF 2.50 PLAIU NR p.571 #5",
+      "agg": "mean",
+      "category": "allocation_mcs"
+    },
+    {
+      "col": 10,
+      "code": "plaiu.mod0",
+      "label": "PUSCH modulation CW0 (NR)",
+      "type": "int",
+      "unit": "enum",
+      "range": [
+        0,
+        4
+      ],
+      "proof": "NFF 2.50 PLAIU NR p.571 #6; 0=BPSK 1=QPSK 2=16QAM 3=64QAM 4=256QAM",
+      "agg": "dominant",
+      "category": "allocation_mcs"
+    },
+    {
+      "col": 11,
+      "code": "plaiu.mcs0",
+      "label": "PUSCH MCS CW0 (NR)",
+      "type": "int",
+      "unit": "",
+      "range": [
+        0,
+        31
+      ],
+      "proof": "NFF 2.50 PLAIU NR p.572 #7",
+      "agg": "mean",
+      "category": "allocation_mcs"
+    },
+    {
+      "col": 12,
+      "code": "plaiu.tbs0",
+      "label": "PUSCH TBS CW0 (NR)",
+      "type": "int",
+      "unit": "bit",
+      "range": [
+        0,
+        null
+      ],
+      "proof": "NFF 2.50 PLAIU NR p.572 #8",
+      "agg": "mean",
+      "category": "allocation_mcs"
+    },
+    {
+      "col": 13,
+      "code": "plaiu.percentage",
+      "label": "PUSCH slot utilization (NR)",
+      "type": "float",
+      "unit": "%",
+      "range": [
+        0,
+        100
+      ],
+      "proof": "NFF 2.50 PLAIU NR p.572 #9 (bind on plaiu_percentage, LTE uses it as PUSCH PRB percentage)",
+      "agg": "mean",
+      "category": "allocation_mcs"
+    },
+    {
+      "col": 14,
+      "code": "plaiu.prb_util_ul",
+      "label": "PUSCH bit/s/Hz (NR)",
+      "type": "float",
+      "unit": "bit/s/Hz",
+      "range": [
+        0,
+        null
+      ],
+      "proof": "NFF 2.50 PLAIU NR p.572 #10 (bind on plaiu_prb_util_ul)",
+      "agg": "mean",
+      "category": "throughput_layers"
+    },
+    {
+      "col": 15,
+      "code": "plaiu.prb_percentage",
+      "label": "Max PUSCH bit/s/Hz (NR)",
+      "type": "float",
+      "unit": "bit/s/Hz",
+      "range": [
+        0,
+        null
+      ],
+      "proof": "NFF 2.50 PLAIU NR p.572 #11 (bind on plaiu_prb_percentage, LTE uses it as PRB percentage)",
+      "agg": "max",
+      "category": "throughput_layers"
+    },
+    {
+      "col": 16,
+      "code": "plaiu.n_pla",
+      "label": "PUSCH BWP ID (NR)",
+      "type": "int",
+      "unit": "",
+      "range": [
+        0,
+        4
+      ],
+      "proof": "NFF 2.50 PLAIU NR p.572 #12 (bind on plaiu_n_pla, LTE uses it as #PLA sets)",
+      "agg": "dominant",
+      "category": "allocation_mcs"
+    },
+    {
+      "col": 17,
+      "code": "plaiu.params_pla",
+      "label": "UL type (NR)",
+      "type": "int",
+      "unit": "enum",
+      "range": [
+        1,
+        2
+      ],
+      "proof": "NFF 2.50 PLAIU NR p.572 #13; 1=UL 2=SUL (bind on plaiu_params_pla, LTE uses it as #Params/PLA set)",
+      "agg": "dominant",
+      "category": "allocation_mcs"
+    }
   ],
-  "groups": []
+  "groups": [],
+  "cell_scoped": true
 }

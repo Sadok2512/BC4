@@ -368,3 +368,22 @@ pour NR, nf=16 à 19 pour LTE) confirmant les groupes.
 **Rebuild/deploy** : à chaque commit décodeur ajouter new column migration = rebuild obligatoire (migration doit s'appliquer à l'image). Pour lots 3-7 (catalog build), rebuild API + éventuellement front selon lot 7.
 
 **Dernière mise à jour** : 2026-11-03 fin de session — décodeur 1.10.3 déployé, 4 schémas NR production + fix O-A.
+
+---
+
+## Commit 5 — décodeur 1.10.4, cell_scoped=true sur variantes NR
+
+**Fichiers** :
+- `app/nmf_decoder/schemas/{PLAID,PLAIU,MACRATE,MACRATEU}_NR.yaml` : ajout `"cell_scoped": true`
+- `app/nmf_decoder/__init__.py` : `DECODER_VERSION = '1.10.4'`
+- `pyproject.toml` + `app/main.py` : back 0.124.3 → 0.124.4
+
+**Cause** (fichier:ligne) : `app/nmf_decoder/cells.py:88` → `if not schema.get('cell_scoped') or b['second']<0:continue`. Les 4 variantes NR livrées en 1.10.0-1.10.3 n'avaient pas `cell_scoped:true` → zéro ligne `nmf_cell_second` pour NR → `dynamic_entries` du catalog (`metrics_catalog_v4.py:1088`) ne surfaçait pas les cellules NR.
+
+**Garde `nmf_cell_second` NR après re-decode daa2b1df250d (cell_index=9670 = _cell_index_for(199,9))** :
+```
+MACRATE  : macrate_mac_dl_bitrate=13, macrate_mac_dl_bler=13, macrate_scope=13
+MACRATEU : macrateu_mac_ul_bitrate=13, macrateu_mac_ul_retr=13
+PLAID    : plaid_rank=2, plaid_prbs=2, plaid_mcs0=2, plaid_scope=13
+PLAIU    : plaiu_rank=5, plaiu_prbs=5, plaiu_percentage=13
+```

@@ -1,22 +1,149 @@
 {
   "event": "MACRATE",
   "spec_version": "2.50",
-  "systems": [9],
+  "systems": [
+    9
+  ],
   "system_col": 4,
   "min_format": "2.50",
   "schema_version": "1.10.3-NR",
   "unknown_tail": "keep",
   "header": [
-    {"col": 5, "code": "macrate.scope", "label": "Scope (NR)", "type": "int", "unit": "enum", "proof": "NFF 2.50 MACRATE NR p.534 #1", "agg": "last", "metric": false, "category": "terminal_cell"},
-    {"col": 6, "code": "macrate.cell_type", "label": "Cell type (NR)", "type": "int", "unit": "enum", "proof": "NFF 2.50 MACRATE NR p.534 #2; enum 0..199 (SCG PSCell=199)", "agg": "dominant", "category": "terminal_cell", "dimension": true},
-    {"col": 7, "code": "macrate.mac_dl_bitrate", "label": "MAC DL bitrate (NR)", "type": "int", "unit": "bit/s", "range": [0, null], "proof": "NFF 2.50 MACRATE NR p.535 #3", "agg": "mean", "category": "throughput_layers"},
-    {"col": 8, "code": "macrate.mac_dl_redundant", "label": "MAC DL scheduled bitrate (NR, repurposed slot)", "type": "int", "unit": "bit/s", "range": [0, null], "proof": "NFF 2.50 MACRATE NR p.535 #4 (bind on macrate_mac_dl_redundant, LTE uses it as redundant retr. %)", "agg": "mean", "category": "throughput_layers"},
-    {"col": 9, "code": "macrate.mac_dl_new", "label": "MAC DL new blocks (NR)", "type": "int", "unit": "blocks", "range": [0, null], "proof": "NFF 2.50 MACRATE NR p.535 #5", "agg": "mean", "category": "link_quality"},
-    {"col": 10, "code": "macrate.mac_dl_block_rate", "label": "MAC DL block rate (NR)", "type": "int", "unit": "blocks", "range": [0, null], "proof": "NFF 2.50 MACRATE NR p.535 #6", "agg": "mean", "category": "link_quality"},
-    {"col": 11, "code": "macrate.mac_dl_bler", "label": "MAC DL BLER (NR)", "type": "float", "unit": "%", "range": [0, 100], "proof": "NFF 2.50 MACRATE NR p.535 #7", "agg": "mean", "category": "link_quality"},
-    {"col": 12, "code": "macrate.mac_dl_bler_1st", "label": "MAC DL BLER 1st (NR)", "type": "float", "unit": "%", "range": [0, 100], "proof": "NFF 2.50 MACRATE NR p.535 #8", "agg": "mean", "category": "link_quality"},
-    {"col": 13, "code": "macrate.mac_dl_bler_2nd", "label": "MAC DL BLER 2nd (NR)", "type": "float", "unit": "%", "range": [0, 100], "proof": "NFF 2.50 MACRATE NR p.535 #9", "agg": "mean", "category": "link_quality"},
-    {"col": 14, "code": "macrate.mac_dl_bler_3rd", "label": "MAC DL BLER 3rd+ (NR)", "type": "float", "unit": "%", "range": [0, 100], "proof": "NFF 2.50 MACRATE NR p.535 #10", "agg": "mean", "category": "link_quality"}
+    {
+      "col": 5,
+      "code": "macrate.scope",
+      "label": "Scope (NR)",
+      "type": "int",
+      "unit": "enum",
+      "proof": "NFF 2.50 MACRATE NR p.534 #1",
+      "agg": "last",
+      "metric": false,
+      "category": "terminal_cell"
+    },
+    {
+      "col": 6,
+      "code": "macrate.cell_type",
+      "label": "Cell type (NR)",
+      "type": "int",
+      "unit": "enum",
+      "proof": "NFF 2.50 MACRATE NR p.534 #2; enum 0..199 (SCG PSCell=199)",
+      "agg": "dominant",
+      "category": "terminal_cell",
+      "dimension": true
+    },
+    {
+      "col": 7,
+      "code": "macrate.mac_dl_bitrate",
+      "label": "MAC DL bitrate (NR)",
+      "type": "int",
+      "unit": "bit/s",
+      "range": [
+        0,
+        null
+      ],
+      "proof": "NFF 2.50 MACRATE NR p.535 #3",
+      "agg": "mean",
+      "category": "throughput_layers"
+    },
+    {
+      "col": 8,
+      "code": "macrate.mac_dl_redundant",
+      "label": "MAC DL scheduled bitrate (NR, repurposed slot)",
+      "type": "int",
+      "unit": "bit/s",
+      "range": [
+        0,
+        null
+      ],
+      "proof": "NFF 2.50 MACRATE NR p.535 #4 (bind on macrate_mac_dl_redundant, LTE uses it as redundant retr. %)",
+      "agg": "mean",
+      "category": "throughput_layers"
+    },
+    {
+      "col": 9,
+      "code": "macrate.mac_dl_new",
+      "label": "MAC DL new blocks (NR)",
+      "type": "int",
+      "unit": "blocks",
+      "range": [
+        0,
+        null
+      ],
+      "proof": "NFF 2.50 MACRATE NR p.535 #5",
+      "agg": "mean",
+      "category": "link_quality"
+    },
+    {
+      "col": 10,
+      "code": "macrate.mac_dl_block_rate",
+      "label": "MAC DL block rate (NR)",
+      "type": "int",
+      "unit": "blocks",
+      "range": [
+        0,
+        null
+      ],
+      "proof": "NFF 2.50 MACRATE NR p.535 #6",
+      "agg": "mean",
+      "category": "link_quality"
+    },
+    {
+      "col": 11,
+      "code": "macrate.mac_dl_bler",
+      "label": "MAC DL BLER (NR)",
+      "type": "float",
+      "unit": "%",
+      "range": [
+        0,
+        100
+      ],
+      "proof": "NFF 2.50 MACRATE NR p.535 #7",
+      "agg": "mean",
+      "category": "link_quality"
+    },
+    {
+      "col": 12,
+      "code": "macrate.mac_dl_bler_1st",
+      "label": "MAC DL BLER 1st (NR)",
+      "type": "float",
+      "unit": "%",
+      "range": [
+        0,
+        100
+      ],
+      "proof": "NFF 2.50 MACRATE NR p.535 #8",
+      "agg": "mean",
+      "category": "link_quality"
+    },
+    {
+      "col": 13,
+      "code": "macrate.mac_dl_bler_2nd",
+      "label": "MAC DL BLER 2nd (NR)",
+      "type": "float",
+      "unit": "%",
+      "range": [
+        0,
+        100
+      ],
+      "proof": "NFF 2.50 MACRATE NR p.535 #9",
+      "agg": "mean",
+      "category": "link_quality"
+    },
+    {
+      "col": 14,
+      "code": "macrate.mac_dl_bler_3rd",
+      "label": "MAC DL BLER 3rd+ (NR)",
+      "type": "float",
+      "unit": "%",
+      "range": [
+        0,
+        100
+      ],
+      "proof": "NFF 2.50 MACRATE NR p.535 #10",
+      "agg": "mean",
+      "category": "link_quality"
+    }
   ],
-  "groups": []
+  "groups": [],
+  "cell_scoped": true
 }
