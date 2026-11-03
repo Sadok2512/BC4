@@ -9,13 +9,12 @@
 
 ## Point courant
 
-**Position** : lot 1 schéma PLAID NR **partiel** committé (voir commit 1 ci-dessous). Décodeur bumpé à 1.10.0. Framework multi-system actif (déjà depuis 1.7.0). PLAID NR projette `cell_type` et `scope` mais PAS `rank/prbs/mcs0/mod0/mod1/mcs1` — écart O-A.
+**Position (REPRISE 2 — 2026-11-03)** : HEAD `853f75d` ; décodeur **1.10.3** live (image `bc4-api:0.124.3-954117d`), 4 schémas NR livrés (PLAID, PLAIU, MACRATE, MACRATEU). O-A **FERMÉ**. Catalog cache 2.62.0 **stale** (updated_at 2026-11-03 03:07, pre-re-decodes).
 
 **Prochaine étape exacte** :
-1. Investiguer O-A (`plaid_rank/prbs/mcs0` à 0 pour système=9) dans `app/nmf_decoder/light.py` : regarder la fonction `read` qui projette les champs. Patch décodeur `1.10.1`.
-2. Ensuite PLAIU_NR (schema 2), MACRATE_NR, MACRATEU_NR, DCI (créer LTE+NR), CQI_NR, SCELL_NR, SCELLMOD_NR, CHI_NR — un commit chacun.
-3. Après tous les schémas NR : catalog 2.63.0 (lots 3-7), app 1.134.0.
-4. Déployer en une seule fois.
+1. Régénérer `metrics_catalog_cache` pour Test_6 → rendre les projections NR visibles.
+2. CHI → SCELLMOD → CQI_NR → DCI (LTE+NR) → SCELL NR, un commit + patch + rebuild + deploy chacun.
+3. Lots 3-7 : catalog_release 2.63.0, app 1.134.0.
 
 ---
 
@@ -127,17 +126,10 @@ GROUP BY 1 ORDER BY 1;
 
 ## Écarts OUVERTS (fichier:ligne, actionnables)
 
-- **O-A** NEW — `app/nmf_decoder/light.py:read()` ou `effective_col` — PLAID NR projette `cell_type` (dimension) et `scope` (header#2) mais pas `rank/prbs/mcs0/mod0/mod1/mcs1` (col 8-13) alors que les records portent les valeurs. Records :
-  ```
-  PLAID,17:26:47.787,,9,16,16,199,1,16,1,,0,,45,,0.5,0.13,0.17,1,0.005,0.1,…
-  col:                            7 8 9  10 11 12 13 14 15 16   17   18 19 20   21
-  ```
-  Attendu : plaid_rank=1 (col8), plaid_prbs=16 (col9), plaid_mod0=1 (col10), plaid_mcs0=0 (col12). Observé : tous NULL/0 dans `nmf_event_light`. Investigation à mener : vérifier si `agg: mean` sur `type: int` avec valeur 0 est rejeté (voir `light.py:Stat.add` ligne ~25-33), si `range: [0,8]` filtre, ou si `effective_col` décale les colonnes à cause du context_count NR. Non bloquant pour continuer sur PLAIU_NR etc. mais à boucler avant toute mise en prod.
-- **O-01** `app/nmf_decoder/light.py:75` — `if r.event_code=='TXPC' and r.system==7:b['cell_type']=txpc_cell_type(r)` : hard-code `system==7`. **Non prioritaire** car NR cell_type passe par `dimensions(r)` via `dimension: true` dans TXPC_NR.yaml.
-- **O-02** `app/nmf_decoder/light.py:82` — `if r.event_code=='CELLMEAS' and r.system==7`: pareil, voisines NR non agrégées. Comment `scope lot ultérieur` déjà noté.
-- **O-03** `app/nmf_decoder/schemas/MACRATE.yaml:41` — `code: mac.dl_bler` sans dimension cellule : les 3459 records MACRATE écrivent `mac_dl_bler` avec `cell_type=NULL`, le catalog projette PCell par convention (= chiffre 2530 vu dans la cache). **À corriger dans commit décodeur 1.10.2**.
-- **O-04** schema loader `app/nmf_decoder/schema.py:49-53` — `_variants[9]` ok, mais si on veut supporter d'autres systèmes futurs (ex 5=UMTS) il faut généraliser. Pas bloquant.
-- **O-05** PLAID NR layout — col5=16 (hdr_n), col7=cell_id (ex 199), reste à cartographier. **À prouver record par record dans commit 1.10.0**.
+- **O-01** `app/nmf_decoder/light.py:75` — hard-code `system==7` pour `b['cell_type']=txpc_cell_type(r)`. **Non prioritaire** : NR cell_type passe par `dimensions(r)` via `dimension: true` dans TXPC_NR.yaml.
+- **O-02** `app/nmf_decoder/light.py:82` — hard-code `system==7` pour CELLMEAS neighbours. Scope lot ultérieur.
+- **O-04** `app/nmf_decoder/schema.py:49-53` — `_variants[9]` ok, mais généralisation à d'autres systèmes (ex 5=UMTS) non implémentée. Pas bloquant.
+- **O-A, O-03, O-05 : fermés** — voir commits `4951569` et `d75429f`.
 
 ---
 
