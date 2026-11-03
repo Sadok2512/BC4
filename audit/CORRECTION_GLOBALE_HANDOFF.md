@@ -592,3 +592,59 @@ SELECT
 - **Lot 7** : export front colonne par capture + kind/unit/data_type — pas commencé (nécessite modif front, app 1.133.25 → 1.134.0).
 
 **Dernière mise à jour** : 2026-11-03 fin REPRISE 4 (catalog 2.63.0 live, 5 gardes P20 à 0, 4 260 leaves)
+
+---
+
+## REPRISE 6 — fin (2026-11-03)
+
+**HEAD** : `7c74b4a` · **Live** : `bc4-api:0.125.1-a96a3de` · catalog **2.63.1** · decoder 1.10.5
+
+### Régressions 2.63.0 fermées
+
+1. **PHY LTE drop** (fichier:ligne `app/kpi/metrics_catalog_v4.py:_kind_for_leaf`)
+   — `label.startswith('#')` taguait STRUCT les KPIs légitimes `#PRBs @ PCell`,
+   `#SCells added`, `#Ranks`, `#RSRP results`. Fix : STRUCT = `#Params /
+   #Variables / #Header params / Count / Measured system / cqi_n_params*`.
+2. **Foreign bloc trop large** (fichier:ligne `_is_foreign_bloc`) — regex
+   `(bloc UMTS/GSM/CDMA/...)` dropait `mei_measurement_event` et
+   `chi_rrc_state` (events LTE, sections NFF "UMTS FDD"). Fix : foreign se
+   base sur `field_system` NFF explicite ∈ {1,2,5,6,10,11,12,13,21,25,51,52,53,55}.
+   `field_system=NULL` → conservé.
+
+### Gardes P20 préservées + per-capture
+
+```sql
+-- Garde globale projet
+WITH l AS (SELECT jsonb_array_elements(payload->'nodes') AS n FROM metrics_catalog_cache
+ WHERE project_id='43e81a34a073' AND scope_key='project')
+SELECT 
+ (SELECT COUNT(*) FROM l WHERE n->>'cell_label'~'^SCell\s*(1[0-9]{2}|1[0-9]{3})$') AS scell_ge_100,
+ (SELECT COUNT(*) FROM l WHERE n->>'kind' IS NULL AND n->>'node_type'='leaf') AS kind_null,
+ (SELECT COUNT(*) FROM l WHERE n->>'kind'='STRUCT' AND n->>'node_type'='leaf') AS struct_in_tree,
+ (SELECT COUNT(*) FROM l WHERE n->>'event' IN ('MIMOMEAS','CSI','PMI') AND n->>'cell_label' ILIKE '%neighbour%' AND n->>'node_type'='leaf') AS mimo_csi_neigh;
+→ 0 | 0 | 0 | 0 ✓
+```
+
+### Gardes PAR CAPTURE (via scope_key='captures:<id>')
+
+| capture | plaid_prbs PCell LTE | plaiu_prbs PCell LTE | plaid_prbs PCell NR | chi_rrc_state | mei_measurement_event |
+|---|---|---|---|---|---|
+| a4b0c321c52e | 3 668 | 3 668 | 1 | 632 | 303 |
+| ecffb18dbd7f | 164 | 164 | 0 | 11 | 6 |
+| daa2b1df250d (ikea.6) | 159 | 159 | 0 | 11 | **15** ✓ |
+
+### Commit REPRISE 6
+
+| sha | version | description |
+|---|---|---|
+| `a96a3de` | back 0.125.0 → 0.125.1 · catalog 2.63.0 → 2.63.1 | fix PHY LTE drop + CHI/MEI preserved |
+| `7c74b4a` | — | pin bc4-api 0.125.1 |
+
+### Lots restants (inchangé)
+
+- Lot 1 : SCELLMOD, CQI_NR, DCI (LTE+NR), SCELL NR
+- Lot 6 : `display_code` émis par back
+- Lot 7 : export front colonne par capture + kind/unit/data_type
+- Front app 1.133.25 → 1.134.0
+
+**Dernière mise à jour** : 2026-11-03 fin REPRISE 6
