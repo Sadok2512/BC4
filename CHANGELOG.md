@@ -1,3 +1,35 @@
+## 0.124.0 (minor) — Decoder 1.10.0 : PLAID NR variant partial, framework live — 2026-11-03 (Agent BC5, Lot 1 autonome)
+
+- Décodeur bump **1.9.0 → 1.10.0** (minor, premier commit du chantier
+  « correction globale catalogue »).
+- Ajoute `app/nmf_decoder/schemas/PLAID_NR.yaml` (variant NR du PLAID,
+  loader auto-détecte `_NR` suffix → `_variants[9]` depuis 1.7.0,
+  cf `schema.py:49-53`). Spec NFF 2.50 PDF pages 561-563 citée dans
+  chaque `proof:` de champ.
+- Alembic migration **0085_plaid_nr_scope** : ajoute `plaid_scope`
+  (double precision) aux 4 tables qui portent les events light/deep —
+  le champ NR Scope (NFF 2.50 PLAID NR p.561 #2) n'existait pas dans
+  le schéma LTE.
+- **Preuve Test_6, re-decode des 3 captures (force=True)** :
+  LTE (`system=7`) inchangé : `plaid_rank=13767, plaid_prbs=13767,
+  plaid_mcs0=3243, plaid_cell_type=16024` (identiques à la baseline).
+  NR (`system=9`) : `plaid_cell_type=2973` (dont `0=PCell:1`,
+  `199=SCG PSCell:2972`), `plaid_scope=2973`. Enum NR cell_type
+  confirmé contre NFF 2.50 p.562.
+- **Écart ouvert O-A — `plaid_rank/prbs/mcs0/mod0/mod1/mcs1` restent
+  à 0 pour système=9** alors que les records portent les valeurs
+  (ex: `PLAID,17:26:47.787,,9,16,16,199,1,16,1,,0,…` → rank=1 col 8,
+  prbs=16 col 9). À investiguer dans `effective_col` /
+  `light.py:read()`. Documenté dans
+  `audit/CORRECTION_GLOBALE_HANDOFF.md` §Écarts.
+- **Reste à faire — lots 1 à 7** : voir le fichier de passation.
+  Schémas NR manquants : PLAIU, MACRATE, MACRATEU, DCI (créer),
+  CQI, SCELL, SCELLMOD, CHI. Catalog 2.63.0, app 1.134.0 : non
+  commencés.
+- **Pas de deploy** : nécessite rebuild image bc4-api + migration
+  live + re-decode. À faire dans un commit ultérieur quand les
+  autres schémas NR auront été ajoutés (évite N rebuilds).
+
 ## 0.123.3 (patch) — Idempotent procedure catalogue persistence — 2026-11-02 (Agent BC4)
 
 - Replaces every persisted `procedure-v1*` generation for a capture before
