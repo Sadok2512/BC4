@@ -1,3 +1,26 @@
+## 0.124.5 (patch) — Decoder 1.10.5 : CHI LTE schema fix + system_col=4 — 2026-11-03 (Agent BC5, Lot 2 LTE)
+
+- Décodeur **1.10.4 → 1.10.5** (patch), back **0.124.4 → 0.124.5** (patch).
+- Le schéma `app/nmf_decoder/schemas-2.50/CHI.yaml` avait `system_col: null`
+  → le système n'était jamais extrait des records CHI → les 654 records CHI
+  de Test_6 restaient `system=NULL` dans `nmf_event_light` → `active = (None
+  in [7]) = False` au décodeur ligne 177 → aucun champ projeté (
+  `chi_rrc_state = 0 non-null`). De plus, les cols déclarées étaient toutes
+  **off-by-one** par rapport au record réel.
+- Fix : `system_col: 4` + shift toutes les cols header `+1` (band col 5,
+  rrc_state col 6, pcell_bw col 7, ch col 8, pci col 9, cell_id col 10,
+  tac col 11, max_tx_power col 12, …). Suppression du doublon
+  `chi.serving_system` à col 4 (redondant avec `system_col`).
+- **Garde Test_6 petite capture (daa2b1df250d) après re-decode** :
+  ```
+  system | chi_rrc_state | count
+       7 |      1 (Idle) |     6
+       7 |      2 (URA)  |     5
+  ```
+- **Garde complète pending** : re-decode big capture a4b0c321c52e en bg.
+- NR CHI : **non projetable** sur Test_6 (0 record CHI avec system=9).
+  CHI_NR variant non créé.
+
 ## 0.124.4 (patch) — Decoder 1.10.4 : cell_scoped=true sur variantes NR — 2026-11-03 (Agent BC5, visibility fix)
 
 - Décodeur **1.10.3 → 1.10.4** (patch), back **0.124.3 → 0.124.4** (patch).

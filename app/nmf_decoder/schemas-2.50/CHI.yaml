@@ -5,25 +5,13 @@
   "systems": [
     7
   ],
-  "system_col": null,
+  "system_col": 4,
   "cell_scoped": false,
   "min_format": "2.50",
   "unknown_tail": "keep",
   "header": [
     {
-      "col": 4,
-      "code": "chi.serving_system",
-      "label": "Serving system",
-      "section": "Parameters",
-      "type": "int",
-      "unit": null,
-      "proof": "NFF 2.50 CHI Parameters #1",
-      "agg": "last",
-      "metric": true,
-      "category": "Services (tasks)"
-    },
-    {
-      "col": 4,
+      "col": 5,
       "code": "chi.band",
       "label": "Band",
       "section": "Parameters for LTE",
@@ -35,7 +23,7 @@
       "category": "Services (tasks)"
     },
     {
-      "col": 5,
+      "col": 6,
       "code": "chi.rrc_state",
       "label": "RRC state",
       "section": "Parameters for LTE",
@@ -47,7 +35,7 @@
       "category": "Services (tasks)"
     },
     {
-      "col": 6,
+      "col": 7,
       "code": "chi.pcell_bw",
       "label": "PCell BW",
       "section": "Parameters for LTE",
@@ -59,7 +47,7 @@
       "category": "Services (tasks)"
     },
     {
-      "col": 7,
+      "col": 8,
       "code": "chi.ch",
       "label": "Ch",
       "section": "Parameters for LTE",
@@ -71,7 +59,7 @@
       "category": "Services (tasks)"
     },
     {
-      "col": 8,
+      "col": 9,
       "code": "chi.pci",
       "label": "PCI",
       "section": "Parameters for LTE",
@@ -83,7 +71,7 @@
       "category": "Services (tasks)"
     },
     {
-      "col": 9,
+      "col": 10,
       "code": "chi.cell_id",
       "label": "Cell ID",
       "section": "Parameters for LTE",
@@ -95,7 +83,7 @@
       "category": "Services (tasks)"
     },
     {
-      "col": 10,
+      "col": 11,
       "code": "chi.tac",
       "label": "TAC",
       "section": "Parameters for LTE",
@@ -107,7 +95,7 @@
       "category": "Services (tasks)"
     },
     {
-      "col": 11,
+      "col": 12,
       "code": "chi.max_tx_power",
       "label": "Max TX power",
       "section": "Parameters for LTE",
@@ -119,7 +107,7 @@
       "category": "Services (tasks)"
     },
     {
-      "col": 12,
+      "col": 13,
       "code": "chi.tm",
       "label": "TM",
       "section": "Parameters for LTE",
@@ -131,7 +119,7 @@
       "category": "Services (tasks)"
     },
     {
-      "col": 13,
+      "col": 14,
       "code": "chi.cell_tx_antennas",
       "label": "Cell TX antennas",
       "section": "Parameters for LTE",
@@ -143,7 +131,7 @@
       "category": "Services (tasks)"
     },
     {
-      "col": 14,
+      "col": 15,
       "code": "chi.ul_dl_config",
       "label": "UL/DL config",
       "section": "Parameters for LTE",
@@ -155,7 +143,7 @@
       "category": "Services (tasks)"
     },
     {
-      "col": 15,
+      "col": 16,
       "code": "chi.cp",
       "label": "CP",
       "section": "Parameters for LTE",
@@ -167,7 +155,7 @@
       "category": "Services (tasks)"
     },
     {
-      "col": 16,
+      "col": 17,
       "code": "chi.root_sequence",
       "label": "Root sequence",
       "section": "Parameters for LTE",
@@ -179,7 +167,7 @@
       "category": "Services (tasks)"
     },
     {
-      "col": 17,
+      "col": 18,
       "code": "chi.c_rnti",
       "label": "C-RNTI",
       "section": "Parameters for LTE",
@@ -191,7 +179,7 @@
       "category": "Services (tasks)"
     },
     {
-      "col": 20,
+      "col": 21,
       "code": "chi.cell_type",
       "label": "Cell type",
       "section": "Parameters for LTE",
@@ -203,7 +191,7 @@
       "category": "Services (tasks)"
     },
     {
-      "col": 22,
+      "col": 23,
       "code": "chi.scell_bw",
       "label": "SCell BW",
       "section": "Parameters for LTE",
@@ -215,7 +203,7 @@
       "category": "Services (tasks)"
     },
     {
-      "col": 23,
+      "col": 24,
       "code": "chi.channel",
       "label": "Channel",
       "section": "Parameters for LTE",
@@ -227,7 +215,7 @@
       "category": "Services (tasks)"
     },
     {
-      "col": 26,
+      "col": 27,
       "code": "chi.antenna_ports",
       "label": "Antenna ports",
       "section": "Parameters for LTE",
@@ -239,7 +227,7 @@
       "category": "Services (tasks)"
     },
     {
-      "col": 29,
+      "col": 30,
       "code": "chi.special_subframe",
       "label": "Special subframe",
       "section": "Parameters for LTE",
@@ -251,7 +239,7 @@
       "category": "Services (tasks)"
     },
     {
-      "col": 30,
+      "col": 31,
       "code": "chi.ca",
       "label": "CA",
       "section": "Parameters for LTE",
@@ -263,7 +251,7 @@
       "category": "Services (tasks)"
     },
     {
-      "col": 31,
+      "col": 32,
       "code": "chi.mbsfn_subframe",
       "label": "MBSFN subframe",
       "section": "Parameters for LTE",
@@ -275,7 +263,7 @@
       "category": "Services (tasks)"
     },
     {
-      "col": 32,
+      "col": 33,
       "code": "chi.emm_substate",
       "label": "EMM substate",
       "section": "Parameters for LTE",
@@ -287,7 +275,7 @@
       "category": "Services (tasks)"
     },
     {
-      "col": 33,
+      "col": 34,
       "code": "chi.periodic_rm",
       "label": "Periodic RM",
       "section": "Parameters for LTE",
@@ -299,7 +287,7 @@
       "category": "Services (tasks)"
     },
     {
-      "col": 34,
+      "col": 35,
       "code": "chi.aperiodic_rm",
       "label": "Aperiodic RM",
       "section": "Parameters for LTE",
@@ -311,7 +299,7 @@
       "category": "Services (tasks)"
     },
     {
-      "col": 36,
+      "col": 37,
       "code": "chi.tti_bundling",
       "label": "TTI bundling",
       "section": "Parameters for LTE",
@@ -323,7 +311,7 @@
       "category": "Services (tasks)"
     },
     {
-      "col": 37,
+      "col": 38,
       "code": "chi.operation_mode",
       "label": "Operation mode",
       "section": "Parameters for LTE",
@@ -335,7 +323,7 @@
       "category": "Services (tasks)"
     },
     {
-      "col": 38,
+      "col": 39,
       "code": "chi.ul_subcarrier_spacing",
       "label": "UL subcarrier spacing",
       "section": "Parameters for LTE",
@@ -347,7 +335,7 @@
       "category": "Services (tasks)"
     },
     {
-      "col": 39,
+      "col": 40,
       "code": "chi.ul_ue_category",
       "label": "UL UE category",
       "section": "Parameters for LTE",
@@ -359,7 +347,7 @@
       "category": "Services (tasks)"
     },
     {
-      "col": 40,
+      "col": 41,
       "code": "chi.dl_ue_category",
       "label": "DL UE category",
       "section": "Parameters for LTE",
