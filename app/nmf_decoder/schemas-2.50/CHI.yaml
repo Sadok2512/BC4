@@ -25,14 +25,15 @@
     {
       "col": 6,
       "code": "chi.rrc_state",
-      "label": "RRC state",
+      "label": "LTE RRC state",
       "section": "Parameters for LTE",
       "type": "int",
       "unit": null,
       "proof": "NFF 2.50 CHI Parameters for LTE #2",
-      "agg": "last",
+      "agg": "dominant",
       "metric": true,
-      "category": "Services (tasks)"
+      "category": "Services (tasks)",
+      "enum": {"1": "Idle", "2": "Connected"}
     },
     {
       "col": 7,

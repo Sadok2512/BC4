@@ -726,6 +726,24 @@ def build_catalog_v4(
     # jamais interrogés dans nmf_cell_second → 0 feuille dynamique émise
     # malgré 1796/2/79 valeurs live sur NR PSCell 199.
     from app.kpi.metrics_v3 import definitions as _v3_defs
+    # 2.64.1 — §3 enum RRC : accès direct aux YAML fields pour exposer
+    # enum_values sur chaque leaf (ex. chi_rrc_state : {1:Idle, 2:Connected}).
+    from app.nmf_decoder.schema import fields as _yaml_fields
+    _fields_by_col = _yaml_fields()
+    def _enum_for_col(col: str | None) -> dict:
+        f = _fields_by_col.get(col) if col else None
+        raw = (f or {}).get("enum")
+        if not isinstance(raw, dict) or not raw:
+            # Les enums-listes (ex. ci_port=[0,1]) sont de simples
+            # domaines, pas des mappings value->label — rien à exposer.
+            return {}
+        out = {}
+        for k, v in raw.items():
+            try:
+                out[int(k)] = v
+            except (TypeError, ValueError):
+                out[k] = v
+        return out
     for code, defn in _v3_defs().items():
         if not defn.get("cell_scoped"):
             continue
@@ -843,16 +861,26 @@ def build_catalog_v4(
         cat_label = (
             _category_label(nodes_by_id, lf.get("parent_id")) or "Undocumented"
         )
+        # 2.64.1 §1 — fallback unit depuis v3_defs si leaf.unit vide. Le
+        # YAML du décodeur porte souvent unit=null bien que metrics_v3
+        # expose une unit (ex. cell_band='code', cell_ch='earfcn').
+        _baked_unit = (lf.get("unit") or "").strip()
+        if not _baked_unit:
+            _baked_unit = (_v3_defs().get(col) or {}).get("unit") or ""
         metrics_out.append(
             dict(
                 code=code,
                 label=metric_label,
-                unit=lf.get("unit") or "",
+                unit=_baked_unit,
                 source_table="nmf_cell_second" if is_cell_metric else "nmf_event_light",
                 source_tables=["nmf_cell_second"] if is_cell_metric else ["nmf_event_light"],
                 source_column=col if has_col else "",
                 tech="BOTH",
-                kind=_kind_from_type(lf.get("type")),
+                # 2.64.1 — §2 : aligner metrics[] sur l'arbre : taxonomie
+                # KPI / KPI_CATEGORICAL / DIMENSION / STRUCT (chi_rrc_state
+                # devient KPI_CATEGORICAL ici au lieu de 'numeric' legacy).
+                kind=lf.get("_kind") or _kind_from_type(lf.get("type")),
+                enum_values=_enum_for_col(col) if has_col else {},
                 n_in_project=n,
                 decoder_version=DECODER_VERSION,
                 event=event,
@@ -1025,6 +1053,7 @@ def build_catalog_v4(
                 order=order,
                 label=label_val,
                 display_code=display_code_val,
+                enum_values=_enum_for_col(col) if is_leaf else {},
                 note=node.get("description"),
                 source=None,
                 node_type=node.get("node_type"),
@@ -1038,7 +1067,8 @@ def build_catalog_v4(
                 event=(node.get("event") or "").lstrip("#") if is_leaf else None,
                 field_idx=field_idx,
                 source_column=col if has_col else None,
-                unit=node.get("unit") or "",
+                # 2.64.1 §1 — fallback unit depuis v3_defs si node.unit vide
+                unit=(node.get("unit") or "").strip() or ((_v3_defs().get(col) or {}).get("unit") or "") if is_leaf else (node.get("unit") or ""),
                 cell=cell_selector_val,
                 technology=technology_val,
                 metric_label=metric_label_val,
@@ -1253,6 +1283,10 @@ def build_catalog_v4(
             continue
         order = siblings_counter.get(parent_id, 0)
         siblings_counter[parent_id] = order + 1
+        # 2.64.1 — §7.8 : unit depuis metrics_v3.definitions() au lieu de "".
+        _dyn_defn = _v3_defs().get(col) or {}
+        _dyn_unit = _dyn_defn.get("unit") or ""
+        _dyn_enum = _enum_for_col(col)
         nodes_out.append(
             dict(
                 node_id=node_id,
@@ -1260,6 +1294,7 @@ def build_catalog_v4(
                 order=order,
                 label=label_full,
                 display_code=selection,
+                enum_values=_dyn_enum,
                 note="Cellule observée dans nmf_cell_second",
                 source=None,
                 node_type="leaf",
@@ -1269,7 +1304,7 @@ def build_catalog_v4(
                 event=ev,
                 field_idx=None,
                 source_column=col,
-                unit="",
+                unit=_dyn_unit,
                 cell=selector,
                 technology={7: "LTE", 9: "NR"}.get(system),
                 metric_label=_tree_metric_label(field_name),
@@ -1300,9 +1335,9 @@ def build_catalog_v4(
             seen_codes.add(selection)
             cat_label = _category_label(nodes_by_id, ev_nid) or "Undocumented"
             metrics_out.append(dict(
-                code=selection, display_code=selection, label=label_full, unit="",
+                code=selection, display_code=selection, label=label_full, unit=_dyn_unit,
                 source_table="nmf_cell_second", source_tables=["nmf_cell_second"],
-                source_column=col, tech="BOTH", kind="numeric",
+                source_column=col, tech="BOTH", kind=_dyn_kind, enum_values=_dyn_enum,
                 n_in_project=int(nn), decoder_version=DECODER_VERSION,
                 event=ev, category_label=cat_label, cell_scoped=True,
                 cells=[ct], cell_options=[{

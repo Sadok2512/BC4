@@ -118,12 +118,23 @@ def definitions():
         f=fs[m.source_column];s=ss[f['event']]
         scoped=bool(s.get('cell_scoped')) and not f.get('dimension') and not code.endswith('_cell_type') and code!='phrate_ph_ch_type'
         category=f.get('category') or 'session'
+        # 2.64.1 — §3 : propager l'enum YAML (ex. chi_rrc_state) dans
+        # `enum_values` du dict émis par definitions(). Le front traduit
+        # la valeur numérique en texte (Idle / Connected pour RRC).
+        # Deux formes YAML tolérées : dict {value: label} ou list [values].
+        _enum_raw = f.get('enum')
+        if isinstance(_enum_raw, dict):
+            _enum_values = {int(k) if isinstance(k, str) and k.lstrip('-').isdigit() else k: v
+                            for k, v in _enum_raw.items()}
+        else:
+            _enum_values = {}
         result[code]=dict(code=code,display_code=code,label=english_text(FIELD_LABELS.get(m.source_column,_humanize_label(m.label))),unit=m.unit or '',source_table=m.source_table,
             source_tables=[m.source_table],source_column=m.source_column,tech=m.tech,kind=m.kind,
             event=f['event'],event_code=f['event'],category=category,category_label=CATEGORIES.get(category,category),
             cell_scoped=scoped,cells=[],cell_options=[],attributes=[],proof='documented',proof_ref=f['proof'],
             decoder_version=DECODER_VERSION,n_in_project=0,available=True,reason=english_text(s.get('cell_scope_reason')),
-            alias_of=ALIASES.get(code),agg=f.get('agg'),weighted=bool(f.get('weight')),sql=m.sql)
+            alias_of=ALIASES.get(code),agg=f.get('agg'),weighted=bool(f.get('weight')),sql=m.sql,
+            enum_values=_enum_values)
     # Direct leaves use the same decoder schema metadata as evt_EVENT~attr,
     # but expose the catalog's stable field code without an artificial event
     # wrapper.  Repeated LOCK values keep set_index in attributes.

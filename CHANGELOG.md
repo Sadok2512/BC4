@@ -1,3 +1,33 @@
+## 0.126.3 (patch) — catalog 2.64.1 : unit + align metrics[]/tree + enum RRC — 2026-11-03 (Agent BC2, REPRISE 8 Points 1-3)
+
+- Back **0.126.2 → 0.126.3** (patch). Catalog **2.64.0 → 2.64.1**.
+- **§1 Unités** (`app/kpi/metrics_catalog_v4.py:850-874`, `:1068-1070`, `:1261-1264`) :
+  fallback unit depuis `metrics_v3.definitions()[source_column]['unit']`
+  quand le YAML du décodeur a `unit=null`. Garde : 0 feuille avec `unit`
+  v3_defs documentée mais perdue en sortie (vs 23 avant).
+- **§2 Align metrics[] / arbre** : l'UI consomme `query.data?.nodes`
+  (fichier:ligne `franco-focus-forge/src/features/kpi/MetricsCatalogSidebar.tsx:373`),
+  pas `metrics[]`. Pour cohérence des exports / graphs / tables qui lisent
+  `metrics[]`, le kind du dict metrics_out est désormais `lf.get("_kind")`
+  (taxonomie Lot 5 : KPI/KPI_CATEGORICAL/DIMENSION) au lieu de
+  `_kind_from_type` legacy. Fichier:ligne `app/kpi/metrics_catalog_v4.py:858-861`.
+  Garde : 0 code où `metrics[].kind != tree.kind` par capture.
+- **§3 Enum RRC** (`app/nmf_decoder/schemas-2.50/CHI.yaml:28-36`) :
+  ajout `enum: {1: Idle, 2: Connected}` + `agg: dominant` + label
+  "LTE RRC state". Propagation :
+  - `app/kpi/metrics_v3.py:121-127` : `enum_values` dans definitions()
+    pour chaque field avec enum YAML dict.
+  - `app/kpi/metrics_catalog_v4.py:731-751` + `:1037` + `:850-863` +
+    `:1272-1273` + `:1319` : helper `_enum_for_col()` + exposure sur
+    nodes_out baked / dynamic + metrics_out baked / dynamic.
+  - `app/kpi/catalog_release/catalog_2.64.1.json` : ajout
+    `enums.rrc_state = [{value:1,label:Idle},{value:2,label:Connected}]`
+    + `enum_ref:"rrc_state"` sur `lf_chi_rrc_state`.
+  sha256 `b2cd587856cdccc035834f2580fb32f969dd94161ba96342669e00bf868c89c0`.
+- **Garde par capture Idle/Connected** (live inchangé) :
+  Test_6 181/451, ikea.6 6/5, ikea.2 5/6.
+- **Garde Lot 6 doublons display_code** : 0 par capture (préservé).
+
 ## 0.126.2 (patch) — fix STRUCT dynamic (REPRISE 7 follow-up) — 2026-11-03 (Agent BC2)
 
 - Back **0.126.1 → 0.126.2** (patch).
