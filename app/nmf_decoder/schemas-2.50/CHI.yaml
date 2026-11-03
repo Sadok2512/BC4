@@ -30,7 +30,7 @@
       "type": "int",
       "unit": null,
       "proof": "NFF 2.50 CHI Parameters for LTE #2",
-      "agg": "dominant",
+      "agg": "last",
       "metric": true,
       "category": "Services (tasks)",
       "enum": {"1": "Idle", "2": "Connected"}

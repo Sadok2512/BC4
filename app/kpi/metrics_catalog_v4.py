@@ -1487,6 +1487,65 @@ def build_catalog_v4(
                 category=cat_label.lower().replace(" ", "_"),
             ))
 
+    # 2.66.2 (REPRISE 13 P1) — timeline brute chi_rrc_state :
+    # exposer les N records bruts (nmf_event_deep, pas de bucketing light).
+    # 946/12/24 par capture (Test_6/ikea.6/ikea.2). KPI_CATEGORICAL avec enum
+    # Idle/Connected. Posée à côté de chi_rrc_state (632/11/11 par-seconde).
+    try:
+        caps_scope = " AND capture_id=ANY(:caps)" if capture_ids else ""
+        _raw_total = db.execute(text(
+            f"SELECT COUNT(*) FROM nmf_event_deep "
+            f"WHERE project_id=:pid AND event_code='CHI' "
+            f"AND chi_rrc_state IS NOT NULL{caps_scope}"
+        ), {"pid": project_id, "caps": list(capture_ids)}).scalar() or 0
+    except Exception:
+        _raw_total = 0
+    # Trouver parent ev_chi_lte (déjà créé par REPRISE 8 P4). Sinon fallback.
+    _ev_chi_lte = next((n for n in nodes_out if n.get("node_id") == "ev_chi_lte"), None)
+    _parent_timeline = _ev_chi_lte["node_id"] if _ev_chi_lte else None
+    if _parent_timeline:
+        _timeline_order = siblings_counter.get(_parent_timeline, 0)
+        siblings_counter[_parent_timeline] = _timeline_order + 1
+        nodes_out.append(dict(
+            node_id="lf_chi_rrc_state_timeline",
+            parent_id=_parent_timeline,
+            order=_timeline_order,
+            label="LTE RRC state (timeline brute)",
+            display_code="chi_rrc_state_timeline",
+            enum_values={1: "Idle", 2: "Connected"},
+            note="Timeline brute depuis nmf_event_deep (pas d'agrégation par seconde).",
+            source=None, node_type="leaf",
+            analytics_tab="metrics",
+            metric_id="chi_rrc_state_timeline",
+            selection="chi_rrc_state_timeline",
+            event="CHI", field_idx=None,
+            source_column="chi_rrc_state",
+            unit="",
+            cell=None, technology="LTE",
+            metric_label="LTE RRC state (timeline brute)",
+            cell_label=None, cell_system=None,
+            raw_cell_type=None, cell_relation=None, technical_label=None,
+            availability_status="available" if _raw_total > 0 else "no_data",
+            n=int(_raw_total), proof="nmf_event_deep raw",
+            selectable=bool(_raw_total > 0),
+            reason=None, kind="KPI_CATEGORICAL",
+        ))
+        metrics_out.append(dict(
+            code="chi_rrc_state_timeline", display_code="chi_rrc_state_timeline",
+            label="LTE RRC state (timeline brute)", unit="",
+            source_table="nmf_event_deep", source_tables=["nmf_event_deep"],
+            source_column="chi_rrc_state", tech="LTE",
+            kind="KPI_CATEGORICAL", enum_values={1: "Idle", 2: "Connected"},
+            n_in_project=int(_raw_total), decoder_version=DECODER_VERSION,
+            event="CHI", category_label="Signalling", cell_scoped=False,
+            cells=[], cell_options=[], attributes=[],
+            proof="nmf_event_deep raw", available=bool(_raw_total > 0),
+            reason=None, alias_of=None, event_group=None,
+            unproven_cells=[], root_notices=[], event_code="CHI",
+            proof_ref="nmf_event_deep count (no bucketing)",
+            category="signalling",
+        ))
+
     return dict(
         catalogue_version=current.version,
         catalog_release=dict(

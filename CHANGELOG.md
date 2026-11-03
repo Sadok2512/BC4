@@ -1,3 +1,45 @@
+## 0.128.2 (patch) — décodeur 1.11.2 + catalog 2.66.2 + Settings legacy hidden — 2026-11-03 (Agent BC5, REPRISE 13)
+
+- Back **0.128.1 → 0.128.2** (patch). Décodeur **1.11.1 → 1.11.2** (patch).
+  Catalog **2.66.1 → 2.66.2** (patch).
+- **P1 CHI agg=last** (`app/nmf_decoder/schemas-2.50/CHI.yaml:33`) :
+  `agg: "dominant" → "last"`. Revert de la décision REPRISE 8 P3 : la valeur
+  retenue par seconde est la DERNIÈRE (ordre `(capture_id, seq)`), plus de
+  tie-break `min()` qui favorisait Idle. Le tie-breaker `app/nmf_decoder/light.py:46`
+  pour autres champs dominant est conservé — chi_rrc_state ne passe plus par ce path.
+  **Garde par capture (par-seconde light, agg=last)** :
+  Test_6 = 181 Idle / 451 Connected / 632 ; ikea.6 = 6/5/11 ; ikea.2 = 5/6/11.
+  (Retour aux chiffres pre-REPRISE 8.)
+- **P1 timeline brute** (`app/kpi/metrics_catalog_v4.py:1490+`) : nouveau
+  leaf synthétique `chi_rrc_state_timeline` injecté sous `ev_chi_lte`
+  (branche LTE > Signalling) qui compte les records bruts sur
+  `nmf_event_deep` (sans bucketing light). KPI_CATEGORICAL, enum_values
+  `{1: Idle, 2: Connected}`. **Garde par capture (brut deep)** :
+  Test_6 = 218 Idle / 728 Connected / **946** ; ikea.6 = 7/5/12 ; ikea.2 = 9/15/24.
+- **9 secondes ambiguës Test_6** (secondes où le bucket contient plusieurs
+  raw records avec rrc_state mixé — valeur retenue = dernier seq) :
+  ```
+  second=0    raw={1,2,2}       → retenu=2 (Connected)
+  second=22   raw={1,2,1,1}     → retenu=1 (Idle)
+  second=675  raw={1,2}         → retenu=2
+  second=1056 raw={1,2}         → retenu=2
+  second=2244 raw={1,2}         → retenu=2
+  second=2327 raw={1,2}         → retenu=2
+  second=2869 raw={1,2,2}       → retenu=2
+  second=2983 raw={1,1,2}       → retenu=2
+  second=4609 raw={2,1,1,2}     → retenu=2
+  ```
+- **P2 Settings > Catalogue KPI** (`franco-focus-forge/src/features/settings/
+  SettingsLayout.tsx:12`) : entrée masquée du menu (commentée). Le legacy
+  `project_kpi.py:71-91 → service_v2.build_catalog_v2_response` reste
+  accessible via URL directe mais n'est plus référencé depuis le menu.
+  **Garde** : 0 écran du Workspace Métriques ne lit le legacy ; aucun
+  export CSV du workspace ne passe par le legacy.
+- **P3 catalog_release 2.66.2** : bump de version pour tracer les changements
+  (CHI.yaml + metrics_catalog_v4.py + Settings front). sha256
+  `dc02480f4e1c00033016ddda0daee1d69e8b9a1c21bf1f69670cce2ee7c9fcb6`.
+  decoder_min_version `1.11.2`.
+
 ## 0.128.1 (patch) — catalog 2.66.1 : fix REPRISE 12 régressions 2.66.0 — 2026-11-03 (Agent BC5)
 
 - Back **0.128.0 → 0.128.1** (patch). Catalog **2.66.0 → 2.66.1**.
