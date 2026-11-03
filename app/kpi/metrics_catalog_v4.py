@@ -1546,6 +1546,109 @@ def build_catalog_v4(
             category="signalling",
         ))
 
+    # 2.67.0 — KPI mobilité dérivés agrégés sur nmf_event_deep (brut, pas light).
+    # Injection fin build car calculés par capture scope. 7 KPI capture-level +
+    # 3 breakdowns par type HO (intra/inter-freq/inter-RAT via hoa_hoa_type).
+    _mob_cat_id = "cat_LTE_mobility"
+    _mob_cat_exists = any(n.get("node_id") == _mob_cat_id for n in nodes_out)
+    if _mob_cat_exists:
+        caps_scope = " AND capture_id=ANY(:caps)" if capture_ids else ""
+        caps_param = {"pid": project_id, "caps": list(capture_ids)}
+        def _ndeep(sql_where: str) -> int:
+            try:
+                return int(db.execute(text(
+                    f"SELECT COUNT(*) FROM nmf_event_deep "
+                    f"WHERE project_id=:pid{caps_scope} AND {sql_where}"
+                ), caps_param).scalar() or 0)
+            except Exception:
+                return 0
+        n_hoa = _ndeep("event_code='HOA'")
+        n_hos = _ndeep("event_code='HOS'")
+        n_hof = _ndeep("event_code='HOF'")
+        n_hoi = _ndeep("event_code='HOI'")
+        n_rrre = _ndeep("event_code='RRRE'")
+        n_rrf = _ndeep("event_code='RRF'")
+        n_crel = _ndeep("event_code='CREL'")
+        # Ventilation par hoa_hoa_type NFF 2.50 p.433 (codes LTE 90x) :
+        #  901 = LTE handover between cells (intra-fréquence, défaut)
+        #  902 = LTE handover between frequencies
+        #  903 = LTE handover between bands (compté en inter-fréq)
+        #  904 = LTE handover between systems (inter-RAT)
+        #  1101-1104 = NR equivalents
+        n_hoa_intra = _ndeep("event_code='HOA' AND hoa_hoa_type=901")
+        n_hoa_inter = _ndeep("event_code='HOA' AND hoa_hoa_type IN (902,903)")
+        n_hoa_irat  = _ndeep("event_code='HOA' AND hoa_hoa_type IN (904,1104)")
+        # Durations HOI (ms) : AVG, P95, MAX via nmf_event_deep.hoi_ho_duration
+        # Filtre outliers : exclure valeurs > 10 000 ms (= 10s) qui sont
+        # des timestamps absolus erronés chargés dans ce champ par le décodeur
+        # (observé : 551 M ms dans certains records Test_6 — probable artefact
+        # format NFF 2.59 avec timestamp monotone au lieu de delta).
+        try:
+            r_dur = db.execute(text(
+                f"SELECT AVG(hoi_ho_duration), MAX(hoi_ho_duration), "
+                f"percentile_cont(0.95) WITHIN GROUP (ORDER BY hoi_ho_duration) "
+                f"FROM nmf_event_deep WHERE project_id=:pid{caps_scope} "
+                f"AND event_code='HOI' AND hoi_ho_duration IS NOT NULL "
+                f"AND hoi_ho_duration <= 10000"
+            ), caps_param).first()
+            avg_dur = float(r_dur[0]) if r_dur and r_dur[0] is not None else 0.0
+            max_dur = float(r_dur[1]) if r_dur and r_dur[1] is not None else 0.0
+            p95_dur = float(r_dur[2]) if r_dur and r_dur[2] is not None else 0.0
+        except Exception:
+            avg_dur = max_dur = p95_dur = 0.0
+
+        rate = (n_hos / n_hoa * 100.0) if n_hoa else 0.0
+        # Liste des KPI à injecter : (metric_id, label, value, unit, kind)
+        MOBILITY_KPI = [
+            ("lte_ho_attempts",         "LTE HO attempts (HOA)",             n_hoa,  "n",  "KPI"),
+            ("lte_ho_success",          "LTE HO success (HOS)",              n_hos,  "n",  "KPI"),
+            ("lte_ho_failure",          "LTE HO failure (HOF ou HOA-HOS)",   n_hof if n_hof else (n_hoa - n_hos), "n",  "KPI"),
+            ("lte_ho_success_rate_pct", "LTE HO success rate",               rate,   "%",  "KPI"),
+            ("lte_ho_attempts_intra_freq",  "LTE HO attempts intra-fréquence",  n_hoa_intra, "n", "KPI"),
+            ("lte_ho_attempts_inter_freq",  "LTE HO attempts inter-fréquence",  n_hoa_inter, "n", "KPI"),
+            ("lte_ho_attempts_inter_rat",   "LTE HO attempts inter-RAT",        n_hoa_irat,  "n", "KPI"),
+            ("lte_ho_duration_avg_ms",  "LTE HO duration average (HOI)",     avg_dur, "ms", "KPI"),
+            ("lte_ho_duration_p95_ms",  "LTE HO duration P95 (HOI)",         p95_dur, "ms", "KPI"),
+            ("lte_ho_duration_max_ms",  "LTE HO duration max (HOI)",         max_dur, "ms", "KPI"),
+            ("lte_rlf_approx_count",    "LTE RLF count (≈ RRRE+RRF)",        n_rrre + n_rrf, "n", "KPI"),
+            ("lte_cell_resel_count",    "LTE cell reselection count",        n_crel, "n", "KPI"),
+        ]
+        for mid, label, val, unit, kind in MOBILITY_KPI:
+            node_id = f"lf_{mid}"
+            _order = siblings_counter.get(_mob_cat_id, 0)
+            siblings_counter[_mob_cat_id] = _order + 1
+            nodes_out.append(dict(
+                node_id=node_id, parent_id=_mob_cat_id, order=_order,
+                label=label, display_code=mid, enum_values={},
+                note="KPI dérivé — mobilité (nmf_event_deep raw)",
+                source=None, node_type="leaf",
+                analytics_tab="metrics", metric_id=mid, selection=mid,
+                event=None, field_idx=None,
+                source_column=None, unit=unit,
+                cell=None, technology="LTE", metric_label=label,
+                cell_label=None, cell_system=None,
+                raw_cell_type=None, cell_relation=None, technical_label=None,
+                availability_status="available" if val > 0 else "no_data",
+                n=int(val) if isinstance(val, int) else int(round(val)),
+                proof="nmf_event_deep aggregate",
+                selectable=bool(val > 0),
+                reason=None, kind=kind,
+            ))
+            metrics_out.append(dict(
+                code=mid, display_code=mid, label=label, unit=unit,
+                source_table="nmf_event_deep", source_tables=["nmf_event_deep"],
+                source_column=None, tech="LTE", kind=kind,
+                n_in_project=int(val) if isinstance(val, int) else int(round(val)),
+                decoder_version=DECODER_VERSION,
+                event=None, category_label="Mobilité", cell_scoped=False,
+                cells=[], cell_options=[], attributes=[],
+                proof="nmf_event_deep aggregate", available=bool(val > 0),
+                reason=None, alias_of=None, event_group=None,
+                unproven_cells=[], root_notices=[], event_code=None,
+                proof_ref="nmf_event_deep per-capture aggregation",
+                category="mobility",
+            ))
+
     return dict(
         catalogue_version=current.version,
         catalog_release=dict(

@@ -1,3 +1,41 @@
+## 0.129.0 (minor) — catalog 2.67.0 : Chantier Mobilité étape 2 — 2026-11-03 (Agent BC5)
+
+- Back **0.128.2 → 0.129.0** (minor). Catalog **2.66.2 → 2.67.0** (minor).
+  Décodeur 1.11.2 inchangé.
+- **Point 0 — comptage brut** : les KPI mobilité sont tous calculés sur
+  `nmf_event_deep` (ligne = event), jamais sur l'agrégat `nmf_event_light`
+  par seconde. Garde Test_6 brut : HOA 126, HOS 126, HOI 276, RRA 136,
+  RRC 135, RRD 135, CREL 53, TUA 46 ✓
+- **Point 1 — HOF** : NFF 2.50 **p.452** (Handover/handoff fail). 0 record
+  sur les 3 NMF Test_6. Event ajouté au catalog pour exposition future.
+- **Point 2 — Nouvelle branche LTE > Mobilité** (`scripts/catalog/patch_2_67_0.py`) :
+  catégorie `cat_LTE_mobility` ; events reparentés : HOA, HOI, RRRE, RRF,
+  CREL ; events créés : **HOS** (était absent), **HOF** (p.452), **PBF**.
+  Leaves ajoutés : `hos_count`, `hof_reserved`, `pbf_esm_cause`.
+- **Point 3 — 12 KPI mobilité dérivés** (`app/kpi/metrics_catalog_v4.py:1555-1650`) :
+  injectés dynamiquement sous `cat_LTE_mobility`, calculés sur `nmf_event_deep`
+  par capture scope.
+  Garde par capture (metrics_catalog_cache) :
+
+  | KPI | Test_6 | ikea.6 | ikea.2 |
+  |---|---|---|---|
+  | lte_ho_attempts | 126 | 0 | 5 |
+  | lte_ho_success | 126 | 0 | 5 |
+  | lte_ho_failure | 0 | 0 | 0 |
+  | lte_ho_success_rate_pct | 100 | 0 | 100 |
+  | lte_ho_attempts_intra_freq (hoa_hoa_type=901) | 104 | 0 | 5 |
+  | lte_ho_attempts_inter_freq (902,903) | 22 | 0 | 0 |
+  | lte_ho_attempts_inter_rat (904,1104) | 0 | 0 | 0 |
+  | lte_ho_duration_avg_ms (HOI, outliers>10s exclus) | 38 | 0 | 59 |
+  | lte_ho_duration_p95_ms | 56 | 0 | 63 |
+  | lte_ho_duration_max_ms | 156 | 0 | 63 |
+  | lte_rlf_approx_count (= RRRE+RRF) | 4 | 0 | 0 |
+  | lte_cell_resel_count (CREL) | 53 | 1 | 0 |
+
+- **Filtre outlier HOI** : `hoi_ho_duration > 10 000 ms` exclus (artefact
+  format NFF 2.59 avec timestamps absolus observé sur Test_6).
+- sha256 catalog_2.67.0 : `c73122a22f2926c719150d92bf73ff04f745e0bcb9863b04a102ba68a33dadeb`.
+
 ## 0.128.2 (patch) — décodeur 1.11.2 + catalog 2.66.2 + Settings legacy hidden — 2026-11-03 (Agent BC5, REPRISE 13)
 
 - Back **0.128.1 → 0.128.2** (patch). Décodeur **1.11.1 → 1.11.2** (patch).
