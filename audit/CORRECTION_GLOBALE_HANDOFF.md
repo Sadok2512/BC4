@@ -755,3 +755,138 @@ Pushed to origin + github.
 
 **Dernière mise à jour** : 2026-11-03 fin fragment REPRISE 7 (Point 1 FAIT,
 Point 2 partiel livré, 2.63.2 live, 0.125.2 déployée)
+
+---
+
+## REPRISE 7 — Gardes Points 1-3 (2026-11-03, Agent BC2)
+
+### Point 1 — PLAID/PLAIU NR PSCell par capture (LIVE + CATALOGUE)
+
+**LIVE** `nmf_cell_second` cell_index=9670 (= NR PSCell 199 via `_cell_index_for(199, 9) = 1003 + 107*81 = 9670`) :
+
+```sql
+SELECT capture_id, metric_code,
+       COUNT(*) FILTER (WHERE value IS NOT NULL) AS n_values,
+       MIN(value), MAX(value), ROUND(AVG(value)::numeric, 2) AS avg_v
+FROM nmf_cell_second
+WHERE project_id='43e81a34a073'
+  AND metric_code IN ('plaid_prbs','plaid_mcs0','plaiu_prbs')
+  AND cell_index=9670
+GROUP BY capture_id, metric_code ORDER BY metric_code, capture_id;
+```
+```
+  capture_id  | metric_code | n_values | min_v | max_v | avg_v
+--------------+-------------+----------+-------+-------+-------
+ a4b0c321c52e | plaid_mcs0  |     1796 |     0 |    27 |  4.56
+ daa2b1df250d | plaid_mcs0  |        2 |     0 |     0 |  0.00
+ ecffb18dbd7f | plaid_mcs0  |       79 |     0 |    22 |  6.61
+ a4b0c321c52e | plaid_prbs  |     1796 |    13 |   186 | 65.13
+ daa2b1df250d | plaid_prbs  |        2 |    16 |    16 | 16.00
+ ecffb18dbd7f | plaid_prbs  |       79 |    16 | 240.5 |100.38
+ a4b0c321c52e | plaiu_prbs  |     1741 |     3 | 170.5 | 24.16
+ daa2b1df250d | plaiu_prbs  |        5 |     1 |  18.5 |  5.30
+ ecffb18dbd7f | plaiu_prbs  |      106 |     2 |   196 | 30.06
+```
+plaiu_mcs0 live idem (1741/5/106 par capture).
+
+**CATALOGUE** `metrics_catalog_cache` scope `captures:<id>`, metrics[] :
+```
+       scope_key       |          code          |       label        |  n
+-----------------------+------------------------+--------------------+------
+ captures:a4b0c321c52e | plaid_prbs@nr-type-199 | #PRBs @ SCG PSCell | 1796
+ captures:daa2b1df250d | plaid_prbs@nr-type-199 | #PRBs @ SCG PSCell |    2
+ captures:ecffb18dbd7f | plaid_prbs@nr-type-199 | #PRBs @ SCG PSCell |   79
+ captures:a4b0c321c52e | plaiu_prbs@nr-type-199 | #PRBs @ SCG PSCell | 1741
+ captures:daa2b1df250d | plaiu_prbs@nr-type-199 | #PRBs @ SCG PSCell |    5
+ captures:ecffb18dbd7f | plaiu_prbs@nr-type-199 | #PRBs @ SCG PSCell |  106
+```
+→ plaid_prbs et plaiu_prbs match live exactement par capture ✓
+
+**ÉCART OUVERT — plaid_mcs0 / plaiu_mcs0 invisibles au catalogue**
+
+- Live `nmf_cell_second` : plaid_mcs0 cell_index=9670 → 1796/2/79 valeurs/capture.
+- Catalogue 2.63.2 : `plaid_mcs0@nr-type-199` ABSENT du tree (0 node) ET de metrics[] (0 code).
+- Fichier:ligne : `app/kpi/metrics_catalog_v4.py:710-720` — `event_columns`
+  est peuplé uniquement depuis `displayed_leaves` avec un leaf baked
+  (`cell_type IS NOT NULL AND _column_for_leaf(lf) IN avail_cols`). Comme
+  `plaid_mcs0`/`plaiu_mcs0` n'ont aucune feuille baked dans
+  `catalog_2.63.2.json` (0 occurrences via grep), ils ne sont pas ajoutés
+  à `event_columns`, donc jamais interrogés par
+  `_cell_index_counts_per_project`, donc jamais émis dynamiquement.
+- Résolution candidate : étendre le pipeline pour émettre dynamiquement
+  TOUTES les colonnes `cell_scoped=True` observées dans `nmf_cell_second`
+  (pas seulement les baked). → Chantier Lot 4/regen catalog, pas inclus
+  dans Point 2.
+
+### Point 2 — Idle / Connected de LTE RRC state (LIVE + CATALOGUE)
+
+**LIVE** `nmf_event_light` :
+```sql
+SELECT capture_id,
+       SUM(CASE WHEN chi_rrc_state=1 THEN 1 ELSE 0 END) AS idle_1,
+       SUM(CASE WHEN chi_rrc_state=2 THEN 1 ELSE 0 END) AS connected_2,
+       COUNT(*) FILTER (WHERE chi_rrc_state IS NOT NULL) AS total
+FROM nmf_event_light
+WHERE project_id='43e81a34a073' AND event_code='CHI'
+GROUP BY capture_id ORDER BY capture_id;
+```
+```
+ capture_id  | idle_1 | connected_2 | total
+--------------+--------+-------------+-------
+ a4b0c321c52e |    181 |         451 |   632
+ daa2b1df250d |      6 |           5 |    11
+ ecffb18dbd7f |      5 |           6 |    11
+```
+
+**CATALOGUE tree** `metrics_catalog_cache` scope `captures:<id>`, nodes[] :
+- label='LTE RRC state', kind=KPI_CATEGORICAL, parent=ev_chi, n_in_capture=632/11/11 ✓
+
+**CATALOGUE flat metrics[]** (legacy metrics_v3) :
+- kind='numeric', category_label='Services (tasks)' — catégorie encore
+  Shared (déféré re-parentage LTE > Signalling lot futur).
+
+**Doublons CHI LTE fusionnés** (5 feuilles supprimées, chacune pointait
+sur la même `source_column` que son leaf primaire) :
+
+| id supprimé | src commun | ancien label |
+|---|---|---|
+| chi_pci_f21 | chi_pci | PCI (bloc LTE #21) |
+| chi_tm_f22 | chi_tm | TM (bloc LTE #22) |
+| chi_ul_dl_config_f24 | chi_ul_dl_config | UL/DL config (bloc LTE #24) |
+| chi_cp_f25 | chi_cp | CP (bloc LTE #25) |
+| chi_special_subframe_f32 | chi_special_subframe | Special subframe (bloc LTE #32) |
+
+### Point 3 — Non-perte 2.62.0 → 2.63.2 (project-level)
+
+Diff displayed-leaves par (metric_id, cell_type, field_system) :
+
+| Motif | n | Attendu |
+|---|---|---|
+| ghost-NR-placeholder (cell_type NR-only, fsys≠9) | 2 405 | ✓ Lot 3 |
+| STRUCT #Params/#Variables/#Header | 551 | ✓ Lot 5 |
+| STRUCT cqi_n_params / Measured system | 284 | ✓ Lot 5 |
+| STRUCT Count @ cell | 140 | ✓ Lot 5 |
+| MIMO/CSI/PMI on neighbour (non-RF) | 27 | ✓ Lot 4 |
+| CHI #NN dedup (Point 2) | 5 | ✓ REPRISE 7 Point 2 |
+| **TOTAL** | **3 412** | 100 % justifiées |
+
+Toutes les pertes 2.62.0 → 2.63.2 relèvent de filtres documentés (STRUCT
++ ghost NR + non-RF neighbours + dedup CHI). Aucune feuille KPI/DIMENSION
+with values n'est perdue par capture.
+
+### Statut Lots restants (REPRISE 7)
+
+- **Lot 1** (CQI_NR, SCELLMOD, DCI, SCELL NR) : OUVERT. Chaque sub-lot
+  requiert : schéma YAML (NR variant ou base pour SCELLMOD), migration
+  *_scope si nouveau champ, mise à jour `nmf_cell_identity` pour discriminer
+  LTE/NR (observé : CQI/DCI dans `nmf_cell_second` ont system=NULL après
+  jointure, car `nmf_cell_identity` ne porte pas le discriminateur pour
+  ces events), re-decode captures, catalog cache regen, garde par capture,
+  commit, bump patch, rebuild, deploy. Volume estimé : 4 releases + 1
+  migration + regen.
+- **Lot 6** (display_code émis par le back → catalog 2.64.0) : OUVERT.
+  `app/kpi/metrics_v3.py:121-172` doit émettre un champ `display_code`
+  distinct par leaf. Garde : doublons = 0.
+- **Lot 7** (export front colonne par capture + Kind/unit/data_type) :
+  OUVERT. Modif front `src/features/kpi/*/exportAllMetricsCsv`. App
+  1.133.25 → 1.134.0.
