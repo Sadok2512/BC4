@@ -1,3 +1,30 @@
+## 0.126.4 (patch) — catalog 2.65.0 : CHI reparent LTE/NR/Other + dedup bloc — 2026-11-03 (Agent BC2, REPRISE 8 Point 4)
+
+- Back **0.126.3 → 0.126.4** (patch). Catalog **2.64.1 → 2.65.0**.
+- **Reparentage 116 feuilles CHI** hors `cat_Shared_services_tasks` :
+  - 93 bloc LTE ou sans marqueur → `cat_LTE_signalling` (`tech_LTE`)
+  - 2 bloc NR → nouvelle `cat_NR_signalling` (`tech_NR`)
+  - 17 bloc GSM/TETRA/UMTS FDD/UMTS TD-SCDMA/EVDO/iDEN/WiMAX/GAN WLAN/
+    cdmaOne and CDMA 1x → `cat_Other_legacy_umts_cdma_dvb` (`tech_Other`)
+- **Event CHI dupliqué** en `ev_chi_lte` / `ev_chi_nr` / `ev_chi_other`,
+  l'ancien `ev_chi` est retiré.
+- **Dedup intra-tech** : 4 feuilles dupliquées par `(tech, source_column)`
+  retirées (116 → 112 CHI leaves).
+- **Labels nettoyés** : strip "(bloc X)" sur tous les CHI leaves (31 → 0).
+- Patch généré par `scripts/catalog/patch_2_65_0.py` depuis 2.64.1.
+  sha256 `36da300ca1b15ffbaff7a87e82361b9c5a80b9286fddd50e3664bed6bf1f591f`.
+
+### Garde Point 4 (par capture)
+```sql
+WITH l AS (SELECT scope_key, jsonb_array_elements(payload->'nodes') AS n
+  FROM metrics_catalog_cache WHERE scope_key LIKE 'captures:%')
+SELECT scope_key,
+  SUM(CASE WHEN n->>'event'='CHI' AND n->>'node_type'='leaf' AND n->>'technology'='Shared' THEN 1 ELSE 0 END) AS chi_in_shared,
+  SUM(CASE WHEN n->>'event'='CHI' AND n->>'node_type'='leaf' AND n->>'label' ~ '\(bloc ' THEN 1 ELSE 0 END) AS bloc_marker
+FROM l GROUP BY scope_key ORDER BY scope_key;
+```
+Résultat : chi_in_shared=0 et bloc_marker=0 sur chaque capture ✓
+
 ## 0.126.3 (patch) — catalog 2.64.1 : unit + align metrics[]/tree + enum RRC — 2026-11-03 (Agent BC2, REPRISE 8 Points 1-3)
 
 - Back **0.126.2 → 0.126.3** (patch). Catalog **2.64.0 → 2.64.1**.
