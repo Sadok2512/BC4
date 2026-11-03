@@ -1,3 +1,22 @@
+## 0.124.6 (patch) — Lot 3 : drop ghost NR placeholders in catalog build — 2026-11-03 (Agent BC5)
+
+- Back **0.124.5 → 0.124.6** (patch). Catalog_release inchangé (toujours 2.62.0).
+- `app/kpi/metrics_catalog_v4.py:592` : filtre les feuilles catalog_release
+  où `cell_type ∈ {100..131, 198, 199, 1000, 1001, 1002}` ET
+  `field_system != 9`. Ces cell_types n'existent QUE pour NR (NFF 2.50
+  p.561-562 : SCG SCell N / SCG PSCell / Listed/Detected/Scanner NR
+  neighbour). Avant 0.124.6, ils étaient émis AUSSI pour LTE avec labels
+  trompeurs "SCell 100 / SCell 199 / SCell 1000" + n=0 : **2 405 feuilles
+  fantômes** sur 9 001.
+- Les cellules NR réelles (`field_system = 9`) sont conservées : 110
+  feuilles légitimes labellées "SCG SCell N" / "SCG PSCell" /
+  "Listed/Detected/Scanner NR neighbour".
+- **Garde Lot 3 (cache régénéré 2026-11-03)** :
+  ```sql
+  SELECT COUNT(*) FROM leaves WHERE cell_label ~ '^SCell\s*(1\d\d|1\d{3})$';
+  → 0  (attendu 0, avant : 2 400)
+  ```
+  Total leaves : 8 900 → **6 520**. SCG preserved : 27. Neighbour preserved : 91.
 ## 0.124.5 (patch) — Decoder 1.10.5 : CHI LTE schema fix + system_col=4 — 2026-11-03 (Agent BC5, Lot 2 LTE)
 
 - Décodeur **1.10.4 → 1.10.5** (patch), back **0.124.4 → 0.124.5** (patch).

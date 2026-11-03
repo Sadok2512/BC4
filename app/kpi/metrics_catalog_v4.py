@@ -589,12 +589,29 @@ def build_catalog_v4(
         value = leaf.get("field_system")
         return int(value) if value is not None else None
 
+    # Lot 3 — drop les placeholders hérités de l'oracle sur des cell_types
+    # qui n'existent QUE pour NR (100..131=SCG SCell N, 199=SCG PSCell,
+    # 1000/1001/1002=Listed/Detected/Scanner NR neighbour, NFF 2.50 p.561-562).
+    # Avant catalog_release 2.63.0 ces cell_types étaient émis AUSSI pour
+    # field_system None/7 (LTE), avec cell_label "SCell 100" / "SCell 199" /
+    # "SCell 1000" etc. et n=0 : 2 405 feuilles fantômes sur 9 001. Les NR
+    # réels (field_system=9) sont conservés : 110 feuilles légitimes.
+    _NR_ONLY_CELL_TYPES = {100, 101, 102, 103, 104, 105, 106, 107, 108, 109,
+                            110, 111, 112, 113, 114, 115, 116, 117, 118, 119,
+                            120, 121, 122, 123, 124, 125, 126, 127, 128, 129,
+                            130, 131, 198, 199, 1000, 1001, 1002}
+    def _is_ghost_nr_placeholder(n: dict) -> bool:
+        ct = n.get("cell_type")
+        if ct is None or ct not in _NR_ONLY_CELL_TYPES:
+            return False
+        return n.get("field_system") != 9
     displayed_leaves = [
         n
         for n in nodes_in
         if n.get("node_type") == "leaf"
         and n.get("displayed")
         and _series_visible(n.get("event") or "", _series_code(n))
+        and not _is_ghost_nr_placeholder(n)
     ]
 
     # 1) Map leaf → candidate column; keep only columns present in DB.
