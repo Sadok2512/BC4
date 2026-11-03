@@ -1,0 +1,134 @@
+{
+  "event": "DCI",
+  "spec_version": "2.50",
+  "systems": [9],
+  "system_col": 4,
+  "min_format": "2.50",
+  "schema_version": "1.10.7-NR",
+  "unknown_tail": "keep",
+  "cell_scoped": true,
+  "context_count": 0,
+  "header": [
+    {
+      "col": 5,
+      "code": "dci.n_params",
+      "label": "#Header params (NR)",
+      "type": "int",
+      "unit": "n",
+      "proof": "NFF 2.50 DCI Parameters for NR p.553 #1",
+      "agg": "last",
+      "metric": false,
+      "category": "terminal_cell"
+    },
+    {
+      "col": 6,
+      "code": "dci.scope",
+      "label": "Scope (NR)",
+      "type": "int",
+      "unit": "enum",
+      "proof": "NFF 2.50 DCI Parameters for NR p.553 #2",
+      "agg": "last",
+      "metric": false,
+      "category": "terminal_cell"
+    },
+    {
+      "col": 7,
+      "code": "dci.cell_type",
+      "label": "Cell type (NR)",
+      "type": "int",
+      "unit": "enum",
+      "proof": "NFF 2.50 DCI Parameters for NR p.553-554 #3; enum 0..31=SCell N, 98=SCell, 100..131=SCG SCell N, 198=SCG SCell, 199=SCG PSCell",
+      "agg": "dominant",
+      "category": "terminal_cell",
+      "dimension": true
+    },
+    {
+      "col": 8,
+      "code": "dci.cce_aggr_level",
+      "label": "CCE aggregation level (NR)",
+      "type": "int",
+      "unit": "index",
+      "range": [1, 16],
+      "proof": "NFF 2.50 DCI Parameters for NR p.554 #4; 3GPP TS 38.211 7.3.2",
+      "agg": "mean",
+      "category": "allocation_mcs"
+    },
+    {
+      "col": 9,
+      "code": "dci.ul_grants",
+      "label": "UL grants (NR)",
+      "type": "int",
+      "unit": "n",
+      "proof": "NFF 2.50 DCI Parameters for NR p.554 #5",
+      "agg": "sum",
+      "category": "allocation_mcs"
+    },
+    {
+      "col": 10,
+      "code": "dci.dl_grants",
+      "label": "DL grants (NR)",
+      "type": "int",
+      "unit": "n",
+      "proof": "NFF 2.50 DCI Parameters for NR p.554 #6",
+      "agg": "sum",
+      "category": "allocation_mcs"
+    }
+  ],
+  "groups": [
+    {
+      "name": "dci_format",
+      "fields": [
+        {
+          "code": "dci.format_count",
+          "label": "DCI format distribution count (NR)",
+          "type": "int",
+          "unit": "n",
+          "agg": "sum",
+          "proof": "NFF 2.50 DCI NR p.554 Group DCI format #1 Count",
+          "category": "allocation_mcs"
+        },
+        {
+          "code": "dci.dci_format",
+          "label": "DCI format distribution value (NR)",
+          "type": "int",
+          "unit": "enum",
+          "agg": "dominant",
+          "proof": "NFF 2.50 DCI NR p.554 Group DCI format #2 DCI format; 0=0_0, 1=0_1, 2=0_2, 10=1_0, 11=1_1, 12=1_2, 20..26=2_0..2_6",
+          "category": "allocation_mcs"
+        }
+      ],
+      "start": {"header_col": 5},
+      "count_code": "dci.n_variables",
+      "params_code": "dci.params_variable",
+      "proof": "NFF 2.50 DCI NR p.554 #Variables DCI format / #Params/variable"
+    },
+    {
+      "name": "cce_aggr",
+      "fields": [
+        {
+          "code": "dci.cce_count",
+          "label": "CCE aggregation level distribution count (NR)",
+          "type": "int",
+          "unit": "n",
+          "agg": "sum",
+          "proof": "NFF 2.50 DCI NR p.555 Group CCE #1 Count",
+          "category": "allocation_mcs"
+        },
+        {
+          "code": "dci.cce_aggr_level",
+          "label": "CCE aggregation level distribution value (NR)",
+          "type": "int",
+          "unit": "index",
+          "agg": "mean",
+          "range": [1, 16],
+          "proof": "NFF 2.50 DCI NR p.555 Group CCE #2 CCE aggregation level",
+          "category": "allocation_mcs"
+        }
+      ],
+      "start": "previous_end",
+      "count_code": "dci.cce_n_variables",
+      "params_code": "dci.cce_params_variable",
+      "proof": "NFF 2.50 DCI NR p.555 #Variables CCE / #Params/variable"
+    }
+  ]
+}

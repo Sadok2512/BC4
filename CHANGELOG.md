@@ -1,3 +1,23 @@
+## 0.126.6 (patch) — décodeur 1.10.7 : DCI_NR schema + migration 0089 — 2026-11-03 (Agent BC2, LOT 1 FINAL DCI_NR)
+
+- Back **0.126.5 → 0.126.6** (patch). Décodeur **1.10.6 → 1.10.7**.
+- **DCI_NR** schéma `app/nmf_decoder/schemas/DCI_NR.yaml` (NFF 2.50 p.553-555) :
+  header 6 fields (#Header params, Scope, Cell type, CCE aggregation level,
+  UL grants, DL grants) + 2 groupes (DCI format distribution `{Count, DCI format}`,
+  CCE aggregation level distribution `{Count, CCE aggregation level}`).
+- Migration **0089_dci_nr_cols** : ajoute `dci_n_params`, `dci_n_variables`,
+  `dci_params_variable`, `dci_scope`, `dci_cce_aggr_level`, `dci_format_count`,
+  `dci_cce_count`, `dci_cce_n_variables`, `dci_cce_params_variable`.
+- Re-décodage 3 captures.
+- **2 records réels vérifiés** NFF 2.50 p.553-555 (sample ikea.6) :
+  - `DCI,17:25:27.260,,9,5,16,199,,0,0,0,2,0,2` → #Hdr=5, Scope=16, Cell type=**199**, CCE=∅, UL=0, DL=0, group1 vars=0, group2 vars=0.
+  - `DCI,17:26:47.787,,9,5,16,199,8,12,4,4,2,1,0,11,1,1,10,3,11,3,2,1,1,4,4,11,8` → #Hdr=5, Scope=16, Cell type=199, CCE=8, UL=12, DL=4, group1 4 vars × 2 params = {1,0},{11,1},{1,10},{3,11} (DCI format dist), group2 3 vars × 2 params = {1,1},{4,4},{11,8} (CCE dist, somme Count=16 = UL+DL ✓).
+- **Garde par capture + par cellule** (cell_index=9670 NR PSCell 199) :
+  - Test_6 : dci_ul_grants=2852, dci_dl_grants=2852, dci_cce_aggr_level=1944, dci_format_count=1944.
+  - ikea.6 : 13/13/5/5.
+  - ikea.2 : 107/107/106/106.
+  - LTE cell_index<9000 préservé.
+
 ## 0.126.5 (patch) — décodeur 1.10.6 : CQI_NR schema + colonnes migration — 2026-11-03 (Agent BC2, LOT 1 FINAL CQI_NR)
 
 - Back **0.126.4 → 0.126.5** (patch). Décodeur **1.10.5 → 1.10.6**.
