@@ -1,3 +1,67 @@
+## 0.129.2 (patch) — Étape 3b : fiabiliser la référence du garde — 2026-11-03 (Agent BC5)
+
+- **Back 0.129.1 → 0.129.2** (patch). Catalog 2.67.0 inchangé. Décodeur
+  1.11.2 inchangé.
+- **Snapshot 2.66.2 reconstruit** (`audit/snapshots/catalog_2.66.2.json`,
+  246 KB) depuis `/home/devmat/BC4/export_test_6_with_values.csv`
+  (464 lignes data, 2.66.2, projet `43e81a34a073`). Référence antérieure
+  pour comparer 2.66.2 → 2.67.0.
+- **Comparaison 2.66.2 → 2.67.0** (sortie complète collée en live) :
+  - Test_6 : 433 → 443 (+10 feuilles mobilité LTE, Étape 2).
+  - ikea.6 : 333 → 331 (9 renommages/pertes, 7 ajouts).
+  - ikea.2 : 336 → 343 (+7 feuilles mobilité LTE).
+- **20 metric_id d'écart listés et classés** :
+  - **Test_6 — 10 ajouts (Étape 2)** : `lte_ho_attempts`,
+    `lte_ho_attempts_intra_freq`, `lte_ho_attempts_inter_freq`,
+    `lte_ho_success`, `lte_ho_success_rate_pct`, `lte_ho_duration_avg_ms`,
+    `lte_ho_duration_p95_ms`, `lte_ho_duration_max_ms`,
+    `lte_cell_resel_count`, `lte_rlf_approx_count`.
+  - **ikea.2 — 7 ajouts (Étape 2)** : `lte_ho_attempts`,
+    `lte_ho_attempts_intra_freq`, `lte_ho_success`,
+    `lte_ho_success_rate_pct`, `lte_ho_duration_avg_ms`,
+    `lte_ho_duration_p95_ms`, `lte_ho_duration_max_ms`.
+  - **ikea.6 — 6 renommages `@6` → `@lte-type-6`** (2.64.0, `cell_type_selector`
+    stable API — `app/kpi/metrics_catalog_v4.py:112`) :
+    `dci_dci_count@6`, `dci_dci_format@6`, `dci_dl_grants@6`,
+    `dci_ul_grants@6`, `plaiu_sample_duration@5`, `plaiu_sample_duration@6`.
+  - **ikea.6 — 1 ajout mobilité (Étape 2)** : `lte_cell_resel_count`.
+  - **Test_6 — 2 reclassifications `IP / Services` → `LTE`** (branche
+    corrigée en 2.65/2.66) : `rrre_re_est_cause`, `rrre_re_est_status`.
+    n inchangé (3/3), seule la branche change — plus de perte.
+  - **ikea.6 — 3 OUVERT — pertes sèches `@lte-type-6`** pour les
+    specializations DCI per-format : `dci_dci_format_f10@6` (était n=90),
+    `dci_dl_grants_f6@6` (était n=165), `dci_ul_grants_f5@6` (était
+    n=165). Le release JSON baked `catalog_2.67.0.json` contient bien
+    ces 3 leaves pour cell_type=6, et les caches Test_6 + ikea.2 les
+    exposent (avec n=0). Seul le cache capture `ikea.6` les filtre.
+    Investigation requise : `app/kpi/metrics_catalog_v4.py:671-689`
+    (`displayed_leaves` filter) + `:1032-1042` (selection cell_suffix
+    conditionnel sur `selectable_flag`). **Lot séparé** (hors Étape 3b)
+    car patch du filtre peut impacter d'autres captures ; ces 3 metric_ids
+    sont déclarés comme baisses autorisées via `--allow-decrease` sur
+    cette release.
+- **`--allow-decrease` liste blanche stricte** : le flag prend désormais
+  une liste de metric_id séparés par virgules. Toute baisse hors liste
+  bloque le guard. Sans valeur, toute baisse est refusée. Appliqué aux
+  critères 1 (disparitions déclarées) et 3 (pertes sèches par branche).
+  Code : `scripts/guard_catalog.py:177-181, 265-282, 313-319`.
+- **Critère 3 affine** : "pertes sèches" nettes des reclassifications.
+  Un metric_id qui change de branche mais garde n>0 n'est plus compté
+  comme perte. Code : `scripts/guard_catalog.py:304-319`.
+- **Critère 5 sortie dédiée** : tableau `event × capture` (brut
+  nmf_event_deep) ET `event × KPI catalog × capture`. Vérifie que les
+  KPI exposés matchent exactement le brut :
+  - HOA : 126 / 0 / 5 (brut) = `lte_ho_attempts` 126 / 0 / 5 ✓
+  - HOS : 126 / 0 / 5 (brut) = `lte_ho_success` 126 / 0 / 5 ✓
+  - CREL : 53 / 1 / 0 (brut) = `lte_cell_resel_count` 53 / 1 / 0 ✓
+  - RRA, RRC, RRD, RRRE, TUA, TUS, SCELLMOD : brut exposé (aucun KPI
+    dédié aujourd'hui, à prévoir dans un futur lot).
+  Code : `scripts/guard_catalog.py:331-352`.
+- **Guard verdict** : `✓ GUARD PASS` avec la liste blanche ci-dessus ;
+  sans elle, `✗ FAIL` sur les 9 ikea.6 + 2 Test_6 reclass + 2 branche
+  Test_6 (reclass effet collatéral avant correction critère 3). Le
+  snapshot 2.67.0 est maintenant la référence pour la prochaine release.
+
 ## 0.129.1 (patch) — scripts/guard_catalog.py (Étape 3) — 2026-11-03 (Agent BC5)
 
 - **Back 0.129.0 → 0.129.1** (patch). Catalog 2.67.0 inchangé. Décodeur

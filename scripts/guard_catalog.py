@@ -19,9 +19,15 @@ Snapshot : à chaque release OK, écrit `audit/snapshots/catalog_<v>.json`
 avec les comptes et les metric_id de référence.
 
 Usage :
-    python scripts/guard_catalog.py                 # garde + éventuel snapshot
-    python scripts/guard_catalog.py --write-snapshot  # force écriture snapshot
+    python scripts/guard_catalog.py                           # garde + éventuel snapshot
+    python scripts/guard_catalog.py --write-snapshot          # force écriture snapshot
+    python scripts/guard_catalog.py --allow-decrease a,b,c    # tolère la baisse UNIQUEMENT pour a, b, c
     python scripts/guard_catalog.py --help
+
+`--allow-decrease` prend une liste blanche de metric_id séparés par
+virgules (ces IDs doivent être listés dans le CHANGELOG de la release
+courante). Toute autre baisse échoue le guard. Passer la chaîne vide
+(ou omettre le flag) refuse toute baisse.
 """
 from __future__ import annotations
 import argparse
@@ -168,9 +174,13 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--write-snapshot", action="store_true",
                         help="Force snapshot write (first run or after release)")
-    parser.add_argument("--allow-decrease", action="store_true",
-                        help="Allow leaf n decrease (declared in changelog)")
+    parser.add_argument("--allow-decrease", default="",
+                        metavar="MID[,MID...]",
+                        help="Whitelist de metric_id autorisés à baisser "
+                             "(doivent être listés dans le CHANGELOG). Sans valeur, "
+                             "toute baisse échoue le guard.")
     args = parser.parse_args()
+    allow_decrease_set = {m.strip() for m in (args.allow_decrease or "").split(",") if m.strip()}
 
     # Local import to avoid heavy load for --help
     sys.path.insert(0, str(ROOT))
@@ -229,16 +239,23 @@ def main():
         if cur["struct_in_tree"] > 0:
             failures.append(f"[{cap_label}] STRUCT dans l'arbre : {cur['struct_in_tree']} feuilles")
 
-        # Critère 1 : feuille avec valeurs disparue
+        # Critère 1 : feuille avec valeurs disparue — absente du cache courant
+        # alors qu'elle avait n>0 dans la référence. Les leaves présentes mais
+        # passées à n=0 relèvent du critère 2 (baisse), pas du 1. Les mids
+        # listés dans `--allow-decrease` sont considérés comme disparitions
+        # déclarées (renommage ou dépréciation documentée au CHANGELOG).
         prev_with_values = {mid for mid, info in (prev.get("per_leaf") or {}).items() if info.get("n", 0) > 0}
         cur_leaves = cur["per_leaf"]
         cur_leaves_set = set(cur_leaves.keys())
-        disappeared = prev_with_values - cur_leaves_set
+        disappeared = prev_with_values - cur_leaves_set - allow_decrease_set
         if disappeared:
             failures.append(f"[{cap_label}] feuilles avec valeurs DISPARUES : {sorted(disappeared)[:20]}")
 
-        # Critère 2 : baisse n sans changelog
+        # Critère 2 : baisse n — n'accepter QUE les metric_id whitelistés
+        # (listés dans le CHANGELOG via `--allow-decrease a,b,c`). Les autres
+        # baisses bloquent le guard. `--allow-decrease` sans valeur refuse tout.
         decreased = []
+        unauth_decreased = []
         for mid, prev_info in (prev.get("per_leaf") or {}).items():
             prev_n = prev_info.get("n", 0)
             cur_info = cur_leaves.get(mid)
@@ -247,16 +264,27 @@ def main():
             cur_n = cur_info["n"]
             if cur_n < prev_n:
                 decreased.append((mid, prev_n, cur_n))
-        if decreased and not args.allow_decrease:
-            failures.append(f"[{cap_label}] n baisse (sans --allow-decrease) : "
-                            + ", ".join(f"{m}: {p}→{c}" for m, p, c in decreased[:10]))
+                if mid not in allow_decrease_set:
+                    unauth_decreased.append((mid, prev_n, cur_n))
+        if unauth_decreased:
+            failures.append(f"[{cap_label}] n baisse NON autorisée (absente de --allow-decrease) : "
+                            + ", ".join(f"{m}: {p}→{c}" for m, p, c in unauth_decreased[:10]))
 
-        # Critère 3 : branche perd des feuilles with_values
+        # Critère 3 : branche perd des feuilles with_values — NET de reclass.
+        # On ignore les reclassifications (mid qui passe d'une branche à une
+        # autre en gardant n>0). Seule une perte "sèche" (mid absent ou passé
+        # à n=0 sans réapparaître ailleurs) compte.
+        prev_leaf_tech = {mid: info.get("technology") for mid, info in (prev.get("per_leaf") or {}).items()
+                          if info.get("n", 0) > 0}
+        cur_leaf_tech = {mid: info.get("technology") for mid, info in cur_leaves.items()
+                         if info.get("n", 0) > 0}
         for b in BRANCHES:
-            prev_b = (prev.get("per_branch") or {}).get(b, {}).get("with_values", 0)
-            cur_b = cur["per_branch"].get(b, {}).get("with_values", 0)
-            if cur_b < prev_b:
-                failures.append(f"[{cap_label}] branche {b!r} with_values baisse : {prev_b}→{cur_b}")
+            prev_in_b = {m for m, t in prev_leaf_tech.items() if t == b}
+            cur_in_b_or_elsewhere = {m for m in prev_in_b if m in cur_leaf_tech}
+            net_lost = prev_in_b - cur_in_b_or_elsewhere - allow_decrease_set
+            if net_lost:
+                failures.append(f"[{cap_label}] branche {b!r} pertes sèches : "
+                                f"{sorted(net_lost)[:10]}")
 
     # 5. Critère 5 : KPI event vs brut nmf_event_deep
     brut = event_raw_counts(db)
@@ -273,12 +301,29 @@ def main():
         # Également lister les counts brut de contrôle pour les events sans KPI
         # (vérification informative, pas bloquante)
 
-    # 6. Afficher brut nmf_event_deep (informatif)
-    print("\n=== Brut nmf_event_deep (événements mobilité) par capture ===")
-    print(f"{'event':8s}  " + "  ".join(f"{lbl:>10s}" for lbl in CAPTURES.values()))
+    # 6. Critère 5 détaillé — brut nmf_event_deep × KPI catalog, par capture
+    print("\n=== Critère 5 — comptage brut nmf_event_deep × KPI catalog ===")
+    # En-tête avec colonnes brut et, pour chaque capture, la valeur KPI catalog
+    # quand un KPI est exposé pour cet event.
+    rev_map = {v[0]: k for k, v in EVENT_KPI_MAP.items()}
+    hdr = f"{'event':8s}"
+    for lbl in CAPTURES.values():
+        hdr += f"  {lbl:>10s}"
+    hdr += f"   | {'KPI catalog':<22s}"
+    for lbl in CAPTURES.values():
+        hdr += f"  {lbl+' kpi':>12s}"
+    print(hdr)
     for ev in BRUT_EVENTS:
         counts = [brut.get((c, ev), 0) for c in CAPTURES]
-        print(f"{ev:8s}  " + "  ".join(f"{n:>10d}" for n in counts))
+        line = f"{ev:8s}  " + "  ".join(f"{n:>10d}" for n in counts)
+        kpi_mid = rev_map.get(ev)
+        line += f"   | {(kpi_mid or '—'):<22s}"
+        for cid in CAPTURES:
+            if kpi_mid and kpi_mid in current[cid]["per_leaf"]:
+                line += f"  {current[cid]['per_leaf'][kpi_mid]['n']:>12d}"
+            else:
+                line += f"  {'(no kpi)':>12s}"
+        print(line)
 
     # 7. Résultat
     print("\n=== Verdict ===")

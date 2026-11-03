@@ -41,7 +41,7 @@ def _documentation_urls(environment: str) -> dict[str, str | None]:
 
 app = FastAPI(
     title="bc4-back",
-    version="0.129.1",
+    version="0.129.2",
     **_documentation_urls(settings.env),
 )
 
