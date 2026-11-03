@@ -1,3 +1,27 @@
+## 0.124.7 (patch) — Lot 5 : champ `kind` émis par le back + STRUCT hors arbre — 2026-11-03 (Agent BC5)
+
+- Back **0.124.6 → 0.124.7** (patch).
+- `app/kpi/metrics_catalog_v4.py:608` : classification `kind` par leaf
+  (KPI / KPI_CATEGORICAL / DIMENSION / STRUCT). Patterns :
+  - STRUCT : `label/metric_label ∈ {#Params, #Variables, Measured system}`,
+    `metric_id ILIKE %cqi_n_params%`, ou `metric_label = Count`.
+  - KPI_CATEGORICAL : `metric_label ∈ {Rank, Modulation, DCI format, RRC state}`
+    ou `source_column ILIKE %rrc_state%`.
+  - DIMENSION : `metric_label ∈ {PCI, ARFCN, NR-ARFCN, Band, Port}` ou
+    `source_column` suffixe `_pci/_ch/_band/_arfcn/_port`.
+  - KPI par défaut.
+- STRUCT **filtré hors de l'arbre** (mêmes semantics que Lot 3 ghost).
+- Nouveau champ `kind` sur `MetricCatalogNode` pydantic
+  (`app/routes/metrics.py`).
+- **Garde Lot 5 (cache régénéré)** :
+  ```
+   KPI             : 5 370
+   DIMENSION       :   124
+   KPI_CATEGORICAL :     1
+   (null)          :   185   ← fallback, à affiner dans Lot 6
+   STRUCT dans l'arbre : 0  (attendu 0, avant ≈ 450)
+  ```
+- Total leaves : 6 520 → **5 680** (−840 STRUCT).
 ## 0.124.6 (patch) — Lot 3 : drop ghost NR placeholders in catalog build — 2026-11-03 (Agent BC5)
 
 - Back **0.124.5 → 0.124.6** (patch). Catalog_release inchangé (toujours 2.62.0).

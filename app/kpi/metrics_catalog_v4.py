@@ -605,14 +605,47 @@ def build_catalog_v4(
         if ct is None or ct not in _NR_ONLY_CELL_TYPES:
             return False
         return n.get("field_system") != 9
-    displayed_leaves = [
-        n
-        for n in nodes_in
-        if n.get("node_type") == "leaf"
-        and n.get("displayed")
-        and _series_visible(n.get("event") or "", _series_code(n))
-        and not _is_ghost_nr_placeholder(n)
-    ]
+    # Lot 5 — classer chaque leaf en {KPI, KPI_CATEGORICAL, DIMENSION, STRUCT}
+    # d'après le `label`/`metric_label`/`metric_id`. STRUCT = sortis de l'arbre
+    # (ne sont pas des mesures mais des compteurs/dimensions internes du schéma
+    # NFF : #Params, #Variables, Count, Measured system, LTE_CQI_N_PARAMS_*).
+    _STRUCT_PAT = (
+        "#params", "#variables", "measured system",
+    )
+    _CATEG_PAT = ("rank", "modulation", "dci format", "rrc state")
+    _DIM_PAT = ("pci", "arfcn", "nr-arfcn", "band", "port")
+    def _kind_for_leaf(n: dict) -> str:
+        label = (n.get("label") or "").lower()
+        mlabel = (n.get("metric_label") or "").lower()
+        mid = (n.get("metric_id") or "").lower()
+        src = (n.get("source_column") or "").lower()
+        joined = f"{label}|{mlabel}|{mid}|{src}"
+        if "cqi_n_params" in mid or any(p in label or p in mlabel for p in _STRUCT_PAT):
+            return "STRUCT"
+        # Count field under a group counts samples : STRUCT
+        if (mlabel == "count" or label.startswith("count ")) and n.get("source_column"):
+            return "STRUCT"
+        if any(p in mlabel for p in _CATEG_PAT) or "rrc_state" in src:
+            return "KPI_CATEGORICAL"
+        if any(p in mlabel for p in _DIM_PAT) or src.endswith("_pci") or src.endswith("_ch") or src.endswith("_band") or src.endswith("_arfcn") or src.endswith("_port"):
+            return "DIMENSION"
+        return "KPI"
+
+    displayed_leaves = []
+    for n in nodes_in:
+        if n.get("node_type") != "leaf":
+            continue
+        if not n.get("displayed"):
+            continue
+        if not _series_visible(n.get("event") or "", _series_code(n)):
+            continue
+        if _is_ghost_nr_placeholder(n):
+            continue
+        kind = _kind_for_leaf(n)
+        n["_kind"] = kind
+        if kind == "STRUCT":
+            continue  # Lot 5 — STRUCT hors de l'arbre
+        displayed_leaves.append(n)
 
     # 1) Map leaf → candidate column; keep only columns present in DB.
     avail_light_cols = _available_light_columns(db)
@@ -951,6 +984,7 @@ def build_catalog_v4(
                 proof=node.get("proof") or "open",
                 selectable=selectable_flag,
                 reason=reason_val,
+                kind=node.get("_kind") if is_leaf else None,
             )
         )
 

@@ -86,6 +86,12 @@ class MetricCatalogNode(BaseModel):
     proof: str
     selectable: bool = False
     reason: str | None = None
+    # Lot 5 — nature de la métrique (émise par le back, non plus par l'oracle
+    # front). Valeurs : KPI (défaut), KPI_CATEGORICAL (états/enums : Rank,
+    # Modulation, DCI format, RRC state), DIMENSION (filtres : PCI, ARFCN,
+    # cell_ch, Band, Port). STRUCT (#Params/#Variables/Count/Measured system)
+    # est filtré HORS DE L'ARBRE.
+    kind: Literal['KPI', 'KPI_CATEGORICAL', 'DIMENSION'] | None = None
 class CatalogReleaseInfo(BaseModel):
     """0.80.0 (Phase 3a) — ligne `catalog_release.is_current=TRUE` reflétée
     au client. `None` si la table est vide (bootstrap frais) ; dans ce cas
