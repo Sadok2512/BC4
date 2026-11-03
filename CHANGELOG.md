@@ -1,3 +1,21 @@
+## 0.124.2 (patch) — Decoder 1.10.2 : PLAIU NR variant — 2026-11-03 (Agent BC5, Lot 1 schema 2)
+
+- Décodeur **1.10.1 → 1.10.2** (patch), back **0.124.1 → 0.124.2** (patch).
+- Nouveau schéma `app/nmf_decoder/schemas/PLAIU_NR.yaml` : 13 champs
+  header (NFF 2.50 p.570-572 cités) — hdr_n, scope, cell_type (dim),
+  rank, prbs, mod0, mcs0, tbs0, slot %, bit/s/Hz, max bit/s/Hz, BWP ID,
+  UL type. Enum cell_type NR : 0=PCell, 1..31=SCell N, 98=SCell,
+  100..131=SCG SCell N, 198=SCG SCell, 199=SCG PSCell.
+- Alembic migration **0086_plaiu_nr_scope** : ajoute `plaiu_scope`
+  (double precision) sur les 4 tables light/deep/group.
+- **Garde Test_6 complet** (3 captures re-décodées force=True) :
+  ```
+   system | cell_type | rank | prbs | mcs0 | mod0 | tbs0 | scope
+        7 |    10247  | 6998 | 6998 | 2499 | 2506 | 2506 |    0   ← LTE préservé
+        9 |     2973  | 1853 | 1853 | 1853 | 1853 | 1853 | 2973   ← NR projeté
+  ```
+- Lot 1 continue : MACRATE_NR (prochain commit), MACRATEU_NR, DCI (créer LTE+NR), CQI_NR, SCELL_NR, SCELLMOD_NR, CHI_NR. Voir handoff.
+
 ## 0.124.1 (patch) — Decoder 1.10.1 : fix PLAID NR header filter (O-A closed) — 2026-11-03 (Agent BC5, Lot 1a-bis)
 
 - Ferme l'écart O-A ouvert en 1.10.0.

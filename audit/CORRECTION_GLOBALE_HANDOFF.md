@@ -265,3 +265,41 @@ Répartition par cell_type NR :
 **Garde LTE non régressé** : rank 13767, prbs 13767, mcs0 3243 — identique à la baseline 1.9.0 (pre-chantier).
 
 **Prochain commit** : rebuild image bc4-api 0.124.1-<sha>, pin compose, up -d, puis PLAIU_NR (lot 1 continue).
+
+---
+
+## Commit 3 — décodeur 1.10.2, PLAIU NR variant
+
+**Fichiers** :
+- `app/nmf_decoder/schemas/PLAIU_NR.yaml` : nouveau, 13 champs header NR (p.570-572)
+- `alembic/versions/0086_plaiu_nr_scope.py` : add `plaiu_scope` double precision sur 4 tables
+- `app/nmf_decoder/__init__.py` : `DECODER_VERSION = '1.10.2'`
+- `pyproject.toml` + `app/main.py` : back 0.124.1 → 0.124.2
+
+**Garde Test_6 complet, 3 captures re-decodées force=True (2026-11-03)** :
+```sql
+SELECT system,
+ COUNT(*) FILTER (WHERE plaiu_cell_type IS NOT NULL) AS cell_type,
+ COUNT(*) FILTER (WHERE plaiu_rank IS NOT NULL)      AS rank,
+ COUNT(*) FILTER (WHERE plaiu_prbs IS NOT NULL)      AS prbs,
+ COUNT(*) FILTER (WHERE plaiu_mcs0 IS NOT NULL)      AS mcs0,
+ COUNT(*) FILTER (WHERE plaiu_mod0 IS NOT NULL)      AS mod0,
+ COUNT(*) FILTER (WHERE plaiu_tbs0 IS NOT NULL)      AS tbs0,
+ COUNT(*) FILTER (WHERE plaiu_scope IS NOT NULL)     AS scope
+FROM nmf_event_light WHERE project_id='43e81a34a073' AND event_code='PLAIU' GROUP BY 1;
+```
+```
+ 7 | 10247 | 6998 | 6998 | 2499 | 2506 | 2506 |    0   ← LTE préservé
+ 9 |  2973 | 1853 | 1853 | 1853 | 1853 | 1853 | 2973   ← NR projeté
+```
+
+Lot 1 — schémas NR encore à produire (tous confirmés présents à décoder sur Test_6) :
+- MACRATE : 2972 records NR, PDF p.531-536 (NR section p.534). Note : LTE cell_type dim fonctionne déjà via `mac_cell_type` colonne séparée (pas via `cell_type` scalaire — mesure sur Test_6 : PCell=3991, SCell1=4271, SCell2=3784, SCell3=3810, SCell4=168 pour LTE, cf §Baseline). Donc pas de "fix" cell_type à faire — ajouter juste MACRATE_NR.
+- MACRATEU : 2972 NR, PDF p.537-540 (NR p.538-540)
+- DCI : 4542 LTE + 2972 NR, PDF p.551-554 — **LTE DCI.yaml et NR DCI_NR.yaml à CRÉER tous les deux**
+- CQI : 2972 NR, PDF p.575-581 (NR p.579+)
+- SCELL : 425 (system=9 only), PDF p.345+
+- SCELLMOD : 347 (system NULL — à investiguer), PDF p.424+
+- CHI : 654 (system NULL — à investiguer), PDF p.320+ — États RRC/EMM/réseau du Lot 2
+
+**Prochain** : rebuild bc4-api 0.124.2, pin, deploy, puis MACRATE_NR comme décodeur 1.10.3.
