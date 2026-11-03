@@ -648,3 +648,110 @@ SELECT
 - Front app 1.133.25 → 1.134.0
 
 **Dernière mise à jour** : 2026-11-03 fin REPRISE 6
+
+---
+
+## REPRISE 7 — Point 1 FAIT + Point 2 PARTIEL (2026-11-03, Agent BC2)
+
+**HEAD** : `6fdb19c` · **Live** : `bc4-api:0.125.2-9a7cf3b` · catalog **2.63.2** · decoder 1.10.5 · GC1 OK
+
+### Point 1 — PLAID/PLAIU NR PSCell per capture — FAIT
+
+Vérifié au niveau catalogue (scope `captures:<id>`), label `SCG PSCell` (cell_system NR, nr-type-199) :
+
+| capture | plaid_prbs | plaiu_prbs | plaid_rank | plaiu_rank |
+|---|---|---|---|---|
+| a4b0c321c52e | 1 796 | 1 741 | 1 796 | 1 741 |
+| daa2b1df250d | 2 | 5 | 2 | 5 |
+| ecffb18dbd7f | 79 | 106 | 79 | 106 |
+
+Correspondance exacte avec `nmf_cell_second` live. Note : la base `metrics_v3`
+émet `plaid_rank` / `plaid_percentage` (pas `plaid_mcs0` — ce champ n'existe
+pas dans `metrics_v3`). Labels encore « (bloc UMTS FDD) » sur Percentage /
+Sample duration — relabel reporté au lot ultérieur.
+
+```sql
+WITH leaves AS (
+  SELECT scope_key, jsonb_array_elements(payload->'metrics') AS leaf
+  FROM metrics_catalog_cache
+  WHERE scope_key LIKE 'captures:%'
+)
+SELECT scope_key, leaf->>'code' AS code, leaf->>'n_in_project' AS n
+FROM leaves
+WHERE leaf->>'code' LIKE 'plai%@nr-%'
+ORDER BY scope_key, code;
+```
+
+### Point 2 — CHI relabel + dedup — PARTIEL (minimum livrable)
+
+**Fait** (catalog 2.63.1 → **2.63.2**, sha256 `cae8cfdf0ba912ed181f3b685ceab87539e48baa1a7a64ac331b14e8a072453a`) :
+
+1. **Relabel ciblé** `chi_rrc_state` : « RRC state (bloc UMTS FDD) » →
+   **« LTE RRC state »** (NFF 2.50 CHI parameters for LTE #2, p.326).
+   `kind=KPI_CATEGORICAL` (déjà classé par `_kind_for_leaf` sur
+   `rrc_state ∈ src`).
+2. **Dedup 5 doublons CHI #NN** avec `source_column` identique à leur
+   primaire : `chi_pci_f21`, `chi_tm_f22`, `chi_ul_dl_config_f24`,
+   `chi_cp_f25`, `chi_special_subframe_f32`.
+
+**Déféré** (lots suivants, à ouvrir si réclamé) :
+
+- Re-parentage CHI sous **LTE > Signalling** et **NR > Signalling** (au lieu
+  de **Shared > Services (tasks)**). Changement structurel : il faut dupliquer
+  l'event `ev_chi` en `ev_chi_lte` / `ev_chi_nr` et déplacer 32 feuilles.
+- Fusion / nettoyage des 32 autres marqueurs **(bloc X)** restants (GSM,
+  TETRA, UMTS FDD, UMTS TD-SCDMA, LTE, NR, cdmaOne, EVDO, GAN WLAN, WiMAX,
+  iDEN). Beaucoup sont des placeholders `source_column=NULL` (non projetés).
+- Enum **Idle / Connected** sur `chi_rrc_state.attributes` (NFF 2.50 p.326 ;
+  Idle=1, Connected=2).
+
+### Garde Point 2 — par capture (via scope_key='captures:<id>')
+
+```sql
+SELECT scope_key,
+  (SELECT COUNT(*) FROM jsonb_array_elements(payload->'nodes') n
+    WHERE n->>'metric_id'='chi_rrc_state'
+      AND n->>'label'='LTE RRC state'
+      AND n->>'kind'='KPI_CATEGORICAL') AS rrc_relabeled,
+  (SELECT COUNT(*) FROM jsonb_array_elements(payload->'nodes') n
+    WHERE n->>'metric_id' IN ('chi_pci_f21','chi_tm_f22',
+      'chi_ul_dl_config_f24','chi_cp_f25','chi_special_subframe_f32'))
+    AS dup_leaves,
+  (SELECT (n->>'n')::int FROM jsonb_array_elements(payload->'nodes') n
+    WHERE n->>'metric_id'='chi_rrc_state' LIMIT 1) AS chi_rrc_n
+FROM metrics_catalog_cache WHERE scope_key LIKE 'captures:%'
+ORDER BY scope_key;
+```
+```
+       scope_key       | rrc_relabeled | dup_leaves | chi_rrc_n
+-----------------------+---------------+------------+-----------
+ captures:a4b0c321c52e |             1 |          0 |       632
+ captures:daa2b1df250d |             1 |          0 |        11
+ captures:ecffb18dbd7f |             1 |          0 |        11
+```
+rrc_relabeled=1 et dup_leaves=0 sur chaque capture ✓
+
+### Commits REPRISE 7 (en cours)
+
+| sha | version | description |
+|---|---|---|
+| `957e6cd` | back 0.125.1 → 0.125.2 · catalog 2.63.1 → 2.63.2 | Point 2 : relabel chi_rrc_state + dedup CHI LTE #NN |
+| `9a7cf3b` | — | fix app/main.py version 0.125.2 (missed in 957e6cd) |
+| `6fdb19c` | — | pin bc4-api 0.125.2-9a7cf3b |
+
+Pushed to origin + github.
+
+### Point 3 et lots restants (non commencés dans ce fragment)
+
+- **Point 3** : non-perte per capture — lister les feuilles with values
+  dans 2.62.0 absentes de 2.63.2 (attendu : seulement STRUCT + non-RF
+  neighbours).
+- **Lot 1 restants** : CQI_NR, SCELLMOD, DCI (LTE+NR), SCELL NR.
+- **Lot 6** : `display_code` émis par `app/kpi/metrics_v3.py` ; catalog 2.64.0.
+- **Lot 7** : export front per capture (Kind, unit, data_type, colonne par
+  capture) ; app 1.133.25 → 1.134.0.
+- **Point 2 étendu** : re-parentage CHI LTE/NR + enum Idle/Connected +
+  fusion 32 autres "(bloc X)".
+
+**Dernière mise à jour** : 2026-11-03 fin fragment REPRISE 7 (Point 1 FAIT,
+Point 2 partiel livré, 2.63.2 live, 0.125.2 déployée)
