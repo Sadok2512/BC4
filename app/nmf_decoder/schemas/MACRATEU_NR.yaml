@@ -1,0 +1,22 @@
+{
+  "event": "MACRATEU",
+  "spec_version": "2.50",
+  "systems": [9],
+  "system_col": 4,
+  "min_format": "2.50",
+  "schema_version": "1.10.3-NR",
+  "unknown_tail": "keep",
+  "header": [
+    {"col": 5, "code": "macrateu.scope", "label": "Scope (NR)", "type": "int", "unit": "enum", "proof": "NFF 2.50 MACRATEU NR p.538 #1", "agg": "last", "metric": false, "category": "terminal_cell"},
+    {"col": 6, "code": "macrateu.cell_type", "label": "Cell type (NR)", "type": "int", "unit": "enum", "proof": "NFF 2.50 MACRATEU NR p.538-539 #2; enum 0..199", "agg": "dominant", "category": "terminal_cell", "dimension": true},
+    {"col": 7, "code": "macrateu.mac_ul_bitrate", "label": "MAC UL bitrate (NR)", "type": "int", "unit": "bit/s", "range": [0, null], "proof": "NFF 2.50 MACRATEU NR p.539 #3", "agg": "mean", "category": "throughput_layers"},
+    {"col": 8, "code": "macrateu.mac_ul_residual_bler", "label": "MAC UL scheduled bitrate (NR, repurposed slot)", "type": "int", "unit": "bit/s", "range": [0, null], "proof": "NFF 2.50 MACRATEU NR p.539 #4 (bind on macrateu_mac_ul_residual_bler, LTE uses it as residual BLER %)", "agg": "mean", "category": "throughput_layers"},
+    {"col": 9, "code": "macrateu.mac_ul_new", "label": "MAC UL new blocks (NR)", "type": "int", "unit": "blocks", "range": [0, null], "proof": "NFF 2.50 MACRATEU NR p.540 #5", "agg": "mean", "category": "link_quality"},
+    {"col": 10, "code": "macrateu.mac_ul_block_rate", "label": "MAC UL block rate (NR)", "type": "int", "unit": "blocks", "range": [0, null], "proof": "NFF 2.50 MACRATEU NR p.540 #6", "agg": "mean", "category": "link_quality"},
+    {"col": 11, "code": "macrateu.mac_ul_retr", "label": "MAC UL retr. (NR)", "type": "float", "unit": "%", "range": [0, 100], "proof": "NFF 2.50 MACRATEU NR p.540 #7", "agg": "mean", "category": "link_quality"},
+    {"col": 12, "code": "macrateu.mac_ul_retr_1st", "label": "MAC UL retr. 1st (NR)", "type": "float", "unit": "%", "range": [0, 100], "proof": "NFF 2.50 MACRATEU NR p.540 #8", "agg": "mean", "category": "link_quality"},
+    {"col": 13, "code": "macrateu.mac_ul_retr_2nd", "label": "MAC UL retr. 2nd (NR)", "type": "float", "unit": "%", "range": [0, 100], "proof": "NFF 2.50 MACRATEU NR p.540 #9", "agg": "mean", "category": "link_quality"},
+    {"col": 14, "code": "macrateu.mac_ul_retr_3rd", "label": "MAC UL retr. 3rd+ (NR)", "type": "float", "unit": "%", "range": [0, 100], "proof": "NFF 2.50 MACRATEU NR p.540 #10", "agg": "mean", "category": "link_quality"}
+  ],
+  "groups": []
+}

@@ -303,3 +303,35 @@ Lot 1 — schémas NR encore à produire (tous confirmés présents à décoder 
 - CHI : 654 (system NULL — à investiguer), PDF p.320+ — États RRC/EMM/réseau du Lot 2
 
 **Prochain** : rebuild bc4-api 0.124.2, pin, deploy, puis MACRATE_NR comme décodeur 1.10.3.
+
+---
+
+## Commit 4 — décodeur 1.10.3, MACRATE_NR + MACRATEU_NR
+
+**Fichiers** :
+- `app/nmf_decoder/schemas/MACRATE_NR.yaml` : nouveau, 10 champs header (p.534-535)
+- `app/nmf_decoder/schemas/MACRATEU_NR.yaml` : nouveau, 10 champs header (p.538-540)
+- `alembic/versions/0087_macrate_nr_scope.py` : add `macrate_scope` + `macrateu_scope`
+- `app/nmf_decoder/__init__.py` : `DECODER_VERSION = '1.10.3'`
+- `pyproject.toml` + `app/main.py` : back 0.124.2 → 0.124.3
+
+**Design choice** : les champs NR MACRATE/MACRATEU sont liés aux colonnes DÉDIÉES
+`macrate_*` / `macrateu_*` (qui existent déjà mais étaient vides en LTE). Le LTE
+MACRATE écrit sur `mac_dl_*` (colonnes partagées), pas sur `macrate_*`. Donc pas de
+collision possible, LTE non régressé.
+
+**Garde Test_6 complet** :
+- MACRATE sys=9 (NR) : cell_type=2973, dl_bitrate=2973, dl_bler=2973, dl_new=2973, scope=2973
+- MACRATEU sys=9 (NR) : cell_type=2973, ul_bitrate=2973, ul_retr=2973, ul_new=2973, scope=2973
+- MACRATE LTE non régressé : mac_dl_bitrate=13767, mac_dl_bler=3459, mac_cell_type=16024
+
+**Note DCI reporté** : les event DCI (LTE+NR) utilisent des groupes à layout variable
+(DCI format distribution avec #Variables + Count + ...). Ces groupes nécessitent une
+grammaire YAML spéciale (`groups: [...]` avec `layout:variable, count_col, start,
+fields` typés — cf PHRATE.yaml / CELLMEAS.yaml pour template). Report au prochain
+commit décodeur 1.10.4 ou 1.10.5. Évidence : NFF 2.50 p.551-554 cite 'DCI count /
+DCI format / DCI repetitions' sous `#Variables Integer Number of DCI format
+distribution variables`. Les records DCI Test_6 ont une largeur variable (nf=16 à 24
+pour NR, nf=16 à 19 pour LTE) confirmant les groupes.
+
+**Reste à faire** : DCI (LTE + NR), CQI_NR, SCELL_NR, SCELLMOD_NR, CHI_NR puis lots 3-7.

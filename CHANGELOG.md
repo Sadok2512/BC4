@@ -1,3 +1,30 @@
+## 0.124.3 (patch) — Decoder 1.10.3 : MACRATE/MACRATEU NR variants — 2026-11-03 (Agent BC5, Lot 1 schemas 3-4)
+
+- Décodeur **1.10.2 → 1.10.3** (patch), back **0.124.2 → 0.124.3** (patch).
+- Nouveaux schémas :
+  - `app/nmf_decoder/schemas/MACRATE_NR.yaml` : 10 champs NR (p.534-535)
+    liés aux colonnes `macrate_*` dédiées (LTE écrit sur `mac_dl_*`).
+  - `app/nmf_decoder/schemas/MACRATEU_NR.yaml` : 10 champs NR (p.538-540)
+    liés aux colonnes `macrateu_*` dédiées.
+- Migration `0087_macrate_nr_scope` : `macrate_scope` + `macrateu_scope`
+  (double precision) sur 4 tables.
+- **Garde Test_6 complet** (3 captures re-decodées force=True) :
+  ```
+  MACRATE  :  system=7 (LTE)  → macrate_* colonnes toutes 0 (par
+                                 design, LTE écrit sur mac_dl_* via
+                                 schéma LTE existant), mac_cell_type=
+                                 16024 (identique baseline 1.9.0)
+              system=9 (NR)   → macrate_cell_type=2973, dl_bitrate=2973,
+                                 dl_bler=2973, dl_new=2973, scope=2973
+  MACRATEU :  system=9 (NR)   → macrateu_cell_type=2973, ul_bitrate=2973,
+                                 ul_retr=2973, ul_new=2973, scope=2973
+  ```
+- **LTE non régressé** sur colonnes partagées : `mac_dl_bitrate=13767`,
+  `mac_dl_bler=3459`, `mac_cell_type=16024` pour MACRATE system=7
+  (identique au baseline pré-chantier).
+- **Reste du Lot 1** : DCI (créer LTE+NR, groupes variables), CQI_NR,
+  SCELL_NR, SCELLMOD_NR, CHI_NR.
+
 ## 0.124.2 (patch) — Decoder 1.10.2 : PLAIU NR variant — 2026-11-03 (Agent BC5, Lot 1 schema 2)
 
 - Décodeur **1.10.1 → 1.10.2** (patch), back **0.124.1 → 0.124.2** (patch).
