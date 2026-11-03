@@ -335,3 +335,44 @@ distribution variables`. Les records DCI Test_6 ont une largeur variable (nf=16 
 pour NR, nf=16 à 19 pour LTE) confirmant les groupes.
 
 **Reste à faire** : DCI (LTE + NR), CQI_NR, SCELL_NR, SCELLMOD_NR, CHI_NR puis lots 3-7.
+
+---
+
+## État au 2026-11-03 — session fin
+
+**Commits livrés cette session (ordre chronologique)** :
+| sha | version | ajouté |
+|---|---|---|
+| 3ced896 | — | handoff initial |
+| d75429f | décodeur 1.10.0, back 0.124.0 | PLAID_NR (partiel, O-A ouvert), alembic 0085 plaid_scope |
+| 4274516 | — | backfill sha dans handoff |
+| d84c7bc | back 0.124.0 (FastAPI sync) | fix app.version |
+| dc106d3 | — | pin 0.124.0 |
+| 4951569 | décodeur 1.10.1, back 0.124.1 | **O-A closed** (normalize_for_stored_deep per-schema header filter) |
+| e1fcac6 | — | pin 0.124.1 |
+| cb64e46 | décodeur 1.10.2, back 0.124.2 | PLAIU_NR + alembic 0086 plaiu_scope |
+| (pin) | — | pin 0.124.2 |
+| 954117d | décodeur 1.10.3, back 0.124.3 | MACRATE_NR + MACRATEU_NR + alembic 0087 macrate/u_scope |
+| e00c70f | — | pin 0.124.3 |
+
+**Push effectué** : origin + github pour tous les commits.
+
+**Prod active** : bc4-api:0.124.3-954117d, décodeur 1.10.3, catalog 2.62.0 (inchangé).
+
+**Lot 1 — restant** :
+- **CQI_NR** : facile (reuse cqi_rank, cqi_wb_cqi_0 ; migration `cqi_scope` nécessaire). Records nf=19 → 15 data cols, header 5 fields (hdr_n, Scope, Cell type, RI, WB CQI) + 2 groups variables (RI dist, WB CQI dist).
+- **SCELL** (NR only, 425 records) : nf=55, PDF p.345+, besoin colonnes dédiées `scell_*` (actuellement 0 colonnes prefixées scell_). Non trivial, besoin plusieurs new columns.
+- **SCELLMOD** (system NULL, 347 records) : actuel `systems: any_numeric` + fields vides. PDF p.424 "Parameters for LTE and NR" (bloc partagé). Juste ÉCRIRE le schéma header (14 champs typiques). Reuse `scellmod_*` colonnes existantes.
+- **CHI** (system NULL, 654 records) : PDF p.320-323. Contient **RRC state, EMM state, Band, Ch, PCI, Serving system, Operation mode** — **chevauche Lot 2** (états RRC/EMM/réseau). Priorité haute car ferme en partie Lot 2 "0 valeur" côté état.
+- **DCI** (LTE+NR, 4542+2972) : groupes à layout variable, besoin grammaire YAML `groups: [{layout:variable, count_col, start, fields:[]}]`. Reporter en lot séparé.
+
+**Lots 2-7 — restant** :
+- Lot 3 (enum cell_label) : côté catalog build, à mapper 100+n → SCG SCell n etc. Fichier à trouver dans `app/kpi/metrics_v3.py` ou `app/kpi/catalog_release/*.py`.
+- Lot 4 (reclassement TUA/TUS/TUF/RRRE/EMM) : côté catalog classification.
+- Lot 5 (champ `kind`) : nouveau champ dans le catalog_release JSON. KPI_CATEGORICAL, DIMENSION, STRUCT, KPI.
+- Lot 6 (unicité, display_code émis par back) : refactor front→back pour `display_code`.
+- Lot 7 (export : colonne par capture + kind/unit/data_type dans en-tête) : front + back.
+
+**Rebuild/deploy** : à chaque commit décodeur ajouter new column migration = rebuild obligatoire (migration doit s'appliquer à l'image). Pour lots 3-7 (catalog build), rebuild API + éventuellement front selon lot 7.
+
+**Dernière mise à jour** : 2026-11-03 fin de session — décodeur 1.10.3 déployé, 4 schémas NR production + fix O-A.
