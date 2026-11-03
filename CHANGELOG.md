@@ -1,3 +1,24 @@
+## 0.125.0 (minor) — catalog_release 2.63.0 + Lot 3+4+5 — 2026-11-03 (Agent BC5)
+
+- Back **0.124.7 → 0.125.0** (minor — contrat catalog changé).
+- **catalog_release 2.62.0 → 2.63.0** publié : 8 735 → **4 260 leaves**
+  (−4 475 drops : 2 405 ghost NR placeholders, 1 210 STRUCT, 833 foreign
+  bloc, 27 MIMOMEAS/CSI/PMI sur voisines).
+- Nouveau champ `kind` sur chaque leaf : `KPI / KPI_CATEGORICAL /
+  DIMENSION`. STRUCT filtré hors de l'arbre.
+- Filtres appliqués au build (`app/kpi/metrics_catalog_v4.py:_kind_for_leaf,
+  _is_ghost_nr_placeholder, _is_foreign_bloc, _is_mimo_csi_on_neighbour`)
+  **ET** bakés dans `catalog_2.63.0.json` (self-describing).
+- /health GC1 : `catalog_version=2.63.0`, disk_sha = db_sha
+  `33be2ecd30d9…`.
+- **Gardes P20 (cache régénéré 2026-11-03)** :
+  ```
+  foreign_bloc_lte     : 0  (attendu 0, avant 1 967)
+  mimo_csi_on_neighbour: 0  (attendu 0, avant 27)
+  scell_ge_100         : 0  (attendu 0, avant 2 400)
+  kind_null            : 0  (attendu 0, avant 185)
+  struct_in_tree       : 0  (attendu 0, avant ≈450)
+  ```
 ## 0.124.7 (patch) — Lot 5 : champ `kind` émis par le back + STRUCT hors arbre — 2026-11-03 (Agent BC5)
 
 - Back **0.124.6 → 0.124.7** (patch).

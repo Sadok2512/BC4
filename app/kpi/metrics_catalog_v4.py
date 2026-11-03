@@ -613,23 +613,52 @@ def build_catalog_v4(
         "#params", "#variables", "measured system",
     )
     _CATEG_PAT = ("rank", "modulation", "dci format", "rrc state")
-    _DIM_PAT = ("pci", "arfcn", "nr-arfcn", "band", "port")
+    _DIM_PAT = ("pci", "arfcn", "nr-arfcn", "band", "port", "bwp id")
     def _kind_for_leaf(n: dict) -> str:
         label = (n.get("label") or "").lower()
         mlabel = (n.get("metric_label") or "").lower()
         mid = (n.get("metric_id") or "").lower()
         src = (n.get("source_column") or "").lower()
         joined = f"{label}|{mlabel}|{mid}|{src}"
+        # Hash-prefixed labels (#Ranks, #Params, #Variables, #PRBs …) sont des
+        # compteurs structurels NFF, pas des mesures. Capturés AVANT les patterns
+        # KPI_CATEGORICAL/DIMENSION pour éviter que "#Ranks" matche "rank".
+        if label.startswith("#") or mlabel.startswith("#"):
+            return "STRUCT"
         if "cqi_n_params" in mid or any(p in label or p in mlabel for p in _STRUCT_PAT):
             return "STRUCT"
         # Count field under a group counts samples : STRUCT
         if (mlabel == "count" or label.startswith("count ")) and n.get("source_column"):
             return "STRUCT"
-        if any(p in mlabel for p in _CATEG_PAT) or "rrc_state" in src:
+        if any(p in mlabel or p in label for p in _CATEG_PAT) or "rrc_state" in src:
             return "KPI_CATEGORICAL"
-        if any(p in mlabel for p in _DIM_PAT) or src.endswith("_pci") or src.endswith("_ch") or src.endswith("_band") or src.endswith("_arfcn") or src.endswith("_port"):
+        if any(p in mlabel or p in label for p in _DIM_PAT) or src.endswith("_pci") or src.endswith("_ch") or src.endswith("_band") or src.endswith("_arfcn") or src.endswith("_port"):
             return "DIMENSION"
         return "KPI"
+
+    # Lot 4 — bloc étranger sous LTE/NR : les events multi-système NFF (CELLSCAN,
+    # CI, CQI, CREL, etc.) exposent un bloc par cellular system. Les blocs
+    # UMTS/GSM/CDMA/WiMAX/AMPS/TETRA/iDEN/DAMPS n'ont rien à faire sous techno
+    # LTE/NR du projet. On drop ces feuilles. "(bloc NR)" sous LTE est
+    # reconduit vers techno NR via le flag ci-dessous.
+    import re as _re
+    _FOREIGN_BLOC_RE = _re.compile(
+        r'\(bloc (UMTS FDD|UMTS TD-SCDMA|UMTS|GSM|CDMA|WiMAX|AMPS|TETRA|iDEN|DAMPS|'
+        r'cdmaOne|EVDO|DVB-H|GAN WLAN|WLAN|NB-IoT|BL RS|SMS|USSD|VoIP|'
+        r'non-VoIP|spectrum scanning)[^)]*\)'
+    )
+    _NR_BLOC_RE = _re.compile(r'\(bloc NR[^)]*\)')
+    def _is_foreign_bloc(n: dict) -> bool:
+        lab = n.get('label') or ''
+        ml = n.get('metric_label') or ''
+        return bool(_FOREIGN_BLOC_RE.search(lab) or _FOREIGN_BLOC_RE.search(ml))
+
+    # Lot 4 — MIMOMEAS/CSI/PMI sur voisines : ces events n'ont pas de sens
+    # sur les cellules voisines (NFF 2.50 : events par cellule serving).
+    def _is_mimo_csi_on_neighbour(n: dict) -> bool:
+        ev = (n.get('event') or '').upper()
+        cl = (n.get('cell_label') or '')
+        return ev in {'MIMOMEAS', 'CSI', 'PMI'} and 'neighbour' in cl.lower()
 
     displayed_leaves = []
     for n in nodes_in:
@@ -641,6 +670,10 @@ def build_catalog_v4(
             continue
         if _is_ghost_nr_placeholder(n):
             continue
+        if _is_foreign_bloc(n):
+            continue  # Lot 4 — bloc étranger drop
+        if _is_mimo_csi_on_neighbour(n):
+            continue  # Lot 4 — MIMOMEAS/CSI/PMI non-serving
         kind = _kind_for_leaf(n)
         n["_kind"] = kind
         if kind == "STRUCT":
@@ -1190,6 +1223,12 @@ def build_catalog_v4(
                 proof="observed-cell-second",
                 selectable=True,
                 reason=None,
+                kind=_kind_for_leaf({
+                    "label": label_full,
+                    "metric_label": _tree_metric_label(field_name),
+                    "metric_id": selection,
+                    "source_column": col,
+                }),
             )
         )
         if selection not in seen_codes:
