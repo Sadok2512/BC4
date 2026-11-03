@@ -43,7 +43,7 @@
 | # | Composant | Version | Commit | Garde (collée dans ce doc §Gardes) | Statut |
 |---|---|---|---|---|---|
 | 0 | — | — | — | Audit baseline (voir §Baseline mesures) | FAIT |
-| 1 | décodeur | 1.9.0 → 1.10.0 | *pending commit after writing this* | PLAID NR cell_type=2973 (dont 199=SCG PSCell:2972, 0=PCell:1), scope=2973 ✓ ; rank/prbs/mcs0 encore 0 → O-A | **PARTIEL** |
+| 1 | décodeur | 1.9.0 → 1.10.0 | *d75429f* | PLAID NR cell_type=2973 (dont 199=SCG PSCell:2972, 0=PCell:1), scope=2973 ✓ ; rank/prbs/mcs0 encore 0 → O-A | **PARTIEL** |
 | 2 | décodeur | 1.10.0 → 1.10.1 | *pending* | PLAIU NR system=9 projette au moins `plaiu_prb_percentage` | *pending* |
 | 3 | décodeur | 1.10.1 → 1.10.2 | *pending* | MACRATE NR + fix MACRATE LTE cell_type binding | *pending* |
 | 4 | décodeur | 1.10.2 → 1.10.3 | *pending* | MACRATEU NR | *pending* |
