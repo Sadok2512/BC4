@@ -1,3 +1,38 @@
+## 0.128.1 (patch) — catalog 2.66.1 : fix REPRISE 12 régressions 2.66.0 — 2026-11-03 (Agent BC5)
+
+- Back **0.128.0 → 0.128.1** (patch). Catalog **2.66.0 → 2.66.1**.
+- **P1 NR vidé** (`app/kpi/metrics_catalog_v4.py:913-980` et `:1282-1298`) :
+  les 13 feuilles PSCell (plaid/plaiu/macrate/macrateu/cqi/dci + cellmeas
+  cell_rsrp/rsrq/sinr @nr-type-199) étaient parentées sous ev_X_lte dans
+  tech_LTE. Pré-pass qui crée des événements NR miroirs `ev_X_nr` sous
+  une catégorie NR miroir (`cat_NR_allocation_mcs`, `cat_NR_throughput_per_layer`,
+  `cat_NR_link_quality`, `cat_NR_serving_radio`) pour tout event dont au
+  moins une leaf a `field_system=9`. Les leaves baked et dynamic avec
+  system=9 sont redirigées vers l'event NR miroir.
+  **Garde par capture** : 13/13 feuilles PSCell NR sous tech=NR ; valeurs
+  préservées (1 796, 2 835, 2 852, 2 940, 2 919 selon leaf).
+- **P2 non-perte** (`scripts/catalog/patch_2_66_1.py`) : 10 leaves perdues
+  dans 2.66.0 restaurées — causes : patch_2_66_0.py:71-88 retirait
+  `tech_Other` complet, perdant `ev_chi_other` + `ev_luf` + `ev_lua` +
+  `ev_lus` + `ev_tua` + `ev_tuf` + `ev_tus` + `ev_rrre` + `ev_sei`.
+  Restauration : chi_* leaves fusionnées dans `ev_chi_lte` (LTE Signalling)
+  et 7 events réseau reparentés sous `cat_IP_network_events`.
+  **Garde Test_6** : with_values 413 → 413 (perte 0) après fix.
+- **P3 écarts valeurs** : réfutés — les 4 935 / 2 940 catalog viennent de
+  `app/kpi/metrics_catalog_v4.py:356-371` (query CELLMEAS avec `JOIN
+  nmf_cell_identity` + `COUNT(DISTINCT (capture_id, seq_first, cell_arfcn,
+  cell_pci))`). Les 4 857 / 2 875 cités en REPRISE 11 §3 venaient d'une
+  query naïve sans dedup identity. **Pas de régression**.
+- **P4 RRC 181/451 → 187/445** : expliqué par le changement `agg: last →
+  dominant` (REPRISE 8 Point 3) sur `app/nmf_decoder/schemas-2.50/CHI.yaml:33`.
+  Le tie-breaker `app/nmf_decoder/light.py:46` favorise la plus petite
+  valeur numérique en cas d'égalité → 6 buckets ambigus basculent de
+  Connected (2) à Idle (1). Byte-level ground-truth : 218 Idle + 728
+  Connected = 946 CHI LTE raw records sur Test_6 ; 632 après bucketing.
+  **Déclaré OUVERT** : documenter 187/445 comme nouvelle référence ou
+  revenir à agg='last'.
+- Image live `bc4-api:0.128.1-<sha>` à construire.
+
 ## 0.128.0 (minor) — catalog 2.66.0 : arbre cible 4 branches CAPTURE/LTE/NR/IP — 2026-11-03 (Agent BC5, REPRISE 11)
 
 - Back **0.127.0 → 0.128.0** (minor). Catalog **2.65.2 → 2.66.0** (minor).

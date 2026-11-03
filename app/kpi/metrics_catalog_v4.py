@@ -913,10 +913,78 @@ def build_catalog_v4(
     # 4) Build nodes[] — pruned tree, order inferred from input position.
     siblings_counter: dict[str | None, int] = {}
     nodes_out: list[dict] = []
+    # 2.66.1 (REPRISE 12 P1) — pré-pass : construire les events NR miroirs
+    # pour les leaves baked avec field_system=9 dont le parent event est sous
+    # LTE. Nécessaire pour que CELLMEAS NR (cell_rsrp, cell_rsrq, cell_sinr @
+    # cell_type NR) remontent sous la branche NR dans le tree.
+    _LTE_TO_NR_CAT = {
+        "cat_LTE_serving_radio":      ("cat_NR_serving_radio",      "Serving radio"),
+        "cat_LTE_allocation_mcs":     ("cat_NR_allocation_mcs",     "Allocation & MCS"),
+        "cat_LTE_throughput_per_layer": ("cat_NR_throughput_per_layer", "Throughput per layer"),
+        "cat_LTE_link_quality":       ("cat_NR_link_quality",       "Link quality"),
+        "cat_LTE_signalling":         ("cat_NR_signalling",         "Signalling"),
+        "cat_LTE_neighbours":         ("cat_NR_neighbours",         "Neighbours"),
+        "cat_LTE_mimo_per_port":      ("cat_NR_mimo_per_port",      "MIMO per port"),
+        "cat_LTE_carrier_aggregation":("cat_NR_carrier_aggregation","Carrier aggregation"),
+        "cat_LTE_scanner":            ("cat_NR_scanner",            "Scanner"),
+        "cat_LTE_ul_power":           ("cat_NR_ul_power",           "UL power"),
+    }
+    _tech_nr_id = None
+    for n in nodes_in:
+        if n.get("node_type") == "tech" and n.get("label") == "NR":
+            _tech_nr_id = n.get("node_id")
+            break
+    _lte_to_nr_event: dict[str, str] = {}
+    if _tech_nr_id:
+        for lf in displayed_leaves:
+            if lf.get("field_system") != 9:
+                continue
+            ev_parent_id = None
+            cur_p = nodes_by_id.get(lf.get("parent_id"))
+            if cur_p and cur_p.get("node_type") == "event":
+                ev_parent_id = cur_p.get("node_id")
+            if not ev_parent_id or ev_parent_id in _lte_to_nr_event:
+                continue
+            # Resolve parent cat of this event
+            ev_node = nodes_by_id.get(ev_parent_id) or {}
+            cat_lte_id = ev_node.get("parent_id")
+            nr_info = _LTE_TO_NR_CAT.get(cat_lte_id)
+            if not nr_info:
+                continue
+            nr_cat_id, nr_cat_label = nr_info
+            # Insérer catégorie NR miroir si absente dans nodes_out
+            if not any(x.get("node_id") == nr_cat_id for x in nodes_out):
+                nodes_out.append(dict(
+                    node_id=nr_cat_id, parent_id=_tech_nr_id, node_type="category",
+                    label=nr_cat_label, order=0, event=None, source_column=None,
+                    metric_id=None, display_code=None, cell=None, cell_label=None,
+                    cell_system=None, technology="NR", unit="", analytics_tab=None,
+                    availability_status=None, n=0, proof=None, selectable=False,
+                    reason=None, kind=None,
+                ))
+            # Créer event NR miroir
+            ev_nr_id = f"{ev_parent_id}_nr"
+            ev_code = (ev_node.get("event") or ev_node.get("label") or "").lstrip("#")
+            if not any(x.get("node_id") == ev_nr_id for x in nodes_out):
+                nodes_out.append(dict(
+                    node_id=ev_nr_id, parent_id=nr_cat_id, node_type="event",
+                    label=ev_code, order=0, event=ev_code, source_column=None,
+                    metric_id=None, display_code=None, cell=None, cell_label=None,
+                    cell_system="NR", technology="NR", unit="", analytics_tab=None,
+                    availability_status=None, n=0, proof=None, selectable=False,
+                    reason=None, kind=None,
+                ))
+            _lte_to_nr_event[ev_parent_id] = ev_nr_id
+
     for node in nodes_in:
         if node["node_id"] not in keep_ids:
             continue
         parent_id = node.get("parent_id")
+        # 2.66.1 — rediriger parent baked NR leaf vers NR event miroir
+        if node.get("node_type") == "leaf" and node.get("field_system") == 9:
+            nr_target = _lte_to_nr_event.get(parent_id)
+            if nr_target:
+                parent_id = nr_target
         order = siblings_counter.get(parent_id, 0)
         siblings_counter[parent_id] = order + 1
         is_leaf = node.get("node_type") == "leaf"
@@ -1259,6 +1327,70 @@ def build_catalog_v4(
         and (ev, ct, col) not in baked_cells_no_sys
         and _series_visible(ev, f"{col}@{cell_type_selector(system, ct)}")
     )
+    # 2.66.1 (REPRISE 12 P1) — pour les events multi-system (CELLMEAS, CQI,
+    # DCI, PLAID, PLAIU, MACRATE, MACRATEU), le baked tree n'a qu'une seule
+    # instance `ev_X` parentée sous LTE. Les leaves dynamiques @nr-type-*
+    # héritaient donc de la branche LTE. On crée dynamiquement, pour chaque
+    # (event, system=NR), un parent miroir `ev_X_nr` sous une catégorie NR
+    # miroir (créée si manquante). Les leaves @nr-type-* se rangent sous NR.
+    LTE_TO_NR_CAT = {
+        "cat_LTE_serving_radio":      ("cat_NR_serving_radio",      "Serving radio"),
+        "cat_LTE_allocation_mcs":     ("cat_NR_allocation_mcs",     "Allocation & MCS"),
+        "cat_LTE_throughput_per_layer": ("cat_NR_throughput_per_layer", "Throughput per layer"),
+        "cat_LTE_link_quality":       ("cat_NR_link_quality",       "Link quality"),
+        "cat_LTE_signalling":         ("cat_NR_signalling",         "Signalling"),
+        "cat_LTE_neighbours":         ("cat_NR_neighbours",         "Neighbours"),
+        "cat_LTE_mimo_per_port":      ("cat_NR_mimo_per_port",      "MIMO per port"),
+        "cat_LTE_carrier_aggregation":("cat_NR_carrier_aggregation","Carrier aggregation"),
+        "cat_LTE_scanner":            ("cat_NR_scanner",            "Scanner"),
+        "cat_LTE_ul_power":           ("cat_NR_ul_power",           "UL power"),
+    }
+    tech_nr_id = None
+    for n in nodes_out:
+        if n.get("node_type") == "tech" and n.get("label") == "NR":
+            tech_nr_id = n.get("node_id")
+            break
+    _nr_mirror_cache: dict[str, str] = {}
+    def _nr_event_mirror(ev_lte_nid: str, ev_code: str) -> str | None:
+        """Retourne (créé si manquant) l'id de `ev_X_nr` sous une catégorie
+        NR miroir. Si l'event LTE n'est pas sous une catégorie connue, None."""
+        if not tech_nr_id or not ev_lte_nid:
+            return None
+        if ev_lte_nid in _nr_mirror_cache:
+            return _nr_mirror_cache[ev_lte_nid]
+        # Résoudre parent catégorie du event LTE existant.
+        ev_lte_node = next((x for x in nodes_out if x.get("node_id") == ev_lte_nid), None)
+        if not ev_lte_node:
+            return None
+        cat_lte_id = ev_lte_node.get("parent_id")
+        nr_cat_info = LTE_TO_NR_CAT.get(cat_lte_id)
+        if not nr_cat_info:
+            return None
+        nr_cat_id, nr_cat_label = nr_cat_info
+        # Créer catégorie NR miroir si absente
+        if not any(x.get("node_id") == nr_cat_id for x in nodes_out):
+            nodes_out.append(dict(
+                node_id=nr_cat_id, parent_id=tech_nr_id, node_type="category",
+                label=nr_cat_label, order=0, event=None, source_column=None,
+                metric_id=None, display_code=None, cell=None, cell_label=None,
+                cell_system=None, technology="NR", unit="", analytics_tab=None,
+                availability_status=None, n=0, proof=None, selectable=False,
+                reason=None, kind=None,
+            ))
+        # Créer event NR miroir si absent
+        ev_nr_id = f"{ev_lte_nid}_nr"
+        if not any(x.get("node_id") == ev_nr_id for x in nodes_out):
+            nodes_out.append(dict(
+                node_id=ev_nr_id, parent_id=nr_cat_id, node_type="event",
+                label=ev_code, order=0, event=ev_code, source_column=None,
+                metric_id=None, display_code=None, cell=None, cell_label=None,
+                cell_system="NR", technology="NR", unit="", analytics_tab=None,
+                availability_status=None, n=0, proof=None, selectable=False,
+                reason=None, kind=None,
+            ))
+        _nr_mirror_cache[ev_lte_nid] = ev_nr_id
+        return ev_nr_id
+
     for ev, system, ct, col, nn in dynamic_entries:
         ev_nid = event_node_by_code.get(ev)
         if not ev_nid:
@@ -1270,6 +1402,11 @@ def build_catalog_v4(
         node_id = f"lf_observed_{ev.lower()}_{selector}_{col}"
         selection = f"{col}@{selector}"
         parent_id = ev_nid
+        # 2.66.1 — rediriger vers l'event NR miroir si system=NR et parent LTE
+        if system == 9:
+            nr_parent = _nr_event_mirror(ev_nid, ev)
+            if nr_parent:
+                parent_id = nr_parent
         # 2.64.0 (REPRISE 7 Lot 6) — filtrer STRUCT dynamic (ex. compteurs
         # NFF cqi_count/dci_count @ cell). Même logique que la boucle
         # displayed_leaves ligne 687 : STRUCT = hors arbre.
