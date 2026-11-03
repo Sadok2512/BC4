@@ -1,3 +1,23 @@
+## 0.127.0 (minor) — décodeur 1.11.0 : SCELL_NR + moteur count_header_col — 2026-11-03 (Agent BC2, LOT 1 CLÔTURE Point 2)
+
+- Back **0.126.7 → 0.127.0** (minor — nouveau mode décodeur). Décodeur **1.10.8 → 1.11.0** (minor — moteur étendu).
+- Catalog **2.65.1 → 2.65.2** (bump). decoder_min_version **1.10.8 → 1.11.0**.
+- **Moteur** : `app/nmf_decoder/decoder.py:244-280` — nouveau mode group `count_header_col`/`params_header_col` qui lit count+params à des positions header fixes (indépendamment du `start` des données). Nécessaire pour SCELL NR dont le header a #Serving cells à col 6, #Params/serving cell à col 7, mais les données du groupe commencent à col 11 (col 10 reserved/empty). Backward-compat garantie : si les clés nouvelles sont absentes, l'ancien mode fonctionne à l'identique.
+- **Test non-régression** (counts avant/après décodeur 1.11.0 sur Test_6/ikea.6/ikea.2) :
+  - CQI LTE `nmf_cell_second` cell_index<9000 cqi_rank+cqi_wb_cqi_0 : 14 989 / 510 / 517 **unchanged**.
+  - CQI NR `cell_index=9670 cqi_rank` : 2 835 / 12 / 106 **unchanged**.
+  - DCI NR `cell_index=9670 dci_ul_grants` : 2 852 / 13 / 107 **unchanged**.
+- **SCELL_NR** schéma `app/nmf_decoder/schemas/SCELL_NR.yaml` (NFF 2.50 p.345-349) : header 5 fields (#Header params=5, #Serving cells, #Params/serving cell, #Params/BWP, C-RNTI) + group `serving_cells` (10 fields : Cell type, SSB band, SSB NR-ARFCN, PCI, DL PointA, UL PointA, DSS LTE offset, DSS LTE bw, SSB periodicity, #BWPs) avec `count_header_col: 6, params_header_col: 7, start: 11`.
+- Migration **0091_scell_nr_cols** (17 colonnes).
+- **2 records réels vérifiés** NFF 2.50 p.345-349 (sample ikea.6) :
+  - `SCELL,17:25:27.067,,9,5,1,16,7,46519,,199,90078,638688,440,638066,638066,,,20,1,140,104,32,…` → #Hdr=5, #SC=**1**, #P/SC=16, #P/BWP=7, C-RNTI=**46519**. Serving cell 1 : Cell type=**199** (SCG PSCell), SSB band=**90078** (NR n78 TDD), SSB NR-ARFCN=**638688**, PCI=**440**, DL PointA=638066, UL PointA=638066, SSB periodicity=20 ms, #BWPs=1.
+  - `SCELL,17:25:27.411,,9,5,0,16,7,,` → #Hdr=5, #SC=**0** (pas de serving cell), #P/SC=16, #P/BWP=7, C-RNTI=∅. Aucun groupe émis.
+- **Garde par capture + par cellule** (`nmf_event_group` serving_cells group) :
+  - Test_6 : 298 @ cell_type=**199** (SCG PSCell, 32 PCIs distincts PCI 440..991) + 3 @ cell_type=0 (PCell).
+  - ikea.6 : 3 @ cell_type=199 (PCI 440) + 1 @ cell_type=4 (SCell 4 PCI 1).
+  - ikea.2 : 5 @ cell_type=199 (PCI 557).
+- sha256 catalog_2.65.2.json : `80636d1276ca3dc373d97d5e8b08b167b9db0fe324c45fab8cf1ea23cc52326a`.
+
 ## 0.126.7 → 0.126.7 (unchanged) · catalog 2.65.0 → 2.65.1 (bump) — 2026-11-03 (Agent BC2, LOT 1 CLÔTURE Point 1)
 
 - Catalog **2.65.0 → 2.65.1** (patch). Back **0.126.7** inchangé.

@@ -242,19 +242,42 @@ def decode(line,system=None,format_version='unknown',*,capture_id='',seq=0,line_
                 except (ValueError,IndexError,InvalidOperation):r.partial('group_layout:'+g['name'])
                 continue
             start=g['start']
+            # 1.11.0 — Support `count_header_col`/`params_header_col` : certains
+            # events (SCELL NR p.345) ont count+params dans le header (col 6-7)
+            # séparés des données du groupe (col 10+). L'ancien layout exigeait
+            # count/params immédiatement avant les données ; cette extension
+            # lit count/params à des positions fixes du header et permet un
+            # `start` absolu pour les données. Backward-compat : si
+            # `count_header_col` absent → ancien comportement.
+            count_hcol = g.get('count_header_col')
+            params_hcol = g.get('params_header_col')
             try:
-                if start=='previous_end':idx=previous_end
-                elif isinstance(start,dict):
-                    h=start['header_col']-1;size=numeric(tokens[h],'int');idx=h+1+size
-                    if size<0:raise ValueError()
-                else:idx=start-1
-                if idx is None or idx<0 or idx+1>=len(tokens):raise ValueError()
-                count=numeric(tokens[idx],'int');width=numeric(tokens[idx+1],'int')
-                if count is None or width is None or count<0 or width<0 or (count>0 and width==0):raise ValueError()
+                if count_hcol is not None and params_hcol is not None:
+                    # Nouveau mode : count/params lus à positions header fixes.
+                    ci, pi = count_hcol - 1, params_hcol - 1
+                    if ci >= len(tokens) or pi >= len(tokens): raise ValueError()
+                    count = numeric(tokens[ci], 'int'); width = numeric(tokens[pi], 'int')
+                    if count is None or width is None or count<0 or width<0 or (count>0 and width==0): raise ValueError()
+                    if start == 'previous_end': first = previous_end
+                    elif isinstance(start, int): first = start - 1
+                    else: raise ValueError('count_header_col requires integer start')
+                    if first is None or first < 0: raise ValueError()
+                    known.add(ci); r.field_codes[ci] = g['count_code']; r.values[column(g['count_code'])] = count
+                    known.add(pi); r.field_codes[pi] = g['params_code']; r.values[column(g['params_code'])] = width
+                else:
+                    if start=='previous_end':idx=previous_end
+                    elif isinstance(start,dict):
+                        h=start['header_col']-1;size=numeric(tokens[h],'int');idx=h+1+size
+                        if size<0:raise ValueError()
+                    else:idx=start-1
+                    if idx is None or idx<0 or idx+1>=len(tokens):raise ValueError()
+                    count=numeric(tokens[idx],'int');width=numeric(tokens[idx+1],'int')
+                    if count is None or width is None or count<0 or width<0 or (count>0 and width==0):raise ValueError()
+                    for offset,key in [(0,'count_code'),(1,'params_code')]:
+                        known.add(idx+offset);r.field_codes[idx+offset]=g[key];r.values[column(g[key])]=count if offset==0 else width
+                    first=idx+2
             except (ValueError,IndexError,TypeError):r.partial('group_layout:'+g['name']);break
-            for offset,key in [(0,'count_code'),(1,'params_code')]:
-                known.add(idx+offset);r.field_codes[idx+offset]=g[key];r.values[column(g[key])]=count if offset==0 else width
-            first=idx+2;previous_end=first+count*width
+            previous_end=first+count*width
             if previous_end>len(tokens):r.partial('group_truncated:'+g['name'])
             available=min(count,(max(0,len(tokens)-first)+max(width,1)-1)//max(width,1))
             for k in range(available):

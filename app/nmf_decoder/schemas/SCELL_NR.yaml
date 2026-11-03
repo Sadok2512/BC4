@@ -1,0 +1,176 @@
+{
+  "event": "SCELL",
+  "spec_version": "2.50",
+  "systems": [9],
+  "system_col": 4,
+  "min_format": "2.50",
+  "schema_version": "1.11.0-NR",
+  "unknown_tail": "keep",
+  "cell_scoped": true,
+  "context_count": 0,
+  "header": [
+    {
+      "col": 5,
+      "code": "scell.n_params",
+      "label": "#Header params (NR)",
+      "type": "int",
+      "unit": "n",
+      "proof": "NFF 2.50 SCELL Parameters for NR p.345 #1",
+      "agg": "last",
+      "metric": false,
+      "category": "terminal_cell"
+    },
+    {
+      "col": 6,
+      "code": "scell.n_serving_cells",
+      "label": "#Serving cells (NR)",
+      "type": "int",
+      "unit": "n",
+      "proof": "NFF 2.50 SCELL Parameters for NR p.345 #2",
+      "agg": "last",
+      "metric": false,
+      "category": "terminal_cell"
+    },
+    {
+      "col": 7,
+      "code": "scell.params_per_sc",
+      "label": "#Params/serving cell (NR)",
+      "type": "int",
+      "unit": "n",
+      "proof": "NFF 2.50 SCELL Parameters for NR p.345 #3",
+      "agg": "last",
+      "metric": false,
+      "category": "terminal_cell"
+    },
+    {
+      "col": 8,
+      "code": "scell.params_per_bwp",
+      "label": "#Params/BWP (NR)",
+      "type": "int",
+      "unit": "n",
+      "proof": "NFF 2.50 SCELL Parameters for NR p.345 #4",
+      "agg": "last",
+      "metric": false,
+      "category": "terminal_cell"
+    },
+    {
+      "col": 9,
+      "code": "scell.c_rnti",
+      "label": "C-RNTI (NR)",
+      "type": "int",
+      "unit": "id",
+      "range": [0, 65535],
+      "proof": "NFF 2.50 SCELL Parameters for NR p.345 #5",
+      "agg": "last",
+      "metric": true,
+      "category": "terminal_cell"
+    }
+  ],
+  "groups": [
+    {
+      "name": "serving_cells",
+      "fields": [
+        {
+          "code": "scell.cell_type",
+          "label": "Cell type (NR)",
+          "type": "int",
+          "unit": "enum",
+          "agg": "dominant",
+          "proof": "NFF 2.50 SCELL Serving Cell p.345-347 #1 Cell type; enum 0..31=SCell N, 98=SCell, 100..131=SCG SCell N, 198=SCG SCell, 199=SCG PSCell",
+          "category": "terminal_cell",
+          "dimension": true
+        },
+        {
+          "code": "scell.ssb_band",
+          "label": "SSB band (NR)",
+          "type": "int",
+          "unit": "enum",
+          "agg": "dominant",
+          "proof": "NFF 2.50 SCELL Serving Cell p.346-348 #2 SSB band",
+          "category": "terminal_cell"
+        },
+        {
+          "code": "scell.ssb_nr_arfcn",
+          "label": "SSB NR-ARFCN (NR)",
+          "type": "int",
+          "unit": "arfcn",
+          "agg": "last",
+          "range": [0, 3279165],
+          "proof": "NFF 2.50 SCELL Serving Cell p.348 #3 SSB NR-ARFCN",
+          "category": "terminal_cell"
+        },
+        {
+          "code": "scell.pci",
+          "label": "PCI (NR)",
+          "type": "int",
+          "unit": "id",
+          "agg": "last",
+          "range": [0, 1007],
+          "proof": "NFF 2.50 SCELL Serving Cell p.348 #4 PCI",
+          "category": "terminal_cell"
+        },
+        {
+          "code": "scell.dl_pointa",
+          "label": "DL PointA (NR)",
+          "type": "int",
+          "unit": "arfcn",
+          "agg": "last",
+          "proof": "NFF 2.50 SCELL Serving Cell p.348 #5 DL PointA",
+          "category": "terminal_cell"
+        },
+        {
+          "code": "scell.ul_pointa",
+          "label": "UL PointA (NR)",
+          "type": "int",
+          "unit": "arfcn",
+          "agg": "last",
+          "proof": "NFF 2.50 SCELL Serving Cell p.348 #6 UL PointA",
+          "category": "terminal_cell"
+        },
+        {
+          "code": "scell.dss_lte_offset",
+          "label": "DSS LTE carrier offset (NR)",
+          "type": "int",
+          "unit": "Hz",
+          "agg": "last",
+          "proof": "NFF 2.50 SCELL Serving Cell p.348 #7 DSS LTE carrier offset",
+          "category": "terminal_cell"
+        },
+        {
+          "code": "scell.dss_lte_bw",
+          "label": "DSS LTE carrier bandwidth (NR)",
+          "type": "int",
+          "unit": "enum",
+          "agg": "dominant",
+          "proof": "NFF 2.50 SCELL Serving Cell p.348 #8 DSS LTE carrier bandwidth; 6=1.4MHz, 15=3MHz, 25=5MHz, 50=10MHz, 75=15MHz, 100=20MHz",
+          "category": "terminal_cell"
+        },
+        {
+          "code": "scell.ssb_periodicity",
+          "label": "SSB periodicity (NR)",
+          "type": "int",
+          "unit": "ms",
+          "agg": "last",
+          "range": [5, 160],
+          "proof": "NFF 2.50 SCELL Serving Cell p.348 #9 SSB periodicity",
+          "category": "terminal_cell"
+        },
+        {
+          "code": "scell.n_bwps",
+          "label": "#BWPs (NR)",
+          "type": "int",
+          "unit": "n",
+          "agg": "last",
+          "proof": "NFF 2.50 SCELL Serving Cell p.348 #10 #BWPs",
+          "category": "terminal_cell"
+        }
+      ],
+      "count_header_col": 6,
+      "params_header_col": 7,
+      "start": 11,
+      "count_code": "scell.n_serving_cells_g",
+      "params_code": "scell.params_per_sc_g",
+      "proof": "NFF 2.50 SCELL serving cells group — count at header col 6, params at col 7, data at col 10 (header interleaved with group count+params)"
+    }
+  ]
+}
