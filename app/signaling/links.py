@@ -207,6 +207,13 @@ EVENT_RULES: dict[str, Callable[[LinkContext, dict], dict]] = {
     'LOCK': _link_pass_through,
     'MARK': _link_pass_through,
     'SCELLMOD': _link_no_dict_support,
+    # Mobilité étape 3 — RRC re-establishment / setup failure / NAS failures
+    # exposés comme marqueurs pour la carte + timeline (ordre (capture_id, seq)).
+    'RRRE': _link_pass_through,
+    'RRF':  _link_pass_through,
+    'TUF':  _link_pass_through,
+    'LUF':  _link_pass_through,
+    'PBF':  _link_pass_through,
 }
 
 
@@ -216,18 +223,24 @@ EVENT_RULES: dict[str, Callable[[LinkContext, dict], dict]] = {
 EVENT_LANE: dict[str, str] = {
     # Connexion
     'RRA': 'connexion', 'RRC': 'connexion', 'RRD': 'connexion',
-    # Mobilité
+    # Mobilité (étape 3 : RRRE = RRC Re-Establishment — reste sur la lane
+    # mobilité parce que c'est un reselect / HO failure recovery).
     'HOA': 'mobilite', 'HOS': 'mobilite', 'HOI': 'mobilite', 'MEI': 'mobilite',
+    'RRRE': 'mobilite',
     # 5G / EN-DC — events currently sourced from BC2 markers only (SCELLMOD stub)
     # Carrier Aggregation
     'SCELLMOD': 'ca',
-    # Services (voice / data / packet bearer / attach)
+    # Services (voice / data / packet bearer / attach) — ajouts TUF/LUF/PBF
+    # dans la même lane que leurs attempts/complete/déclencheurs.
     'CAA': 'services', 'CAC': 'services', 'CAD': 'services',
     'DAA': 'services', 'DAC': 'services', 'DAD': 'services',
     'GAA': 'services', 'GAC': 'services', 'GAD': 'services',
-    'PBA': 'services', 'PBC': 'services', 'PBD': 'services',
-    # Accès / échecs
-    'RACHI': 'acces', 'CREL': 'acces',
+    'PBA': 'services', 'PBC': 'services', 'PBD': 'services', 'PBF': 'services',
+    'TUA': 'services', 'TUS': 'services', 'TUF': 'services',
+    'LUA': 'services', 'LUS': 'services', 'LUF': 'services',
+    # Accès / échecs (étape 3 : RRF = RRC Setup Failure, sort par échec du
+    # RRA — acces).
+    'RACHI': 'acces', 'CREL': 'acces', 'RRF': 'acces',
     # Contexte
     'LOCK': 'contexte', 'MARK': 'contexte',
 }

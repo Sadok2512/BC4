@@ -1,3 +1,70 @@
+## 0.131.0 (minor) — Mobilité étape 3 : events mobilité sur carte + timeline — 2026-11-03 (Agent BC5)
+
+- **Back 0.130.2 → 0.131.0** (minor — nouveaux events exposés sur
+  `/signaling/events`). Catalog 2.68.2 inchangé. Décodeur 1.11.2 inchangé.
+- **Audit couches existantes** (point 0) :
+  - Backend `/signaling/events` : `app/signaling/service.py:424-429`
+    (`events()`), `:340-421` (`project_legacy_events()`), tuple
+    `MARKERS` `:23`.
+  - Lane/rule registries : `app/signaling/links.py:185-210` (`EVENT_RULES`),
+    `:216-233` (`EVENT_LANE`), `:250` (`LANES`).
+  - Frontend timeline : `src/features/signaling/RfTimeline.tsx`,
+    `src/features/signaling-v2/Timeline.tsx`.
+  - Frontend map : `src/features/signaling-v2/SignalingMap.tsx`.
+  - Icon mapping : `src/features/signaling/event-icons.tsx:13-48`.
+  - Lane→track : `src/features/signaling/event-track.ts:13-15`.
+  - Allowlist présentation : `src/features/signaling/network-events.ts:2-11`.
+  - Filtres panel : `src/features/signaling/SignalingFilters.tsx`.
+- **Point 1 — 9 nouveaux events exposés** sur `/signaling/events` :
+  - `MARKERS` (`service.py:23`) étendu : ajout de **RRRE, RRF, TUF, LUF,
+    PBF, TUA, TUS, LUA, LUS** (les attempts/success étaient absents en
+    plus des failures).
+  - `EVENT_LANE` (`links.py:218-234`) : `RRRE`→mobilite, `RRF`→acces,
+    `TUA/TUS/TUF/LUA/LUS/LUF/PBF`→services.
+  - `EVENT_RULES` (`links.py:208-215`) : `_link_pass_through` pour les
+    5 nouveaux codes (règles explicites dans un lot dédié ultérieur).
+- **SCELLMOD split par event** (`service.py:350-395`) via join
+  `nmf_event_group` (project_id, capture_id, seq) PSCell 199 :
+  `SCELLMOD` → `type='PSCELL_CHANGE'` (add ET remove), `'SCG_ADD'` (add
+  seul), ou `'SCG_RELEASE'` (remove seul). `attrs.scellmod_subtype`
+  et `attrs.scellmod_result` exposés.
+- **Attrs enrichis** sur les events existants (`service.py:
+  _attach_gps` + `attrs_by_seq`) :
+  - HOA : `attrs.ho_type` (NFF `hoa_hoa_type` : 901 intra, 902/903
+    inter-freq, 904/1104 inter-RAT).
+  - RRRE : `attrs.re_est_cause`, `attrs.re_est_status`,
+    `outcome='fail'` quand `status=3` (rejected).
+  - RRD : `attrs.rrc_rel_cause` (brut, enum NFF non validé —
+    cf. 2d point 2).
+  - SCELLMOD : `attrs.scellmod_result`, `outcome='fail'` quand
+    `result ∈ {2,10..15}`.
+  - RRF/TUF/LUF/PBF : `outcome='fail'` (échec par nature).
+- **Point 2 — GPS nearest seq** (`service.py:_attach_gps`) : chaque
+  event reçoit `attrs.lat/lng/gps_seq/gps_seq_gap` via la GPS point
+  prev OR next dans **l'ordre (capture_id, seq) — JAMAIS ts**, celui
+  avec le plus petit `|seq_gap|`. GPS requête capture-locale, pas
+  d'invention : les captures indoor (env=indoor) n'attachent pas de
+  GPS. Garde par capture : `attrs.gps_seq_gap` = écart en seq, exposé
+  pour infobulle. `attrs.pci`/`attrs.ecgi` repris depuis le row
+  source (cellule serving au moment du marker).
+- **Point 3 — Timeline par famille** : le mapping lane→track existant
+  (`event-track.ts`) couvre déjà HO/RRC/NAS/SCG via les lanes
+  `mobilite`/`connexion`/`acces`/`services`/`ca`. Les 5 nouveaux
+  codes héritent du mapping sans changement du composant timeline
+  (règle « design existant INCHANGÉ (contenu seulement) »).
+- **Point 4 — Filtres** : `/signaling/events` supporte déjà le filtre
+  par **lane** (paramètre `lanes=connexion,mobilite,...`) et par
+  **success/échec** (`failures_only=true` + nouveau `outcome='fail'`
+  sur RRF/TUF/LUF/PBF/RRRE status=3/SCELLMOD failure). Côté front,
+  `SignalingFilters.tsx` consomme déjà ces deux dimensions. Filtre
+  par TYPE spécifique (vs lane) non ajouté — déclaré **OUVERT**
+  (`src/features/signaling/SignalingFilters.tsx`, lot UX dédié).
+- **Point 5 — Screenshot** : la capture d'écran de la carte Test_6
+  avec events requiert une instance frontend servie (`bun run dev`
+  ou l'image Docker `bc4-front-v2`) et un navigateur headless. Pas
+  réalisable depuis cette session serveur — déclaré **OUVERT**
+  (preuve par curl `/signaling/events` et validation front manuel).
+
 ## 0.130.2 (patch) — catalog 2.68.2 : Mobilité 2d — SCG split par event + RRD NOT_AVAILABLE — 2026-11-03 (Agent BC5)
 
 - **Back 0.130.1 → 0.130.2** (patch). **Catalog 2.68.1 → 2.68.2** (patch,

@@ -20,7 +20,7 @@ PROTOCOLS = ('RRC LTE', 'RRC NR', 'NAS', 'Événements Nemo', 'MAC-RACH')
 # 0.67.0 — layer slugs added alongside the human protocol labels (dual field).
 LAYERS = ('rrc_lte', 'rrc_nr', 'nas', 'event', 'mac')
 LAYER_FOR_PROTOCOL = dict(zip(PROTOCOLS, LAYERS))
-MARKERS = ('RRA','RRC','RRD','HOA','HOS','HOI','CAA','CAC','CAD','DAA','DAC','DAD','RACHI','CREL','MEI','PBA','PBC','PBD','GAA','GAC','GAD','LOCK','MARK','SCELLMOD')
+MARKERS = ('RRA','RRC','RRD','RRF','RRRE','HOA','HOS','HOI','CAA','CAC','CAD','DAA','DAC','DAD','RACHI','CREL','MEI','PBA','PBC','PBD','PBF','GAA','GAC','GAD','LOCK','MARK','SCELLMOD','TUA','TUS','TUF','LUA','LUS','LUF')
 SENSITIVE = re.compile(r'rnti|guti|tmsi|imsi|imei|msisdn|phone|subscriber|ue.identity|randomValue|dedicated.*nas', re.I)
 PDU_LOCK = Lock()
 _POPULATION_CACHE: dict[tuple[str, str, str], tuple[tuple, float, tuple]] = {}
@@ -349,6 +349,65 @@ def project_legacy_events(db, pid, cap, rows, procedures, meta, times,
     ctx = LinkContext(project_id=pid, capture_id=cap, rows_by_seq=rows_by_seq, seqs=seqs, db=db)
     allowed = set(lanes.split(',')) if lanes else set(LANES)
     out = []
+    # Mobilité étape 3 — pré-charger GPS points (capture-local) + attrs par
+    # seq pour les events avec cause/status/cells (RRRE, RRD, SCELLMOD groups,
+    # HOA type). Ordre (capture_id, seq) JAMAIS ts.
+    indoor = (meta.get('env') or '').lower() == 'indoor'
+    gps_rows = query(db, """SELECT seq, lat, lon AS lng FROM stg_event_raw
+        WHERE project_id=:pid AND capture_id=:cap AND event_code='GPS'
+          AND lat BETWEEN -90 AND 90 AND lon BETWEEN -180 AND 180
+          AND NOT(lat=0 AND lon=0) ORDER BY seq""",
+        dict(pid=pid, cap=cap)) if not indoor else []
+    gps_seqs = [g['seq'] for g in gps_rows]
+    def _attach_gps(seq):
+        """Nearest GPS point (prev OR next in seq) with seq_gap. Rule
+        (capture_id, seq) ordered — never ts. Returns (lat, lng, gps_seq,
+        seq_gap) ; (None,None,None,None) si pas de GPS disponible."""
+        if not gps_seqs:
+            return None, None, None, None
+        idx = bisect_left(gps_seqs, seq)
+        prev_g = gps_rows[idx - 1] if idx > 0 else None
+        next_g = gps_rows[idx] if idx < len(gps_rows) else None
+        best = None
+        for g in (prev_g, next_g):
+            if g is None:
+                continue
+            gap = abs(g['seq'] - seq)
+            if best is None or gap < best[3]:
+                best = (g['lat'], g['lng'], g['seq'], gap)
+        return best if best else (None, None, None, None)
+    # Attrs enrichis pour certains codes via nmf_event_deep + nmf_event_group
+    # (seules les colonnes documentées dans les YAML de décodeur sont lues).
+    attrs_by_seq = {}
+    enriched_codes = tuple(c for c in ('HOA', 'RRRE', 'RRD', 'SCELLMOD') if c in EVENT_LANE)
+    if enriched_codes:
+        det_rows = query(db, f"""SELECT seq, event_code, hoa_hoa_type,
+                rrre_re_est_cause, rrre_re_est_status,
+                rrd_rrc_rel_cause, rrd_rrc_rel_status, scellmod_result
+            FROM nmf_event_deep WHERE project_id=:pid AND capture_id=:cap
+              AND event_code = ANY(:codes)""",
+            dict(pid=pid, cap=cap, codes=list(enriched_codes)))
+        for d in det_rows:
+            attrs_by_seq[d['seq']] = d
+    # SCELLMOD subtype par event (PSCELL 199) : add/remove dans le même event
+    # = PSCELL_CHANGE ; add seul = SCG_ADD ; remove seul = SCG_RELEASE.
+    scellmod_subtype_by_seq = {}
+    if 'SCELLMOD' in EVENT_LANE:
+        scg_rows = query(db, """SELECT d.seq,
+            BOOL_OR(g.group_name='added' AND g.scellmod_cell_type=199) AS a,
+            BOOL_OR(g.group_name='removed' AND g.scellmod_cell_type=199) AS r
+            FROM nmf_event_deep d
+            LEFT JOIN nmf_event_group g USING (project_id, capture_id, seq)
+            WHERE d.project_id=:pid AND d.capture_id=:cap
+              AND d.event_code='SCELLMOD' GROUP BY d.seq""",
+            dict(pid=pid, cap=cap))
+        for s in scg_rows:
+            if s['a'] and s['r']:
+                scellmod_subtype_by_seq[s['seq']] = 'PSCELL_CHANGE'
+            elif s['a']:
+                scellmod_subtype_by_seq[s['seq']] = 'SCG_ADD'
+            elif s['r']:
+                scellmod_subtype_by_seq[s['seq']] = 'SCG_RELEASE'
     # 1) State events (markers) → one event each, lane + rule from links.py
     for r in rows:
         code = r['event_code']
@@ -359,32 +418,69 @@ def project_legacy_events(db, pid, cap, rows, procedures, meta, times,
             continue
         rule = EVENT_RULES.get(code)
         link = rule(ctx, r) if rule else dict(pivot_seq=None, linked_seqs=[], link_rule='no_rule', seq_gap=None)
+        # Outcome : failures connus (RRF, RRRE rejected, TUF, LUF, PBF,
+        # SCELLMOD result ∈ {2,10..15}) marqués 'fail' explicitement pour
+        # le filtre success/échec côté front. Les autres = None (neutre).
         ok = None
-        # Outcome for HOI = ok ; LOCK/MARK/MEI = None ; others = None (BC2 doesn't
-        # tag per-marker outcome, procedure outcomes carry it below).
+        ev_type = code  # type exposé ; SCELLMOD remplacé par sous-type plus bas
+        ev_attrs = {}
+        ev_cause = None
+        det = attrs_by_seq.get(r['seq'])
+        if code == 'HOA' and det and det.get('hoa_hoa_type') is not None:
+            ev_attrs['ho_type'] = int(det['hoa_hoa_type'])
+        if code == 'RRRE' and det:
+            if det.get('rrre_re_est_cause') is not None:
+                ev_attrs['re_est_cause'] = int(det['rrre_re_est_cause'])
+                ev_cause = str(int(det['rrre_re_est_cause']))
+            if det.get('rrre_re_est_status') is not None:
+                ev_attrs['re_est_status'] = int(det['rrre_re_est_status'])
+                if int(det['rrre_re_est_status']) == 3:
+                    ok = 'fail'
+        if code == 'RRD' and det:
+            if det.get('rrd_rrc_rel_cause') is not None:
+                ev_attrs['rrc_rel_cause'] = int(det['rrd_rrc_rel_cause'])
+                ev_cause = str(int(det['rrd_rrc_rel_cause']))
+        if code in ('RRF', 'TUF', 'LUF', 'PBF'):
+            ok = 'fail'
+        if code == 'SCELLMOD':
+            sub = scellmod_subtype_by_seq.get(r['seq'])
+            if sub:
+                ev_type = sub
+                ev_attrs['scellmod_subtype'] = sub
+            if det and det.get('scellmod_result') is not None:
+                res = int(det['scellmod_result'])
+                ev_attrs['scellmod_result'] = res
+                if res == 2 or (10 <= res <= 15):
+                    ok = 'fail'
+                    ev_cause = str(res)
+        # GPS nearest seq (prev or next, lowest |seq_gap|) — Mobilité 2d point 2.
+        lat, lng, gps_seq, gps_gap = _attach_gps(r['seq'])
+        ev_attrs['lat'] = lat
+        ev_attrs['lng'] = lng
+        ev_attrs['gps_seq'] = gps_seq
+        ev_attrs['gps_seq_gap'] = gps_gap
+        ev_attrs['pci'] = r.get('pci')
+        ev_attrs['ecgi'] = r.get('ecgi')
         ev = dict(
             id=f"{code.lower()}:{r['seq']}",
             lane=lane,
-            type=code,
-            kind='mark',
+            type=ev_type,
+            kind='fail' if ok == 'fail' else 'mark',
             seq=r['seq'],
             seq_end=None,
             t_rel_s=r['t_rel_s'],
             t_rel_end_s=None,
             duration_ms=None,
             outcome=ok,
-            cause=None,
-            label=code,
-            attrs={},
+            cause=ev_cause,
+            label=ev_type,
+            attrs=ev_attrs,
             pivot_seq=link['pivot_seq'],
             linked_seqs=link['linked_seqs'],
             link_rule=link['link_rule'],
             seq_gap=link['seq_gap'],
         )
         if failures_only and ok != 'fail':
-            # markers alone cannot assert failures ; always drop in this mode
-            # unless CREL (connection release) + RACHI with no-success flag,
-            # which BC2 doesn't expose yet.
             continue
         out.append(ev)
     # 2) Procedures (reconstructed by procedures.reconstruct) → bars with duration.
