@@ -1597,49 +1597,166 @@ def build_catalog_v4(
         n_hoa_intra = _ndeep("event_code='HOA' AND hoa_hoa_type=901")
         n_hoa_inter = _ndeep("event_code='HOA' AND hoa_hoa_type IN (902,903)")
         n_hoa_irat  = _ndeep("event_code='HOA' AND hoa_hoa_type IN (904,1104)")
-        # Durations HOI (ms) : AVG, P95, MAX via nmf_event_deep.hoi_ho_duration
-        # Filtre outliers : exclure valeurs > 10 000 ms (= 10s) qui sont
-        # des timestamps absolus erronés chargés dans ce champ par le décodeur
-        # (observé : 551 M ms dans certains records Test_6 — probable artefact
-        # format NFF 2.59 avec timestamp monotone au lieu de delta).
+        # 2.68.0 (Mobilité 2b) — Durations HOI (ms) : AVG, P95, MAX SANS filtre.
+        # Le filtre `<= 10 000 ms` antérieur masquait 150/276 records Test_6
+        # à cause d'un bug du décodeur sur format 2.59 : `hoi.ho_duration`
+        # porte un timestamp monotone (ex. 551 914 533 ms) au lieu du delta.
+        # Spec `app/nmf_decoder/schemas/HOI.yaml:22-34` dit unit=ms type=int,
+        # mais format 2.59 publie en fait un timestamp absolu. **OUVERT**
+        # (lot décodeur 1.11.3) : soit les 3 timestamps (ho_duration /
+        # ho_to / ho_u_plane) sont pris comme delta = u_plane - to, soit
+        # le schema HOI est versionné par format NFF. Règle « aucune valeur
+        # cachée par un filtre » (Mobilité 2b point 5) : le garde PAR
+        # CAPTURE expose aussi `lte_ho_duration_aberrant_count` = records
+        # > 10 000 ms, permettant de tracer l'écart sans l'effacer.
         try:
             r_dur = db.execute(text(
                 f"SELECT AVG(hoi_ho_duration), MAX(hoi_ho_duration), "
                 f"percentile_cont(0.95) WITHIN GROUP (ORDER BY hoi_ho_duration) "
                 f"FROM nmf_event_deep WHERE project_id=:pid{caps_scope} "
-                f"AND event_code='HOI' AND hoi_ho_duration IS NOT NULL "
-                f"AND hoi_ho_duration <= 10000"
+                f"AND event_code='HOI' AND hoi_ho_duration IS NOT NULL"
             ), caps_param).first()
             avg_dur = float(r_dur[0]) if r_dur and r_dur[0] is not None else 0.0
             max_dur = float(r_dur[1]) if r_dur and r_dur[1] is not None else 0.0
             p95_dur = float(r_dur[2]) if r_dur and r_dur[2] is not None else 0.0
         except Exception:
             avg_dur = max_dur = p95_dur = 0.0
+        n_hoi_aberrant = _ndeep("event_code='HOI' AND hoi_ho_duration > 10000")
+
+        # 2.68.0 — RLF détaillé (RRRE breakdown par cause et status) :
+        # NFF 2.50 RRRE p.399-400 : `rrre_re_est_cause` ∈ {0:reconfig fail,
+        # 1:HO fail, 2:other failure}, `rrre_re_est_status` ∈ {1:success,
+        # 2:in progress, 3:rejected}.
+        n_rrre_c2 = _ndeep("event_code='RRRE' AND rrre_re_est_cause=2")
+        n_rrre_c1 = _ndeep("event_code='RRRE' AND rrre_re_est_cause=1")
+        n_rrre_c0 = _ndeep("event_code='RRRE' AND rrre_re_est_cause=0")
+        n_rrre_s1 = _ndeep("event_code='RRRE' AND rrre_re_est_status=1")
+        n_rrre_s3 = _ndeep("event_code='RRRE' AND rrre_re_est_status=3")
+        reest_rate = (n_rrre_s1 / n_rrre * 100.0) if n_rrre else 0.0
+
+        # 2.68.0 — SCG (NFF 2.50 SCELLMOD p.424) :
+        # scellmod_result ∈ {1: add success, 2: release, 10..15: failure causes}.
+        # Les champs scellmod_cell_type / scells_added / scells_removed ne
+        # sont pas peuplés en NFF 2.59 → OUVERT : distinction ADD vs RELEASE
+        # non disponible dans `nmf_event_deep` (voir schema SCELLMOD §3).
+        # Détail des causes dispo via la query ventilation.
+        n_scg_mod = _ndeep("event_code='SCELLMOD' AND scellmod_result=1")
+        n_scg_fail = _ndeep("event_code='SCELLMOD' AND (scellmod_result=2 OR (scellmod_result>=10 AND scellmod_result<=15))")
+        n_scg_total = _ndeep("event_code='SCELLMOD'")
+        scg_fail_rate = (n_scg_fail / n_scg_total * 100.0) if n_scg_total else 0.0
+
+        # 2.68.0 — Accessibilité (RRA / RRC / RRD / RRF) :
+        # Setup success rate = RRC / RRA. Abnormal release = RRD cause ≠ 1
+        # (NFF 2.50 RRD p.418-420 : cause 1 = normal release).
+        n_rra = _ndeep("event_code='RRA'")
+        n_rrc_cnt = _ndeep("event_code='RRC'")
+        n_rrd = _ndeep("event_code='RRD'")
+        n_rrd_abnormal = _ndeep("event_code='RRD' AND (rrd_rrc_rel_cause IS NULL OR rrd_rrc_rel_cause<>1)")
+        rrc_setup_rate = (n_rrc_cnt / n_rra * 100.0) if n_rra else 0.0
+
+        # 2.68.0 — NAS (TAU / LAU) :
+        n_tua = _ndeep("event_code='TUA'")
+        n_tus = _ndeep("event_code='TUS'")
+        n_tuf = _ndeep("event_code='TUF'")
+        n_lua = _ndeep("event_code='LUA'")
+        n_lus = _ndeep("event_code='LUS'")
+        n_luf = _ndeep("event_code='LUF'")
+        tau_rate = (n_tus / n_tua * 100.0) if n_tua else 0.0
+        lau_rate = (n_lus / n_lua * 100.0) if n_lua else 0.0
+
+        # 2.68.0 — Retries : séquences fail→attempt par (capture_id, seq),
+        # sans succès intercalé. TUF→TUA (reset TUS), LUF→LUA (reset LUS),
+        # RRF→RRA (reset RRC), RRRE→RRA (reset RRC).
+        def _retry_count(fail: str, attempt: str, succ: str) -> int:
+            """Count retry-attempts within capture_ids scope, (capture_id, seq)
+            ordered. Jamais `ts` (règle session Mobilité 2b)."""
+            rows = db.execute(text(
+                f"SELECT capture_id, seq, event_code FROM nmf_event_deep "
+                f"WHERE project_id=:pid{caps_scope} AND event_code IN (:f,:a,:s) "
+                f"ORDER BY capture_id, seq"
+            ), {**caps_param, "f":fail, "a":attempt, "s":succ}).all()
+            from collections import defaultdict
+            per = defaultdict(list)
+            for cid, seq, ev in rows:
+                per[cid].append(ev)
+            total = 0
+            for cid, evs in per.items():
+                fail_pending = False
+                for ev in evs:
+                    if ev == succ:
+                        fail_pending = False
+                    elif ev == fail:
+                        fail_pending = True
+                    elif ev == attempt:
+                        if fail_pending:
+                            total += 1
+                            fail_pending = False
+            return total
+
+        tau_retry = _retry_count("TUF", "TUA", "TUS")
+        lau_retry = _retry_count("LUF", "LUA", "LUS")
+        rrc_retry_rrf = _retry_count("RRF", "RRA", "RRC")
+        rrc_retry_rrre = _retry_count("RRRE", "RRA", "RRC")
+        rrc_retry = rrc_retry_rrf + rrc_retry_rrre
 
         rate = (n_hos / n_hoa * 100.0) if n_hoa else 0.0
-        # Liste des KPI à injecter : (metric_id, label, value, unit, kind)
+        # Liste des KPI à injecter : (metric_id, label, value, unit, kind, cat_id)
         MOBILITY_KPI = [
-            ("lte_ho_attempts",         "LTE HO attempts (HOA)",             n_hoa,  "n",  "KPI"),
-            ("lte_ho_success",          "LTE HO success (HOS)",              n_hos,  "n",  "KPI"),
-            ("lte_ho_failure",          "LTE HO failure (HOF ou HOA-HOS)",   n_hof if n_hof else (n_hoa - n_hos), "n",  "KPI"),
-            ("lte_ho_success_rate_pct", "LTE HO success rate",               rate,   "%",  "KPI"),
-            ("lte_ho_attempts_intra_freq",  "LTE HO attempts intra-fréquence",  n_hoa_intra, "n", "KPI"),
-            ("lte_ho_attempts_inter_freq",  "LTE HO attempts inter-fréquence",  n_hoa_inter, "n", "KPI"),
-            ("lte_ho_attempts_inter_rat",   "LTE HO attempts inter-RAT",        n_hoa_irat,  "n", "KPI"),
-            ("lte_ho_duration_avg_ms",  "LTE HO duration average (HOI)",     avg_dur, "ms", "KPI"),
-            ("lte_ho_duration_p95_ms",  "LTE HO duration P95 (HOI)",         p95_dur, "ms", "KPI"),
-            ("lte_ho_duration_max_ms",  "LTE HO duration max (HOI)",         max_dur, "ms", "KPI"),
-            ("lte_rlf_approx_count",    "LTE RLF count (≈ RRRE+RRF)",        n_rrre + n_rrf, "n", "KPI"),
-            ("lte_cell_resel_count",    "LTE cell reselection count",        n_crel, "n", "KPI"),
+            # Mobilité HO
+            ("lte_ho_attempts",         "LTE HO attempts (HOA)",             n_hoa,  "n",  "KPI", _mob_cat_id),
+            ("lte_ho_success",          "LTE HO success (HOS)",              n_hos,  "n",  "KPI", _mob_cat_id),
+            ("lte_ho_failure",          "LTE HO failure (HOF ou HOA-HOS)",   n_hof if n_hof else (n_hoa - n_hos), "n",  "KPI", _mob_cat_id),
+            ("lte_ho_success_rate_pct", "LTE HO success rate",               rate,   "%",  "KPI", _mob_cat_id),
+            ("lte_ho_attempts_intra_freq",  "LTE HO attempts intra-fréquence",  n_hoa_intra, "n", "KPI", _mob_cat_id),
+            ("lte_ho_attempts_inter_freq",  "LTE HO attempts inter-fréquence",  n_hoa_inter, "n", "KPI", _mob_cat_id),
+            ("lte_ho_attempts_inter_rat",   "LTE HO attempts inter-RAT",        n_hoa_irat,  "n", "KPI", _mob_cat_id),
+            ("lte_ho_duration_avg_ms",      "LTE HO duration average (HOI, SANS filtre)",  avg_dur, "ms", "KPI", _mob_cat_id),
+            ("lte_ho_duration_p95_ms",      "LTE HO duration P95 (HOI, SANS filtre)",       p95_dur, "ms", "KPI", _mob_cat_id),
+            ("lte_ho_duration_max_ms",      "LTE HO duration max (HOI, SANS filtre)",       max_dur, "ms", "KPI", _mob_cat_id),
+            ("lte_ho_duration_aberrant_count", "LTE HO duration aberrant (>10000 ms, OUVERT décodeur 1.11.3)", n_hoi_aberrant, "n", "KPI", _mob_cat_id),
+            # RLF détaillé (RRRE breakdown)
+            ("lte_rlf_count",               "LTE RLF count (RRRE cause=2)",       n_rrre_c2, "n", "KPI", _mob_cat_id),
+            ("lte_reest_ho_failure",        "LTE RRC Re-est HO failure (cause=1)", n_rrre_c1, "n", "KPI", _mob_cat_id),
+            ("lte_reest_reconfig_failure",  "LTE RRC Re-est reconfig failure (cause=0)", n_rrre_c0, "n", "KPI", _mob_cat_id),
+            ("lte_reest_success_rate_pct",  "LTE RRC Re-est success rate (status=1 / RRRE)", reest_rate, "%", "KPI", _mob_cat_id),
+            ("lte_reest_rejected",          "LTE RRC Re-est rejected (status=3)", n_rrre_s3, "n", "KPI", _mob_cat_id),
+            # Cell reselection
+            ("lte_cell_resel_count",        "LTE cell reselection count",         n_crel, "n", "KPI", _mob_cat_id),
+            # Retries
+            ("lte_tau_retry_count",         "LTE TAU retry count (TUF→TUA before TUS)",   tau_retry, "n", "KPI", _mob_cat_id),
+            ("lte_rrc_retry_count",         "LTE RRC retry count (RRF/RRRE→RRA before RRC)", rrc_retry, "n", "KPI", _mob_cat_id),
+            ("lte_lau_retry_count",         "LTE LAU retry count (LUF→LUA before LUS)",   lau_retry, "n", "KPI", _mob_cat_id),
         ]
-        for mid, label, val, unit, kind in MOBILITY_KPI:
+        # SCG under cat_LTE_scg (if exists)
+        _scg_cat_id = "cat_LTE_scg"
+        if any(n.get("node_id") == _scg_cat_id for n in nodes_out):
+            MOBILITY_KPI.extend([
+                ("endc_scg_mod_count",     "ENDC SCG modification count (SCELLMOD result=1 ; OUVERT ADD vs RELEASE)", n_scg_mod, "n", "KPI", _scg_cat_id),
+                ("endc_scg_failure_count", "ENDC SCG failure count (SCELLMOD result ∈ {2,10..15})", n_scg_fail, "n", "KPI", _scg_cat_id),
+                ("endc_scg_failure_rate_pct", "ENDC SCG failure rate (failure / total SCELLMOD)",   scg_fail_rate, "%", "KPI", _scg_cat_id),
+            ])
+        # Access/NAS under cat_LTE_access (if exists)
+        _acc_cat_id = "cat_LTE_access"
+        if any(n.get("node_id") == _acc_cat_id for n in nodes_out):
+            MOBILITY_KPI.extend([
+                ("lte_rrc_setup_success_rate_pct", "LTE RRC setup success rate (RRC / RRA)", rrc_setup_rate, "%", "KPI", _acc_cat_id),
+                ("lte_rrc_setup_failure",          "LTE RRC setup failure (RRF)",            n_rrf,   "n", "KPI", _acc_cat_id),
+                ("rrf_count",                      "RRF count",                              n_rrf,   "n", "KPI", _acc_cat_id),
+                ("lte_rrc_abnormal_release",       "LTE RRC abnormal release (RRD cause≠1)", n_rrd_abnormal, "n", "KPI", _acc_cat_id),
+                ("tuf_count",                      "TUF count",                              n_tuf,   "n", "KPI", _acc_cat_id),
+                ("luf_count",                      "LUF count",                              n_luf,   "n", "KPI", _acc_cat_id),
+                ("lte_tau_success_rate_pct",       "LTE TAU success rate (TUS / TUA)",       tau_rate, "%", "KPI", _acc_cat_id),
+                ("lte_lau_success_rate_pct",       "LTE LAU success rate (LUS / LUA)",       lau_rate, "%", "KPI", _acc_cat_id),
+            ])
+
+        for mid, label, val, unit, kind, cat_id in MOBILITY_KPI:
             node_id = f"lf_{mid}"
-            _order = siblings_counter.get(_mob_cat_id, 0)
-            siblings_counter[_mob_cat_id] = _order + 1
+            _order = siblings_counter.get(cat_id, 0)
+            siblings_counter[cat_id] = _order + 1
             nodes_out.append(dict(
-                node_id=node_id, parent_id=_mob_cat_id, order=_order,
+                node_id=node_id, parent_id=cat_id, order=_order,
                 label=label, display_code=mid, enum_values={},
-                note="KPI dérivé — mobilité (nmf_event_deep raw)",
+                note="KPI dérivé — nmf_event_deep raw (ordre (capture_id, seq), jamais ts)",
                 source=None, node_type="leaf",
                 analytics_tab="metrics", metric_id=mid, selection=mid,
                 event=None, field_idx=None,
@@ -1659,7 +1776,7 @@ def build_catalog_v4(
                 source_column=None, tech="LTE", kind=kind,
                 n_in_project=int(val) if isinstance(val, int) else int(round(val)),
                 decoder_version=DECODER_VERSION,
-                event=None, category_label="Mobilité", cell_scoped=False,
+                event=None, category_label="Mobilité / Access / NAS", cell_scoped=False,
                 cells=[], cell_options=[], attributes=[],
                 proof="nmf_event_deep aggregate", available=bool(val > 0),
                 reason=None, alias_of=None, event_group=None,

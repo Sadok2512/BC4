@@ -1,3 +1,62 @@
+## 0.130.0 (minor) — catalog 2.68.0 : Mobilité 2b — RLF détaillé, SCG, Access/NAS, Retries, HO duration sans filtre — 2026-11-03 (Agent BC5)
+
+- **Back 0.129.3 → 0.130.0** (minor — nouveaux KPI dérivés).
+  **Catalog 2.67.1 → 2.68.0** (minor). Décodeur 1.11.2 inchangé.
+- **TEST NÉGATIF du garde (point 0)** : copie temporaire du snapshot
+  live 2.67.1 avec 1 feuille fictive ajoutée (`test_ghost_leaf@42`
+  n=123) + n bumpé pour une feuille existante (`dci_dci_count@6` 90→110).
+  Verdict = `✗ GUARD FAIL — 3 écart(s)` listant la disparition et la
+  baisse non autorisée. Exit code = 1 ✓. Copie supprimée immédiatement.
+- **RLF (point 1)** : `lte_rlf_approx_count` **retiré** (ajouté à la
+  liste blanche `--allow-decrease`). Remplacé par 5 KPI dérivés sur
+  `nmf_event_deep` via `rrre_re_est_cause` / `rrre_re_est_status`
+  (NFF 2.50 p.399) :
+  - `lte_rlf_count` = RRRE cause=2 (Test_6 : 3)
+  - `lte_reest_ho_failure` = cause=1 (0 sur toutes captures)
+  - `lte_reest_reconfig_failure` = cause=0 (0)
+  - `lte_reest_success_rate_pct` = status=1 / total (Test_6 : 33.3 %)
+  - `lte_reest_rejected` = status=3 (Test_6 : 2)
+- **SCG (point 2)** : nouvelle catégorie `cat_LTE_scg` sous `tech_LTE`.
+  Sur `nmf_event_deep` event `SCELLMOD` (NFF 2.50 p.424, column
+  `scellmod_result`) :
+  - `endc_scg_mod_count` = result=1 (Test_6 : 337, ikea.6 : 4, ikea.2 : 10)
+  - `endc_scg_failure_count` = result ∈ {2, 10..15} (ikea.6 : 1 ✓)
+  - `endc_scg_failure_rate_pct` = failure / total (ikea.6 : 20 %)
+  - **OUVERT** : ADD vs RELEASE non dissociables (`scellmod_cell_type`,
+    `scellmod_scells_added`, `scellmod_scells_removed` tous NULL en
+    NFF 2.59). Investigation décodeur : `app/nmf_decoder/schemas/
+    SCELLMOD.yaml`. Compte brut par cause via la query guard critère 5.
+- **Accessibilité et NAS (point 3)** : nouvelle catégorie
+  `cat_LTE_access` sous `tech_LTE`.
+  - `lte_rrc_setup_success_rate_pct` = RRC / RRA (Test_6 : 99.3 %)
+  - `lte_rrc_setup_failure` = RRF count (Test_6 : 1)
+  - `lte_rrc_abnormal_release` = RRD avec `rrd_rrc_rel_cause ≠ 1`
+    (NFF 2.50 p.418 ; Test_6 : 3 records NULL cause → abnormal)
+  - `lte_tau_success_rate_pct` = TUS / TUA (Test_6 : 91.3 %)
+  - `lte_lau_success_rate_pct` = LUS / LUA (Test_6 : 97.7 %)
+  - Guard critère 5 étendu avec RRF / TUF / LUF et compare les
+    `rrf_count` / `tuf_count` / `luf_count` au brut `nmf_event_deep`.
+- **Retries (point 4)** — détection par (capture_id, seq), JAMAIS `ts` :
+  une tentative qui suit un échec du même type sans succès intercalé.
+  - `lte_tau_retry_count` (TUF→TUA reset TUS, Test_6 : 4 — séquences
+    aux seq 1835, 163277, 217765, 362190)
+  - `lte_lau_retry_count` (LUF→LUA reset LUS, Test_6 : 1 — seq 217766)
+  - `lte_rrc_retry_count` (RRF→RRA et RRRE→RRA reset RRC, Test_6 :
+    4 = 1 RRF→RRA à seq 297927 + 3 RRRE→RRA à seq 79223/81594/139633)
+- **HO duration (point 5)** — **FILTRE ≤ 10000 ms RETIRÉ**. KPI
+  `lte_ho_duration_avg_ms`, `_p95_ms`, `_max_ms` publient les valeurs
+  brutes. Nouveau KPI `lte_ho_duration_aberrant_count` = records avec
+  `hoi_ho_duration > 10000` (Test_6 : 150/276). **OUVERT décodeur
+  1.11.3** : `app/nmf_decoder/schemas/HOI.yaml:22-34` déclare
+  `hoi.ho_duration` unit=ms type=int mais format NFF 2.59 publie en
+  fait un TIMESTAMP ABSOLU monotone (observé : 551 914 533 ms dans
+  record Test_6 seq=36282, tokens =
+  `['HOI','16:09:27.123','1','11','3','551914533','551914484','551914541']`).
+  Deltas entre hoi.ho_u_plane / hoi.ho_to seraient la vraie durée
+  (ex. 551914541 - 551914484 = 57 ms). Lot décodeur séparé.
+- **Catégorie Mobilité dans l'arbre** : 18 KPI sous `cat_LTE_mobility`
+  + 3 KPI sous `cat_LTE_scg` + 8 KPI sous `cat_LTE_access`.
+
 ## 0.129.3 (patch) — catalog 2.67.1 : Étape 3c — garde strict + fix collision metric_id spécialisés — 2026-11-03 (Agent BC5)
 
 - **Back 0.129.2 → 0.129.3** (patch). **Catalog 2.67.0 → 2.67.1** (patch,

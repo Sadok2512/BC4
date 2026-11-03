@@ -46,17 +46,26 @@ CAPTURES = {
 }
 BRANCHES = ("CAPTURE", "LTE", "NR", "IP / Services")
 
-# KPI d'event vs brut nmf_event_deep (critère 5)
+# 2.68.0 (Mobilité 2b point 3) — KPI d'event vs brut nmf_event_deep (critère 5).
+# Élargi : RRC setup / NAS TAU/LAU / failures. Chaque KPI listé ici est
+# comparé exactement au count brut (ordre (capture_id, seq), jamais ts).
 EVENT_KPI_MAP = {
-    "lte_ho_attempts": ("HOA", None),
-    "lte_ho_success": ("HOS", None),
-    "lte_cell_resel_count": ("CREL", None),
-    "scellmod_count": ("SCELLMOD", None),  # vérifié via metrics ou direct
-    # Autres cas : TUA, TUS, RRA, RRC, RRD, RRRE — non exposés comme KPI
-    # dédiés, mais le brut est vérifié dans _event_raw_counts().
+    "lte_ho_attempts":          ("HOA",      None),
+    "lte_ho_success":           ("HOS",      None),
+    "lte_cell_resel_count":     ("CREL",     None),
+    "lte_rrc_setup_failure":    ("RRF",      None),
+    "rrf_count":                ("RRF",      None),
+    "tuf_count":                ("TUF",      None),
+    "luf_count":                ("LUF",      None),
 }
-# Events bruts à vérifier en complément (critère 5 étendu)
-BRUT_EVENTS = ["HOA", "HOS", "RRA", "RRC", "RRD", "RRRE", "TUA", "TUS", "CREL", "SCELLMOD"]
+# Events bruts à vérifier en complément (critère 5 étendu Mobilité 2b).
+BRUT_EVENTS = [
+    "HOA", "HOS", "HOI",
+    "RRA", "RRC", "RRD", "RRF", "RRRE",
+    "TUA", "TUS", "TUF",
+    "LUA", "LUS", "LUF",
+    "CREL", "SCELLMOD",
+]
 
 
 def load_current_catalog_version(db):
