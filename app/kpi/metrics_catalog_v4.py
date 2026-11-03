@@ -718,6 +718,23 @@ def build_catalog_v4(
         if not col or col not in avail_cols:
             continue
         event_columns[ev].add(col)
+    # 2.63.3 (REPRISE 7 Lot 1 + écart Point 1) — étendre event_columns à
+    # TOUTE colonne `cell_scoped=True` déclarée par `metrics_v3.definitions()`
+    # dont l'event est cell_scoped. Fichier:ligne précédent qui bloquait :
+    # cette boucle n'ingérait que les leaves baked, donc plaid_mcs0 /
+    # plaiu_mcs0 / cqi_* NR / dci_* NR / scell_* NR / scellmod_* n'étaient
+    # jamais interrogés dans nmf_cell_second → 0 feuille dynamique émise
+    # malgré 1796/2/79 valeurs live sur NR PSCell 199.
+    from app.kpi.metrics_v3 import definitions as _v3_defs
+    for code, defn in _v3_defs().items():
+        if not defn.get("cell_scoped"):
+            continue
+        ev = (defn.get("event") or "").lstrip("#")
+        if ev not in cell_scoped_events:
+            continue
+        col = defn.get("source_column") or code
+        if col in avail_cols:
+            event_columns[ev].add(col)
     cell_index_counts = _cell_index_counts_per_project(
         db, project_id, event_columns, capture_ids
     )
@@ -1167,6 +1184,15 @@ def build_catalog_v4(
         ev_lf = (lf.get("event") or "").lstrip("#")
         field_system = lf.get("field_system")
         human_field_by_col.setdefault((ev_lf, field_system, sc), field_name)
+    # 2.63.3 — Fallback label depuis metrics_v3 pour colonnes non baked
+    # (plaid_mcs0, cqi_sb_cqi_0, dci_dl_grants, scell_*, scellmod_*).
+    for code, defn in _v3_defs().items():
+        if not defn.get("cell_scoped"):
+            continue
+        ev = (defn.get("event") or "").lstrip("#")
+        col = defn.get("source_column") or code
+        label = defn.get("label") or code
+        human_field_by_col.setdefault((ev, None, col), label)
 
     def _field_name_for(ev: str, system: int | None, col: str) -> str:
         return (human_field_by_col.get((ev, system, col))

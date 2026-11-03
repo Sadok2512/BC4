@@ -1,3 +1,35 @@
+## 0.125.3 (patch) — dynamic entries pour TOUTE colonne cell_scoped observée — 2026-11-03 (Agent BC2, REPRISE 7 Lot 1 + fix écart Point 1)
+
+- Back **0.125.2 → 0.125.3** (patch). Catalog release inchangé (2.63.2).
+- **Pipeline fix** `app/kpi/metrics_catalog_v4.py:710-740` + `:1153-1180` :
+  `event_columns` et `human_field_by_col` étendues avec TOUTES les
+  colonnes `cell_scoped=True` déclarées dans `app/kpi/metrics_v3.py:
+  definitions()`, pas uniquement celles baked dans `catalog_release.json`.
+- **Fix écart OUVERT Point 1** (plaid_mcs0 / plaiu_mcs0 invisibles) :
+  désormais exposés par capture @ nr-type-199 (NR PSCell 199).
+  Garde LIVE match CATALOGUE : a4b0=1 796/1 741, daa2=2/5, ecff=79/106.
+- **Lot 1 partiel** : CQI (12 colonnes × cell_types = 48 variantes LTE),
+  DCI (4 colonnes × cell_types = 14 variantes LTE) également exposés.
+- **Déférés sous-lots Lot 1** : CQI_NR / DCI_NR / SCELL_NR / SCELLMOD
+  nécessitent écriture YAML schémas base ou NR variants (0 colonne
+  observée dans `nmf_cell_second` pour SCELL/SCELLMOD, 0 NR variant
+  pour CQI/DCI). → Travail NFF-forensique séparé.
+
+### Garde par capture (CATALOGUE post-patch, matching LIVE)
+
+```sql
+WITH leaves AS (
+  SELECT scope_key, jsonb_array_elements(payload->'metrics') AS leaf
+  FROM metrics_catalog_cache WHERE scope_key LIKE 'captures:%'
+)
+SELECT scope_key, leaf->>'code' AS code, (leaf->>'n_in_project')::int AS n
+FROM leaves
+WHERE leaf->>'code' IN ('plaid_mcs0@nr-type-199','plaiu_mcs0@nr-type-199')
+ORDER BY code, scope_key;
+```
+Résultat attendu après rebuild : plaid_mcs0@nr-type-199 n=1796/2/79,
+plaiu_mcs0@nr-type-199 n=1741/5/106 par capture ✓
+
 ## 0.125.2 (patch) — catalog_release 2.63.2 : relabel chi_rrc_state + dedup CHI LTE #NN — 2026-11-03 (Agent BC2, REPRISE 7 Point 2)
 
 - Back **0.125.1 → 0.125.2** (patch). Catalog **2.63.1 → 2.63.2**.
