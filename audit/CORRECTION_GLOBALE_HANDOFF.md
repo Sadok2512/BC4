@@ -545,3 +545,50 @@ chi_rrc_state LTE : 654 (Idle=192, Connected=462)
 - **Versions** : catalog_release 2.62.0 → 2.63.0 (après tous les patches) et app 1.133.25 → 1.134.0 à faire.
 
 **Dernière mise à jour** : 2026-11-03 fin REPRISE 3 (Lot 3 + Lot 5 live, 5 680 leaves, 0 STRUCT, 0 ghost placeholder)
+
+---
+
+## REPRISE 4 — fin (2026-11-03)
+
+**HEAD final** : `b616f33` (pin bc4-api 0.125.0-d04f532)
+**Live prod** : `bc4-api:0.125.0-d04f532` · decoder 1.10.5 · catalog 2.63.0
+
+### Toutes les gardes P20 atteintes
+
+```sql
+WITH l AS (SELECT jsonb_array_elements(payload->'nodes') AS n
+ FROM metrics_catalog_cache WHERE project_id='43e81a34a073' AND scope_key='project')
+SELECT 
+ (SELECT COUNT(*) FROM l WHERE n->>'node_type'='leaf' AND n->>'technology'='LTE'
+  AND n->>'label' ~ '\(bloc ' AND NOT n->>'label' ~ '\(bloc (LTE|NR)') AS foreign_bloc_lte,
+ (SELECT COUNT(*) FROM l WHERE n->>'node_type'='leaf' AND n->>'cell_label' ILIKE '%neighbour%'
+  AND n->>'event' IN ('MIMOMEAS','CSI','PMI')) AS mimo_csi,
+ (SELECT COUNT(*) FROM l WHERE n->>'node_type'='leaf' AND n->>'cell_label' ~ '^SCell\s*(1[0-9]{2}|1[0-9]{3})$') AS scell_ge_100,
+ (SELECT COUNT(*) FROM l WHERE n->>'node_type'='leaf' AND n->>'kind' IS NULL) AS kind_null,
+ (SELECT COUNT(*) FROM l WHERE n->>'node_type'='leaf' AND n->>'kind'='STRUCT') AS struct_in_tree;
+```
+```
+ foreign_bloc_lte | mimo_csi | scell_ge_100 | kind_null | struct_in_tree
+                0 |        0 |            0 |         0 |              0
+```
+
+### Commits REPRISE 4
+
+| sha | version | description |
+|---|---|---|
+| `d04f532` | back 0.124.7 → 0.125.0 · catalog 2.62.0 → 2.63.0 | Lots 3+4+5 bakés + runtime, catalog_release publié |
+| `b616f33` | — | pin bc4-api 0.125.0 |
+
+### CHI RRC proof (P1)
+
+- LTE RRC state=1 (Idle, NFF 2.50 p.326) : `CHI,15:59:42.267,,7,70003,1,…`
+- LTE RRC state=2 (Connected, p.326) : `CHI,15:59:42.748,,7,70003,2,…`
+- NR_RRC_STATE / NR_EMM_STATE : NOT_APPLICABLE sur Test_6 (EN-DC NSA, 0 record CHI system=9).
+
+### Lots restants
+
+- **Lot 1** : SCELLMOD / CQI_NR / DCI / SCELL schémas restant à écrire (reporté).
+- **Lot 6** : `display_code` émis par back — pas commencé.
+- **Lot 7** : export front colonne par capture + kind/unit/data_type — pas commencé (nécessite modif front, app 1.133.25 → 1.134.0).
+
+**Dernière mise à jour** : 2026-11-03 fin REPRISE 4 (catalog 2.63.0 live, 5 gardes P20 à 0, 4 260 leaves)
