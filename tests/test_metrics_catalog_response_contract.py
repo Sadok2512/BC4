@@ -13,12 +13,12 @@ def test_catalog_response_accepts_active_catalog_kinds_and_structural_proof_null
                 "unit": "count",
                 "source_table": "nmf_event_deep",
                 "source_tables": ["nmf_event_deep"],
-                "source_column": "event_code",
+                "source_column": None,
                 "tech": "LTE",
                 "kind": "KPI",
                 "n_in_project": 126,
                 "decoder_version": "1.11.2",
-                "event": "HOA",
+                "event": None,
                 "category_label": "Mobility",
                 "cell_scoped": False,
                 "cells": [],
@@ -26,6 +26,7 @@ def test_catalog_response_accepts_active_catalog_kinds_and_structural_proof_null
                 "attributes": [],
                 "proof": "catalog-2.68.2",
                 "available": True,
+                "event_code": None,
             }
         ],
         "nodes": [
@@ -35,6 +36,7 @@ def test_catalog_response_accepts_active_catalog_kinds_and_structural_proof_null
                 "label": "LTE",
                 "node_type": "tech",
                 "proof": None,
+                "availability_status": "not_available",
             }
         ],
         "decoder_version": "1.11.2",

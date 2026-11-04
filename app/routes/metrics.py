@@ -23,7 +23,7 @@ class MetricInfo(BaseModel):
     unit: str
     source_table: str
     source_tables: list[str]
-    source_column: str
+    source_column: str | None
     # 0.80.1 — tech en str libre : catalog 2.50.5 inclut "Shared"/"Other"
     # (categories.yaml) en plus de LTE/NR/BOTH.
     tech: str
@@ -33,7 +33,7 @@ class MetricInfo(BaseModel):
     ]
     n_in_project: int
     decoder_version: str
-    event: str
+    event: str | None
     category_label: str
     cell_scoped: bool
     cells: list[int]
@@ -49,7 +49,7 @@ class MetricInfo(BaseModel):
     event_group: str | None = None
     unproven_cells: list[dict] = []
     root_notices: list[dict] = []
-    event_code: str = ""
+    event_code: str | None = None
     proof_ref: str = ""
     category: str | None = None  # 0.64.0 (F1) — champ `category` du YAML décodeur
 class MetricCatalogNode(BaseModel):
@@ -82,7 +82,7 @@ class MetricCatalogNode(BaseModel):
     cell_relation: Literal['serving', 'neighbour'] | None = None
     technical_label: str | None = None
     availability_status: Literal[
-        'available', 'no_data', 'not_projected', 'not_applicable'
+        'available', 'no_data', 'not_projected', 'not_applicable', 'not_available'
     ] | None = None
     n: int = 0
     # 0.80.1 — proof en str libre (idem MetricInfo).
