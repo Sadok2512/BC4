@@ -1,3 +1,8 @@
+## 0.132.0 (minor) — Noms complets de l'arbre Metrics — 2026-11-04 (BC4)
+
+- L'API catalogue expose `display_code_lisible`, `nom_court`, la branche de présentation et la visibilité d'arbre depuis le mapping certifié de 4 304 identités techniques ; les sélecteurs API restent inchangés.
+- Le builder aligne les libellés de bloc sur le système structurel, conserve les champs d'identité comme dimensions et classe Rank/Modulation comme KPI catégoriels.
+
 ## 0.131.2 (patch) — Contrat du catalogue actif — 2026-11-04 (BC4)
 
 - Le modèle de réponse Metrics accepte les natures certifiées `KPI`, `KPI_CATEGORICAL` et `DIMENSION`, ainsi que les nœuds structurels sans preuve, sans modifier le payload catalogue.

@@ -614,7 +614,20 @@ def build_catalog_v4(
     )
     _CATEG_PAT = ("rank", "modulation", "dci format", "rrc state")
     _DIM_PAT = ("pci", "arfcn", "nr-arfcn", "band", "port", "bwp id")
+    _IDENTITY_COLUMNS_BY_EVENT = {
+        "CELLMEAS": {"cell_ch"},
+        "PHRATE": {"phrate_ch"},
+        "MIMOMEAS": {"mimo_band", "cell_ch", "mimo_pci"},
+        "PLAID": {"plaid_pdsch_bwp_id", "plaid_pdsch_bwp_id_f36"},
+        "PLAIU": {"plaiu_pusch_bwp_id", "plaiu_pusch_bwp_id_f35"},
+        "CI": {"ci_arfcn", "ci_ch", "ci_rpc_cell_index"},
+    }
+    def _is_identity_field(event: str, source_column: str | None) -> bool:
+        return bool(source_column) and source_column in _IDENTITY_COLUMNS_BY_EVENT.get(event, set())
     def _kind_for_leaf(n: dict) -> str:
+        explicit_kind = n.get("kind")
+        if explicit_kind in {"KPI", "KPI_CATEGORICAL", "DIMENSION", "STRUCT"}:
+            return explicit_kind
         label = (n.get("label") or "").lower()
         mlabel = (n.get("metric_label") or "").lower()
         mid = (n.get("metric_id") or "").lower()
@@ -765,6 +778,17 @@ def build_catalog_v4(
 
     def _label_per_type(ev: str, system: int | None, ct: int, fallback: str) -> str:
         return _cell_label_for_type(ev, system, ct) if system in {7, 9} else fallback
+
+    def _label_for_runtime_system(label: str, system: str | None) -> str:
+        """Align a legacy ``(bloc X)`` suffix with structural cell_system."""
+        if system not in {"LTE", "NR"}:
+            return label
+        return re.sub(
+            r"\(bloc [^)#]+((?: #[^)]+)?)\)",
+            lambda match: f"(bloc {system}{match.group(1)})",
+            label,
+            flags=re.IGNORECASE,
+        )
 
     def _per_cell_reason(ev: str, ct: int, col: str, cell_label: str | None) -> str:
         """Reason honnête quand n_per_cell=0 pour une col décodée. Pas de
@@ -1091,6 +1115,7 @@ def build_catalog_v4(
                 ev_lf, _leaf_system(node), int(ct_node), node.get("cell_label") or str(ct_node)
             )
             label_val = f"{field_name} @ {cell_label}"
+            label_val = _label_for_runtime_system(label_val, cell_system_val)
             metric_label_val = _tree_metric_label(field_name)
             technical_label_val = _technical_cell_label(
                 technology_val, cell_relation_val, metric_label_val, cell_label_val
@@ -1121,6 +1146,7 @@ def build_catalog_v4(
                 order=order,
                 label=label_val,
                 display_code=display_code_val,
+                tree_visible=node.get("tree_visible", True),
                 enum_values=_enum_for_col(col) if is_leaf else {},
                 note=node.get("description"),
                 source=None,
@@ -1155,7 +1181,10 @@ def build_catalog_v4(
                 field_idx=field_idx,
                 source_column=col if has_col else None,
                 # 2.64.1 §1 — fallback unit depuis v3_defs si node.unit vide
-                unit=(node.get("unit") or "").strip() or ((_v3_defs().get(col) or {}).get("unit") or "") if is_leaf else (node.get("unit") or ""),
+                unit=(
+                    "" if (node.get("identity_field") or _is_identity_field((node.get("event") or "").lstrip("#"), col)) else
+                    ((node.get("unit") or "").strip() or ((_v3_defs().get(col) or {}).get("unit") or ""))
+                ) if is_leaf else (node.get("unit") or ""),
                 cell=cell_selector_val,
                 technology=technology_val,
                 metric_label=metric_label_val,
@@ -1417,6 +1446,9 @@ def build_catalog_v4(
         field_name = _field_name_for(ev, system, col)
         label_from_enum = _label_per_type(ev, system, ct, f"cell type {ct}")
         label_full = f"{field_name} @ {label_from_enum}"
+        label_full = _label_for_runtime_system(
+            label_full, {7: "LTE", 9: "NR"}.get(system)
+        )
         selector = cell_type_selector(system, ct)
         node_id = f"lf_observed_{ev.lower()}_{selector}_{col}"
         selection = f"{col}@{selector}"
@@ -1441,7 +1473,7 @@ def build_catalog_v4(
         siblings_counter[parent_id] = order + 1
         # 2.64.1 — §7.8 : unit depuis metrics_v3.definitions() au lieu de "".
         _dyn_defn = _v3_defs().get(col) or {}
-        _dyn_unit = _dyn_defn.get("unit") or ""
+        _dyn_unit = "" if _is_identity_field(ev, col) else (_dyn_defn.get("unit") or "")
         _dyn_enum = _enum_for_col(col)
         nodes_out.append(
             dict(
@@ -1914,6 +1946,10 @@ def build_catalog_v4(
                 proof_ref="nmf_event_deep per-capture aggregation",
                 category="mobility",
             ))
+
+    from app.kpi.display_names import apply_display_name
+    for node in nodes_out:
+        apply_display_name(node)
 
     return dict(
         catalogue_version=current.version,

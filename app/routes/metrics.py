@@ -57,6 +57,13 @@ class MetricCatalogNode(BaseModel):
     parent_id: str | None = None
     order: int
     label: str
+    # 2.68.3 — presentation names supplied by app/kpi/display_names.csv.
+    # ``display_code`` remains the baked technical identity used by guards
+    # and joins; it is deliberately not displayed in the UI.
+    display_code_lisible: str | None = None
+    nom_court: str | None = None
+    display_branch: Literal['CAPTURE', 'LTE', 'NR', 'IP / Services'] | None = None
+    tree_visible: bool = True
     note: str | None = None
     source: str | None = None
     # 0.80.1 — ajout "tech"/"event" pour catalog 2.50.5 (4 niveaux
@@ -486,7 +493,7 @@ def catalog_csv(project_id: str, db: Session = Depends(get_db)):
             if entry is None:
                 tech, cat, grp, met = tech_path(n, by_id)
                 entry = {
-                    "display_code": k,
+                    "display_code": n.get("display_code_lisible") or k,
                     "label": n.get("label") or "",
                     "kind": n.get("kind") or "",
                     "unit": n.get("unit") or "",

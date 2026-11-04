@@ -113,6 +113,20 @@ def _validate_next_minor(source_version: str, target_version: str) -> None:
         )
 
 
+def _validate_next_patch(source_version: str, target_version: str) -> None:
+    source_match = SEMVER_RE.fullmatch(source_version)
+    target_match = SEMVER_RE.fullmatch(target_version)
+    if not source_match or not target_match:
+        raise ValueError("versions attendues au format X.Y.Z")
+    source_semver = tuple(map(int, source_match.groups()))
+    target_semver = tuple(map(int, target_match.groups()))
+    if target_semver != (source_semver[0], source_semver[1], source_semver[2] + 1):
+        raise ValueError(
+            f"la cible doit être le PATCH suivant : "
+            f"{source_semver[0]}.{source_semver[1]}.{source_semver[2] + 1}"
+        )
+
+
 def _write_catalog_artifact(payload: dict, target_version: str) -> Path:
     payload["catalog_version"] = target_version
     target_path = catalog_file_path(target_version)
@@ -408,6 +422,125 @@ def prepare_analytics_minor(source_version: str, target_version: str) -> Path:
     return target_path
 
 
+_IDENTITY_BASES_BY_EVENT = {
+    "CELLMEAS": {"cell_ch", "cellmeas_ch", "cellmeas_nr_arfcn"},
+    "PHRATE": {"phrate_ch"},
+    "MIMOMEAS": {
+        "mimomeas_band", "mimomeas_band_f6", "mimomeas_ch",
+        "mimomeas_nr_arfcn", "mimomeas_pci", "mimomeas_pci_f8",
+    },
+    "PLAID": {"plaid_pdsch_bwp_id", "plaid_pdsch_bwp_id_f36"},
+    "PLAIU": {"plaiu_pusch_bwp_id", "plaiu_pusch_bwp_id_f35"},
+    "CI": {"ci_arfcn", "ci_ch", "ci_rpc_cell_index"},
+}
+
+
+def _metric_base(leaf: dict) -> str:
+    return str(leaf.get("metric_id") or "").split("@", 1)[0]
+
+
+def _foreign_bloc(label: str, system: int | None) -> bool:
+    match = re.search(r"\(bloc ([^)#]+)(?: #[^)]+)?\)", label, re.IGNORECASE)
+    if not match or system not in CATALOG_SYSTEM_LABELS:
+        return False
+    block = match.group(1).strip().upper()
+    expected = CATALOG_SYSTEM_LABELS[system].upper()
+    return expected not in block
+
+
+def _correct_bloc_label(label: str, system: int) -> str:
+    expected = CATALOG_SYSTEM_LABELS[system]
+    return re.sub(
+        r"\(bloc [^)#]+((?: #[^)]+)?)\)",
+        lambda match: f"(bloc {expected}{match.group(1)})",
+        label,
+        flags=re.IGNORECASE,
+    )
+
+
+def prepare_full_names_patch(source_version: str, target_version: str) -> Path:
+    """Prepare 2.68.3 content corrections without opening a DB session."""
+    _validate_next_patch(source_version, target_version)
+    source_path = catalog_file_path(source_version)
+    if not source_path.exists():
+        raise FileNotFoundError(f"catalogue source absent : {source_path}")
+    payload = json.loads(source_path.read_text(encoding="utf-8"))
+    leaves = [node for node in payload.get("nodes", []) if node.get("node_type") == "leaf"]
+    if not leaves:
+        raise ValueError("catalogue source sans feuille")
+
+    identity_dimensions = 0
+    categorical = 0
+    bloc_corrected = 0
+    hidden_cell_types = 0
+    hidden_duplicate_tbs = 0
+    for leaf in leaves:
+        event = str(leaf.get("event") or "").lstrip("#")
+        base = _metric_base(leaf)
+        if base in _IDENTITY_BASES_BY_EVENT.get(event, set()):
+            leaf["kind"] = "DIMENSION"
+            leaf["identity_field"] = True
+            leaf["analytics_tab"] = "metrics"
+            leaf["unit"] = ""
+            identity_dimensions += 1
+
+        # Rank and modulation are categorical RF states, selected from their
+        # canonical metric ids; presentation labels are not consulted.
+        tokens = set(base.lower().split("_"))
+        if "rank" in tokens or "modulation" in tokens:
+            leaf["kind"] = "KPI_CATEGORICAL"
+            categorical += 1
+
+        field_system = leaf.get("field_system")
+        if _foreign_bloc(str(leaf.get("label") or ""), field_system):
+            leaf["label"] = _correct_bloc_label(leaf["label"], int(field_system))
+            leaf["label_system"] = int(field_system)
+            bloc_corrected += 1
+
+        # CELLMEAS raw 3/4 are empty placeholders, not SCell identities.
+        if event == "CELLMEAS" and base == "cellmeas_ch" and leaf.get("cell_type") in {3, 4}:
+            leaf["tree_visible"] = False
+            leaf["tree_visibility_reason"] = "empty_cell_type_3_4_not_in_nemo_enum"
+            hidden_cell_types += 1
+
+        # The projected PUSCH average TBS family is authoritative.  Keep the
+        # legacy unprojected alias in the API for traceability, but not in the
+        # visible tree, so the concept appears once.
+        if base == "plaiu_avg_ul_tbs":
+            leaf["tree_visible"] = False
+            leaf["alias_of"] = "plaiu_ul_tbs_avg"
+            leaf["tree_visibility_reason"] = "merged_into_projected_plaiu_ul_tbs_avg"
+            hidden_duplicate_tbs += 1
+
+    residual_foreign = [
+        leaf.get("metric_id")
+        for leaf in leaves
+        if _foreign_bloc(str(leaf.get("label") or ""), leaf.get("field_system"))
+    ]
+    if residual_foreign:
+        raise ValueError(f"libellés bloc étrangers résiduels : {residual_foreign[:3]}")
+
+    payload["catalog_full_names_policy"] = {
+        "source": "app/kpi/display_names.csv",
+        "join_key": "baked display_code = metric_id_actuel",
+        "classification_uses_labels": False,
+        "identity_dimension_leaves": identity_dimensions,
+        "categorical_rank_modulation_leaves": categorical,
+        "foreign_bloc_labels_corrected": bloc_corrected,
+        "hidden_cell_type_3_4": hidden_cell_types,
+        "hidden_unprojected_tbs_aliases": hidden_duplicate_tbs,
+    }
+    target_path = _write_catalog_artifact(payload, target_version)
+    print(
+        f"[bootstrap] prepared full names v={target_version} from={source_version} "
+        f"identity_dimensions={identity_dimensions} categorical={categorical} "
+        f"foreign_bloc_corrected={bloc_corrected} residual_foreign=0 "
+        f"hidden_cell_type_3_4={hidden_cell_types} "
+        f"hidden_tbs_aliases={hidden_duplicate_tbs} sha256={sha256_file(target_path)}"
+    )
+    return target_path
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--version", "--to", dest="version", required=True, help="ex. 2.53.0")
@@ -417,7 +550,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     ap.add_argument(
         "--transform",
-        choices=("analytics", "nr-labels", "visible-leaves", "scell5plus"),
+        choices=("analytics", "nr-labels", "visible-leaves", "scell5plus", "full-names"),
         default="analytics",
         help="transformation disque appliquée avec --from (défaut : analytics)",
     )
@@ -437,6 +570,8 @@ def main(argv: list[str] | None = None) -> int:
                 prepare_visible_leaves_minor(args.from_version, args.version)
             elif args.transform == "scell5plus":
                 prepare_scell5plus_minor(args.from_version, args.version)
+            elif args.transform == "full-names":
+                prepare_full_names_patch(args.from_version, args.version)
             else:
                 prepare_analytics_minor(args.from_version, args.version)
         except (FileNotFoundError, ValueError) as exc:

@@ -32,6 +32,7 @@ courante). Toute autre baisse échoue le guard. Passer la chaîne vide
 from __future__ import annotations
 import argparse
 import json
+import re
 import sys
 from collections import Counter
 from pathlib import Path
@@ -119,6 +120,11 @@ def extract_summary(payload):
     kind_null = 0
     display_code_null = 0
     struct_in_tree = 0
+    readable_code_counts = Counter()
+    readable_code_null = 0
+    trailing_name_underscore = 0
+    foreign_bloc_labels = []
+    categorical_kind_errors = []
     for n in leaves:
         t = tech_of(n, by_id) or "?"
         if t not in per_branch:
@@ -145,6 +151,25 @@ def extract_summary(payload):
             kind_null += 1
         if n.get("kind") == "STRUCT":
             struct_in_tree += 1
+        readable = n.get("display_code_lisible")
+        short_name = n.get("nom_court")
+        if not readable or not short_name:
+            readable_code_null += 1
+        else:
+            readable_code_counts[readable] += 1
+            if readable.endswith("_") or short_name.endswith("_"):
+                trailing_name_underscore += 1
+        block = re.search(r"\(bloc ([^)#]+)(?: #[^)]+)?\)", n.get("label") or "", re.IGNORECASE)
+        system = n.get("cell_system")
+        if block and system in {"LTE", "NR"} and system not in block.group(1).upper():
+            foreign_bloc_labels.append({
+                "display_code": dc,
+                "cell_system": system,
+                "label": n.get("label"),
+            })
+        technical_tokens = set(re.split(r"[^a-z0-9]+", str(dc or "").lower()))
+        if technical_tokens & {"rank", "modulation"} and n.get("kind") != "KPI_CATEGORICAL":
+            categorical_kind_errors.append(dc)
     dup_dc = {dc: c for dc, c in display_code_counts.items() if c > 1}
     return {
         "per_branch": per_branch,
@@ -153,6 +178,13 @@ def extract_summary(payload):
         "display_code_duplicates": dup_dc,
         "kind_null": kind_null,
         "struct_in_tree": struct_in_tree,
+        "readable_code_null": readable_code_null,
+        "readable_code_duplicates": {
+            code: count for code, count in readable_code_counts.items() if count > 1
+        },
+        "trailing_name_underscore": trailing_name_underscore,
+        "foreign_bloc_labels": foreign_bloc_labels,
+        "categorical_kind_errors": categorical_kind_errors,
     }
 
 
@@ -211,11 +243,37 @@ def main():
     version = load_current_catalog_version(db)
     print(f"=== guard_catalog.py — catalog live={version} ===\n")
 
+    from app.kpi.display_names import load_display_names
+    display_names = load_display_names()
+    print(
+        "display_names.csv "
+        f"rows={len(display_names)} metric_id_unique={len(display_names)} "
+        f"display_code_lisible_unique={len({row.display_code for row in display_names.values()})} "
+        "trailing_underscore=0"
+    )
+
     # 1. Collect current summaries per capture
     current = {}
     for cap_id, cap_label in CAPTURES.items():
         payload = load_live_payload(db, cap_id)
         current[cap_id] = extract_summary(payload)
+    observed_display_codes = {
+        display_code
+        for summary in current.values()
+        for display_code in summary["per_leaf"]
+    }
+    mapped_display_codes = set(display_names)
+    joined_display_codes = observed_display_codes & mapped_display_codes
+    print(
+        f"display_name_join joined={len(joined_display_codes)}/{len(mapped_display_codes)} "
+        f"observed_union={len(observed_display_codes)} "
+        f"unmapped={len(observed_display_codes - mapped_display_codes)}\n"
+    )
+    print(
+        "content_checks "
+        f"foreign_bloc_mismatch={sum(len(s['foreign_bloc_labels']) for s in current.values())} "
+        f"rank_modulation_wrong_kind={sum(len(s['categorical_kind_errors']) for s in current.values())}\n"
+    )
 
     # 2. Load previous snapshot (if any)
     prev_version = None
@@ -245,6 +303,13 @@ def main():
 
     # 4. Garde critères
     failures = []
+    if joined_display_codes != mapped_display_codes or observed_display_codes != mapped_display_codes:
+        failures.append(
+            "jointure display_names incomplète : "
+            f"joined={len(joined_display_codes)}/{len(mapped_display_codes)} "
+            f"catalog_only={sorted(observed_display_codes - mapped_display_codes)[:5]} "
+            f"mapping_only={sorted(mapped_display_codes - observed_display_codes)[:5]}"
+        )
     for cap_id, cap_label in CAPTURES.items():
         prev = prev_snapshot["summaries"].get(cap_id, {})
         cur = current[cap_id]
@@ -259,6 +324,31 @@ def main():
             failures.append(f"[{cap_label}] kind null : {cur['kind_null']} feuilles")
         if cur["struct_in_tree"] > 0:
             failures.append(f"[{cap_label}] STRUCT dans l'arbre : {cur['struct_in_tree']} feuilles")
+        if cur["readable_code_null"] > 0:
+            failures.append(
+                f"[{cap_label}] feuilles sans display_code_lisible/nom_court : "
+                f"{cur['readable_code_null']}"
+            )
+        if cur["readable_code_duplicates"]:
+            failures.append(
+                f"[{cap_label}] display_code_lisible doublons : "
+                f"{list(cur['readable_code_duplicates'].items())[:5]}"
+            )
+        if cur["trailing_name_underscore"] > 0:
+            failures.append(
+                f"[{cap_label}] noms finissant par underscore : "
+                f"{cur['trailing_name_underscore']}"
+            )
+        if cur["foreign_bloc_labels"]:
+            failures.append(
+                f"[{cap_label}] libellés bloc d'une autre technologie : "
+                f"{cur['foreign_bloc_labels'][:3]}"
+            )
+        if cur["categorical_kind_errors"]:
+            failures.append(
+                f"[{cap_label}] Rank/Modulation hors KPI_CATEGORICAL : "
+                f"{cur['categorical_kind_errors'][:5]}"
+            )
 
         # Critère 1 : feuille avec valeurs disparue — absente du cache courant
         # alors qu'elle avait n>0 dans la référence. Les leaves présentes mais

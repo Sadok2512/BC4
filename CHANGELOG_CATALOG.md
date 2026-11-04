@@ -495,3 +495,6 @@ pas refactoré pour servir ce JSON 2.50.4.
   `nemo_file_format_2.50.txt` (hierarchy + Scope NR). (b) `n_metrics` dans
   `catalog_release` = n_events ici ; la définition correcte pour BC3 est
   « sous-arbre event » — à requalifier au prochain build.
+## 2.68.3 (PATCH SemVer ; portée fonctionnelle MINOR demandée) — Noms complets et corrections de contenu — 2026-11-04 (BC4)
+
+- Ajoute la politique de jointure des 4 304 noms lisibles, corrige les blocs LTE/NR par `field_system`, marque les identités de mesure en `DIMENSION`, Rank/Modulation en `KPI_CATEGORICAL`, masque les placeholders CELLMEAS 3/4 et fusionne l'alias TBS UL vide dans la famille projetée.
