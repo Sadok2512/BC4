@@ -52,7 +52,7 @@ services:
       start_period: 20s
 
   api:
-    image: bc4-api:0.131.0-d559b23
+    image: bc4-api:0.131.1-0f9c538
     build: ./bc4-back
     restart: unless-stopped
     environment:
@@ -130,7 +130,7 @@ services:
       retries: 20
 
   import-worker:
-    image: bc4-api:0.131.0-d559b23
+    image: bc4-api:0.131.1-0f9c538
     command: python -m app.services.import_worker
     restart: unless-stopped
     environment:
@@ -168,7 +168,7 @@ services:
     # (serveur-à-serveur, pas de CORS). Pour builder : depuis
     # franco-focus-forge/ `docker build -f Dockerfile.v2 -t bc4-front-v2:<ver>
     # --build-arg VCS_REF=<sha> --build-arg APP_VERSION=<ver> .`
-    image: bc4-front-v2:1.135.0-f555534
+    image: bc4-front-v2:1.136.1-4f1a9d4
     restart: unless-stopped
     # Host port 5174 → container 5173. Port historique du handover
     # Codex67 ; ne pas changer sans prévenir.
