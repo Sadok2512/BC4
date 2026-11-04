@@ -27,7 +27,10 @@ class MetricInfo(BaseModel):
     # 0.80.1 — tech en str libre : catalog 2.50.5 inclut "Shared"/"Other"
     # (categories.yaml) en plus de LTE/NR/BOTH.
     tech: str
-    kind: Literal['numeric','categorical','event']
+    kind: Literal[
+        'numeric', 'categorical', 'event',
+        'KPI', 'KPI_CATEGORICAL', 'DIMENSION',
+    ]
     n_in_project: int
     decoder_version: str
     event: str
@@ -39,7 +42,7 @@ class MetricInfo(BaseModel):
     # 0.80.1 — proof en str libre : catalog 2.50.5 utilise "documented-2.50"
     # (voir build_catalog.py). Pas d'enum restrictif pour permettre les
     # bumps de catalog sans toucher au schema API.
-    proof: str
+    proof: str | None = None
     available: bool
     reason: str | None = None
     alias_of: str | None = None
@@ -83,7 +86,7 @@ class MetricCatalogNode(BaseModel):
     ] | None = None
     n: int = 0
     # 0.80.1 — proof en str libre (idem MetricInfo).
-    proof: str
+    proof: str | None = None
     selectable: bool = False
     reason: str | None = None
     # Lot 5 — nature de la métrique (émise par le back, non plus par l'oracle

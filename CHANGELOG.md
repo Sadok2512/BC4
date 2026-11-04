@@ -1,3 +1,7 @@
+## 0.131.2 (patch) — Contrat du catalogue actif — 2026-11-04 (BC4)
+
+- Le modèle de réponse Metrics accepte les natures certifiées `KPI`, `KPI_CATEGORICAL` et `DIMENSION`, ainsi que les nœuds structurels sans preuve, sans modifier le payload catalogue.
+
 ## 0.131.1 (patch) — Mobilité 3b : identité radio des événements — 2026-11-04 (BC4)
 
 - `/signaling/events` expose les PCI/EARFCN source et cible de HOA/HOS depuis
