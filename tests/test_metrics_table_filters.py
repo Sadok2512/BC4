@@ -11,6 +11,7 @@ def test_lean_table_is_only_used_for_an_unfiltered_capture():
     assert _lean_table_allowed(True, CELLMEAS, {"capture_id": "capture"})
     assert _lean_table_allowed(True, CQI, {"capture_id": "capture"})
     assert _lean_table_allowed(True, CHI, {"capture_id": "capture"})
+    assert _lean_table_allowed(True, [*CELLMEAS, *CHI], {"capture_id": "capture"})
     for filters in (
         {"capture_id": "capture", "rat": ["LTE"]},
         {"capture_id": "capture", "operator": ["Free"], "operator_mode": "selected"},
@@ -24,3 +25,4 @@ def test_lean_table_remains_closed_for_other_contracts():
     assert not _lean_table_allowed(True, [], {"capture_id": "capture"})
     assert not _lean_table_allowed(True, CQI, {"capture_id": "capture", "rat": ["LTE"]})
     assert not _lean_table_allowed(True, EVENT, {"capture_id": "capture"})
+    assert not _lean_table_allowed(True, [*CELLMEAS, *EVENT], {"capture_id": "capture"})

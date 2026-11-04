@@ -1,3 +1,8 @@
+## 0.132.4 (patch) — Table multi-métriques rapide — 2026-11-04 (BC1)
+
+- Étend le chemin de table allégé aux sélections multi-métriques non événementielles : la pagination enrichit uniquement la page demandée sans reconstruire le contexte complet de la capture.
+- Conserve le chemin complet dès qu'un filtre de population ou une métrique événementielle exige ses appariements.
+
 ## 0.132.3 (patch) — Table métrique unitaire rapide — 2026-11-04 (BC4)
 
 - Étend le chemin `table_only` léger aux métriques unitaires non événementielles comme CHI : le serveur ne reconstruit plus tout le contexte et toutes les paires de la capture avant de renvoyer une page.

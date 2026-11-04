@@ -98,18 +98,18 @@ def _apply_intrinsic_map_rat(selected: list[dict], f: dict) -> tuple[list[dict],
 
 
 def _lean_table_allowed(table_only: bool, selected: list[dict], filters: dict) -> bool:
-    """Use the capture-scoped fast path for one unfiltered table metric.
+    """Use the capture-scoped fast path for unfiltered table metrics.
 
     A plain metric table does not expose population context, histograms or
     event pairing. Rebuilding those full-capture structures before returning
     25 rows made ordinary CHI metrics take tens of seconds. Event contracts
     stay on the full path because their attributes may depend on pair rows.
     """
-    if not table_only or len(selected) != 1:
+    if not table_only or not selected:
         return False
-    metric = selected[0]
     return (
-        not str(metric.get('base_code') or '').startswith('evt_')
+        all(not str(metric.get('base_code') or '').startswith('evt_')
+            for metric in selected)
         and not any(key != 'capture_id' for key in filters)
     )
 
