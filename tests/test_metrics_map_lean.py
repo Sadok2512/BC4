@@ -35,6 +35,23 @@ def test_parallel_gps_read_is_capture_scoped(monkeypatch):
     ]
 
 
+def test_compact_map_point_is_lossless_and_drops_internal_null_fields():
+    point = {
+        "seq": 7, "lat": 50.0, "lng": 3.0, "code": "rsrp", "value": -95,
+        "t_rel_s": 1.5, "tooltip": "RSRP", "_second": 1,
+        "position_source": "exact", "serving_cell_ref_id": None,
+        "serving_cell_lat": 50.1, "neighbour_links": [],
+    }
+
+    compact = route._compact_map_point(point)
+
+    assert compact == {
+        "seq": 7, "lat": 50.0, "lng": 3.0, "code": "rsrp", "value": -95,
+        "t_rel_s": 1.5,
+        "serving_cell_lat": 50.1,
+    }
+
+
 def test_dedicated_route_uses_lean_full_map_contract(monkeypatch):
     calls = {}
 

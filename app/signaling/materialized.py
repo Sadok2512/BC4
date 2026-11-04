@@ -259,7 +259,7 @@ def active_capture(db, project_id, capture_id):
 
 def event_where(params, *, lanes=None, failures_only=False, view="legacy",
                 protocols=None, technology=None, direction=None, q=None,
-                procedure=None, from_s=None, to_s=None, after_seq=None):
+                procedure=None, types=None, from_s=None, to_s=None, after_seq=None):
     clauses = ["e.project_id=:pid", "e.capture_id=:cap",
                "e.generation=:generation", "e.view=:view"]
     params["view"] = view
@@ -267,6 +267,8 @@ def event_where(params, *, lanes=None, failures_only=False, view="legacy",
         clauses.append("e.lane=ANY(:lanes)"); params["lanes"] = lanes.split(",")
     if failures_only:
         clauses.append("e.outcome='fail'")
+    if types:
+        clauses.append("e.type=ANY(:types)"); params["types"] = types.split(",")
     if view == "rf" and protocols is not None:
         clauses.append("e.attrs->>'protocol'=ANY(:protocols)")
         params["protocols"] = protocols.split(",")

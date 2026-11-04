@@ -680,8 +680,9 @@ def sample(points,limit,kind):
     out=sorted(selected.values(),key=lambda r:r['seq'])
     return out,dict(method='seq_bucket_min_max',factor=n/len(out),seq_bucket_width=width)
 
+
 @router.get('/projects/{project_id}/metrics/series', response_model=SeriesResponse)
-def series(project_id: str,capture_id: str,codes: str,cell: str|None=None,attr: str|None=None,from_seq: int|None=Query(None,ge=0),to_seq: int|None=Query(None,ge=0),max_points: int=Query(5000,ge=2,le=100000),cell_pci:int|None=Query(None,ge=0),cell_arfcn:int|None=Query(None,ge=0),include_map:bool=False,f: dict=Depends(filters),db: Session=Depends(get_db)):
+def series(project_id: str,capture_id: str,codes: str,cell: str|None=None,attr: str|None=None,from_seq: int|None=Query(None,ge=0),to_seq: int|None=Query(None,ge=0),max_points: int=Query(5000,ge=2,le=100000),cell_pci:int|None=Query(None,ge=0),cell_arfcn:int|None=Query(None,ge=0),include_map:bool=False,compact:bool=False,f: dict=Depends(filters),db: Session=Depends(get_db)):
     from app.kpi.metrics_v3 import definitions,parse_selection,Dataset,DERIVED,EVENT_FIELD_CODES
     v3_definitions=definitions()
     if include_map or cell is not None or attr is not None or any(c.partition('@')[0].partition('~')[0] in EVENT_FIELD_CODES or c in DERIVED or c.startswith('evt_') or c.startswith('cap_') or '@' in c or '~' in c for c in codes.split(',')):
@@ -762,11 +763,12 @@ def series(project_id: str,capture_id: str,codes: str,cell: str|None=None,attr: 
             # `definitions`. Avant le fix, la concat `None + str` plantait
             # avec TypeError can only concatenate str (not "NoneType") to str.
             # Fix : fallback '' pour label et unit si absents.
-            p['tooltip']='seq '+str(p['seq'])+' · '+str(p['t_rel_s'])+' s\n'+'\n'.join((definitions[c].label or c)+': '+str(all_values[p['seq']].get(c,'N/D'))+' '+(definitions[c].unit or '') for c in selected)
+            p['tooltip']='' if compact else 'seq '+str(p['seq'])+' · '+str(p['t_rel_s'])+' s\n'+'\n'.join((definitions[c].label or c)+': '+str(all_values[p['seq']].get(c,'N/D'))+' '+(definitions[c].unit or '') for c in selected)
     rid=evidence(db,project_id,';\n'.join([TIME_SQL,*sqls]),{**params,'applied_filters':f,'codes':selected,'max_points':max_points},{'series':[{k:r[k] for k in ('code','n_total','n_returned','sampling')} for r in results]})
     output=io.StringIO();writer=csv.writer(output);writer.writerow(['result_id','capture_id','code','unit','seq','t_rel_s','value'])
-    for r in results:
-        for p in r['points']:writer.writerow([rid,capture_id,r['code'],r['unit'],p['seq'],p['t_rel_s'],p['value']])
+    if not compact:
+        for r in results:
+            for p in r['points']:writer.writerow([rid,capture_id,r['code'],r['unit'],p['seq'],p['t_rel_s'],p['value']])
     for result in results:
         metric=definitions[result['code']]
         result.update(source_table='nmf_event_light' if state['decode_level']=='light' else metric.source_table,source_column=metric.source_column)

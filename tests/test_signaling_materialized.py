@@ -19,13 +19,16 @@ def test_points_keep_strict_previous_gps_semantics():
 def test_event_window_is_capture_generation_and_seq_scoped():
     params = {"pid": "p", "cap": "c", "generation": "g"}
     where = mat.event_where(params, view="rf", from_s=1, to_s=2,
-                            after_seq=3, lanes="radio,mobilite")
+                            after_seq=3, lanes="radio,mobilite",
+                            types="RRF,SCG_ADD")
     assert "e.project_id=:pid" in where
     assert "e.capture_id=:cap" in where
     assert "e.generation=:generation" in where
     assert "e.seq>:after_seq" in where
     assert "COALESCE(e.t_rel_end_s,e.t_rel_s)>=:from_s" in where
     assert "e.t_rel_s<=:to_s" in where
+    assert "e.type=ANY(:types)" in where
+    assert params["types"] == ["RRF", "SCG_ADD"]
     assert " ts" not in where.lower()
 
 

@@ -111,10 +111,42 @@ def _lean_table_allowed(table_only: bool, selected: list[dict], filters: dict) -
         and not any(key != 'capture_id' for key in filters)
     )
 
+
+_MAP_REQUIRED_FIELDS = {
+    'seq', 'lat', 'lng', 'code', 'value', 't_rel_s',
+}
+_MAP_OPTIONAL_BROWSER_FIELDS = {
+    'serving_cell_id', 'serving_cell_seq', 'serving_cell_ref_id',
+    'serving_site_id', 'serving_site_name', 'serving_cell_lat',
+    'serving_cell_lng', 'serving_cell_pci', 'serving_cell_arfcn',
+    'serving_link_distance_m', 'serving_link_confidence',
+    'serving_cell_source', 'probable_serving_cell_ref_id',
+    'probable_serving_site_id', 'probable_serving_site_name',
+    'probable_serving_cell_lat', 'probable_serving_cell_lng',
+    'probable_serving_pci', 'probable_serving_band_mhz',
+    'probable_serving_distance_m', 'neighbour_links', 'nr_anchor_link',
+}
+
+
+def _compact_map_point(point: dict) -> dict:
+    """Drop internal and null optional fields from the browser contract.
+
+    A 4,935-point capture used to repeat dozens of ``null`` properties plus
+    the private ``_second``/position bookkeeping on every point. The compact
+    form is lossless for consumers: required fields are always retained and
+    every populated serving/neighbour/NR link field remains byte-for-byte.
+    """
+    return {
+        key: value for key, value in point.items()
+        if key in _MAP_REQUIRED_FIELDS
+        or (key in _MAP_OPTIONAL_BROWSER_FIELDS and value is not None and value != [])
+    }
+
 @router.get('/projects/{project_id}/metrics/map',response_model=MetricMapResponse)
 def metric_map(project_id:str,capture_id:str,codes:str,cell:str='all',attr:str|None=None,
                from_seq:int|None=Query(None,ge=0),to_seq:int|None=Query(None,ge=0),
                cell_pci:int|None=Query(None,ge=0),cell_arfcn:int|None=Query(None,ge=0),
+               compact:bool=False,
                f:dict=Depends(filters),db:Session=Depends(get_db)):
     """Return only proven map points; no clock, histogram, table or CSV work."""
     project(db,project_id)
@@ -152,10 +184,11 @@ def metric_map(project_id:str,capture_id:str,codes:str,cell:str='all',attr:str|N
         f'gps;dur={(after_gps-after_load)*1000:.3f}',
         f'links;dur={(after_map-after_gps)*1000:.3f}',
     ))
+    response_points=[_compact_map_point(point) for point in points] if compact else points
     payload=dict(project_id=project_id,capture_id=capture_id,
                  result_id=sha256(basis.encode()).hexdigest()[:32],
                  decoder_version=dataset.state['decoder_version'],
-                 total_points=len(points),map_points=points)
+                 total_points=len(points),map_points=response_points)
     return ORJSONResponse(payload,headers={'Server-Timing':server_timing})
 
 @router.get('/projects/{project_id}/metrics/table',response_model=Analysis)

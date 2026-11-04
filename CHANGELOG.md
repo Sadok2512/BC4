@@ -1,3 +1,8 @@
+## 0.132.2 (patch) — Chemins Analytics compacts — 2026-11-04 (BC4)
+
+- Ajoute une réponse compacte aux séries radio de Signaling qui conserve les sélecteurs, populations et valeurs historiques tout en omettant CSV et infobulles non consommés.
+- Ajoute le contrat Map compact opt-in, qui retire uniquement les champs internes et les propriétés optionnelles nulles, et permet de limiter `/signaling/events` aux types cartographiques demandés avec leurs compteurs dans le résumé.
+
 ## 0.132.1 (patch) — Clôture des noms complets du catalogue — 2026-11-04 (BC4)
 
 - Corrige les libellés de blocs étrangers selon la branche technologique sans perdre leurs valeurs, publie une famille canonique `cell_ch@lte-type-*` pour les identités CELLMEAS et masque les identités locales des autres événements.

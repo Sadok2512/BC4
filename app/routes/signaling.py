@@ -7,6 +7,7 @@ from typing import Literal, Any
 from fastapi import APIRouter, Depends, Query, HTTPException
 from fastapi.responses import ORJSONResponse
 from pydantic import BaseModel, Field
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 from app.db import get_db
 from app.deps import get_current_user
@@ -307,6 +308,7 @@ class EventsResponse(Envelope):
 class EventsSummary(Envelope):
     tracks:list[str]
     counts:dict[str,int]
+    event_types:dict[str,int]
     hidden:dict[str,int]
     total:int
     seq_start:int|None
@@ -331,7 +333,14 @@ def window_events(events,from_s=None,to_s=None,after_seq=None,limit=None):
 def events_summary(project_id:str,capture_id:str,db:Session=Depends(get_db)):
     """Small first-paint contract from the active import-time generation."""
     active=mat.active_capture(db,project_id,capture_id)
+    type_rows=db.execute(text("""SELECT type,count(*) AS n
+      FROM signaling_materialized_event
+      WHERE project_id=:pid AND capture_id=:cap AND generation=:generation
+        AND view='legacy'
+      GROUP BY type ORDER BY type"""),dict(pid=project_id,cap=capture_id,
+        generation=active['generation'])).mappings()
     payload=dict(tracks=active['tracks'],counts=active['event_counts'],
+      event_types={row['type']:int(row['n']) for row in type_rows},
       hidden=active['hidden'],total=active['total'],
       seq_start=active['seq_start'],seq_end=active['seq_end'],
       t_rel_start_s=active['t_rel_start_s'],t_rel_end_s=active['t_rel_end_s'])
@@ -340,7 +349,7 @@ def events_summary(project_id:str,capture_id:str,db:Session=Depends(get_db)):
 @router.get('/events',response_model=EventsResponse)
 def events(project_id:str,capture_id:str,lanes:str|None=None,failures_only:bool=False,
            view:Literal["legacy","rf"]="legacy",protocols:str|None=None,technology:str|None=None,
-           direction:str|None=None,q:str|None=None,
+           direction:str|None=None,q:str|None=None,types:str|None=None,
            from_s:float|None=Query(None,ge=0),to_s:float|None=Query(None,ge=0),
            after_seq:int|None=Query(None,ge=0),limit:int|None=Query(None,ge=1,le=5000),
            db:Session=Depends(get_db)):
@@ -351,7 +360,7 @@ def events(project_id:str,capture_id:str,lanes:str|None=None,failures_only:bool=
         raise HTTPException(422,'invalid_time_range')
     evs,total,counts,rules=mat.read_events(db,project_id,capture_id,
       lanes=lanes,failures_only=failures_only,view=view,protocols=protocols,
-      technology=technology,direction=direction,q=q,from_s=from_s,to_s=to_s,
+      technology=technology,direction=direction,q=q,types=types,from_s=from_s,to_s=to_s,
       after_seq=after_seq,limit=limit)
     truncated=limit is not None and total>len(evs)
     next_seq=evs[-1]['seq'] if truncated and evs else None
