@@ -74,3 +74,47 @@ def test_catalog_2683_policy_has_no_foreign_bloc_residual():
     assert policy["classification_uses_labels"] is False
     assert policy["hidden_cell_type_3_4"] == 2
     assert policy["hidden_unprojected_tbs_aliases"] == 7
+
+
+def test_prepare_full_names_closure_uses_tree_content(monkeypatch, tmp_path):
+    source = tmp_path / "catalog_2.68.3.json"
+    target = tmp_path / "catalog_2.68.4.json"
+    source.write_text(json.dumps({
+        "catalog_version": "2.68.3",
+        "nodes": [
+            {"node_id": "tech_LTE", "parent_id": None, "node_type": "tech", "tech": "LTE"},
+            {"node_id": "ev_CI", "parent_id": "tech_LTE", "node_type": "event"},
+            _leaf(
+                "ci_arfcn@0", "CI", 0, "ARFCN (bloc GSM) @ PCell",
+                parent_id="ev_CI", display_code="ci_arfcn@0", kind="KPI",
+            ),
+            {"node_id": "ev_CELLMEAS", "parent_id": "tech_LTE", "node_type": "event"},
+            _leaf(
+                "cellmeas_ch@0", "CELLMEAS", 0, "Ch (bloc GSM) @ Serving",
+                parent_id="ev_CELLMEAS", display_code="cellmeas_ch@0", kind="KPI",
+            ),
+        ],
+        "spec_version": "2.50",
+        "decoder_min_version": "1.9.0",
+        "n_categories": 1,
+        "n_metrics": 2,
+        "n_leaves": 2,
+    }), encoding="utf-8")
+    monkeypatch.setattr(
+        bootstrap,
+        "catalog_file_path",
+        lambda version: source if version == "2.68.3" else target,
+    )
+
+    bootstrap.prepare_full_names_closure_patch("2.68.3", "2.68.4")
+    leaves = {
+        node["metric_id"]: node
+        for node in json.loads(target.read_text(encoding="utf-8"))["nodes"]
+        if node.get("node_type") == "leaf"
+    }
+    assert leaves["ci_arfcn@0"]["label"] == "ARFCN (bloc LTE) @ PCell"
+    assert leaves["ci_arfcn@0"]["kind"] == "DIMENSION"
+    assert leaves["ci_arfcn@0"]["tree_visible"] is False
+    assert leaves["cellmeas_ch@0"]["label"] == "Ch (bloc LTE) @ Serving"
+    assert leaves["cellmeas_ch@0"].get("tree_visible", True) is True
+    assert leaves["cellmeas_ch@0"]["canonical_metric_id"] == "cell_ch@lte-type-0"

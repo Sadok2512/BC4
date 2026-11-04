@@ -655,25 +655,6 @@ def build_catalog_v4(
             return "DIMENSION"
         return "KPI"
 
-    # Lot 4 (patch 2.63.1) — bloc étranger : drop UNIQUEMENT les feuilles
-    # dont `field_system` est explicitement un système étranger (NFF
-    # measured_system codes). Les feuilles multi-system (field_system=None)
-    # sont CONSERVÉES — leur label "(bloc X)" est un marqueur de section
-    # NFF mais la feuille porte des valeurs réelles pour LTE/NR (ex.
-    # `mei_measurement_event` = 15 valeurs ikea.6).
-    # Codes NFF measured_system : 1=GSM, 2=TETRA, 5=UMTS FDD, 6=UMTS TD-SCDMA,
-    # 7=LTE FDD, 8=LTE TDD, 9=NR, 10=cdmaOne, 11=CDMA 1x, 12=EVDO, 13=DVB-H,
-    # 21=GAN WLAN, 25=WiMAX, 51/52/53/55=AMPS/NAMPS/DAMPS/iDEN.
-    _FOREIGN_SYSTEM_IDS = {1, 2, 5, 6, 10, 11, 12, 13, 21, 25, 51, 52, 53, 55}
-    def _is_foreign_bloc(n: dict) -> bool:
-        fs = n.get('field_system')
-        if fs is None:
-            return False
-        try:
-            return int(fs) in _FOREIGN_SYSTEM_IDS
-        except (TypeError, ValueError):
-            return False
-
     # Lot 4 — MIMOMEAS/CSI/PMI sur voisines : ces events n'ont pas de sens
     # sur les cellules voisines (NFF 2.50 : events par cellule serving).
     def _is_mimo_csi_on_neighbour(n: dict) -> bool:
@@ -691,8 +672,10 @@ def build_catalog_v4(
             continue
         if _is_ghost_nr_placeholder(n):
             continue
-        if _is_foreign_bloc(n):
-            continue  # Lot 4 — bloc étranger drop
+        # 2.68.4 — foreign legacy block names are presentation defects, not a
+        # reason to discard decoded RF values.  The catalog preparation fixes
+        # them from the structural LTE/NR branch and runtime cell leaves are
+        # aligned later from ``cell_system``.
         if _is_mimo_csi_on_neighbour(n):
             continue  # Lot 4 — MIMOMEAS/CSI/PMI non-serving
         kind = _kind_for_leaf(n)
@@ -1013,6 +996,7 @@ def build_catalog_v4(
         siblings_counter[parent_id] = order + 1
         is_leaf = node.get("node_type") == "leaf"
         metric_id = node.get("metric_id") if is_leaf else None
+        canonical_metric_id = node.get("canonical_metric_id") if is_leaf else None
         is_capture_leaf = is_leaf and node.get("tech") == "CAPTURE"
         col = _column_for_leaf(node) if is_leaf else None
         ct_node = node.get("cell_type") if is_leaf else None
@@ -1169,12 +1153,12 @@ def build_catalog_v4(
                 # sélecteur unifié. Le token API /metrics/table est dans
                 # `selection` (séparé).
                 metric_id=(
-                    metric_id if (
+                    canonical_metric_id or (metric_id if (
                         ct_node is not None
                         and metric_id
                         and col
                         and metric_id != f"{col}@{int(ct_node)}"
-                    ) else (selection if ct_node is not None and selection else metric_id)
+                    ) else (selection if ct_node is not None and selection else metric_id))
                 ),
                 selection=selection,
                 event=(node.get("event") or "").lstrip("#") if is_leaf else None,
@@ -1482,6 +1466,7 @@ def build_catalog_v4(
                 order=order,
                 label=label_full,
                 display_code=selection,
+                tree_visible=not _is_identity_field(ev, col) or ev == "CELLMEAS",
                 enum_values=_dyn_enum,
                 note="Cellule observée dans nmf_cell_second",
                 source=None,

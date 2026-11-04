@@ -498,3 +498,9 @@ pas refactoré pour servir ce JSON 2.50.4.
 ## 2.68.3 (PATCH SemVer ; portée fonctionnelle MINOR demandée) — Noms complets et corrections de contenu — 2026-11-04 (BC4)
 
 - Ajoute la politique de jointure des 4 304 noms lisibles, corrige les blocs LTE/NR par `field_system`, marque les identités de mesure en `DIMENSION`, Rank/Modulation en `KPI_CATEGORICAL`, masque les placeholders CELLMEAS 3/4 et fusionne l'alias TBS UL vide dans la famille projetée.
+
+## 2.68.4 (PATCH) — Clôture des identités et libellés étrangers — 2026-11-04 (BC4)
+
+- Corrige par la branche structurelle les libellés LTE/NR qui conservaient un bloc GSM/UMTS/cdma/WiMAX/TETRA/EVDO/GAN/iDEN/TD-SCDMA ; aucune valeur n'est supprimée.
+- Normalise les identifiants CELLMEAS EARFCN sous `cell_ch@lte-type-<enum>` et masque les champs d'identité locaux des autres événements tout en conservant CELLMEAS visible comme `DIMENSION`.
+- sha256 : `81c4152d0ed2f28a8b6532bf98f08ff79846c515a7bb208c96c5d1af2a34ffc2`.

@@ -458,6 +458,30 @@ def _correct_bloc_label(label: str, system: int) -> str:
     )
 
 
+_FOREIGN_BLOCK_RE = re.compile(
+    r"\(bloc (?:GSM|UMTS|cdma|WiMAX|TETRA|EVDO|GAN|iDEN|TD-SCDMA)",
+    re.IGNORECASE,
+)
+
+
+def _root_technology(leaf: dict, nodes_by_id: dict[str, dict]) -> str | None:
+    """Resolve the catalog branch from structure, never from a label."""
+    current = leaf
+    visited: set[str] = set()
+    while current:
+        node_id = current.get("node_id")
+        if node_id in visited:
+            break
+        if node_id:
+            visited.add(node_id)
+        technology = current.get("tech") or current.get("technology")
+        if technology in {"LTE", "NR", "CAPTURE", "IP / Services"}:
+            return str(technology)
+        parent_id = current.get("parent_id")
+        current = nodes_by_id.get(parent_id) if parent_id else None
+    return None
+
+
 def prepare_full_names_patch(source_version: str, target_version: str) -> Path:
     """Prepare 2.68.3 content corrections without opening a DB session."""
     _validate_next_patch(source_version, target_version)
@@ -541,6 +565,85 @@ def prepare_full_names_patch(source_version: str, target_version: str) -> Path:
     return target_path
 
 
+def prepare_full_names_closure_patch(source_version: str, target_version: str) -> Path:
+    """Close the 2.68.3 content gaps without changing RF values.
+
+    The structural technology branch decides foreign-block corrections.  The
+    original baked ``display_code`` remains stable for the 4,304-name join;
+    ``canonical_metric_id`` carries the public CELLMEAS enum identity.
+    """
+    _validate_next_patch(source_version, target_version)
+    source_path = catalog_file_path(source_version)
+    if not source_path.exists():
+        raise FileNotFoundError(f"catalogue source absent : {source_path}")
+    payload = json.loads(source_path.read_text(encoding="utf-8"))
+    nodes = payload.get("nodes", [])
+    nodes_by_id = {node["node_id"]: node for node in nodes if node.get("node_id")}
+    leaves = [node for node in nodes if node.get("node_type") == "leaf"]
+    if not leaves:
+        raise ValueError("catalogue source sans feuille")
+
+    foreign_corrected = 0
+    hidden_identity = 0
+    canonical_cellmeas = 0
+    for leaf in leaves:
+        technology = _root_technology(leaf, nodes_by_id)
+        label = str(leaf.get("label") or "")
+        if technology in {"LTE", "NR"} and _FOREIGN_BLOCK_RE.search(label):
+            expected_system = 7 if technology == "LTE" else 9
+            leaf["label"] = _correct_bloc_label(label, expected_system)
+            leaf["label_system"] = expected_system
+            foreign_corrected += 1
+
+        event = str(leaf.get("event") or "").lstrip("#")
+        base = _metric_base(leaf)
+        if base in _IDENTITY_BASES_BY_EVENT.get(event, set()):
+            leaf["kind"] = "DIMENSION"
+            leaf["identity_field"] = True
+            leaf["unit"] = ""
+            # CELLMEAS EARFCN/ARFCN is the certified visible identity family.
+            # Other message-local identities are row details, not tree leaves.
+            if event != "CELLMEAS":
+                leaf["tree_visible"] = False
+                leaf["tree_visibility_reason"] = "message_identity_detail"
+                hidden_identity += 1
+
+        if event == "CELLMEAS" and base in {"cell_ch", "cellmeas_ch"}:
+            cell_type = leaf.get("cell_type")
+            if isinstance(cell_type, int):
+                leaf["canonical_metric_id"] = (
+                    f"cell_ch@lte-type-{cell_type}"
+                )
+                canonical_cellmeas += 1
+
+    residual = [
+        leaf.get("display_code") or leaf.get("metric_id")
+        for leaf in leaves
+        if _root_technology(leaf, nodes_by_id) in {"LTE", "NR"}
+        and _FOREIGN_BLOCK_RE.search(str(leaf.get("label") or ""))
+    ]
+    if residual:
+        raise ValueError(f"libellés bloc étrangers résiduels : {residual[:3]}")
+
+    payload["catalog_full_names_closure_policy"] = {
+        "source_version": source_version,
+        "classification_uses_labels": False,
+        "foreign_block_labels_corrected": foreign_corrected,
+        "hidden_message_identity_leaves": hidden_identity,
+        "canonical_cellmeas_identity_leaves": canonical_cellmeas,
+        "cellmeas_identity_exception": "visible_dimension",
+    }
+    target_path = _write_catalog_artifact(payload, target_version)
+    print(
+        f"[bootstrap] prepared full-names-closure v={target_version} "
+        f"from={source_version} foreign_corrected={foreign_corrected} "
+        f"residual_foreign=0 hidden_identity={hidden_identity} "
+        f"canonical_cellmeas={canonical_cellmeas} "
+        f"sha256={sha256_file(target_path)}"
+    )
+    return target_path
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--version", "--to", dest="version", required=True, help="ex. 2.53.0")
@@ -550,7 +653,10 @@ def main(argv: list[str] | None = None) -> int:
     )
     ap.add_argument(
         "--transform",
-        choices=("analytics", "nr-labels", "visible-leaves", "scell5plus", "full-names"),
+        choices=(
+            "analytics", "nr-labels", "visible-leaves", "scell5plus",
+            "full-names", "full-names-closure",
+        ),
         default="analytics",
         help="transformation disque appliquée avec --from (défaut : analytics)",
     )
@@ -572,6 +678,8 @@ def main(argv: list[str] | None = None) -> int:
                 prepare_scell5plus_minor(args.from_version, args.version)
             elif args.transform == "full-names":
                 prepare_full_names_patch(args.from_version, args.version)
+            elif args.transform == "full-names-closure":
+                prepare_full_names_closure_patch(args.from_version, args.version)
             else:
                 prepare_analytics_minor(args.from_version, args.version)
         except (FileNotFoundError, ValueError) as exc:

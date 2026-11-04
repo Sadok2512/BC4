@@ -1,3 +1,8 @@
+## 0.132.1 (patch) — Clôture des noms complets du catalogue — 2026-11-04 (BC4)
+
+- Corrige les libellés de blocs étrangers selon la branche technologique sans perdre leurs valeurs, publie une famille canonique `cell_ch@lte-type-*` pour les identités CELLMEAS et masque les identités locales des autres événements.
+- Renforce `guard_catalog.py` sur les blocs legacy, les identités `DIMENSION` masquées et les identifiants EARFCN canoniques.
+
 ## 0.132.0 (minor) — Noms complets de l'arbre Metrics — 2026-11-04 (BC4)
 
 - L'API catalogue expose `display_code_lisible`, `nom_court`, la branche de présentation et la visibilité d'arbre depuis le mapping certifié de 4 304 identités techniques ; les sélecteurs API restent inchangés.

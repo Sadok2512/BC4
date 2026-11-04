@@ -124,7 +124,22 @@ def extract_summary(payload):
     readable_code_null = 0
     trailing_name_underscore = 0
     foreign_bloc_labels = []
+    foreign_legacy_block_labels = []
     categorical_kind_errors = []
+    identity_detail_total = 0
+    identity_detail_hidden_dimension = 0
+    identity_detail_errors = []
+    earfcn_identifier_errors = []
+    identity_columns = {
+        "PHRATE": {"phrate_ch"},
+        "MIMOMEAS": {"mimo_band", "cell_ch", "mimo_pci"},
+        "PLAID": {"plaid_pdsch_bwp_id", "plaid_pdsch_bwp_id_f36"},
+        "PLAIU": {"plaiu_pusch_bwp_id", "plaiu_pusch_bwp_id_f35"},
+        "CI": {"ci_arfcn", "ci_ch", "ci_rpc_cell_index"},
+    }
+    foreign_legacy_re = re.compile(
+        r"\(bloc (?:GSM|UMTS|cdma|WiMAX|TETRA|EVDO|GAN|iDEN|TD-SCDMA)"
+    )
     for n in leaves:
         t = tech_of(n, by_id) or "?"
         if t not in per_branch:
@@ -167,6 +182,34 @@ def extract_summary(payload):
                 "cell_system": system,
                 "label": n.get("label"),
             })
+        if t in {"LTE", "NR"} and foreign_legacy_re.search(n.get("label") or ""):
+            foreign_legacy_block_labels.append(dc)
+        event = n.get("event") or ""
+        source_column = n.get("source_column")
+        if source_column in identity_columns.get(event, set()):
+            identity_detail_total += 1
+            if n.get("kind") == "DIMENSION" and n.get("tree_visible") is False:
+                identity_detail_hidden_dimension += 1
+            else:
+                identity_detail_errors.append({
+                    "display_code": dc,
+                    "kind": n.get("kind"),
+                    "tree_visible": n.get("tree_visible"),
+                })
+        raw_cell_type = n.get("raw_cell_type")
+        if (
+            event == "CELLMEAS"
+            and source_column == "cell_ch"
+            and n.get("cell_system") == "LTE"
+            and isinstance(raw_cell_type, int)
+        ):
+            expected_metric_id = f"cell_ch@lte-type-{raw_cell_type}"
+            if n.get("metric_id") != expected_metric_id:
+                earfcn_identifier_errors.append({
+                    "display_code": dc,
+                    "metric_id": n.get("metric_id"),
+                    "expected": expected_metric_id,
+                })
         technical_tokens = set(re.split(r"[^a-z0-9]+", str(dc or "").lower()))
         if technical_tokens & {"rank", "modulation"} and n.get("kind") != "KPI_CATEGORICAL":
             categorical_kind_errors.append(dc)
@@ -184,7 +227,12 @@ def extract_summary(payload):
         },
         "trailing_name_underscore": trailing_name_underscore,
         "foreign_bloc_labels": foreign_bloc_labels,
+        "foreign_legacy_block_labels": foreign_legacy_block_labels,
         "categorical_kind_errors": categorical_kind_errors,
+        "identity_detail_total": identity_detail_total,
+        "identity_detail_hidden_dimension": identity_detail_hidden_dimension,
+        "identity_detail_errors": identity_detail_errors,
+        "earfcn_identifier_errors": earfcn_identifier_errors,
     }
 
 
@@ -272,7 +320,12 @@ def main():
     print(
         "content_checks "
         f"foreign_bloc_mismatch={sum(len(s['foreign_bloc_labels']) for s in current.values())} "
-        f"rank_modulation_wrong_kind={sum(len(s['categorical_kind_errors']) for s in current.values())}\n"
+        f"foreign_legacy_block={sum(len(s['foreign_legacy_block_labels']) for s in current.values())} "
+        f"rank_modulation_wrong_kind={sum(len(s['categorical_kind_errors']) for s in current.values())} "
+        f"identity_dimension_hidden="
+        f"{sum(s['identity_detail_hidden_dimension'] for s in current.values())}/"
+        f"{sum(s['identity_detail_total'] for s in current.values())} "
+        f"earfcn_identifier_errors={sum(len(s['earfcn_identifier_errors']) for s in current.values())}\n"
     )
 
     # 2. Load previous snapshot (if any)
@@ -343,6 +396,21 @@ def main():
             failures.append(
                 f"[{cap_label}] libellés bloc d'une autre technologie : "
                 f"{cur['foreign_bloc_labels'][:3]}"
+            )
+        if cur["foreign_legacy_block_labels"]:
+            failures.append(
+                f"[{cap_label}] libellés bloc legacy LTE/NR : "
+                f"{cur['foreign_legacy_block_labels'][:5]}"
+            )
+        if cur["identity_detail_errors"]:
+            failures.append(
+                f"[{cap_label}] identités message non masquées/DIMENSION : "
+                f"{cur['identity_detail_errors'][:5]}"
+            )
+        if cur["earfcn_identifier_errors"]:
+            failures.append(
+                f"[{cap_label}] identifiants EARFCN_SERVING non canoniques : "
+                f"{cur['earfcn_identifier_errors'][:5]}"
             )
         if cur["categorical_kind_errors"]:
             failures.append(

@@ -1,0 +1,212 @@
+[
+  {
+    "display_code": "crel_old_cell_id",
+    "label": "Old Cell ID (bloc GSM)",
+    "metric_id": "crel_old_cell_id",
+    "n_per_capture": {
+      "a4b0c321c52e": 50,
+      "daa2b1df250d": 1,
+      "ecffb18dbd7f": 0
+    }
+  },
+  {
+    "display_code": "crel_old_band",
+    "label": "Old band (bloc GSM)",
+    "metric_id": "crel_old_band",
+    "n_per_capture": {
+      "a4b0c321c52e": 52,
+      "daa2b1df250d": 1,
+      "ecffb18dbd7f": 0
+    }
+  },
+  {
+    "display_code": "crel_old_band_f1",
+    "label": "Old band (bloc cdmaOne, CDMA 1x, and EVDO)",
+    "metric_id": "crel_old_band_f1",
+    "n_per_capture": {
+      "a4b0c321c52e": 52,
+      "daa2b1df250d": 1,
+      "ecffb18dbd7f": 0
+    }
+  },
+  {
+    "display_code": "crel_cell_id",
+    "label": "Cell ID (bloc GSM)",
+    "metric_id": "crel_cell_id",
+    "n_per_capture": {
+      "a4b0c321c52e": 50,
+      "daa2b1df250d": 1,
+      "ecffb18dbd7f": 0
+    }
+  },
+  {
+    "display_code": "crel_band",
+    "label": "Band (bloc GSM)",
+    "metric_id": "crel_band",
+    "n_per_capture": {
+      "a4b0c321c52e": 52,
+      "daa2b1df250d": 1,
+      "ecffb18dbd7f": 0
+    }
+  },
+  {
+    "display_code": "crel_band_f1",
+    "label": "Band (bloc cdmaOne, CDMA 1x, and EVDO)",
+    "metric_id": "crel_band_f1",
+    "n_per_capture": {
+      "a4b0c321c52e": 52,
+      "daa2b1df250d": 1,
+      "ecffb18dbd7f": 0
+    }
+  },
+  {
+    "display_code": "hoa_ch_number",
+    "label": "Ch number (bloc GSM)",
+    "metric_id": "hoa_ch_number",
+    "n_per_capture": {
+      "a4b0c321c52e": 126,
+      "daa2b1df250d": 0,
+      "ecffb18dbd7f": 5
+    }
+  },
+  {
+    "display_code": "hoa_band",
+    "label": "Band (bloc GSM)",
+    "metric_id": "hoa_band",
+    "n_per_capture": {
+      "a4b0c321c52e": 126,
+      "daa2b1df250d": 0,
+      "ecffb18dbd7f": 5
+    }
+  },
+  {
+    "display_code": "hoa_band_f2",
+    "label": "Band (bloc cdmaOne, CDMA 1x, and EVDO)",
+    "metric_id": "hoa_band_f2",
+    "n_per_capture": {
+      "a4b0c321c52e": 126,
+      "daa2b1df250d": 0,
+      "ecffb18dbd7f": 5
+    }
+  },
+  {
+    "display_code": "hoa_att_ch",
+    "label": "Att. ch (bloc GSM)",
+    "metric_id": "hoa_att_ch",
+    "n_per_capture": {
+      "a4b0c321c52e": 126,
+      "daa2b1df250d": 0,
+      "ecffb18dbd7f": 5
+    }
+  },
+  {
+    "display_code": "hoa_att_band",
+    "label": "Att. Band (bloc GSM)",
+    "metric_id": "hoa_att_band",
+    "n_per_capture": {
+      "a4b0c321c52e": 126,
+      "daa2b1df250d": 0,
+      "ecffb18dbd7f": 5
+    }
+  },
+  {
+    "display_code": "hoa_att_band_f2",
+    "label": "Att. Band (bloc cdmaOne, CDMA 1x, and EVDO)",
+    "metric_id": "hoa_att_band_f2",
+    "n_per_capture": {
+      "a4b0c321c52e": 126,
+      "daa2b1df250d": 0,
+      "ecffb18dbd7f": 5
+    }
+  },
+  {
+    "display_code": "maci_cell_type",
+    "label": "Cell type (bloc UMTS FDD)",
+    "metric_id": "maci_cell_type",
+    "n_per_capture": {
+      "a4b0c321c52e": 163,
+      "daa2b1df250d": 20,
+      "ecffb18dbd7f": 6
+    }
+  },
+  {
+    "display_code": "maci_cell_state",
+    "label": "Cell state (bloc UMTS FDD)",
+    "metric_id": "maci_cell_state",
+    "n_per_capture": {
+      "a4b0c321c52e": 163,
+      "daa2b1df250d": 20,
+      "ecffb18dbd7f": 6
+    }
+  },
+  {
+    "display_code": "rachi_init_tx_power",
+    "label": "Init TX power (bloc UMTS FDD)",
+    "metric_id": "rachi_init_tx_power",
+    "n_per_capture": {
+      "a4b0c321c52e": 258,
+      "daa2b1df250d": 4,
+      "ecffb18dbd7f": 7
+    }
+  },
+  {
+    "display_code": "rachi_preamble_step",
+    "label": "Preamble step (bloc UMTS FDD)",
+    "metric_id": "rachi_preamble_step",
+    "n_per_capture": {
+      "a4b0c321c52e": 258,
+      "daa2b1df250d": 4,
+      "ecffb18dbd7f": 7
+    }
+  },
+  {
+    "display_code": "rrd_rrc_rel_status",
+    "label": "RRC rel. status (bloc UMTS FDD and UMTS TD-SCDMA)",
+    "metric_id": "rrd_rrc_rel_status",
+    "n_per_capture": {
+      "a4b0c321c52e": 131,
+      "daa2b1df250d": 5,
+      "ecffb18dbd7f": 5
+    }
+  },
+  {
+    "display_code": "rrd_rrc_rel_cause",
+    "label": "RRC rel. cause (bloc UMTS FDD and UMTS TD-SCDMA)",
+    "metric_id": "rrd_rrc_rel_cause",
+    "n_per_capture": {
+      "a4b0c321c52e": 131,
+      "daa2b1df250d": 5,
+      "ecffb18dbd7f": 5
+    }
+  },
+  {
+    "display_code": "plaiu_sample_duration@5",
+    "label": "Sample duration (bloc UMTS FDD) @ SCell 5",
+    "metric_id": "plaiu_sample_duration@5",
+    "n_per_capture": {
+      "a4b0c321c52e": 0,
+      "daa2b1df250d": 139,
+      "ecffb18dbd7f": 0
+    }
+  },
+  {
+    "display_code": "plaiu_sample_duration@6",
+    "label": "Sample duration (bloc UMTS FDD) @ SCell 6",
+    "metric_id": "plaiu_sample_duration@6",
+    "n_per_capture": {
+      "a4b0c321c52e": 0,
+      "daa2b1df250d": 139,
+      "ecffb18dbd7f": 0
+    }
+  },
+  {
+    "display_code": "plaiu_percentage@nr-type-199",
+    "label": "Percentage (bloc UMTS FDD) @ SCG PSCell",
+    "metric_id": "plaiu_percentage@nr-type-199",
+    "n_per_capture": {
+      "a4b0c321c52e": 2851,
+      "daa2b1df250d": 13,
+      "ecffb18dbd7f": 107
+    }
+  }
+]
