@@ -932,6 +932,13 @@ class Dataset:
         pair_rows=[] if series_only else [dict(p) for p in self.pairs if self.admissible(p['seq_start']) and (p['seq_end'] is None or self.admissible(p['seq_end']))]
         pair_rates=[]
         if self.lean_table and not sql_paginated:
+            pair_bounds='';pair_params={}
+            if self.lo is not None:
+                pair_bounds+=' AND seq_start>=:pair_lo AND (seq_end IS NULL OR seq_end>=:pair_lo)'
+                pair_params['pair_lo']=self.lo
+            if self.hi is not None:
+                pair_bounds+=' AND seq_start<=:pair_hi AND (seq_end IS NULL OR seq_end<=:pair_hi)'
+                pair_params['pair_hi']=self.hi
             pair_rates=[dict(r) for r in self.query("""
                 SELECT type,COUNT(*)::int AS attempts,
                        COUNT(seq_end)::int AS completed,
@@ -942,11 +949,9 @@ class Dataset:
                                  / COUNT(*) FILTER (WHERE outcome IN ('ok','fail')) END AS success_pct
                 FROM nmf_event_pair
                 WHERE project_id=:pid AND capture_id=:cap
-                  AND (:lo IS NULL OR seq_start>=:lo) AND (:hi IS NULL OR seq_start<=:hi)
-                  AND (seq_end IS NULL OR ((:lo IS NULL OR seq_end>=:lo)
-                                           AND (:hi IS NULL OR seq_end<=:hi)))
+                  """+pair_bounds+"""
                 GROUP BY type ORDER BY type
-            """, {'lo':self.lo,'hi':self.hi})]
+            """, pair_params)]
             for rate in pair_rates:
                 if rate['success_pct'] is not None:rate['success_pct']=float(rate['success_pct'])
         else:
