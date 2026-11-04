@@ -77,8 +77,8 @@ def _intrinsic_metric_rat(metric: dict) -> str | None:
     return system if system in {'LTE','NR'} else None
 
 
-def _apply_intrinsic_map_rat(selected: list[dict], f: dict) -> tuple[list[dict],dict]:
-    """Push a RAT selection into semantic map leaves without a context scan.
+def _apply_intrinsic_rat(selected: list[dict], f: dict) -> tuple[list[dict],dict]:
+    """Push a RAT selection into semantic leaves without a context scan.
 
     Query parameters are a union (SQL ``ANY``/``IN``), never an intersection.
     The rewrite is deliberately limited to leaves whose RAT is explicit in
@@ -95,6 +95,10 @@ def _apply_intrinsic_map_rat(selected: list[dict], f: dict) -> tuple[list[dict],
     map_filters=dict(f)
     map_filters.pop('rat',None)
     return filtered,map_filters
+
+
+# Kept as a named compatibility seam for the map route and its guard tests.
+_apply_intrinsic_map_rat = _apply_intrinsic_rat
 
 
 def _lean_table_allowed(table_only: bool, selected: list[dict], filters: dict) -> bool:
@@ -157,7 +161,7 @@ def metric_map(project_id:str,capture_id:str,codes:str,cell:str='all',attr:str|N
     tokens=list(dict.fromkeys(codes.split(',')))
     if len(tokens)>64:raise HTTPException(422,'too_many_metrics')
     selected=[parse_selection(code,definitions(),cell,attr) for code in tokens]
-    selected,map_filters=_apply_intrinsic_map_rat(selected,f)
+    selected,map_filters=_apply_intrinsic_rat(selected,f)
     started=time.perf_counter()
     dataset=Dataset(db,project_id,capture_id,map_filters,from_seq,to_seq,lean_series=True)
     after_init=time.perf_counter()
@@ -207,11 +211,13 @@ def analysis(project_id:str,capture_id:str,codes:str,cell:str='all',attr:str|Non
     tokens=list(dict.fromkeys(codes.split(',')))
     if len(tokens)>64:raise HTTPException(422,'too_many_metrics')
     selected=[parse_selection(c,definitions(),cell,attr) for c in tokens]
-    # The lean semantic-cell path intentionally skips context population. It
-    # is valid only for an unfiltered capture. RAT/operator/band/etc. must use
-    # the full Dataset so Table and Graph apply one predicate.
-    lean_table=_lean_table_allowed(table_only,selected,f)
-    return Dataset(db,project_id,capture_id,f,from_seq,to_seq,lean_table=lean_table).response(
+    # A RAT filter is redundant when every selected semantic leaf proves its
+    # own LTE/NR system. Removing only that proven predicate avoids rebuilding
+    # the full capture context for the browser's LTE+NR table request. Other
+    # predicates (operator, band, etc.) remain on the full Dataset path.
+    selected,table_filters=_apply_intrinsic_rat(selected,f)
+    lean_table=_lean_table_allowed(table_only,selected,table_filters)
+    return Dataset(db,project_id,capture_id,table_filters,from_seq,to_seq,lean_table=lean_table).response(
         selected,max_points,group_by,x,include_map,page,page_size,table_only,
         cell_pci,cell_arfcn,
     )
