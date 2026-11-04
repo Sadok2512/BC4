@@ -919,7 +919,7 @@ class Dataset:
                   AND lat IS NOT NULL AND lon IS NOT NULL AND NOT(lat=0 AND lon=0)
                 ORDER BY seq
             """)]
-        if self.lean_table or self.lean_series:
+        if self.lean_series or (self.lean_table and not sql_paginated):
             self._ensure_times(f['seq'] for f in gps_fixes)
         gps_exact={f['seq']:(f['lat'],f['lon']) for f in gps_fixes}
         if include_map:
@@ -931,9 +931,28 @@ class Dataset:
             )
         pair_rows=[] if series_only else [dict(p) for p in self.pairs if self.admissible(p['seq_start']) and (p['seq_end'] is None or self.admissible(p['seq_end']))]
         pair_rates=[]
-        for kind in sorted({p['type'] for p in pair_rows}):
-            ps=[p for p in pair_rows if p['type']==kind];known=[p for p in ps if p['outcome'] in ('ok','fail')]
-            pair_rates.append(dict(type=kind,attempts=len(ps),completed=sum(p['seq_end'] is not None for p in ps),success=sum(p['outcome']=='ok' for p in ps),known_outcomes=len(known),success_pct=100*sum(p['outcome']=='ok' for p in known)/len(known) if known else None))
+        if self.lean_table and not sql_paginated:
+            pair_rates=[dict(r) for r in self.query("""
+                SELECT type,COUNT(*)::int AS attempts,
+                       COUNT(seq_end)::int AS completed,
+                       COUNT(*) FILTER (WHERE outcome='ok')::int AS success,
+                       COUNT(*) FILTER (WHERE outcome IN ('ok','fail'))::int AS known_outcomes,
+                       CASE WHEN COUNT(*) FILTER (WHERE outcome IN ('ok','fail'))=0 THEN NULL
+                            ELSE 100.0*COUNT(*) FILTER (WHERE outcome='ok')
+                                 / COUNT(*) FILTER (WHERE outcome IN ('ok','fail')) END AS success_pct
+                FROM nmf_event_pair
+                WHERE project_id=:pid AND capture_id=:cap
+                  AND (:lo IS NULL OR seq_start>=:lo) AND (:hi IS NULL OR seq_start<=:hi)
+                  AND (seq_end IS NULL OR ((:lo IS NULL OR seq_end>=:lo)
+                                           AND (:hi IS NULL OR seq_end<=:hi)))
+                GROUP BY type ORDER BY type
+            """, {'lo':self.lo,'hi':self.hi})]
+            for rate in pair_rates:
+                if rate['success_pct'] is not None:rate['success_pct']=float(rate['success_pct'])
+        else:
+            for kind in sorted({p['type'] for p in pair_rows}):
+                ps=[p for p in pair_rows if p['type']==kind];known=[p for p in ps if p['outcome'] in ('ok','fail')]
+                pair_rates.append(dict(type=kind,attempts=len(ps),completed=sum(p['seq_end'] is not None for p in ps),success=sum(p['outcome']=='ok' for p in ps),known_outcomes=len(known),success_pct=100*sum(p['outcome']=='ok' for p in known)/len(known) if known else None))
         rid=evidence(self.db,self.pid,';\n'.join(q['sql'] for q in self.sqls),{'queries':self.sqls,'capture_id':self.cap,'selections':[m['selection'] for m in selections],'filters':self.f},dict(rows=len(table),series=len(series)))
         # 0.99.2 (hotfix) : clés `table` toujours en 3-tuple (seq_or_second,
         # cell_arfcn|None, cell_pci|None). None trié EN PREMIER via la clé de
