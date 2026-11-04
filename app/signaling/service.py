@@ -49,6 +49,46 @@ def query(db, sql, params):
     return [dict(r) for r in db.execute(text(sql), params).mappings()]
 
 
+def radio_transition_attrs(code, detail=None, scg=None):
+    """Project only decoder-certified source/target radio identities."""
+    attrs = {}
+    subtype = None
+    if code in ('HOA', 'HOS') and detail:
+        if detail.get('hoa_hoa_type') is not None:
+            attrs['ho_type'] = int(detail['hoa_hoa_type'])
+        for source, target in (
+            ('hoa_pci', 'source_pci'), ('hoa_ch_number', 'source_earfcn'),
+            ('hoa_att_pci', 'target_pci'), ('hoa_att_ch', 'target_earfcn'),
+        ):
+            if detail.get(source) is not None:
+                attrs[target] = int(detail[source])
+    elif code == 'SCELLMOD' and scg and scg.get('subtype'):
+        subtype = scg['subtype']
+        attrs['scellmod_subtype'] = subtype
+        for source in ('added_pci', 'added_earfcn',
+                       'removed_pci', 'removed_earfcn'):
+            if scg.get(source) is not None:
+                attrs[source] = int(scg[source])
+        if subtype == 'PSCELL_CHANGE':
+            attrs['source_pci'] = attrs.get('removed_pci')
+            attrs['source_earfcn'] = attrs.get('removed_earfcn')
+            attrs['target_pci'] = attrs.get('added_pci')
+            attrs['target_earfcn'] = attrs.get('added_earfcn')
+        elif subtype == 'SCG_ADD':
+            attrs['target_pci'] = attrs.get('added_pci')
+            attrs['target_earfcn'] = attrs.get('added_earfcn')
+        else:  # SCG_RELEASE: the removed cell is the affected target.
+            attrs['target_pci'] = attrs.get('removed_pci')
+            attrs['target_earfcn'] = attrs.get('removed_earfcn')
+    if attrs.get('target_pci') is not None:
+        attrs['pci'] = attrs['target_pci']
+        attrs['earfcn'] = attrs.get('target_earfcn')
+        attrs['target_cell'] = {
+            'pci': attrs['target_pci'], 'earfcn': attrs.get('target_earfcn'),
+        }
+    return subtype, attrs
+
+
 def capture(db, pid, cap):
     project(db,pid)
     rows=query(db,'''SELECT DISTINCT n.id,n.filename,n.env FROM nmf_file n JOIN stg_event_raw r ON r.nmf_file_id=n.id
@@ -382,6 +422,7 @@ def project_legacy_events(db, pid, cap, rows, procedures, meta, times,
     enriched_codes = tuple(c for c in ('HOA', 'RRRE', 'RRD', 'SCELLMOD') if c in EVENT_LANE)
     if enriched_codes:
         det_rows = query(db, f"""SELECT seq, event_code, hoa_hoa_type,
+                hoa_pci, hoa_ch_number, hoa_att_pci, hoa_att_ch,
                 rrre_re_est_cause, rrre_re_est_status,
                 rrd_rrc_rel_cause, rrd_rrc_rel_status, scellmod_result
             FROM nmf_event_deep WHERE project_id=:pid AND capture_id=:cap
@@ -391,11 +432,19 @@ def project_legacy_events(db, pid, cap, rows, procedures, meta, times,
             attrs_by_seq[d['seq']] = d
     # SCELLMOD subtype par event (PSCELL 199) : add/remove dans le même event
     # = PSCELL_CHANGE ; add seul = SCG_ADD ; remove seul = SCG_RELEASE.
-    scellmod_subtype_by_seq = {}
+    scellmod_by_seq = {}
     if 'SCELLMOD' in EVENT_LANE:
         scg_rows = query(db, """SELECT d.seq,
             BOOL_OR(g.group_name='added' AND g.scellmod_cell_type=199) AS a,
-            BOOL_OR(g.group_name='removed' AND g.scellmod_cell_type=199) AS r
+            BOOL_OR(g.group_name='removed' AND g.scellmod_cell_type=199) AS r,
+            MAX(g.scellmod_added_pci) FILTER
+              (WHERE g.group_name='added' AND g.scellmod_cell_type=199) AS added_pci,
+            MAX(g.scellmod_added_arfcn) FILTER
+              (WHERE g.group_name='added' AND g.scellmod_cell_type=199) AS added_earfcn,
+            MAX(g.scellmod_removed_pci) FILTER
+              (WHERE g.group_name='removed' AND g.scellmod_cell_type=199) AS removed_pci,
+            MAX(g.scellmod_removed_arfcn) FILTER
+              (WHERE g.group_name='removed' AND g.scellmod_cell_type=199) AS removed_earfcn
             FROM nmf_event_deep d
             LEFT JOIN nmf_event_group g USING (project_id, capture_id, seq)
             WHERE d.project_id=:pid AND d.capture_id=:cap
@@ -403,11 +452,21 @@ def project_legacy_events(db, pid, cap, rows, procedures, meta, times,
             dict(pid=pid, cap=cap))
         for s in scg_rows:
             if s['a'] and s['r']:
-                scellmod_subtype_by_seq[s['seq']] = 'PSCELL_CHANGE'
+                s['subtype'] = 'PSCELL_CHANGE'
             elif s['a']:
-                scellmod_subtype_by_seq[s['seq']] = 'SCG_ADD'
+                s['subtype'] = 'SCG_ADD'
             elif s['r']:
-                scellmod_subtype_by_seq[s['seq']] = 'SCG_RELEASE'
+                s['subtype'] = 'SCG_RELEASE'
+            else:
+                continue
+            scellmod_by_seq[s['seq']] = s
+    # HOS carries no PCI/channel columns of its own.  Its target is the
+    # hoa_att_* pair on the capture-local HOA boundary certified by
+    # nmf_event_pair; never infer it from timestamp proximity.
+    hoa_seq_by_hos_seq = {
+        p['seq_end']: p['seq_start'] for p in procedures
+        if p['type'] == 'ho' and p['seq_end'] is not None
+    }
     # 1) State events (markers) → one event each, lane + rule from links.py
     for r in rows:
         code = r['event_code']
@@ -425,9 +484,13 @@ def project_legacy_events(db, pid, cap, rows, procedures, meta, times,
         ev_type = code  # type exposé ; SCELLMOD remplacé par sous-type plus bas
         ev_attrs = {}
         ev_cause = None
-        det = attrs_by_seq.get(r['seq'])
-        if code == 'HOA' and det and det.get('hoa_hoa_type') is not None:
-            ev_attrs['ho_type'] = int(det['hoa_hoa_type'])
+        det_seq = hoa_seq_by_hos_seq.get(r['seq']) if code == 'HOS' else r['seq']
+        det = attrs_by_seq.get(det_seq)
+        sub, transition_attrs = radio_transition_attrs(
+            code, det, scellmod_by_seq.get(r['seq']))
+        ev_attrs.update(transition_attrs)
+        if code == 'HOS' and det:
+            ok = 'ok'
         if code == 'RRRE' and det:
             if det.get('rrre_re_est_cause') is not None:
                 ev_attrs['re_est_cause'] = int(det['rrre_re_est_cause'])
@@ -443,10 +506,8 @@ def project_legacy_events(db, pid, cap, rows, procedures, meta, times,
         if code in ('RRF', 'TUF', 'LUF', 'PBF'):
             ok = 'fail'
         if code == 'SCELLMOD':
-            sub = scellmod_subtype_by_seq.get(r['seq'])
             if sub:
                 ev_type = sub
-                ev_attrs['scellmod_subtype'] = sub
             if det and det.get('scellmod_result') is not None:
                 res = int(det['scellmod_result'])
                 ev_attrs['scellmod_result'] = res
@@ -459,7 +520,7 @@ def project_legacy_events(db, pid, cap, rows, procedures, meta, times,
         ev_attrs['lng'] = lng
         ev_attrs['gps_seq'] = gps_seq
         ev_attrs['gps_seq_gap'] = gps_gap
-        ev_attrs['pci'] = r.get('pci')
+        ev_attrs.setdefault('pci', r.get('pci'))
         ev_attrs['ecgi'] = r.get('ecgi')
         ev = dict(
             id=f"{code.lower()}:{r['seq']}",

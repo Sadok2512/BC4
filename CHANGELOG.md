@@ -1,3 +1,10 @@
+## 0.131.1 (patch) — Mobilité 3b : identité radio des événements — 2026-11-04 (BC4)
+
+- `/signaling/events` expose les PCI/EARFCN source et cible de HOA/HOS depuis
+  `hoa_*` / `hoa_att_*`, et ceux ajoutés/retirés de PSCELL_CHANGE, SCG_ADD et
+  SCG_RELEASE depuis `nmf_event_group`; HOS reprend uniquement la HOA liée par
+  `nmf_event_pair` dans la même capture.
+
 ## 0.131.0 (minor) — Mobilité étape 3 : events mobilité sur carte + timeline — 2026-11-03 (Agent BC5)
 
 - **Back 0.130.2 → 0.131.0** (minor — nouveaux events exposés sur
