@@ -569,7 +569,7 @@ class Dataset:
         if m['base_code'].startswith('cap_'):
             from app.kpi.metrics_v3_capture import load_capture
             raw_rows = load_capture(self, m)
-            if self.lean_series:
+            if self.lean_table or self.lean_series:
                 self._ensure_times(r['seq'] for r in raw_rows)
             out=[]
             for r in raw_rows:
@@ -710,7 +710,7 @@ class Dataset:
         else:
             sql='SELECT seq,value FROM ('+m['sql']+') v WHERE capture_id=:cap ORDER BY seq'
             rows=[dict(r) for r in self.query(sql)]
-        if self.lean_series:
+        if self.lean_table or self.lean_series:
             self._ensure_times(r['seq'] for r in rows)
         out=[]
         for r in rows:
@@ -919,7 +919,7 @@ class Dataset:
                   AND lat IS NOT NULL AND lon IS NOT NULL AND NOT(lat=0 AND lon=0)
                 ORDER BY seq
             """)]
-        if self.lean_series:
+        if self.lean_table or self.lean_series:
             self._ensure_times(f['seq'] for f in gps_fixes)
         gps_exact={f['seq']:(f['lat'],f['lon']) for f in gps_fixes}
         if include_map:
@@ -947,7 +947,7 @@ class Dataset:
         total_pages=max(1,math.ceil(total_rows/page_size))
         if page>total_pages:raise HTTPException(422,dict(reason='page_out_of_range',total_pages=total_pages))
         page_rows=ordered if sql_paginated else ordered[(page-1)*page_size:page*page_size]
-        rows_to_enrich=page_rows if series_only else ordered
+        rows_to_enrich=page_rows if (table_only or series_only) else ordered
         from decimal import Decimal
         # 0.75.0 — time_local (= ancien time_label), time_utc (local - offset)
         # et join GPS previous-or-same seq (sur seq_first).

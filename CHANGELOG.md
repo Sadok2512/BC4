@@ -1,3 +1,9 @@
+## 0.132.3 (patch) — Table métrique unitaire rapide — 2026-11-04 (BC4)
+
+- Étend le chemin `table_only` léger aux métriques unitaires non événementielles comme CHI : le serveur ne reconstruit plus tout le contexte et toutes les paires de la capture avant de renvoyer une page.
+- Conserve les temps, positions GPS, tâches, compteurs et valeurs réelles de la page en chargeant uniquement les horodatages nécessaires.
+- Réserve le chemin complet aux filtres de population et aux contrats événementiels qui dépendent des paires.
+
 ## 0.132.2 (patch) — Chemins Analytics compacts — 2026-11-04 (BC4)
 
 - Ajoute une réponse compacte aux séries radio de Signaling qui conserve les sélecteurs, populations et valeurs historiques tout en omettant CSV et infobulles non consommés.
