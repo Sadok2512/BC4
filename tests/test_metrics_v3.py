@@ -3,6 +3,8 @@ import pytest
 from fastapi import HTTPException
 from app.kpi.metrics_v3 import (
     Dataset,
+    _merge_table_cell_metadata,
+    _table_group_key,
     aggregate_values,
     connected_summary,
     definitions,
@@ -58,6 +60,43 @@ def test_explicit_empty_operator_population_is_not_all():
     assert not ds.admissible(1)
     ds.allowed=None;assert ds.admissible(1)
     ds.lo=2;assert not ds.admissible(1)
+
+
+def test_detailed_table_joins_physical_and_throughput_in_native_bucket():
+    """Serving RSRP and PCell throughput in one source bucket share a row."""
+    physical_item = {'seq': 23, 'cell_arfcn': 1675, 'cell_pci': 195}
+    throughput_item = {'seq': 29}
+    physical = {'cell_type_filter': {'system': 7, 'raw_cell_type': 0}, 'event': 'CELLMEAS'}
+    throughput = {'event': 'PHRATE'}
+
+    assert _table_group_key(physical, physical_item, 0, table_only=True) == (
+        0, None, None,
+    )
+    assert _table_group_key(throughput, throughput_item, 0, table_only=True) == (
+        0, None, None,
+    )
+
+    # Analytical responses keep their pre-existing bucket semantics.
+    assert _table_group_key(physical, physical_item, 0) == (23, 1675, 195)
+    assert _table_group_key(throughput, throughput_item, 0) == (0, None, None)
+
+
+def test_table_merge_preserves_physical_identity_from_serving_measurement():
+    row = {}
+    serving = {'cell_display': {'label': 'Serving', 'system': 'LTE'}}
+    pcell = {'cell_display': {'label': 'PCell', 'system': 'LTE'}}
+
+    _merge_table_cell_metadata(
+        row, serving, [{'cell_pci': 195, 'cell_arfcn': 1675}],
+    )
+    _merge_table_cell_metadata(row, pcell, [{}])
+
+    assert row == {
+        'cell_label': 'Serving',
+        'cell_system': 'LTE',
+        'cell_pci': 195,
+        'cell_arfcn': 1675,
+    }
 
 
 def test_connected_summary_does_not_report_an_unrequested_scan_as_empty():

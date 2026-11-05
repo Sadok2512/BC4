@@ -37,6 +37,59 @@ def _pair_previous_or_same(xr, yr):
             j += 1
         yield y, previous
 
+
+def _table_group_key(metric, item, second, *, table_only=False):
+    """Return one homogeneous key for a metrics table row.
+
+    The detailed table is an evidence view keyed by its native temporal
+    bucket. Older code mixed ``second`` for ordinary metrics with ``seq`` for
+    physical CELLMEAS leaves. Besides breaking chronological ordering, that
+    split put two values observed in the exact same bucket on separate rows.
+    ``seq_first`` and ``seq_last`` retain the ordered source evidence; cell
+    identity remains row metadata and must not replace the common bucket key.
+
+    Non-table analysis keeps its historical buckets because graphs and
+    histograms intentionally aggregate ordinary metrics by second.
+    """
+    if table_only:
+        return (second, None, None)
+    physical = bool(metric.get('cell_type_filter')) and metric.get('event') == 'CELLMEAS'
+    per_event = bool(metric.get('event_attribute'))
+    if physical:
+        return (item['seq'], item.get('cell_arfcn'), item.get('cell_pci'))
+    if per_event:
+        return (item['seq'], None, None)
+    return (second, None, None)
+
+
+def _merge_table_cell_metadata(row, metric, observations):
+    """Keep the strongest published cell identity while metrics are merged."""
+    display = metric.get('cell_display')
+    if not display:
+        return
+    pci = next(
+        (item.get('cell_pci') for item in reversed(observations)
+         if item.get('cell_pci') is not None),
+        None,
+    )
+    arfcn = next(
+        (item.get('cell_arfcn') for item in reversed(observations)
+         if item.get('cell_arfcn') is not None),
+        None,
+    )
+    has_physical_identity = pci is not None or arfcn is not None
+    if row.get('cell_label') is None or has_physical_identity:
+        row['cell_label'] = display['label']
+        row['cell_system'] = display['system']
+    if pci is not None:
+        row['cell_pci'] = pci
+    else:
+        row.setdefault('cell_pci', None)
+    if arfcn is not None:
+        row['cell_arfcn'] = arfcn
+    else:
+        row.setdefault('cell_arfcn', None)
+
 CATEGORIES = {
  'radio_serving':'Radio serving', 'neighbours':'Neighbours', 'carrier_aggregation':'Carrier Aggregation',
  'throughput_layers':'Throughput by layer', 'link_quality':'Link quality', 'allocation_mcs':'Allocation & MCS',
@@ -861,16 +914,9 @@ class Dataset:
                 # et le path "legacy" (une ligne par second). Avant le hotfix,
                 # les clés `int(second)` et `tuple` cohabitaient dans le même
                 # dict → TypeError sur `sorted` ligne ordered=…
-                physical = bool(m.get('cell_type_filter')) and m.get('event') == 'CELLMEAS'
-                per_event = bool(m.get('event_attribute'))
                 groups = defaultdict(list)
-                if physical:
-                    for item in rs:
-                        groups[(item['seq'], item.get('cell_arfcn'), item.get('cell_pci'))].append(item)
-                elif per_event:
-                    for item in rs:groups[(item['seq'],None,None)].append(item)
-                else:
-                    groups[(second, None, None)] = rs
+                for item in rs:
+                    groups[_table_group_key(m, item, second, table_only=table_only)].append(item)
                 for physical_key, physical_rows in groups.items():
                     rs = physical_rows
                     table_key = physical_key
@@ -884,11 +930,7 @@ class Dataset:
                         # Never average those means again to manufacture a second-level statistic.
                         value=None;gaps.append(m['selection']+': missing inter-sample weights; per-second aggregate unavailable, per-seq series preserved')
                     row['values'][m['selection']]=value;row['counts'][m['selection']]=sum(r.get('observation_count',r.get('count',1)) for r in rs)
-                    if m.get('cell_display'):
-                        row['cell_label']=m['cell_display']['label']
-                        row['cell_system']=m['cell_display']['system']
-                        row['cell_pci']=next((r.get('cell_pci') for r in reversed(rs) if r.get('cell_pci') is not None),None)
-                        row['cell_arfcn']=next((r.get('cell_arfcn') for r in reversed(rs) if r.get('cell_arfcn') is not None),None)
+                    _merge_table_cell_metadata(row, m, rs)
             if not table_only and not series_only:
                 groups=defaultdict(list)
                 for r in rows:

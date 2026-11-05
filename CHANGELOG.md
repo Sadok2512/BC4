@@ -1,3 +1,9 @@
+## 0.133.1 (patch) — Fusion chronologique de la table Metrics — 2026-11-05 (BC4)
+
+- Utilise un bucket temporel homogène pour toutes les colonnes de la table détaillée, au lieu de mélanger secondes et séquences.
+- Fusionne le RSRP Serving et le débit PCell observés dans le même bucket source, tout en conservant `seq_first/seq_last`, PCI et ARFCN comme preuves de la ligne.
+- Préserve les agrégations historiques des graphes et histogrammes et n'effectue aucun report de valeur vers un bucket voisin.
+
 ## 0.133.0 (minor) — Catalogue simplifié 2.68.5 — 2026-11-05 (BC4)
 
 - Publie les 66 KPI de `simple_tree.csv` et leurs feuilles certifiées par `simple_name`, `simple_theme`, `simple_kpi` et `simple_label`, sans modifier l’arbre avancé.
