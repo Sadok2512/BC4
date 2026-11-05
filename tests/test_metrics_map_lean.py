@@ -59,6 +59,9 @@ def test_dedicated_route_uses_lean_full_map_contract(monkeypatch):
         def __init__(self, _db, pid, cap, _filters, lo, hi, lean_series):
             calls["dataset"] = (pid, cap, lo, hi, lean_series)
             self.state = {"decoder_version": "1.9.0"}
+            self.origin_seq = 9
+            self.origin_ts = "15:59:41.338"
+            self.file_meta = {"start_at": "04.11.2026 15:59:41.338", "utc_offset_min": 120}
 
         def load(self, metric, **kwargs):
             calls["load"] = kwargs
@@ -91,6 +94,11 @@ def test_dedicated_route_uses_lean_full_map_contract(monkeypatch):
     assert calls["load"]["include_total"] is False
     assert payload["total_points"] == 1
     assert payload["map_points"] == [point]
+    assert payload["origin_seq"] == 9
+    assert payload["origin_ts"] == "15:59:41.338"
+    assert payload["nmf_start_at"] == "04.11.2026 15:59:41.338"
+    assert payload["capture_date"] == "2026-11-04"
+    assert payload["utc_offset_min"] == 120
     assert "dataset;dur=" in response.headers["server-timing"]
 
 
@@ -113,6 +121,9 @@ def test_semantic_map_rat_is_a_union_without_generic_context_scan(
             calls["filters"] = filters
             calls["lean_series"] = lean_series
             self.state = {"decoder_version": "1.9.0"}
+            self.origin_seq = 9
+            self.origin_ts = "15:59:41.338"
+            self.file_meta = {"start_at": "04.11.2026 15:59:41.338", "utc_offset_min": 120}
 
         def load(self, _metric, **_kwargs):
             calls["loads"] += 1

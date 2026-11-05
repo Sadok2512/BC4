@@ -1,3 +1,8 @@
+## 0.132.5 (patch) — Horloge source de la Map — 2026-11-05 (BC4)
+
+- L'endpoint Map compact publie désormais `origin_ts`, `#START` et `#UT`, identiques au contrat Table/Graph, afin d'afficher l'heure réelle du log pour chaque point.
+- Aucun recalcul de données radio ni requête supplémentaire : les métadonnées proviennent du chargement de capture déjà exécuté.
+
 ## 0.132.4 (patch) — Table multi-métriques rapide — 2026-11-04 (BC1)
 
 - Étend le chemin de table allégé aux sélections multi-métriques non événementielles : la pagination enrichit uniquement la page demandée sans reconstruire le contexte complet de la capture.

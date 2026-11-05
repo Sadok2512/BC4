@@ -12,6 +12,7 @@ from app.deps import get_current_user
 from app.routes.tasks import project,filters
 from app.routes.metrics import MetricSeries
 from app.kpi.metrics_v3 import Dataset,definitions,parse_selection
+from app.kpi.service import date_from_start_at_py
 from app.kpi.metrics_map import build_map_points,load_gps_fixes_scoped
 from app.schemas.metric_map import MetricMapPoint
 router=APIRouter(tags=['metrics'],dependencies=[Depends(get_current_user)])
@@ -61,6 +62,9 @@ class Analysis(BaseModel):
 
 class MetricMapResponse(BaseModel):
     project_id:str;capture_id:str;result_id:str;decoder_version:str
+    origin_seq:int;origin_ts:str
+    nmf_start_at:str|None=None;capture_date:str|None=None
+    utc_offset_min:int|None=None
     total_points:int;map_points:list[MetricMapPoint]
 
 
@@ -154,7 +158,7 @@ def metric_map(project_id:str,capture_id:str,codes:str,cell:str='all',attr:str|N
                cell_pci:int|None=Query(None,ge=0),cell_arfcn:int|None=Query(None,ge=0),
                compact:bool=False,
                f:dict=Depends(filters),db:Session=Depends(get_db)):
-    """Return only proven map points; no clock, histogram, table or CSV work."""
+    """Return proven map points and the capture's source-clock metadata."""
     project(db,project_id)
     if from_seq is not None and to_seq is not None and from_seq>to_seq:
         raise HTTPException(422,'from_seq_after_to_seq')
@@ -194,6 +198,10 @@ def metric_map(project_id:str,capture_id:str,codes:str,cell:str='all',attr:str|N
     payload=dict(project_id=project_id,capture_id=capture_id,
                  result_id=sha256(basis.encode()).hexdigest()[:32],
                  decoder_version=dataset.state['decoder_version'],
+                 origin_seq=dataset.origin_seq,origin_ts=dataset.origin_ts,
+                 nmf_start_at=dataset.file_meta['start_at'],
+                 capture_date=date_from_start_at_py(dataset.file_meta['start_at']),
+                 utc_offset_min=dataset.file_meta['utc_offset_min'],
                  total_points=len(points),map_points=response_points)
     return ORJSONResponse(payload,headers={'Server-Timing':server_timing})
 
