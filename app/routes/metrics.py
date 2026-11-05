@@ -66,6 +66,7 @@ class MetricCatalogNode(BaseModel):
     # 2.68.5 — certified simplified-tree presentation metadata. Technical
     # identity and selection remain metric_id/selection.
     simple_name: str | None = None
+    simple_tech: Literal['LTE', 'NR'] | None = None
     simple_theme: str | None = None
     simple_kpi: str | None = None
     simple_label: str | None = None

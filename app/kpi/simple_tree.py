@@ -116,6 +116,10 @@ def apply_simple_metadata(node: dict) -> None:
         if row.tech == match.tech and row.kpi == match.kpi
     )
     node["simple_name"] = match.simple_name
+    # Presentation technology is certified by the simplified-tree reference.
+    # It may differ from the decoder transport technology (notably EN-DC
+    # measurements decoded from an LTE signalling record but displayed in NR).
+    node["simple_tech"] = match.tech
     node["simple_theme"] = kpi.theme
     node["simple_kpi"] = kpi.kpi
     node["simple_label"] = kpi.label
