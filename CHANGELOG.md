@@ -1,3 +1,10 @@
+## 0.133.0 (minor) — Catalogue simplifié 2.68.5 — 2026-11-05 (BC4)
+
+- Publie les 66 KPI de `simple_tree.csv` et leurs feuilles certifiées par `simple_name`, `simple_theme`, `simple_kpi` et `simple_label`, sans modifier l’arbre avancé.
+- Ajoute `LTE_THP_DL_CA_TOTAL` et `LTE_CA_NB_SCELLS`, calculés strictement par `(capture_id, seq)` depuis `nmf_cell_second`, jamais par timestamp.
+- Corrige le nom UL `PUSCH_THROUGHPUT_PHY_DL` en `THP_UL_PHY` et conserve les sources non décodées en état `OPEN` explicite.
+- Ajoute la release catalogue 2.68.5 et un import déterministe depuis `bc4_tree_exact.html`.
+
 ## 0.132.5 (patch) — Horloge source de la Map — 2026-11-05 (BC4)
 
 - L'endpoint Map compact publie désormais `origin_ts`, `#START` et `#UT`, identiques au contrat Table/Graph, afin d'afficher l'heure réelle du log pour chaque point.

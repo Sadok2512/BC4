@@ -1,0 +1,67 @@
+tech;theme;kpi;libelle;familles_metric_id;unite;statut
+LTE;1 · Couverture;RSRP;RSRP serving;cellmeas_rsrp|cell_rsrp;dBm;ok
+LTE;1 · Couverture;RSRQ;RSRQ serving;cellmeas_rsrq|cell_rsrq;dB;ok
+LTE;1 · Couverture;SINR;SINR serving;cellmeas_sinr|cell_sinr;dB;ok
+LTE;1 · Couverture;EARFCN;EARFCN (contexte);cellmeas_ch|cell_ch;;ok
+LTE;1 · Couverture;PCI;PCI (contexte);cellmeas_pci|cell_pci;;ok
+LTE;1 · Couverture;BAND;Bande (contexte);cellmeas_band|cell_band;;ok
+LTE;2 · Débit DL;THP_DL_PHY;Débit PDSCH (PHY);pdsch_bitrate;Mbit/s;ok
+LTE;2 · Débit DL;THP_DL_MAC;Débit MAC DL;mac_dl_bitrate;Mbit/s;ok
+LTE;2 · Débit DL;THP_DL_RLC;Débit RLC DL;rlcrate_rlc_dl_bitrate_rb;bit/s;ok
+LTE;2 · Débit DL;THP_DL_PDCP;Débit PDCP DL;pdcprated_pdcp_dl_bitrate;bit/s;empty
+LTE;2 · Débit DL;THP_DL_CA_TOTAL;Débit DL total CA (somme PCell+SCells);lte_thp_dl_ca_total;Mbit/s;ok
+LTE;3 · Débit UL;THP_UL_PHY;Débit PUSCH (PHY);pusch_bitrate;Mbit/s;ok
+LTE;3 · Débit UL;THP_UL_MAC;Débit MAC UL;;Mbit/s;open
+LTE;3 · Débit UL;THP_UL_RLC;Débit RLC UL;rlcrateu_rlc_ul_bitrate_rb;bit/s;ok
+LTE;3 · Débit UL;THP_UL_PDCP;Débit PDCP UL;pdcprateu_pdcp_ul_bitrate;bit/s;empty
+LTE;4 · BLER;BLER_DL;BLER DL résiduel (MAC);mac_dl_residual_bler;%;ok
+LTE;4 · BLER;BLER_DL_RLC;BLER DL (RLC);rlcrate_rlc_dl_bler;%;ok
+LTE;4 · BLER;BLER_UL;BLER UL / retransmissions MAC UL;;%;open
+LTE;5 · MCS / modulation;MCS_DL_CW0;MCS DL codeword 0;plaid_mcs0;;ok
+LTE;5 · MCS / modulation;MCS_DL_CW1;MCS DL codeword 1;plaid_mcs1;;ok
+LTE;5 · MCS / modulation;MCS_UL;MCS UL;plaiu_mcs0;;ok
+LTE;5 · MCS / modulation;MOD_DL;Modulation DL;plaid_mod0;;ok
+LTE;5 · MCS / modulation;MOD_UL;Modulation UL;plaiu_mod0;;ok
+LTE;6 · PRB;PRB_DL;PRB utilisés DL;plaid_prb_util_dl;%;ok
+LTE;6 · PRB;PRB_UL;PRB utilisés UL;plaiu_prb_util_ul;%;ok
+LTE;6 · PRB;PRB_TOTAL;PRB total (toutes porteuses);plaisum_total_prb_utilization;%;ok
+LTE;7 · MIMO / CQI / TBS;RANK;Rank (CQI);cqi_rank;;ok
+LTE;7 · MIMO / CQI / TBS;CQI_WB;CQI wideband;cqi_wb_cqi;;empty
+LTE;7 · MIMO / CQI / TBS;TBS_DL;TBS moyen DL;plaid_dl_tbs_avg;bit;ok
+LTE;7 · MIMO / CQI / TBS;TBS_UL;TBS moyen UL;plaiu_ul_tbs_avg;bit;ok
+LTE;8 · Carrier Aggregation;CA_NB_SCELLS;Nombre de SCells actives;lte_ca_nb_scells;n;ok
+LTE;8 · Carrier Aggregation;CA_STATE;CA actif (CHI);chi_ca;;ok
+LTE;8 · Carrier Aggregation;BW_PCELL;Largeur de bande PCell;chi_pcell_bw;MHz;ok
+LTE;8 · Carrier Aggregation;BW_SCELL;Largeur de bande SCell;chi_scell_bw;MHz;ok
+LTE;9 · Puissance UL;PHR;Power headroom;txpc_power_headroom;dB;ok
+LTE;9 · Puissance UL;PUSCH_TX_POWER;Puissance TX PUSCH;txpc_pusch_tx_power;dBm;empty
+LTE;10 · Mobilité;HO_ATTEMPTS;HO tentés;lte_ho_attempts;n;ok
+LTE;10 · Mobilité;HO_SUCCESS_RATE;Taux de succès HO;lte_ho_success_rate_pct;%;ok
+LTE;10 · Mobilité;RLF;Radio link failures;lte_rlf_count;n;ok
+LTE;10 · Mobilité;REEST_SUCCESS_RATE;Taux de succès ré-établissement;lte_reest_success_rate_pct;%;ok
+NR;1 · Couverture;SS_RSRP;SS-RSRP;cellmeas_rsrp_f12;dBm;ok
+NR;1 · Couverture;SS_RSRQ;SS-RSRQ;cellmeas_rsrq_f13;dB;ok
+NR;1 · Couverture;SS_SINR;SS-SINR;cell_sinr;dB;ok
+NR;1 · Couverture;NRARFCN;NR-ARFCN (contexte);cellmeas_nr_arfcn;;ok
+NR;1 · Couverture;PCI;PCI (contexte);cellmeas_pci_f9;;ok
+NR;1 · Couverture;BEAM;Beam index;cell_bi;;ok
+NR;2 · Débit DL;THP_DL_PHY;Débit PDSCH (PHY);phrate_pdsch_sch_bitrate;Mbit/s;ok
+NR;2 · Débit DL;THP_DL_MAC;Débit MAC DL;macrate_mac_dl_bitrate;Mbit/s;ok
+NR;3 · Débit UL;THP_UL_MAC;Débit MAC UL;macrateu_mac_ul_bitrate;Mbit/s;ok
+NR;4 · BLER;BLER_DL;BLER DL (MAC);macrate_mac_dl_bler;%;ok
+NR;4 · BLER;BLER_DL_1ST;BLER DL 1re transmission;macrate_mac_dl_bler_1st;%;ok
+NR;4 · BLER;BLER_UL;Retransmissions UL (MAC);macrateu_mac_ul_retr;%;ok
+NR;5 · MCS / modulation;MCS_DL;MCS DL;plaid_mcs0;;ok
+NR;5 · MCS / modulation;MCS_UL;MCS UL;plaiu_mcs0;;ok
+NR;5 · MCS / modulation;MOD_DL;Modulation DL;plaid_mod0;;ok
+NR;5 · MCS / modulation;MOD_UL;Modulation UL;plaiu_mod0;;ok
+NR;6 · PRB;PRB_DL;Nb PRB DL;plaid_prbs;;ok
+NR;6 · PRB;PRB_UL;PRB utilisés UL;plaiu_prb_util_ul;%;ok
+NR;7 · MIMO / CQI;RANK_DL;Rank DL;plaid_rank;;ok
+NR;7 · MIMO / CQI;RANK_UL;Rank UL;plaiu_rank;;ok
+NR;7 · MIMO / CQI;CQI_WB;CQI wideband;cqi_wb_cqi_0;;ok
+NR;8 · EN-DC;SCG_ADD;Ajouts SCG;endc_scg_add_count;n;ok
+NR;8 · EN-DC;SCG_RELEASE;Releases SCG;endc_scg_release_count;n;ok
+NR;8 · EN-DC;SCG_FAILURE;Échecs SCG;endc_scg_failure_count;n;ok
+NR;8 · EN-DC;SCG_FAILURE_RATE;Taux d'échec SCG;endc_scg_failure_rate_pct;%;ok
+NR;8 · EN-DC;PSCELL_CHANGE;Changements de PSCell;endc_pscell_change_count;n;ok

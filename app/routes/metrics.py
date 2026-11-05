@@ -63,6 +63,13 @@ class MetricCatalogNode(BaseModel):
     display_code_lisible: str | None = None
     nom_court: str | None = None
     display_branch: Literal['CAPTURE', 'LTE', 'NR', 'IP / Services'] | None = None
+    # 2.68.5 — certified simplified-tree presentation metadata. Technical
+    # identity and selection remain metric_id/selection.
+    simple_name: str | None = None
+    simple_theme: str | None = None
+    simple_kpi: str | None = None
+    simple_label: str | None = None
+    simple_status: Literal['ok', 'empty', 'open'] | None = None
     tree_visible: bool = True
     note: str | None = None
     source: str | None = None
@@ -113,12 +120,23 @@ class CatalogReleaseInfo(BaseModel):
     n_leaves: int
 
 
+class SimpleTreeEntry(BaseModel):
+    tech: Literal['LTE', 'NR']
+    theme: str
+    kpi: str
+    label: str
+    families: list[str]
+    unit: str
+    status: Literal['ok', 'empty', 'open']
+
+
 class MetricCatalogResponse(BaseModel):
     catalogue_version: str
     title: str
     header: str
     metrics: list[MetricInfo]
     nodes: list[MetricCatalogNode]
+    simple_tree: list[SimpleTreeEntry] = Field(default_factory=list)
     # 0.80.0 — enveloppe Phase 3a (contrat front : footer "Catalog <v> ·
     # Decoder <d>" + bascule explicite release / legacy via `reason`).
     catalog_release: CatalogReleaseInfo | None = None

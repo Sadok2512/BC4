@@ -1523,6 +1523,91 @@ def build_catalog_v4(
                 category=cat_label.lower().replace(" ", "_"),
             ))
 
+    # 2.68.5 — two certified simplified-tree KPI, evaluated at the exact
+    # `(capture_id, seq_first)` carried by nmf_cell_second.  No timestamp is
+    # involved.  Availability counts the rows returned by the replayable
+    # series query, not seconds and not configured carriers.
+    _ca_parent = "cat_LTE_carrier_aggregation"
+    if any(node.get("node_id") == _ca_parent for node in nodes_out):
+        from app.nmf_decoder.cells import _cell_index_for
+
+        _lte_all_indices = [_cell_index_for(raw, 7) for raw in range(32)]
+        _lte_scell_indices = [_cell_index_for(raw, 7) for raw in range(1, 32)]
+        _ca_capture_scope = " AND capture_id=ANY(:ca_caps)" if capture_ids else ""
+        _ca_params = {
+            "pid": project_id,
+            "ca_caps": list(capture_ids),
+            "all_indices": _lte_all_indices,
+            "scell_indices": _lte_scell_indices,
+        }
+        _n_ca_total = int(db.execute(text(f"""
+            SELECT COUNT(*) FROM (
+                SELECT capture_id,seq_first
+                FROM nmf_cell_second
+                WHERE project_id=:pid{_ca_capture_scope}
+                  AND event_code='PHRATE' AND metric_code='pdsch_bitrate'
+                  AND value IS NOT NULL AND cell_index=ANY(:all_indices)
+                GROUP BY capture_id,seq_first
+            ) proven
+        """), _ca_params).scalar() or 0)
+        _n_ca_scells = int(db.execute(text(f"""
+            SELECT COUNT(*) FROM (
+                SELECT capture_id,seq_first
+                FROM nmf_cell_second
+                WHERE project_id=:pid{_ca_capture_scope}
+                  AND event_code='PHRATE' AND value IS NOT NULL
+                  AND cell_index=ANY(:scell_indices)
+                GROUP BY capture_id,seq_first
+            ) proven
+        """), _ca_params).scalar() or 0)
+        for _code, _label, _unit, _count, _proof in (
+            (
+                "lte_thp_dl_ca_total",
+                "LTE total CA DL throughput (PCell + SCells)",
+                "Mbit/s",
+                _n_ca_total,
+                "SUM(pdsch_bitrate) GROUP BY (capture_id, seq_first)",
+            ),
+            (
+                "lte_ca_nb_scells",
+                "LTE SCells with PHRATE present",
+                "n",
+                _n_ca_scells,
+                "COUNT(DISTINCT SCell) GROUP BY (capture_id, seq_first)",
+            ),
+        ):
+            _order = siblings_counter.get(_ca_parent, 0)
+            siblings_counter[_ca_parent] = _order + 1
+            _available = _count > 0
+            nodes_out.append(dict(
+                node_id=f"lf_{_code}", parent_id=_ca_parent, order=_order,
+                label=_label, display_code=_code, enum_values={},
+                note="KPI dérivé — ordre (capture_id, seq), jamais ts",
+                source=None, node_type="leaf", analytics_tab="metrics",
+                metric_id=_code, selection=_code, event="PHRATE",
+                field_idx=None, source_column=_code, unit=_unit,
+                cell=None, technology="LTE", metric_label=_label,
+                cell_label=None, cell_system=None, raw_cell_type=None,
+                cell_relation=None, technical_label=None,
+                availability_status="available" if _available else "no_data",
+                n=_count, proof=_proof, selectable=_available,
+                reason=None if _available else "No matching PHRATE rows in the current scope",
+                kind="KPI",
+            ))
+            metrics_out.append(dict(
+                code=_code, display_code=_code, label=_label, unit=_unit,
+                source_table="nmf_cell_second", source_tables=["nmf_cell_second"],
+                source_column=_code, tech="LTE", kind="KPI",
+                n_in_project=_count, decoder_version=DECODER_VERSION,
+                event="PHRATE", category_label="Carrier aggregation",
+                cell_scoped=False, cells=[], cell_options=[], attributes=[],
+                proof=_proof, available=_available,
+                reason=None if _available else "No matching PHRATE rows in the current scope",
+                alias_of=None, event_group=None, unproven_cells=[], root_notices=[],
+                event_code="PHRATE", proof_ref="nmf_cell_second ordered by capture_id,seq_first",
+                category="carrier_aggregation",
+            ))
+
     # 2.66.2 (REPRISE 13 P1) — timeline brute chi_rrc_state :
     # exposer les N records bruts (nmf_event_deep, pas de bucketing light).
     # 946/12/24 par capture (Test_6/ikea.6/ikea.2). KPI_CATEGORICAL avec enum
@@ -1933,8 +2018,10 @@ def build_catalog_v4(
             ))
 
     from app.kpi.display_names import apply_display_name
+    from app.kpi.simple_tree import apply_simple_metadata, simple_tree_payload
     for node in nodes_out:
         apply_display_name(node)
+        apply_simple_metadata(node)
 
     return dict(
         catalogue_version=current.version,
@@ -1951,4 +2038,5 @@ def build_catalog_v4(
         header=f"Decoder {DECODER_VERSION} · Catalog {current.version}",
         metrics=metrics_out,
         nodes=nodes_out,
+        simple_tree=simple_tree_payload(),
     )

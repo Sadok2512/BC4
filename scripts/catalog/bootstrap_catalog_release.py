@@ -644,6 +644,36 @@ def prepare_full_names_closure_patch(source_version: str, target_version: str) -
     return target_path
 
 
+def prepare_simple_tree_patch(source_version: str, target_version: str) -> Path:
+    """Attach the certified simplified-tree contract to the next patch."""
+    _validate_next_patch(source_version, target_version)
+    source_path = catalog_file_path(source_version)
+    if not source_path.exists():
+        raise FileNotFoundError(f"catalogue source absent : {source_path}")
+    from app.kpi.simple_tree import load_simple_leaves, load_simple_tree
+
+    simple_rows = load_simple_tree()
+    simple_leaves = load_simple_leaves()
+    payload = json.loads(source_path.read_text(encoding="utf-8"))
+    payload["simple_tree_policy"] = {
+        "source": "app/kpi/simple_tree.csv",
+        "reference": "bc4_tree_exact.html",
+        "reference_sha256": "77e33e498259bddda273e48e8aa2a30f34f93ae2afef654b0888c2c4210c8144",
+        "join": "technology + metric_id family (base before @)",
+        "classification_uses_labels": False,
+        "simple_kpis": len(simple_rows),
+        "simple_leaves": len(simple_leaves),
+        "derived_order": ["capture_id", "seq"],
+    }
+    target_path = _write_catalog_artifact(payload, target_version)
+    print(
+        f"[bootstrap] prepared simple-tree v={target_version} from={source_version} "
+        f"simple_kpis={len(simple_rows)} simple_leaves={len(simple_leaves)} "
+        f"sha256={sha256_file(target_path)}"
+    )
+    return target_path
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--version", "--to", dest="version", required=True, help="ex. 2.53.0")
@@ -655,7 +685,7 @@ def main(argv: list[str] | None = None) -> int:
         "--transform",
         choices=(
             "analytics", "nr-labels", "visible-leaves", "scell5plus",
-            "full-names", "full-names-closure",
+            "full-names", "full-names-closure", "simple-tree",
         ),
         default="analytics",
         help="transformation disque appliquée avec --from (défaut : analytics)",
@@ -680,6 +710,8 @@ def main(argv: list[str] | None = None) -> int:
                 prepare_full_names_patch(args.from_version, args.version)
             elif args.transform == "full-names-closure":
                 prepare_full_names_closure_patch(args.from_version, args.version)
+            elif args.transform == "simple-tree":
+                prepare_simple_tree_patch(args.from_version, args.version)
             else:
                 prepare_analytics_minor(args.from_version, args.version)
         except (FileNotFoundError, ValueError) as exc:

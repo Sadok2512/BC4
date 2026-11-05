@@ -45,3 +45,26 @@ def test_catalog_response_accepts_active_catalog_kinds_and_structural_proof_null
     parsed = MetricCatalogResponse.model_validate(payload)
     assert parsed.metrics[0].kind == "KPI"
     assert parsed.nodes[0].proof is None
+
+
+def test_catalog_response_accepts_simple_tree_contract():
+    payload = {
+        "catalogue_version": "2.68.5",
+        "title": "Metrics",
+        "header": "Metrics",
+        "metrics": [],
+        "nodes": [],
+        "simple_tree": [
+            {
+                "tech": "LTE",
+                "theme": "2 · Débit DL",
+                "kpi": "THP_DL_CA_TOTAL",
+                "label": "Débit DL total CA",
+                "families": ["lte_thp_dl_ca_total"],
+                "unit": "Mbit/s",
+                "status": "ok",
+            }
+        ],
+    }
+    parsed = MetricCatalogResponse.model_validate(payload)
+    assert parsed.simple_tree[0].kpi == "THP_DL_CA_TOTAL"

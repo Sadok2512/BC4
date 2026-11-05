@@ -77,6 +77,10 @@ DERIVED={
  'neighbor_best_rsrq':('Best neighbour RSRQ','dB','neighbours','CELLMEAS'),
  'neighbor_delta_rsrp':('Neighbour RSRP − serving','dB','neighbours','CELLMEAS'),
  'neighbor_delta_rsrq':('Neighbour RSRQ − serving','dB','neighbours','CELLMEAS')}
+DERIVED.update({
+ 'lte_thp_dl_ca_total':('LTE total CA DL throughput (PCell + SCells)','Mbit/s','carrier_aggregation','PHRATE'),
+ 'lte_ca_nb_scells':('LTE SCells with a PHRATE observation','n','carrier_aggregation','PHRATE'),
+})
 PAIR_ATTRS={'ho_duration_nemo_ms':('Nemo HO duration','ms'), 'ho_duration_hoi_ms':('HOI duration','ms'),
  'duration_nemo_ms':('Nemo pair duration','ms'), 'outcome':('Pair outcome','')}
 _PRIVATE={'caa_phone_number','caa_own_phone_number','sei_lac','sei_tmsi','sei_p_tmsi','sei_m_tmsi'}
@@ -582,7 +586,41 @@ class Dataset:
                 if r['value'] is not None and m['kind']=='categorical':r['value']=str(r['value'])
                 out.append(r)
             return out
-        if m.get('cell_type_filter') and event == 'CELLMEAS':
+        if m['base_code'] in {'lte_thp_dl_ca_total','lte_ca_nb_scells'}:
+            # 2.68.5 — exact-sequence CA metrics.  The public identity is the
+            # decoder enum `(system=LTE, raw cell_type)`, not a timestamp and
+            # not an inferred carrier state.  Grouping is strictly
+            # `(capture_id, seq_first)`; `seq_first` is the canonical source
+            # event sequence stored by nmf_cell_second.
+            from app.nmf_decoder.cells import _cell_index_for
+            pcell_and_scells = [_cell_index_for(raw, 7) for raw in range(32)]
+            scells = [_cell_index_for(raw, 7) for raw in range(1, 32)]
+            if m['base_code'] == 'lte_thp_dl_ca_total':
+                sql = '''
+                    SELECT capture_id,seq_first AS seq,MAX(seq_last) AS seq_last,
+                           SUM(value)/1000000.0 AS value,MIN(second) AS second
+                    FROM nmf_cell_second
+                    WHERE project_id=:pid AND capture_id=:cap
+                      AND event_code='PHRATE' AND metric_code='pdsch_bitrate'
+                      AND value IS NOT NULL AND cell_index=ANY(:cell_indices)
+                    GROUP BY capture_id,seq_first
+                    ORDER BY capture_id,seq_first
+                '''
+                rows = [dict(r) for r in self.query(sql, {'cell_indices': pcell_and_scells})]
+            else:
+                sql = '''
+                    SELECT capture_id,seq_first AS seq,MAX(seq_last) AS seq_last,
+                           COUNT(DISTINCT cell_index)::double precision AS value,
+                           MIN(second) AS second
+                    FROM nmf_cell_second
+                    WHERE project_id=:pid AND capture_id=:cap
+                      AND event_code='PHRATE' AND value IS NOT NULL
+                      AND cell_index=ANY(:cell_indices)
+                    GROUP BY capture_id,seq_first
+                    ORDER BY capture_id,seq_first
+                '''
+                rows = [dict(r) for r in self.query(sql, {'cell_indices': scells})]
+        elif m.get('cell_type_filter') and event == 'CELLMEAS':
             rows, total = self._load_semantic_cell(
                 m, page=page, page_size=page_size,
                 cell_pci=cell_pci, cell_arfcn=cell_arfcn,
