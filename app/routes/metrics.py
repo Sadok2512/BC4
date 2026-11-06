@@ -6,6 +6,7 @@ import math
 from decimal import Decimal, InvalidOperation
 from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import ORJSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -360,10 +361,27 @@ def metric_aggregate(
     )
 
 
+def _compact_catalog_response(payload: dict) -> dict:
+    """Omit null node metadata for the browser without changing identities.
+
+    Catalogue nodes are numerous and most optional presentation fields are
+    null on parent nodes.  The normal contract remains unchanged for older
+    clients; ``compact=true`` only removes keys whose value carries no data.
+    """
+    return {
+        **payload,
+        'nodes': [
+            {key: value for key, value in node.items() if value is not None}
+            for node in payload.get('nodes', [])
+        ],
+    }
+
+
 @router.get('/projects/{project_id}/metrics', response_model=MetricCatalogResponse)
 def catalog(
     project_id: str,
     capture_id: list[str] = Query(default=[]),
+    compact: bool = False,
     db: Session=Depends(get_db),
 ):
     """0.80.0 (Phase 3a) — contrat Phase 3a :
@@ -400,7 +418,9 @@ def catalog(
     cached=db.execute(text("""SELECT payload FROM metrics_catalog_cache
       WHERE project_id=:pid AND scope_key=:scope AND decode_stamp=:stamp"""),
       {'pid':project_id,'scope':scope_key,'stamp':cache_stamp}).scalar_one_or_none()
-    if cached is not None:return _with_analytics_tabs(cached)
+    if cached is not None:
+        result=_with_analytics_tabs(cached)
+        return ORJSONResponse(_compact_catalog_response(result)) if compact else result
     if cur:
         from app.kpi.metrics_catalog_v4 import build_catalog_v4
         payload = build_catalog_v4(db, project_id, cur, capture_ids=capture_ids)
@@ -419,7 +439,8 @@ def catalog(
       decode_stamp=excluded.decode_stamp,payload=excluded.payload,updated_at=now()"""),
       {'pid':project_id,'scope':scope_key,'stamp':cache_stamp,'payload':json.dumps(payload)})
     db.commit()
-    return _with_analytics_tabs(payload)
+    result=_with_analytics_tabs(payload)
+    return ORJSONResponse(_compact_catalog_response(result)) if compact else result
 
 @router.get('/projects/{project_id}/metrics/catalog-csv')
 def catalog_csv(project_id: str, db: Session = Depends(get_db)):
@@ -876,10 +897,9 @@ def events(project_id: str,capture_id: str,types: str='task,ho,rlf,rrc',f: dict=
         raise HTTPException(422,dict(reason='unknown_marker_type',allowed=sorted(_EVENTS_TYPES_ALLOWED)))
     params={'pid':project_id,'cap':capture_id};pending=[]
     condition,fp=predicate(f);params.update(fp);params['ctx_cap']=capture_id
-    filter_sql='SELECT seq FROM ('+context_sql()+') c WHERE '+condition
-    allowed=None if condition=='TRUE' else {r[0] for r in db.execute(text(filter_sql),params)}
+    filter_sql='-- no population filter'
     def queue(seq,kind,label,event_code=None):
-        if seq is None or (allowed is not None and seq not in allowed):return
+        if seq is None:return
         pending.append((seq,kind,label,event_code))
     if 'task' in wanted:
         for r in db.execute(text(TASK_SQL),params).mappings():
@@ -898,6 +918,23 @@ def events(project_id: str,capture_id: str,types: str='task,ho,rlf,rrc',f: dict=
         for r in db.execute(text(RAW_EVENT_SQL), params).mappings():
             kind, label = _RAW_EVENT_TYPE[r['event_code']]
             queue(r['seq'], kind, label, event_code=r['event_code'])
+    # Filter only the marker sequences collected above.  The previous query
+    # built the complete project/capture analytical context, materialised all
+    # matching seq values in Python, then used only a few of them.  Scoping
+    # every population CTE to the candidate marker set preserves the exact
+    # predicate while avoiding a full measurement/event scan.
+    if condition != 'TRUE':
+        params['context_seqs']=sorted({row[0] for row in pending})
+        filter_sql='''WITH context_sequences AS (
+          SELECT CAST(:ctx_cap AS text) AS capture_id,
+                 unnest(CAST(:context_seqs AS bigint[])) AS seq
+        ), context AS ('''+context_sql(scoped=True)+''')
+        SELECT c.seq FROM context c WHERE '''+condition
+        allowed=(
+            {r[0] for r in db.execute(text(filter_sql),params)}
+            if params['context_seqs'] else set()
+        )
+        pending=[row for row in pending if row[0] in allowed]
     # 0.62.0 — capture.forcing (toujours calculé, pas filtré par `types`)
     lock_rows = db.execute(text(LOCK_SQL), {'pid': project_id, 'cap': capture_id}).mappings().all()
     needed=[row[0] for row in pending]

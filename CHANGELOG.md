@@ -1,3 +1,8 @@
+## 0.133.4 (patch) — Chemins KPI bornés et catalogue compact — 2026-11-07 (BC4)
+
+- Borne le filtre des événements KPI aux seules séquences candidates au lieu de reconstruire le contexte analytique complet de la capture.
+- Ajoute une projection `compact=true` du catalogue Metrics qui omet uniquement les métadonnées nulles des nœuds, sans modifier identifiants, compteurs ni disponibilités.
+
 ## 0.133.3 (patch) — Payload RRC des extensions structurelles — 2026-11-06 (BC4)
 
 - Ne classe plus le wrapper ASN.1 standard `nonCriticalExtension` comme une identité à lui seul dans L3 Signaling.
