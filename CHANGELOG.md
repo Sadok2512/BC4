@@ -1,3 +1,10 @@
+## 0.133.3 (patch) — Payload RRC des extensions structurelles — 2026-11-06 (BC4)
+
+- Ne classe plus le wrapper ASN.1 standard `nonCriticalExtension` comme une identité à lui seul dans L3 Signaling.
+- Continue d'inspecter récursivement son contenu et conserve le masquage des identités d'abonné, RNTI, conteneurs NAS et extensions opaques sensibles.
+- Affiche les identifiants de transaction RRC, qui ne sont pas des identités d'abonné, et distingue les conteneurs ASN.1 opaques des identités non vérifiées.
+- Permet d'afficher le payload brut uniquement lorsqu'aucun champ sensible ni conteneur binaire opaque n'est présent.
+
 ## 0.133.2 (patch) — Pagination SQL multi-métrique — 2026-11-06 (BC4)
 
 - Calcule en SQL la page temporelle commune avant de charger les valeurs d’une table contenant plusieurs métriques cellulaires.

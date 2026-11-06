@@ -22,6 +22,8 @@ LAYERS = ('rrc_lte', 'rrc_nr', 'nas', 'event', 'mac')
 LAYER_FOR_PROTOCOL = dict(zip(PROTOCOLS, LAYERS))
 MARKERS = ('RRA','RRC','RRD','RRF','RRRE','HOA','HOS','HOI','CAA','CAC','CAD','DAA','DAC','DAD','RACHI','CREL','MEI','PBA','PBC','PBD','PBF','GAA','GAC','GAD','LOCK','MARK','SCELLMOD','TUA','TUS','TUF','LUA','LUS','LUF')
 SENSITIVE = re.compile(r'rnti|guti|tmsi|imsi|imei|msisdn|phone|subscriber|ue.identity|randomValue|dedicated.*nas', re.I)
+STRUCTURAL_EXTENSION = re.compile(r'^nonCriticalExtension$', re.I)
+SAFE_PROTOCOL_IDENTIFIER = re.compile(r'(?:^|/)rrc-TransactionIdentifier$', re.I)
 PDU_LOCK = Lock()
 _POPULATION_CACHE: dict[tuple[str, str, str], tuple[tuple, float, tuple]] = {}
 _POPULATION_CACHE_LOCK = Lock()
@@ -286,12 +288,36 @@ def context(db,pid,cap,seq):
     return values,cell[0] if cell else None
 
 
+def sensitive_key(value):
+    """Return whether an ASN.1 key proves that its subtree is sensitive.
+
+    ``nonCriticalExtension`` is a structural release wrapper in LTE/NR RRC,
+    not an identity by itself.  Its descendants still get inspected and any
+    real deny-listed IE (including late/opaque extensions and NAS containers)
+    remains fail-closed.
+    """
+    key = str(value)
+    return bool(
+        SENSITIVE.search(key)
+        or (DENY.search(key) and not STRUCTURAL_EXTENSION.fullmatch(key))
+    )
+
+
 def contains_identity(value):
-    if isinstance(value,dict):return any(DENY.search(str(k)) or SENSITIVE.search(str(k)) or contains_identity(v) for k,v in value.items())
+    if isinstance(value,dict):return any(sensitive_key(k) or contains_identity(v) for k,v in value.items())
     if isinstance(value,(tuple,list)):
-        if isinstance(value,tuple) and len(value)==2 and isinstance(value[0],str) and (DENY.search(value[0]) or SENSITIVE.search(value[0])):return True
+        if isinstance(value,tuple) and len(value)==2 and isinstance(value[0],str) and sensitive_key(value[0]):return True
         return any(contains_identity(v) for v in value)
     return False
+
+
+def contains_opaque(value):
+    """Return whether decoded ASN.1 still contains an opaque byte container."""
+    if isinstance(value, dict):
+        return any(contains_opaque(item) for item in value.values())
+    if isinstance(value, (tuple, list)):
+        return any(contains_opaque(item) for item in value)
+    return isinstance(value, (bytes, bytearray, memoryview))
 
 
 def details(db,pid,cap,seq):
@@ -300,13 +326,15 @@ def details(db,pid,cap,seq):
     if events and events[0]['event_code']=='RRCSM':
         event=events[0]
         ps=query(db,'SELECT path,value,param_key,is_identifier FROM param_occurrence WHERE project_id=:pid AND stg_event_id=:id ORDER BY id',dict(pid=pid,id=event['id']))
-        parameters=[dict(path=p['path'],value=p['value'],param_key=p['param_key']) for p in ps if not p['is_identifier'] and not DENY.search(p['path']) and not SENSITIVE.search(p['path'])]
+        parameters=[dict(path=p['path'],value=p['value'],param_key=p['param_key']) for p in ps if (not p['is_identifier'] or SAFE_PROTOCOL_IDENTIFIER.search(p['path'])) and not DENY.search(p['path']) and not SENSITIVE.search(p['path'])]
         with PDU_LOCK:
             try:
                 pdu=resolve_pdu(event['system'],event['channel'],event['direction'],event['message'])
                 if pdu is not None and event['payload_hex']:
                     pdu.from_uper(bytes.fromhex(event['payload_hex']))
-                    if contains_identity(pdu.get_val()):reason='Identité ou conteneur sensible présent : hexadécimal masqué.'
+                    decoded_value=pdu.get_val()
+                    if contains_identity(decoded_value):reason='Identité ou conteneur sensible présent : hexadécimal masqué.'
+                    elif contains_opaque(decoded_value):reason='Conteneur ASN.1 opaque présent : hexadécimal masqué, champs décodés affichés.'
                     else:hex_value=event['payload_hex'];reason=None
             except Exception:
                 reason='Décodage incomplet : absence d’identité non certifiée, hexadécimal masqué.'
