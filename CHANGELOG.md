@@ -1,3 +1,9 @@
+## 0.133.2 (patch) — Pagination SQL multi-métrique — 2026-11-06 (BC4)
+
+- Calcule en SQL la page temporelle commune avant de charger les valeurs d’une table contenant plusieurs métriques cellulaires.
+- Charge uniquement les secondes de la page demandée tout en conservant exactement les lignes, compteurs, identités radio et totaux de pagination existants.
+- Conserve le chemin général certifié pour les familles non prises en charge et expose la durée totale via `Server-Timing`.
+
 ## 0.133.1 (patch) — Fusion chronologique de la table Metrics — 2026-11-05 (BC4)
 
 - Utilise un bucket temporel homogène pour toutes les colonnes de la table détaillée, au lieu de mélanger secondes et séquences.

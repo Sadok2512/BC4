@@ -109,6 +109,36 @@ def test_connected_summary_does_not_report_an_unrequested_scan_as_empty():
         "capture and filters."
     )
 
+
+def test_multi_metric_table_builds_one_exact_sql_page_before_loading_values():
+    class Result(list):
+        def first(self):
+            return self[0] if self else None
+
+    dataset=Dataset.__new__(Dataset)
+    dataset.lean_table=True
+    calls=[]
+    def query(sql,params=None):
+        calls.append((sql,params or {}))
+        return Result([{'second':0,'total_rows':4857},{'second':1,'total_rows':4857}])
+    dataset.query=query
+    selected=[
+        parse_selection('cell_rsrp@lte-type-0',definitions()),
+        parse_selection('cell_rsrq@lte-type-0',definitions()),
+        parse_selection('cell_ch@lte-type-0',definitions()),
+    ]
+
+    seconds,total=dataset._table_page_seconds(selected,2,25)
+
+    assert seconds==[0,1]
+    assert total==4857
+    assert len(calls)==1
+    sql,params=calls[0]
+    assert 'candidate_seconds' in sql
+    assert 'SELECT DISTINCT second' in sql
+    assert params['page_limit']==25
+    assert params['page_offset']==25
+
 # 0.82.2 — Tests supprimés : test_v6_catalogue_is_the_approved_html_tree
 # et test_v6_catalogue_keeps_all_cell_leaves_and_open_nr_proofs.
 # Raison : les 2 tests valident l'HTML tree legacy ν10 BC2 avec compteurs

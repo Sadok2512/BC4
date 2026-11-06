@@ -1,5 +1,6 @@
 """Closed metrics v3 projections. Capture/seq order, server-side cells and event attributes."""
 from collections import defaultdict, Counter
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict
 import csv
 import json
@@ -512,7 +513,7 @@ class Dataset:
 
     def _load_semantic_cell(self, m, *, page=None, page_size=None,
                             cell_pci=None, cell_arfcn=None,
-                            include_total=True):
+                            include_total=True, wanted_seconds=None):
         """Load one enum leaf as physical cells, with SQL pagination.
 
         Storage occurrences are joined to the import-time identity mapping.
@@ -528,6 +529,9 @@ class Dataset:
                     'cell_pci':cell_pci,'cell_arfcn':cell_arfcn}
             if cell_pci is not None:filters+=' AND g.cell_pci=:cell_pci'
             if cell_arfcn is not None:filters+=' AND g.cell_ch=:cell_arfcn'
+            if wanted_seconds is not None:
+                filters+=' AND FLOOR(l.t_rel_s)::int=ANY(:wanted_seconds)'
+                params['wanted_seconds']=wanted_seconds
             sql=f"""
                 SELECT g.seq,g.seq AS seq_last,FLOOR(MIN(l.t_rel_s))::int AS second,
                        MIN(l.t_rel_s) AS exact_t_rel_s,g.cell_pci,
@@ -567,6 +571,9 @@ class Dataset:
             identity_filters += " AND i.cell_pci=:cell_pci"
         if cell_arfcn is not None:
             identity_filters += " AND i.cell_arfcn=:cell_arfcn"
+        if wanted_seconds is not None:
+            identity_filters += " AND s.second=ANY(:wanted_seconds)"
+            params['wanted_seconds'] = wanted_seconds
         grouped = f"""
             WITH physical AS (
               SELECT s.seq_first AS seq,MAX(s.seq_last) AS seq_last,s.second,
@@ -618,7 +625,7 @@ class Dataset:
         return result, total
 
     def load(self,m,*,page=None,page_size=None,cell_pci=None,cell_arfcn=None,
-             include_total=True):
+             include_total=True,wanted_seconds=None):
         code=m['source_column'];cell=m['cell'];attr=m['attr'];event=m['event'];rows=[]
         # 2.53.0 — CAPTURE dispatcher (prefix `cap_`). Résolveurs :
         # CONST (nmf_file/nmf_capture) · SERIES_DEVI (stg_event_raw c{col})
@@ -677,7 +684,7 @@ class Dataset:
             rows, total = self._load_semantic_cell(
                 m, page=page, page_size=page_size,
                 cell_pci=cell_pci, cell_arfcn=cell_arfcn,
-                include_total=include_total,
+                include_total=include_total,wanted_seconds=wanted_seconds,
             )
             m['_total_rows'] = total
             display=m['cell_display']
@@ -714,18 +721,25 @@ class Dataset:
                        'FROM nmf_cell_second WHERE project_id=:pid AND capture_id=:cap '
                        'AND event_code=:event AND metric_code=:metric '
                        'AND cell_index BETWEEN :lo AND :hi '
-                       'ORDER BY seq_first')
+                       + ('AND second=ANY(:wanted_seconds) ' if wanted_seconds is not None else '')
+                       + 'ORDER BY seq_first')
                 rows = [dict(r) for r in self.query(sql, {'metric': code,
                                                           'event': event,
-                                                          'lo': lo, 'hi': hi})]
+                                                          'lo': lo, 'hi': hi,
+                                                          **({'wanted_seconds':wanted_seconds}
+                                                             if wanted_seconds is not None else {})})]
             else:
                 sql = ('SELECT seq_first seq,seq_last,value,reason,second '
                        'FROM nmf_cell_second WHERE project_id=:pid AND capture_id=:cap '
-                       'AND metric_code=:metric AND cell_index=:cell ORDER BY seq_first')
+                       'AND metric_code=:metric AND cell_index=:cell '
+                       + ('AND second=ANY(:wanted_seconds) ' if wanted_seconds is not None else '')
+                       + 'ORDER BY seq_first')
                 internal_cell = m.get('legacy_internal_index',
                                       -1 if cell == 'all' else int(cell))
                 rows = [dict(r) for r in self.query(sql, {'metric': code,
-                                                          'cell': internal_cell})]
+                                                          'cell': internal_cell,
+                                                          **({'wanted_seconds':wanted_seconds}
+                                                             if wanted_seconds is not None else {})})]
             # CELLMEAS radio identity is carried by the exact repeated group.
             # Resolve it by (project, capture, seq, raw cell_type, occurrence),
             # never by timestamp. Native-light captures simply have no typed
@@ -846,6 +860,170 @@ class Dataset:
             result[key]=sum(b-a for a,b in merged)
         return result
 
+    def _table_page_seconds(self,selections,page,page_size,cell_pci=None,cell_arfcn=None):
+        """Return the exact global table page for supported cell metrics.
+
+        The table merges metrics by capture-local second.  Build that union in
+        PostgreSQL, paginate it once, then let each projection load only those
+        seconds.  Unsupported metric families return ``None`` and keep the
+        certified general path.
+        """
+        from app.nmf_decoder.cells import cell_index_bounds
+
+        if not self.lean_table or len(selections)<2:
+            return None
+        fragments=[];params={}
+        for index,metric in enumerate(selections):
+            source=metric['source_column'];event=metric['event']
+            spec=metric.get('cell_type_filter')
+            pci=metric.get('cell_pci',cell_pci)
+            arfcn=metric.get('cell_arfcn',cell_arfcn)
+            prefix=f'm{index}'
+            if spec and event=='CELLMEAS':
+                params.update({f'{prefix}_system':spec['system'],
+                               f'{prefix}_raw':spec['raw_cell_type']})
+                identity_filters=''
+                if pci is not None:
+                    params[f'{prefix}_pci']=pci
+                    identity_filters+=f' AND g.cell_pci=:{prefix}_pci'
+                if arfcn is not None:
+                    params[f'{prefix}_arfcn']=arfcn
+                    identity_filters+=f' AND g.cell_ch=:{prefix}_arfcn'
+                if metric.get('marker_series') and source in {'cell_ch','cell_pci'}:
+                    fragments.append(f"""
+                        SELECT FLOOR(MIN(l.t_rel_s))::int AS second
+                        FROM nmf_event_light_group g
+                        JOIN nmf_event_light l
+                          ON l.project_id=g.project_id AND l.capture_id=g.capture_id
+                         AND l.seq=g.seq AND l.event_code='CELLMEAS'
+                        WHERE g.project_id=:pid AND g.capture_id=:cap
+                          AND g.group_name='cells'
+                          AND g.cell_type=:{prefix}_raw
+                          AND l.system=:{prefix}_system
+                          AND g.{source} IS NOT NULL {identity_filters}
+                        GROUP BY g.seq
+                    """)
+                    continue
+                bounds=cell_index_bounds(spec['system'],spec['raw_cell_type'])
+                if bounds is None:return None
+                params.update({f'{prefix}_event':event,f'{prefix}_metric':source,
+                               f'{prefix}_lo':bounds[0],f'{prefix}_hi':bounds[1]})
+                physical_filters=''
+                if pci is not None:
+                    physical_filters+=f' AND i.cell_pci=:{prefix}_pci'
+                if arfcn is not None:
+                    physical_filters+=f' AND i.cell_arfcn=:{prefix}_arfcn'
+                fragments.append(f"""
+                    SELECT DISTINCT s.second
+                    FROM nmf_cell_second s
+                    JOIN nmf_cell_identity i
+                      ON i.project_id=s.project_id AND i.capture_id=s.capture_id
+                     AND i.seq=s.seq_first AND i.event_code=s.event_code
+                     AND i.cell_index=s.cell_index
+                     AND i.decoder_version=s.decoder_version
+                    WHERE s.project_id=:pid AND s.capture_id=:cap
+                      AND s.event_code=:{prefix}_event
+                      AND s.metric_code=:{prefix}_metric
+                      AND s.cell_index BETWEEN :{prefix}_lo AND :{prefix}_hi
+                      AND i.system=:{prefix}_system AND i.cell_type=:{prefix}_raw
+                      {physical_filters}
+                """)
+                continue
+            if metric['cell_scoped'] and metric['base_code'] not in DERIVED:
+                # The legacy non-CELLMEAS loader has no physical PCI/ARFCN
+                # predicate. Do not silently add one in the pagination path.
+                if pci is not None or arfcn is not None:return None
+                params[f'{prefix}_metric']=source
+                if spec is not None:
+                    bounds=cell_index_bounds(spec['system'],spec['raw_cell_type'])
+                    if bounds is None:return None
+                    params.update({f'{prefix}_event':event,
+                                   f'{prefix}_lo':bounds[0],f'{prefix}_hi':bounds[1]})
+                    fragments.append(f"""
+                        SELECT DISTINCT second FROM nmf_cell_second
+                        WHERE project_id=:pid AND capture_id=:cap
+                          AND event_code=:{prefix}_event
+                          AND metric_code=:{prefix}_metric
+                          AND cell_index BETWEEN :{prefix}_lo AND :{prefix}_hi
+                    """)
+                else:
+                    internal=metric.get('legacy_internal_index',
+                                        -1 if metric['cell']=='all' else int(metric['cell']))
+                    params[f'{prefix}_cell']=internal
+                    fragments.append(f"""
+                        SELECT DISTINCT second FROM nmf_cell_second
+                        WHERE project_id=:pid AND capture_id=:cap
+                          AND metric_code=:{prefix}_metric
+                          AND cell_index=:{prefix}_cell
+                    """)
+                continue
+            return None
+        if not fragments:return None
+        params.update(page_limit=page_size,page_offset=(page-1)*page_size)
+        union=' UNION ALL '.join(fragments)
+        common=f"""
+            WITH candidate_seconds AS ({union}),
+            distinct_seconds AS (
+              SELECT DISTINCT second FROM candidate_seconds WHERE second IS NOT NULL
+            )
+        """
+        rows=list(self.query(common+"""
+            , numbered AS (
+              SELECT second,COUNT(*) OVER()::int AS total_rows
+              FROM distinct_seconds
+            )
+            SELECT second,total_rows FROM numbered
+            ORDER BY second LIMIT :page_limit OFFSET :page_offset
+        """,params))
+        if rows:
+            return [row['second'] for row in rows],int(rows[0]['total_rows'])
+        count_row=self.query(common+'SELECT COUNT(*)::int AS n FROM distinct_seconds',params).first()
+        return [],int(count_row['n'] if count_row else 0)
+
+    def _load_table_metrics_parallel(self,selections,cell_pci=None,cell_arfcn=None):
+        """Load independent lean-table projections concurrently.
+
+        A multi-metric table previously executed every projection serially on
+        one SQLAlchemy session.  The projections share no mutable database
+        state and are merged only after every future completes, so isolated
+        sessions preserve the exact canonical rows while removing cumulative
+        request latency.  This path is deliberately limited to unfiltered
+        lean tables; filtered datasets retain their single-session population
+        contract.
+        """
+        from app.db import SessionLocal
+
+        def load_one(index,selection):
+            db=SessionLocal()
+            try:
+                dataset=Dataset(
+                    db,self.pid,self.cap,self.f,self.lo,self.hi,
+                    lean_table=True,
+                )
+                metric=dict(selection)
+                rows=dataset.load(
+                    metric,
+                    cell_pci=metric.get('cell_pci',cell_pci),
+                    cell_arfcn=metric.get('cell_arfcn',cell_arfcn),
+                )
+                return index,metric,rows,dataset.times,dataset.sqls
+            finally:
+                db.close()
+
+        workers=min(4,len(selections))
+        with ThreadPoolExecutor(max_workers=workers,
+                                thread_name_prefix='metrics-table') as pool:
+            results=list(pool.map(
+                lambda item:load_one(*item),
+                enumerate(selections),
+            ))
+        loaded=[]
+        for _,metric,rows,times,sqls in sorted(results,key=lambda item:item[0]):
+            self.times.update(times)
+            self.sqls.extend(sqls)
+            loaded.append((metric,rows))
+        return loaded
+
     def response(self,selections,limit=5000,group_by='operator',x=None,include_map=False,
                  page=1,page_size=1000,table_only=False,cell_pci=None,cell_arfcn=None,
                  series_only=False):
@@ -861,16 +1039,34 @@ class Dataset:
             # apply admissible(seq), then paginate the filtered table.
             and self.allowed is None and self.lo is None and self.hi is None
         )
-        loaded=[(
-            m,
-            self.load(
+        table_page=(self._table_page_seconds(
+            selections,page,page_size,cell_pci,cell_arfcn,
+        ) if table_only and not sql_paginated else None)
+        if table_page is not None:
+            wanted_seconds,table_page_total=table_page
+            loaded=[(
+                metric,
+                self.load(
+                    metric,
+                    cell_pci=metric.get('cell_pci',cell_pci),
+                    cell_arfcn=metric.get('cell_arfcn',cell_arfcn),
+                    include_total=False,
+                    wanted_seconds=wanted_seconds,
+                ),
+            ) for metric in selections]
+        elif table_only and self.lean_table and len(selections)>1:
+            loaded=self._load_table_metrics_parallel(selections,cell_pci,cell_arfcn)
+        else:
+            loaded=[(
                 m,
-                page=page if sql_paginated else None,
-                page_size=page_size if sql_paginated else None,
-                cell_pci=m.get('cell_pci', cell_pci),
-                cell_arfcn=m.get('cell_arfcn', cell_arfcn),
-            ),
-        ) for m in selections]
+                self.load(
+                    m,
+                    page=page if sql_paginated else None,
+                    page_size=page_size if sql_paginated else None,
+                    cell_pci=m.get('cell_pci', cell_pci),
+                    cell_arfcn=m.get('cell_arfcn', cell_arfcn),
+                ),
+            ) for m in selections]
         series_table_keys=None
         if series_only:
             candidate_keys=set()
@@ -1047,10 +1243,13 @@ class Dataset:
                     (k[1] is None, 0 if k[1] is None else k[1]),
                     (k[2] is None, 0 if k[2] is None else k[2]))
         ordered=[table[k] for k in sorted(table, key=_table_sort_key)]
-        total_rows=(int(selections[0].get('_total_rows', len(ordered))) if sql_paginated else len(ordered))
+        total_rows=(table_page_total if table_page is not None else
+                    int(selections[0].get('_total_rows',len(ordered))) if sql_paginated else
+                    len(ordered))
         total_pages=max(1,math.ceil(total_rows/page_size))
         if page>total_pages:raise HTTPException(422,dict(reason='page_out_of_range',total_pages=total_pages))
-        page_rows=ordered if sql_paginated else ordered[(page-1)*page_size:page*page_size]
+        page_rows=(ordered if sql_paginated or table_page is not None else
+                   ordered[(page-1)*page_size:page*page_size])
         rows_to_enrich=page_rows if (table_only or series_only) else ordered
         from decimal import Decimal
         # 0.75.0 — time_local (= ancien time_label), time_utc (local - offset)

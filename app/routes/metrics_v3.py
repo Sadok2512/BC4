@@ -3,7 +3,7 @@ from hashlib import sha256
 from concurrent.futures import ThreadPoolExecutor
 import time
 from typing import Literal
-from fastapi import APIRouter,Depends,HTTPException,Query
+from fastapi import APIRouter,Depends,HTTPException,Query,Response
 from fastapi.responses import ORJSONResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -207,13 +207,14 @@ def metric_map(project_id:str,capture_id:str,codes:str,cell:str='all',attr:str|N
 
 @router.get('/projects/{project_id}/metrics/table',response_model=Analysis)
 @router.get('/projects/{project_id}/metrics/analysis',response_model=Analysis)
-def analysis(project_id:str,capture_id:str,codes:str,cell:str='all',attr:str|None=None,
+def analysis(project_id:str,response:Response,capture_id:str,codes:str,cell:str='all',attr:str|None=None,
              x:str|None=None,include_map:bool=False,group_by:Literal['none','operator','band','operator_band']='operator',
              from_seq:int|None=Query(None,ge=0),to_seq:int|None=Query(None,ge=0),max_points:int=Query(5000,ge=2,le=100000),
              page:int=Query(1,ge=1),page_size:int=Query(1000,ge=25,le=5000),
              table_only:bool=False,cell_pci:int|None=Query(None,ge=0),
              cell_arfcn:int|None=Query(None,ge=0),
              f:dict=Depends(filters),db:Session=Depends(get_db)):
+    started=time.perf_counter()
     project(db,project_id)
     if from_seq is not None and to_seq is not None and from_seq>to_seq:raise HTTPException(422,'from_seq_after_to_seq')
     tokens=list(dict.fromkeys(codes.split(',')))
@@ -225,7 +226,9 @@ def analysis(project_id:str,capture_id:str,codes:str,cell:str='all',attr:str|Non
     # predicates (operator, band, etc.) remain on the full Dataset path.
     selected,table_filters=_apply_intrinsic_rat(selected,f)
     lean_table=_lean_table_allowed(table_only,selected,table_filters)
-    return Dataset(db,project_id,capture_id,table_filters,from_seq,to_seq,lean_table=lean_table).response(
+    payload=Dataset(db,project_id,capture_id,table_filters,from_seq,to_seq,lean_table=lean_table).response(
         selected,max_points,group_by,x,include_map,page,page_size,table_only,
         cell_pci,cell_arfcn,
     )
+    response.headers['Server-Timing']=f'total;dur={(time.perf_counter()-started)*1000:.3f}'
+    return payload
