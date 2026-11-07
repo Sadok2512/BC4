@@ -129,6 +129,7 @@ _MAP_OPTIONAL_BROWSER_FIELDS = {
     'serving_cell_id', 'serving_cell_seq', 'serving_cell_ref_id',
     'serving_site_id', 'serving_site_name', 'serving_cell_lat',
     'serving_cell_lng', 'serving_cell_pci', 'serving_cell_arfcn',
+    'serving_cell_role',
     'serving_link_distance_m', 'serving_link_confidence',
     'serving_cell_source', 'probable_serving_cell_ref_id',
     'probable_serving_site_id', 'probable_serving_site_name',

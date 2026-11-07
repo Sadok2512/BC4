@@ -27,6 +27,19 @@ NR_NEIGHBOUR_TYPES = (1000, 1001, 1002)
 NR_ANCHOR_TYPE = 199
 MAX_NEIGHBOUR_LINKS_PER_POINT = 1
 
+
+def metric_serving_identity(metric: dict) -> tuple[int | None, str | None]:
+    """Map documented MAC serving roles to CELLMEAS identity enums."""
+    selector = metric.get("cell_type_filter") or {}
+    if metric.get("event") not in {"MACRATE", "MACRATEU"}:
+        return None, None
+    if selector.get("system") != 7:
+        return None, None
+    raw = selector.get("raw_cell_type")
+    if not isinstance(raw, int) or raw < 0 or raw > 4:
+        return None, None
+    return (0, "PCell") if raw == 0 else (raw + 9, f"SCell {raw}")
+
 # 0.117.0 BC3 — Mapping 3GPP EARFCN LTE → bande MHz (match
 # cell_ref.band_mhz : 700/800/900/1400/1800/2100/2600/3500). Dérivé
 # directement des plages 3GPP B1/B3/B7/B8/B20/B28/B32. Utilisé par le
@@ -498,13 +511,14 @@ def enrich_probable_serving_links(
         return
     # 1. Récupère (seq → cell_ch, cell_pci) pour PCell (cell_index=1003)
     rows = db.execute(text("""
-        SELECT seq_first AS seq,
+        SELECT project_id,capture_id,second,seq_first AS seq,
                MAX(CASE WHEN metric_code='cell_ch'  THEN value END) AS cell_ch,
                MAX(CASE WHEN metric_code='cell_pci' THEN value END) AS cell_pci
         FROM nmf_cell_second
         WHERE project_id=:pid AND capture_id=:cap AND cell_index=1003
           AND metric_code IN ('cell_ch','cell_pci')
-        GROUP BY seq_first
+        GROUP BY project_id,capture_id,second,seq_first
+        ORDER BY project_id,capture_id,second,seq_first
     """), {"pid": project_id, "cap": capture_id}).mappings().all()
     pcell_by_seq = {
         int(r["seq"]): (
@@ -513,6 +527,13 @@ def enrich_probable_serving_links(
         )
         for r in rows
     }
+    pcell_by_second: dict[int, list[tuple[int, int | None, int | None]]] = defaultdict(list)
+    for row in rows:
+        pcell_by_second[int(row["second"])].append((
+            int(row["seq"]),
+            int(row["cell_ch"]) if row["cell_ch"] is not None else None,
+            int(row["cell_pci"]) if row["cell_pci"] is not None else None,
+        ))
     if not pcell_by_seq:
         return
     # 2. Pour chaque point sans serving, dérive bande + cherche cell_ref proche
@@ -525,6 +546,16 @@ def enrich_probable_serving_links(
     for point in unlinked:
         seq = int(point["seq"])
         pcell = pcell_by_seq.get(seq)
+        if pcell is None and point.get("_second") is not None:
+            # Non-CELLMEAS metrics have their own seq.  Reuse only an earlier
+            # PCell identity from the same capture-second; never look ahead.
+            preceding = [
+                candidate for candidate in pcell_by_second.get(int(point["_second"]), [])
+                if candidate[0] <= seq
+            ]
+            if preceding:
+                _, ch, pci = preceding[-1]
+                pcell = (ch, pci)
         if not pcell:
             continue
         ch, pci = pcell
@@ -549,6 +580,104 @@ def enrich_probable_serving_links(
         point["link_method"] = link_method
         point["confidence"] = "probable"
         point["probable_link_max_distance_m"] = PROBABLE_LINK_MAX_DISTANCE_M
+
+
+def enrich_metric_role_serving_links(
+    db, project_id: str, capture_id: str, map_points: list[dict],
+    reference_lookup: _ProbableReferenceLookup | None = None,
+) -> None:
+    """Resolve LTE MAC serving roles without borrowing a PCell identity.
+
+    MACRATE/MACRATEU encode ``0=PCell`` and ``1..4=SCell1..4``.  CELLMEAS
+    encodes the corresponding identities as ``0`` and ``10..13``.  For each
+    metric point we use only the latest preceding identity in the *same
+    capture-second* and accept it only when that identity is unique.  The
+    target remains explicitly probable because the current reference lookup
+    is band/PCI/proximity based; ambiguous or absent evidence produces no
+    link.
+    """
+    targets = [
+        point for point in map_points
+        if point.get("_identity_cell_type") is not None
+        and point.get("_second") is not None
+        and not point.get("serving_cell_ref_id")
+        and not point.get("probable_serving_cell_ref_id")
+    ]
+    if not targets:
+        return
+    rows = db.execute(text("""
+        WITH targets AS (
+          SELECT * FROM unnest(
+            CAST(:target_seqs AS integer[]),
+            CAST(:seconds AS integer[]),
+            CAST(:cell_types AS integer[])
+          ) AS t(target_seq,second,cell_type)
+        ), latest AS (
+          SELECT t.target_seq,t.cell_type,MAX(i.seq) AS identity_seq
+          FROM targets t
+          JOIN nmf_cell_identity i
+            ON i.project_id=:pid AND i.capture_id=:cap
+           AND i.system=7 AND i.cell_type=t.cell_type
+           AND i.seq<=t.target_seq
+          JOIN nmf_event_light l
+            ON l.project_id=i.project_id AND l.capture_id=i.capture_id
+           AND l.seq=i.seq AND l.second=t.second
+          GROUP BY t.target_seq,t.cell_type
+        )
+        SELECT l.target_seq,l.cell_type,
+               MIN(i.cell_arfcn) AS cell_arfcn,MIN(i.cell_pci) AS cell_pci
+        FROM latest l
+        JOIN nmf_cell_identity i
+          ON i.project_id=:pid AND i.capture_id=:cap AND i.seq=l.identity_seq
+         AND i.system=7 AND i.cell_type=l.cell_type
+        WHERE i.cell_arfcn IS NOT NULL AND i.cell_pci IS NOT NULL
+        GROUP BY l.target_seq,l.cell_type
+        HAVING COUNT(DISTINCT (i.cell_arfcn,i.cell_pci))=1
+        ORDER BY l.target_seq,l.cell_type
+    """), {
+        "pid": project_id,
+        "cap": capture_id,
+        "target_seqs": [int(point["seq"]) for point in targets],
+        "seconds": [int(point["_second"]) for point in targets],
+        "cell_types": [int(point["_identity_cell_type"]) for point in targets],
+    }).mappings()
+    identity_by_seq = {
+        int(row["target_seq"]): (int(row["cell_arfcn"]), int(row["cell_pci"]))
+        for row in rows
+    }
+    if not identity_by_seq:
+        return
+    lookup = reference_lookup or load_probable_reference_lookup(db, map_points)
+    for point in targets:
+        identity = identity_by_seq.get(int(point["seq"]))
+        if identity is None:
+            continue
+        arfcn, pci = identity
+        band_mhz = _lte_earfcn_to_band_mhz(arfcn)
+        if band_mhz is None:
+            continue
+        match = lookup.match(
+            7, (band_mhz,), pci, float(point["lat"]), float(point["lng"])
+        )
+        if match is None:
+            continue
+        best, distance, _, method, _ = match
+        point.update({
+            "serving_cell_role": point["_cell_role"],
+            "serving_cell_arfcn": arfcn,
+            "serving_cell_pci": pci,
+            "probable_serving_cell_ref_id": best["id"],
+            "probable_serving_site_id": best["site_id"],
+            "probable_serving_site_name": best["site_name"],
+            "probable_serving_cell_lat": float(best["lat"]),
+            "probable_serving_cell_lng": float(best["lng"]),
+            "probable_serving_distance_m": round(distance, 1),
+            "probable_serving_band_mhz": band_mhz,
+            "probable_serving_pci": pci,
+            "probable_link_max_distance_m": PROBABLE_LINK_MAX_DISTANCE_M,
+            "link_method": method,
+            "confidence": "probable",
+        })
 
 
 def enrich_probable_neighbour_nr_links(

@@ -1,3 +1,7 @@
+## 0.133.5 (patch) — Liens serving pour toutes les métriques — 2026-11-07 (BC4)
+
+- La projection Map résout les métriques MAC LTE par leur rôle documenté (`PCell`, `SCell 1–4`) vers l'identité CELLMEAS correspondante, dans la même capture/seconde et en ordre `capture_id, seq` ; les identités ambiguës ou absentes restent volontairement sans lien.
+
 ## 0.133.4 (patch) — Chemins KPI bornés et catalogue compact — 2026-11-07 (BC4)
 
 - Borne le filtre des événements KPI aux seules séquences candidates au lieu de reconstruire le contexte analytique complet de la capture.

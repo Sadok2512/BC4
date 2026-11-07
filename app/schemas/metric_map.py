@@ -54,6 +54,9 @@ class MetricMapPoint(BaseModel):
     serving_site_name: str | None = None
     serving_cell_lat: float | None = None
     serving_cell_lng: float | None = None
+    serving_cell_role: str | None = None
+    serving_cell_pci: int | None = None
+    serving_cell_arfcn: int | None = None
     serving_cell_source: Literal["chi_previous_seq_cell_ref_exact"] | None = None
     neighbour_links: list[RadioCellLink] = Field(default_factory=list)
     nr_anchor_link: RadioCellLink | None = None

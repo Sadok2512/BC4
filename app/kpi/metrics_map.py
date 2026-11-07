@@ -16,10 +16,12 @@ from sqlalchemy import text
 
 from app.db import SessionLocal
 from app.kpi.map_cell_links import (
+    enrich_metric_role_serving_links,
     enrich_probable_neighbour_nr_links,
     enrich_probable_serving_links,
     enrich_radio_links,
     load_probable_reference_lookup,
+    metric_serving_identity,
 )
 
 
@@ -105,6 +107,7 @@ def build_map_points(
         position_source = "exact" if fix["seq"] == row["seq"] else "previous_fix"
         delta_seq = row["seq"] - fix["seq"]
         reference = cell_refs.get(chi["eci"]) if chi else None
+        identity_cell_type, cell_role = metric_serving_identity(metric)
         tooltip = (
             f"{metric['label']} · seq {row['seq']} · {row['value']} {metric['unit']}"
             + (f" · position héritée du fix seq {fix['seq']} (Δseq {delta_seq})"
@@ -126,6 +129,9 @@ def build_map_points(
             "serving_cell_source": (
                 "chi_previous_seq_cell_ref_exact" if reference else None
             ),
+            "serving_cell_role": cell_role,
+            "_identity_cell_type": identity_cell_type,
+            "_cell_role": cell_role,
         })
 
     seconds_by_seq = {
@@ -151,6 +157,14 @@ def build_map_points(
     else:
         after_proven = time.perf_counter()
         after_serving = after_proven
+    # MAC metrics have an explicit PCell/SCell role and cannot safely reuse a
+    # PCell-only cache row. Resolve their matching CELLMEAS identity in one
+    # batched query for both fresh and materialized-cache paths.
+    if points:
+        role_lookup = load_probable_reference_lookup(dataset.db, points)
+        enrich_metric_role_serving_links(
+            dataset.db, dataset.pid, dataset.cap, points, role_lookup
+        )
     after_probable = time.perf_counter()
     log.info(
         "metrics map link stages project=%s capture=%s points=%d "
