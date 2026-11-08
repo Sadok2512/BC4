@@ -37,8 +37,13 @@ LTE;9 · Puissance UL;PHR;Power headroom;txpc_power_headroom;dB;ok
 LTE;9 · Puissance UL;PUSCH_TX_POWER;Puissance TX PUSCH;txpc_pusch_tx_power;dBm;empty
 LTE;10 · Mobilité;HO_ATTEMPTS;HO tentés;lte_ho_attempts;n;ok
 LTE;10 · Mobilité;HO_SUCCESS_RATE;Taux de succès HO;lte_ho_success_rate_pct;%;ok
+LTE;10 · Mobilité;HO_FAILURE;Échecs HO;lte_ho_failure;n;ok
 LTE;10 · Mobilité;RLF;Radio link failures;lte_rlf_count;n;ok
 LTE;10 · Mobilité;REEST_SUCCESS_RATE;Taux de succès ré-établissement;lte_reest_success_rate_pct;%;ok
+LTE;10 · Mobilité;REEST_HO_FAILURE;Échecs ré-établissement après HO;lte_reest_ho_failure;n;ok
+LTE;10 · Mobilité;REEST_RECONFIG_FAILURE;Échecs ré-établissement après reconfiguration;lte_reest_reconfig_failure;n;ok
+LTE;10 · Mobilité;REEST_REJECTED;Ré-établissements RRC rejetés;lte_reest_rejected;n;ok
+LTE;11 · Accessibilité;RRC_SETUP_FAILURE;Échecs établissement RRC;lte_rrc_setup_failure;n;ok
 NR;1 · Couverture;SS_RSRP;SS-RSRP;cellmeas_rsrp_f12;dBm;ok
 NR;1 · Couverture;SS_RSRQ;SS-RSRQ;cellmeas_rsrq_f13;dB;ok
 NR;1 · Couverture;SS_SINR;SS-SINR;cell_sinr;dB;ok

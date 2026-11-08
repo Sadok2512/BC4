@@ -1,3 +1,14 @@
+## 0.133.6 (patch) — Raccordement drops/failures au tree Metrics — 2026-11-08 (BC1)
+
+- Étend le Simple Tree certifié de 66 à 71 KPI sans modifier les Metric IDs :
+  `lte_ho_failure`, `lte_reest_ho_failure`, `lte_reest_reconfig_failure`,
+  `lte_reest_rejected` et `lte_rrc_setup_failure` deviennent visibles sous
+  Mobilité ou Accessibilité.
+- Publie le catalogue 2.68.6 afin d'invalider le cache 2.68.5 et conserve les
+  valeurs, populations, unités et règles de détection existantes. Les drops
+  VoLTE/VoNR non certifiés restent explicitement indisponibles : aucune valeur
+  ni population n'est inventée.
+
 ## 0.133.5 (patch) — Liens serving pour toutes les métriques — 2026-11-07 (BC4)
 
 - La projection Map résout les métriques MAC LTE par leur rôle documenté (`PCell`, `SCell 1–4`) vers l'identité CELLMEAS correspondante, dans la même capture/seconde et en ordre `capture_id, seq` ; les identités ambiguës ou absentes restent volontairement sans lien.

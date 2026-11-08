@@ -64,7 +64,7 @@ class MetricCatalogNode(BaseModel):
     display_code_lisible: str | None = None
     nom_court: str | None = None
     display_branch: Literal['CAPTURE', 'LTE', 'NR', 'IP / Services'] | None = None
-    # 2.68.5 — certified simplified-tree presentation metadata. Technical
+    # 2.68.6 — certified simplified-tree presentation metadata. Technical
     # identity and selection remain metric_id/selection.
     simple_name: str | None = None
     simple_tech: Literal['LTE', 'NR'] | None = None

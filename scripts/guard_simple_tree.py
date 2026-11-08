@@ -1,4 +1,4 @@
-"""Manual-only guard for the catalogue 2.68.5 simplified tree.
+"""Manual-only guard for the catalogue 2.68.6 simplified tree.
 
 This script is intentionally not wired into CI.  Every live count is printed
 under the exact API request whose response produced it.
@@ -36,7 +36,7 @@ def main() -> int:
     print("QUERY=CSV SELECT tech,theme,kpi,familles_metric_id,statut FROM app/kpi/simple_tree.csv")
     print(f"SIMPLE_KPI_LINKED={len(linked)} EXPECTED={len(definitions)}")
     print(f"SIMPLE_NAME_DUPLICATES={duplicate_names}")
-    if len(definitions) != 66 or len(linked) != 66 or duplicate_names:
+    if len(definitions) != 71 or len(linked) != 71 or duplicate_names:
         print("VERDICT=FAIL stage=static")
         return 1
 
@@ -49,7 +49,7 @@ def main() -> int:
             print("VERDICT=FAIL reason=project_not_found")
             return 1
         release = current_catalog(db)
-        if release is None or release.version != "2.68.5":
+        if release is None or release.version != "2.68.6":
             version = release.version if release else "NONE"
             print(f"VERDICT=FAIL reason=catalog_release version={version}")
             return 1

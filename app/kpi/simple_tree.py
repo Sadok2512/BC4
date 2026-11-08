@@ -1,4 +1,4 @@
-"""Certified simplified Metrics tree metadata (catalogue 2.68.5)."""
+"""Certified simplified Metrics tree metadata (catalogue 2.68.6)."""
 from __future__ import annotations
 
 import csv
@@ -50,8 +50,8 @@ def load_simple_tree() -> tuple[SimpleKpi, ...]:
             )
             for row in reader
         )
-    if len(rows) != 66:
-        raise RuntimeError(f"simple_tree.csv rows={len(rows)}, expected=66")
+    if len(rows) != 71:
+        raise RuntimeError(f"simple_tree.csv rows={len(rows)}, expected=71")
     if any(not all((row.tech, row.theme, row.kpi, row.label, row.status)) for row in rows):
         raise RuntimeError("simple_tree.csv contains an incomplete row")
     return rows
