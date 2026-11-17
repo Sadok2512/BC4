@@ -34,34 +34,57 @@ def materialize_capture(db, project_id: str, capture_id: str) -> dict:
     result = db.execute(text(f"""
         WITH cell_enum(system,cell_type,first_index) AS (
           VALUES {enum_values}
-        ), ranked AS (
-          SELECT g.project_id,g.capture_id,g.seq,l.system::smallint AS system,
+        ), decoded_cells AS (
+          SELECT n.project_id,n.capture_id,n.seq,
+                 floor(n.t_rel_s)::bigint AS second,
+                 n.system::smallint AS system,
+                 (g.item->2->>'cell_type')::integer AS cell_type,
+                 (g.item->2->>'cell_ch')::double precision AS cell_ch,
+                 (g.item->2->>'cell_pci')::double precision AS cell_pci,
+                 (g.item->>1)::integer AS source_order
+          FROM nmf_event_light_native n
+          CROSS JOIN LATERAL jsonb_array_elements(COALESCE(n.groups,'[]'::jsonb)) AS g(item)
+          WHERE n.project_id=:pid AND n.capture_id=:cap
+            AND n.event_code='CELLMEAS' AND g.item->>0='cells'
+            AND g.item->2 ? 'cell_type'
+          UNION ALL
+          SELECT g.project_id,g.capture_id,g.seq,l.second,
+                 l.system::smallint AS system,
                  g.cell_type::integer AS cell_type,g.cell_ch,g.cell_pci,
-                 row_number() OVER (
-                   PARTITION BY g.project_id,g.capture_id,g.seq,l.system,g.cell_type
-                   ORDER BY g.identity
-                 )-1 AS occurrence
+                 g.set_index AS source_order
           FROM nmf_event_light_group g
           JOIN nmf_event_light l
             ON l.project_id=g.project_id AND l.capture_id=g.capture_id
            AND l.seq=g.seq AND l.event_code='CELLMEAS'
-          JOIN cell_enum e
-            ON e.system=l.system AND e.cell_type=g.cell_type::integer
           WHERE g.project_id=:pid AND g.capture_id=:cap
             AND g.group_name='cells'
+            AND NOT EXISTS (
+              SELECT 1 FROM nmf_event_light_native n
+              WHERE n.project_id=g.project_id AND n.capture_id=g.capture_id
+            )
+        ), ranked AS (
+          SELECT d.project_id,d.capture_id,d.seq,d.second,d.system,d.cell_type,
+                 d.cell_ch,d.cell_pci,
+                 row_number() OVER (
+                   PARTITION BY d.project_id,d.capture_id,d.second,d.system,d.cell_type
+                   ORDER BY d.seq,d.source_order,d.cell_ch,d.cell_pci
+                 )-1 AS occurrence
+          FROM decoded_cells d
+          JOIN cell_enum e
+            ON e.system=d.system AND e.cell_type=d.cell_type
         ), storage_cells AS (
-          SELECT project_id,capture_id,seq_first,event_code,cell_index,
+          SELECT project_id,capture_id,second,seq_first,event_code,cell_index,
                  MAX(value) FILTER (WHERE metric_code='cell_rsrp') AS cell_rsrp
           FROM nmf_cell_second
           WHERE project_id=:pid AND capture_id=:cap AND event_code='CELLMEAS'
             AND cell_index>=0
-          GROUP BY project_id,capture_id,seq_first,event_code,cell_index
+          GROUP BY project_id,capture_id,second,seq_first,event_code,cell_index
         )
         INSERT INTO nmf_cell_identity (
           project_id,capture_id,seq,event_code,cell_index,system,cell_type,
           cell_arfcn,cell_pci,cell_rsrp,decoder_version
         )
-        SELECT r.project_id,r.capture_id,r.seq,s.event_code,s.cell_index,
+        SELECT r.project_id,r.capture_id,s.seq_first,s.event_code,s.cell_index,
                r.system,r.cell_type,
                CASE WHEN r.cell_ch IS NOT NULL AND r.cell_pci IS NOT NULL
                       AND r.cell_ch=trunc(r.cell_ch)
@@ -77,7 +100,7 @@ def materialize_capture(db, project_id: str, capture_id: str) -> dict:
         JOIN cell_enum e USING(system,cell_type)
         JOIN storage_cells s
           ON s.project_id=r.project_id AND s.capture_id=r.capture_id
-         AND s.seq_first=r.seq AND s.cell_index=e.first_index+r.occurrence
+         AND s.second=r.second AND s.cell_index=e.first_index+r.occurrence
         ORDER BY r.project_id,r.capture_id,r.seq,s.event_code,s.cell_index
     """), dict(params, decoder_version=decoder_version))
     stored = int(result.rowcount or 0)

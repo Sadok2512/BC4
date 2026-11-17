@@ -114,6 +114,20 @@ def test_txpc_content_proven_cell_discriminator_depends_on_format():
     assert all(cell in {-1,_cell_index_for(0,7),_cell_index_for(1,7)} for _,cell in projected)
 
 
+def test_phrate_219_short_pdsch_layout_projects_to_pcell():
+    light=Light()
+    decoded=decode(
+        'PHRATE,00:00:00.000,,7,2,224,0,1,0,224,224',
+        capture_id='TEST-capture',seq=1,format_version='2.19',
+    )
+    decoded.t_rel_s=0
+    light.add(decoded)
+    projected={(row['metric_code'],row['cell_index']):row for row in cell_rows(light)}
+    pcell=_cell_index_for(0,7)
+    assert projected['pdsch_bitrate_cw0',pcell]['value']==224
+    assert projected['pdsch_bler',pcell]['value']==0
+
+
 def test_cell_index_is_injective_for_system_raw_type_and_repeated_neighbour():
     assert len({_cell_index_for(0,7),_cell_index_for(0,9),
                 _cell_index_for(1000,9,0),_cell_index_for(1000,9,1)})==4

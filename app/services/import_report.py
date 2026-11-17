@@ -21,6 +21,47 @@ ORIGIN_LNG = 0.0      # origine neutre tant qu'aucun NMF n'est ingéré
 ORIGIN_LAT = 0.0
 
 
+def enrich_file_entries(
+    db: Session, project_id: str, entries: list[NmfFileEntry],
+) -> list[NmfFileEntry]:
+    """Attach persisted capture facts to durable-job entries.
+
+    The queue JSON deliberately contains only upload/worker fields.  A final
+    report must resolve capture ids, record counts and import time from the
+    committed database state rather than persisting queue defaults.
+    """
+    hashes = [entry.sha256 for entry in entries if entry.sha256]
+    files = db.query(NmfFile).filter(
+        NmfFile.project_id == project_id,
+        NmfFile.sha256.in_(hashes),
+    ).all() if hashes else []
+    by_hash = {file.sha256: file for file in files}
+    file_ids = [file.id for file in files]
+    captures: dict[str, list[tuple[str, int]]] = {}
+    if file_ids:
+        rows = db.execute(text('''SELECT nmf_file_id,capture_id,n_records
+          FROM nmf_capture WHERE project_id=:pid AND nmf_file_id=ANY(:file_ids)
+          ORDER BY nmf_file_id,capture_id'''),
+          {'pid': project_id, 'file_ids': file_ids}).all()
+        for file_id, capture_id, n_records in rows:
+            captures.setdefault(str(file_id), []).append(
+                (str(capture_id), int(n_records))
+            )
+    result = []
+    for entry in entries:
+        file = by_hash.get(entry.sha256 or '')
+        if file is None:
+            result.append(entry)
+            continue
+        facts = captures.get(str(file.id), [])
+        result.append(entry.model_copy(update={
+            'imported_at': file.uploaded_at.isoformat().replace('+00:00', 'Z'),
+            'n_records': sum(n for _, n in facts),
+            'capture_ids': [capture_id for capture_id, _ in facts],
+        }))
+    return result
+
+
 def build_import_report(
     db: Session,
     project: Project,

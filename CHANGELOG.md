@@ -1,3 +1,51 @@
+## 0.134.5 (patch) — PHRATE analytique v025 — 2026-11-17 (BC4)
+
+- Résout les feuilles PHRATE historiques sans `field_system` depuis leur
+  racine technologique LTE afin d'exposer le débit PHY DL et le BLER PDSCH
+  réellement présents dans `nmf_cell_second`.
+- Aligne le KPI de débit PHY DL agrégé sur `pdsch_bitrate_cw0`, colonne
+  décodée par les captures v025, avec groupement strict par capture et
+  séquence.
+- Raccorde `pdsch_bitrate_cw0` et `pdsch_bler` à l'arbre KPI LTE en plus de
+  leur exposition dans le catalogue Métriques.
+- Garde l'exposition existante du RSSI CELLMEAS et des voisines LTE par type
+  sémantique et identité physique, sans modification du schéma SEI.
+
+## 0.134.4 (patch) — Summary radio PHRATE — 2026-11-17 (BC4)
+
+- Affiche le débit DL total et LTE depuis le codeword 0 PHRATE quand une
+  capture radio ne contient aucune fenêtre applicative CMDREQ/CMDCOMP.
+- Conserve DRATE, PDCP et RLC prioritaires et ne fabrique aucune valeur NR,
+  UL, voix, RACH, MOS ou latence lorsque leurs événements sont absents.
+
+## 0.134.3 (patch) — Lecture du stockage Light natif — 2026-11-17 (BC4)
+
+- Lit directement `nmf_event_light_native.values/groups` pour les projections,
+  séries temporelles et comptes de disponibilité, avec repli sans doublon sur
+  les anciennes tables Light.
+- Rétablit le layout `CELLMEAS` prouvé pour NFF 2.19 ; les extensions 2.50+
+  restent signalées comme partielles sans perdre leurs valeurs documentées.
+- Enrichit le rapport durable d'import avec les captures, le nombre de records
+  et l'heure d'import issus des lignes effectivement validées en base.
+
+## 0.134.2 (patch) — Contexte opérateur complet des mesures — 2026-11-09 (BC4)
+
+- Construit une timeline opérateur par stream depuis les PLMN SIB1 décodés et conserve les transitions réseau réelles.
+- Rattache les mesures NR EN-DC à l'ancre LTE, les projections CI à la même timeline et le préambule d'une capture au premier SIB1 prouvé.
+- Conserve une provenance explicite (`sib1`, `sib1_next`, `lte_anchor`, `file_context`) et ne remplace jamais une attribution existante.
+
+## 0.134.1 (patch) — Agrégations de rapports par opérateur ou stream — 2026-11-09 (BC4)
+
+- Ajoute `split_by=operator|stream` à l'API Drive Test Reports.
+- Calcule côté PostgreSQL les KPI, couvertures, sources et résumés de tâches de chaque groupe sur le même jeu filtré.
+- Conserve le mode global par défaut et les valeurs absentes explicites, sans interpolation ni métrique synthétique.
+
+## 0.134.0 (minor) — API Drive Test Reports — 2026-11-09 (BC4)
+
+- Ajoute les endpoints projet `/drive-test-reports/filters` et `/drive-test-reports/data` sur les mesures, tâches et captures réellement importées.
+- Aligne cartes, graphes, tableaux et exports sur un même périmètre filtré et un échantillonnage stable en ordre `(capture_id, seq)` sans interpolation.
+- Expose les métriques absentes en `UNAVAILABLE` avec raison, notamment E-RAB, PDU Session, BLER, MCS et PRB lorsqu’aucune source décodée n’est prouvée.
+
 ## 0.133.6 (patch) — Raccordement drops/failures au tree Metrics — 2026-11-08 (BC1)
 
 - Étend le Simple Tree certifié de 66 à 71 KPI sans modifier les Metric IDs :

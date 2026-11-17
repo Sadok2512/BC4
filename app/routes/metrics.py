@@ -763,10 +763,9 @@ def series(project_id: str,capture_id: str,codes: str,cell: str|None=None,attr: 
         params['allowed_seq']=[r[0] for r in db.execute(text(filter_sql),params)]
         sqls.append(filter_sql)
         if state['decode_level']=='light':
-            bucket_sql="""SELECT l.seq FROM nmf_event_light l WHERE l.project_id=:pid AND l.capture_id=:cap
-              AND l.seq=ANY(:allowed_seq) AND NOT EXISTS(SELECT 1 FROM stg_event_raw r
-                WHERE r.project_id=l.project_id AND r.capture_id=l.capture_id AND r.event_code=l.event_code
-                AND r.seq BETWEEN l.seq AND l.seq_last AND NOT(r.seq=ANY(:allowed_seq)))"""
+            bucket_sql="""SELECT l.seq FROM nmf_event_light_native l
+              WHERE l.project_id=:pid AND l.capture_id=:cap
+                AND l.seq=ANY(:allowed_seq)"""
             params['admissible_buckets']=[r[0] for r in db.execute(text(bucket_sql),params)]
             sqls.append(bucket_sql)
     for code in selected:
@@ -811,7 +810,7 @@ def series(project_id: str,capture_id: str,codes: str,cell: str|None=None,attr: 
             for p in r['points']:writer.writerow([rid,capture_id,r['code'],r['unit'],p['seq'],p['t_rel_s'],p['value']])
     for result in results:
         metric=definitions[result['code']]
-        result.update(source_table='nmf_event_light' if state['decode_level']=='light' else metric.source_table,source_column=metric.source_column)
+        result.update(source_table='nmf_event_light_native' if state['decode_level']=='light' else metric.source_table,source_column=metric.source_column)
     # 0.76.3 — meta temporelle du fichier source joint via nmf_capture.
     file_meta = db.execute(text(
         'SELECT f.start_at AS start_at, f.utc_offset_min AS utc_offset_min '
@@ -819,10 +818,12 @@ def series(project_id: str,capture_id: str,codes: str,cell: str|None=None,attr: 
         'WHERE c.project_id=:pid AND c.capture_id=:cap'
     ),{'pid':project_id,'cap':capture_id}).mappings().first() or {'start_at':None,'utc_offset_min':None}
     from app.kpi.service import date_from_start_at_py
-    duration=db.execute(text(
-        'SELECT MAX(t_rel_s) FROM nmf_event_light '
-        'WHERE project_id=:pid AND capture_id=:cap'
-    ),{'pid':project_id,'cap':capture_id}).scalar()
+    duration=db.execute(text('''SELECT COALESCE(
+        (SELECT MAX(t_rel_s) FROM nmf_event_light_native
+         WHERE project_id=:pid AND capture_id=:cap),
+        (SELECT MAX(t_rel_s) FROM nmf_event_light
+         WHERE project_id=:pid AND capture_id=:cap))'''),
+        {'pid':project_id,'cap':capture_id}).scalar()
     if duration is None:
         duration=max(times.values(),default=0)
     return dict(**state,aggregation='schema per capture-second' if state['decode_level']=='light' else 'none',project_id=project_id,capture_id=capture_id,result_id=rid,origin_seq=origin_seq,origin_ts=origin_ts,nmf_start_at=file_meta['start_at'],capture_date=date_from_start_at_py(file_meta['start_at']),utc_offset_min=file_meta['utc_offset_min'],duration_s=float(duration),series=results,csv=output.getvalue(),time_policy='ts - premier ts valide en ordre seq ; égalités conservées ; régression rejetée ; aucune interpolation')

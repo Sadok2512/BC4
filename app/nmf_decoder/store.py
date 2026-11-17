@@ -245,7 +245,11 @@ def decode_capture(db,pid,cap,level,*,force=False,parsing_snapshot=None):
           WHERE project_id=:pid AND capture_id=:cap
             AND position_source IN ('exact','previous_fix')"""),params)
         db.commit()
-    write_light(db,pid,cap,light,persist=level=='deep')
+    # Keep the compact native rows authoritative for Light captures, while
+    # materialising the established aggregate projection as a compatibility
+    # contract for signalling/map/KPI readers not yet JSON-native.  The
+    # projection is replaced capture-by-capture by write_light, never appended.
+    write_light(db,pid,cap,light,persist=True)
     pair_values=[dict(project_id=pid,capture_id=cap,decoder_version=DECODER_VERSION,**r) for r in pairs.rows()]
     db.execute(text('DELETE FROM nmf_event_pair WHERE project_id=:pid AND capture_id=:cap'),params)
     if pair_values:copy_rows(db,'nmf_event_pair',list(pair_values[0]),pair_values)

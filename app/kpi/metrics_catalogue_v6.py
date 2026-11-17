@@ -130,7 +130,8 @@ def catalogue(db, project_id: str, metrics: list[dict]) -> dict:
         )
     }
     present_events = {row[0] for row in db.execute(
-        text("SELECT DISTINCT event_code FROM nmf_event_light WHERE project_id=:pid"),
+        text("""SELECT event_code FROM nmf_event_light WHERE project_id=:pid
+          UNION SELECT event_code FROM nmf_event_light_native WHERE project_id=:pid"""),
         {"pid": project_id},
     )}
     event_codes = {"HOA","HOS","HOI","CAA","CAC","CAD","DAA","DAC","DAD","RRA","RRC","RRD",

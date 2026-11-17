@@ -66,3 +66,23 @@ def test_duplicate_persisted_rows_are_counted_once_by_capture_and_seq():
     assert cells["task"]["n"] == 1
     assert cells["voice_drop"]["value"] == 1
     assert cells["voice_drop"]["n"] == 1
+
+
+def test_radio_only_file_uses_documented_phrate_lte_fallback():
+    events = [
+        row(1, "CELLMEAS", {}, "LTE"),
+        row(2, "PHRATE", {"c4": "2", "c5": "1000000"}, "LTE"),
+        row(3, "PHRATE", {"c4": "2", "c5": "3000000"}, "LTE"),
+        row(4, "PHRATE", {"c4": "3", "c5": "9000000"}, "LTE"),
+    ]
+    cells = summarize_file(
+        {"id": "f", "filename": "radio.nmf"}, events, {"PHRATE"}
+    )["cells"]
+    assert cells["task"]["value"] is None
+    assert cells["dl_total"] == {
+        "value": 2.0, "n": 2, "max": 3.0, "unit": "Mbit/s",
+        "source_event": "PHRATE", "reason": None,
+    }
+    assert cells["dl_lte"] == cells["dl_total"]
+    assert cells["dl_nr"]["value"] is None
+    assert cells["ul_total"]["value"] is None

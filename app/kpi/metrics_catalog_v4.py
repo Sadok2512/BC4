@@ -233,7 +233,21 @@ def _column_for_leaf(leaf: dict) -> str | None:
     sc = leaf.get("source_column")
     if isinstance(sc, str) and sc:
         return sc
-    return _column_from_metric_id(leaf.get("metric_id") or "")
+    metric_id = leaf.get("metric_id") or ""
+    core = metric_id.split("@", 1)[0]
+    # The released catalogue retains historical public PHRATE selectors,
+    # while the native NFF decoder uses explicit PDSCH field names.
+    phrate_native = {
+        "phrate_pdsch_bitrate_0": "pdsch_bitrate_cw0",
+        "phrate_pdsch_bitrate_1": "pdsch_bitrate_cw1",
+        "phrate_sch_bitrate_prb": "pdsch_sch_bitrate_per_prb",
+        "phrate_pdsch_bitrate": "pdsch_bitrate",
+        "phrate_pdcch_bler_est": "pdsch_pdcch_bler_est",
+        "phrate_cfi_1": "pdsch_cfi1",
+        "phrate_cfi_2": "pdsch_cfi2",
+        "phrate_cfi_3": "pdsch_cfi3",
+    }
+    return phrate_native.get(core) or _column_from_metric_id(metric_id)
 
 
 def _available_light_columns(db: Session) -> set[str]:
@@ -281,10 +295,10 @@ def _n_per_column(
 ) -> dict[str, int]:
     """COUNT per column — rows with col IS NOT NULL.
 
-    2.51.1 — Les colonnes sont scannées dans `nmf_event_light` ET
-    `nmf_event_light_group` (certaines colonnes de groupe comme
-    `cell_rsrp` existent dans les deux). Chaque colonne est associée au
-    MAX des 2 counts (= observations réelles).
+    Les colonnes sont scannées dans le stockage compact natif ainsi que
+    dans les tables Light historiques. Chaque colonne est associée au MAX
+    des comptes pour ne jamais doubler une capture présente dans les deux
+    représentations pendant une transition.
     """
     safe = [c for c in columns if c.replace("_", "").isalnum()]
     if not safe:
@@ -325,6 +339,36 @@ def _n_per_column(
             continue
         for idx, c in enumerate(chunk):
             out[c] = max(out[c], int(row[idx] or 0))
+    # Light compact — valeurs d'en-tête dans `values`.
+    for i in range(0, len(safe), _N_PER_COLUMN_CHUNK):
+        chunk = safe[i : i + _N_PER_COLUMN_CHUNK]
+        expr = ", ".join(
+            f"COUNT(*) FILTER (WHERE values ? '{c}') AS \"c_{idx}\""
+            for idx, c in enumerate(chunk)
+        )
+        scope = " AND capture_id=ANY(:capture_ids)" if capture_ids else ""
+        row = db.execute(text(
+            f"SELECT {expr} FROM nmf_event_light_native WHERE project_id=:pid{scope}"
+        ), {"pid": project_id, "capture_ids": list(capture_ids)}).first()
+        if row is not None:
+            for idx, c in enumerate(chunk):
+                out[c] = max(out[c], int(row[idx] or 0))
+    # Light compact — valeurs répétées dans `groups`.
+    for i in range(0, len(safe), _N_PER_COLUMN_CHUNK):
+        chunk = safe[i : i + _N_PER_COLUMN_CHUNK]
+        expr = ", ".join(
+            f"COUNT(*) FILTER (WHERE g.item->2 ? '{c}') AS \"c_{idx}\""
+            for idx, c in enumerate(chunk)
+        )
+        scope = " AND d.capture_id=ANY(:capture_ids)" if capture_ids else ""
+        row = db.execute(text(f'''SELECT {expr}
+          FROM nmf_event_light_native d
+          CROSS JOIN LATERAL jsonb_array_elements(COALESCE(d.groups,'[]'::jsonb)) AS g(item)
+          WHERE d.project_id=:pid{scope}'''),
+          {"pid": project_id, "capture_ids": list(capture_ids)}).first()
+        if row is not None:
+            for idx, c in enumerate(chunk):
+                out[c] = max(out[c], int(row[idx] or 0))
     return out
 
 
@@ -527,6 +571,20 @@ def _root_technology(nodes_by_id: dict, node: dict) -> str | None:
     return None
 
 
+def _catalog_leaf_system(nodes_by_id: dict, leaf: dict) -> int | None:
+    """Resolve the radio system from content, including legacy null fields.
+
+    Released LTE leaves such as PHRATE carry ``field_system=null`` while
+    their parent chain is rooted at ``tech_LTE``.  Treating null as an
+    unknown radio system makes their real ``nmf_cell_second`` rows
+    unselectable even though the catalogue itself classifies them as LTE.
+    """
+    value = leaf.get("field_system")
+    if value is not None:
+        return int(value)
+    return {"LTE": 7, "NR": 9}.get(_root_technology(nodes_by_id, leaf))
+
+
 def _tree_metric_label(label: str) -> str:
     value = label.split(' @ ', 1)[0].strip()
     # Technology is already the parent.  Strip only an exact trailing marker;
@@ -586,8 +644,7 @@ def build_catalog_v4(
         return code not in removed_series
 
     def _leaf_system(leaf: dict) -> int | None:
-        value = leaf.get("field_system")
-        return int(value) if value is not None else None
+        return _catalog_leaf_system(nodes_by_id, leaf)
 
     # Lot 3 — drop les placeholders hérités de l'oracle sur des cell_types
     # qui n'existent QUE pour NR (100..131=SCG SCell N, 199=SCG PSCell,
@@ -1545,7 +1602,7 @@ def build_catalog_v4(
                 SELECT capture_id,seq_first
                 FROM nmf_cell_second
                 WHERE project_id=:pid{_ca_capture_scope}
-                  AND event_code='PHRATE' AND metric_code='pdsch_bitrate'
+                  AND event_code='PHRATE' AND metric_code='pdsch_bitrate_cw0'
                   AND value IS NOT NULL AND cell_index=ANY(:all_indices)
                 GROUP BY capture_id,seq_first
             ) proven
@@ -1566,7 +1623,7 @@ def build_catalog_v4(
                 "LTE total CA DL throughput (PCell + SCells)",
                 "Mbit/s",
                 _n_ca_total,
-                "SUM(pdsch_bitrate) GROUP BY (capture_id, seq_first)",
+                "SUM(pdsch_bitrate_cw0) GROUP BY (capture_id, seq_first)",
             ),
             (
                 "lte_ca_nb_scells",

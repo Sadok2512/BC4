@@ -10,7 +10,7 @@ from typing import Any, Iterable
 EVENTS = {
     "CMDREQ", "CMDCOMP", "DCOMP", "DAF", "DRATE",
     "PDCPRATED", "PDCPRATEU", "RLCRATE", "RLCRATEU",
-    "AQDL", "RTT", "RACHI", "CAA", "CAF", "CAD", "DAA",
+    "PHRATE", "AQDL", "RTT", "RACHI", "CAA", "CAF", "CAD", "DAA",
 }
 
 
@@ -130,9 +130,13 @@ def summarize_file(
             continue
         for row in rows:
             seq = int(row["seq"])
-            if not _inside(seq, windows):
-                continue
             event = str(row["event_code"])
+            # A radio-only capture has no service command window. PHRATE is
+            # nevertheless a canonical, capture-local LTE PHY observation;
+            # retain it as a documented fallback. If task windows exist, the
+            # same event remains strictly scoped to those windows.
+            if not _inside(seq, windows) and not (event == "PHRATE" and not windows):
+                continue
             fields = row["raw_fields"] or {}
             system = str(row.get("system") or "").upper()
             if event == "DRATE":
@@ -152,6 +156,14 @@ def summarize_file(
                 value = _number(_field(fields, 6))
                 if value is not None and system in {"LTE", "NR"}:
                     buckets[f"{event.lower()}_{system.lower()}"].append(value)
+            elif event == "PHRATE" and system == "LTE":
+                # NFF 2.19 PHRATE LTE PDSCH #1: CSV column 6 is codeword-0
+                # throughput in bit/s. The discriminator in column 5 must be
+                # 2 (PDSCH); PBCH/PUSCH are not DL throughput fallbacks.
+                channel = _number(_field(fields, 5))
+                value = _number(_field(fields, 6))
+                if channel == 2 and value is not None:
+                    buckets["phrate_lte"].append(value)
             elif event == "AQDL":
                 value = _number(_field(fields, 5))
                 if value is not None:
@@ -177,14 +189,22 @@ def summarize_file(
         if pdcp:
             return _rate_cell(pdcp, source)
         rlc_source = "RLCRATE" if direction == "dl" else "RLCRATEU"
-        return _rate_cell(rlc, rlc_source, f"no {source}/{rlc_source} {system.upper()} in file")
+        if rlc:
+            return _rate_cell(rlc, rlc_source)
+        if direction == "dl" and system == "lte" and buckets.get("phrate_lte"):
+            return _rate_cell(buckets["phrate_lte"], "PHRATE")
+        return _rate_cell([], rlc_source, f"no {source}/{rlc_source} {system.upper()} in file")
 
     mos = buckets.get("mos", [])
     latency = buckets.get("latency", [])
     cells = {
         "task": {"value": task_value, "n": task_n, "max": None, "unit": None,
                  "source_event": "CMDREQ/CMDCOMP", "reason": None if task_value else "no supported command in file"},
-        "dl_total": _rate_cell(buckets.get("dl_total", []), "DRATE"),
+        "dl_total": (
+            _rate_cell(buckets["dl_total"], "DRATE")
+            if buckets.get("dl_total")
+            else _rate_cell(buckets.get("phrate_lte", []), "PHRATE")
+        ),
         "dl_lte": split("dl", "lte"),
         "dl_nr": split("dl", "nr"),
         "ul_total": _rate_cell(buckets.get("ul_total", []), "DRATE"),

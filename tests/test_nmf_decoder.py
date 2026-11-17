@@ -42,6 +42,20 @@ def test_truncated_group_and_csv_are_counted():
     r=decode('CHI,00:00:00.000,,7,"TEST-unclosed',format_version='2.19')
     assert r.decode_status=='partial' and r.reasons==['csv_malformed']
 
+
+def test_cellmeas_219_uses_the_proven_nine_field_layout():
+    r=decode(
+        'CELLMEAS,00:00:00.000,,7,0,1,9,0,70007,2825,1,-44,-71,-8,100,50',
+        format_version='2.19',
+    )
+    assert 'format_unsupported' not in r.reasons
+    assert r.values['cellmeas_n_cells']==1
+    assert r.groups[0]['values']=={
+        'cell_type':0,'cell_band':70007,'cell_ch':2825,'cell_pci':1,
+        'cell_rssi':-44.0,'cell_rsrp':-71.0,'cell_rsrq':-8.0,
+        'cell_timing':100,'cell_pathloss':50.0,
+    }
+
 def test_light_weighted_distribution_and_missing_time_not_lost():
     a=decode('TAD,00:00:00.000,,7,2',format_version='2.19',seq=1);a.t_rel_s=0
     b=decode('TAD,00:00:00.500,,7,4',format_version='2.19',seq=2);b.t_rel_s=.5

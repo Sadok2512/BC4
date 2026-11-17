@@ -28,6 +28,7 @@ LTE_THP_DL_PHY_SCELL1;pdsch_bitrate@lte-type-1;LTE;THP_DL_PHY
 LTE_THP_DL_PHY_SCELL2;pdsch_bitrate@lte-type-2;LTE;THP_DL_PHY
 LTE_THP_DL_PHY_SCELL3;pdsch_bitrate@lte-type-3;LTE;THP_DL_PHY
 LTE_THP_DL_PHY_SCELL4;pdsch_bitrate@lte-type-4;LTE;THP_DL_PHY
+LTE_THP_DL_PHY_CW0_PCELL;pdsch_bitrate_cw0@lte-type-0;LTE;THP_DL_PHY
 LTE_THP_DL_MAC_PCELL;mac_dl_bitrate@lte-type-0;LTE;THP_DL_MAC
 LTE_THP_DL_MAC_SCELL1;mac_dl_bitrate@lte-type-1;LTE;THP_DL_MAC
 LTE_THP_DL_MAC_SCELL2;mac_dl_bitrate@lte-type-2;LTE;THP_DL_MAC
@@ -46,6 +47,7 @@ LTE_BLER_DL_PCELL;mac_dl_residual_bler@lte-type-0;LTE;BLER_DL
 LTE_BLER_DL_SCELL1;mac_dl_residual_bler@lte-type-1;LTE;BLER_DL
 LTE_BLER_DL_SCELL2;mac_dl_residual_bler@lte-type-2;LTE;BLER_DL
 LTE_BLER_DL_SCELL3;mac_dl_residual_bler@lte-type-3;LTE;BLER_DL
+LTE_BLER_DL_PDSCH_PCELL;pdsch_bler@lte-type-0;LTE;BLER_DL
 LTE_BLER_DL_RLC;rlcrate_rlc_dl_bler;LTE;BLER_DL_RLC
 LTE_MCS_DL_CW0_PCELL;plaid_mcs0@lte-type-0;LTE;MCS_DL_CW0
 LTE_MCS_DL_CW0_SCELL1;plaid_mcs0@lte-type-1;LTE;MCS_DL_CW0

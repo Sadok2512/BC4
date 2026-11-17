@@ -464,10 +464,10 @@ def kpi_time_series(
         },
     )
 
-    source_table = "nmf_event_light" if state["decode_level"] == "light" else metric.source_table
+    source_table = "nmf_event_light_native" if state["decode_level"] == "light" else metric.source_table
     source_view = (
-        f"{source_table} ∪ nmf_event_light"
-        if source_table != "nmf_event_light"
+        f"{source_table} ∪ nmf_event_deep/nmf_event_group"
+        if source_table == "nmf_event_light_native"
         else source_table
     ) + " LEFT JOIN stg_event_raw(lat,lon,ts) LEFT JOIN nmf_file(filename,start_at)"
 

@@ -5,7 +5,7 @@ LTE;1 · Couverture;SINR;SINR serving;cellmeas_sinr|cell_sinr;dB;ok
 LTE;1 · Couverture;EARFCN;EARFCN (contexte);cellmeas_ch|cell_ch;;ok
 LTE;1 · Couverture;PCI;PCI (contexte);cellmeas_pci|cell_pci;;ok
 LTE;1 · Couverture;BAND;Bande (contexte);cellmeas_band|cell_band;;ok
-LTE;2 · Débit DL;THP_DL_PHY;Débit PDSCH (PHY);pdsch_bitrate;Mbit/s;ok
+LTE;2 · Débit DL;THP_DL_PHY;Débit PDSCH (PHY);pdsch_bitrate|pdsch_bitrate_cw0;Mbit/s;ok
 LTE;2 · Débit DL;THP_DL_MAC;Débit MAC DL;mac_dl_bitrate;Mbit/s;ok
 LTE;2 · Débit DL;THP_DL_RLC;Débit RLC DL;rlcrate_rlc_dl_bitrate_rb;bit/s;ok
 LTE;2 · Débit DL;THP_DL_PDCP;Débit PDCP DL;pdcprated_pdcp_dl_bitrate;bit/s;empty
@@ -14,7 +14,7 @@ LTE;3 · Débit UL;THP_UL_PHY;Débit PUSCH (PHY);pusch_bitrate;Mbit/s;ok
 LTE;3 · Débit UL;THP_UL_MAC;Débit MAC UL;;Mbit/s;open
 LTE;3 · Débit UL;THP_UL_RLC;Débit RLC UL;rlcrateu_rlc_ul_bitrate_rb;bit/s;ok
 LTE;3 · Débit UL;THP_UL_PDCP;Débit PDCP UL;pdcprateu_pdcp_ul_bitrate;bit/s;empty
-LTE;4 · BLER;BLER_DL;BLER DL résiduel (MAC);mac_dl_residual_bler;%;ok
+LTE;4 · BLER;BLER_DL;BLER DL;mac_dl_residual_bler|pdsch_bler;%;ok
 LTE;4 · BLER;BLER_DL_RLC;BLER DL (RLC);rlcrate_rlc_dl_bler;%;ok
 LTE;4 · BLER;BLER_UL;BLER UL / retransmissions MAC UL;;%;open
 LTE;5 · MCS / modulation;MCS_DL_CW0;MCS DL codeword 0;plaid_mcs0;;ok

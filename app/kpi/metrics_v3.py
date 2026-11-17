@@ -661,7 +661,7 @@ class Dataset:
                            SUM(value)/1000000.0 AS value,MIN(second) AS second
                     FROM nmf_cell_second
                     WHERE project_id=:pid AND capture_id=:cap
-                      AND event_code='PHRATE' AND metric_code='pdsch_bitrate'
+                      AND event_code='PHRATE' AND metric_code='pdsch_bitrate_cw0'
                       AND value IS NOT NULL AND cell_index=ANY(:cell_indices)
                     GROUP BY capture_id,seq_first
                     ORDER BY capture_id,seq_first

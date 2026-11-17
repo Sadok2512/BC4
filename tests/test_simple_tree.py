@@ -15,6 +15,8 @@ def test_certified_simple_tree_has_71_unique_kpi_and_unique_leaf_names():
 def test_requested_derived_kpis_are_closed_and_open_sources_stay_open():
     rows = {(row.tech, row.kpi): row for row in load_simple_tree()}
     assert rows["LTE", "THP_DL_CA_TOTAL"].families == ("lte_thp_dl_ca_total",)
+    assert "pdsch_bitrate_cw0" in rows["LTE", "THP_DL_PHY"].families
+    assert "pdsch_bler" in rows["LTE", "BLER_DL"].families
     assert rows["LTE", "CA_NB_SCELLS"].families == ("lte_ca_nb_scells",)
     assert rows["LTE", "HO_FAILURE"].families == ("lte_ho_failure",)
     assert rows["LTE", "REEST_HO_FAILURE"].families == ("lte_reest_ho_failure",)
@@ -25,6 +27,12 @@ def test_requested_derived_kpis_are_closed_and_open_sources_stay_open():
     assert rows["LTE", "RRC_SETUP_FAILURE"].families == ("lte_rrc_setup_failure",)
     assert rows["LTE", "THP_UL_MAC"].status == "open"
     assert rows["LTE", "BLER_UL"].status == "open"
+
+
+def test_v025_phrate_leaves_are_mapped_to_the_kpi_tree():
+    leaves = load_simple_leaves()
+    assert leaves["pdsch_bitrate_cw0@lte-type-0"].kpi == "THP_DL_PHY"
+    assert leaves["pdsch_bler@lte-type-0"].kpi == "BLER_DL"
 
 
 def test_failure_detector_metrics_have_explicit_simple_tree_leaves():
@@ -65,4 +73,6 @@ def test_ca_queries_are_capture_seq_ordered_and_never_timestamp_ordered():
     block = source[start:end]
     assert "GROUP BY capture_id,seq_first" in block
     assert "ORDER BY capture_id,seq_first" in block
+    assert "metric_code='pdsch_bitrate_cw0'" in block
+    assert "metric_code='pdsch_bitrate'" not in block
     assert " ts" not in block.lower()

@@ -24,7 +24,7 @@ from app.models import NmfImportJob, Project
 from app.ingest.nmf import ingest_upload, refresh_project_summary, resolve_decoder
 from app.dict.populate import populate_param_occurrence
 from app.services.populate_chain import run_populate_chain
-from app.services.import_report import build_import_report
+from app.services.import_report import build_import_report, enrich_file_entries
 from app.services.import_jobs import ACTIVE, job_view, now, update_capture_counts
 from app.services.import_admission import decide
 
@@ -285,7 +285,8 @@ def finalize_import_report(db, job, project):
     if any(entry['status'] not in ('done', 'error') for entry in job.files):
         raise ValueError('Cannot finalize an import with unfinished files')
     view = job_view(job)
-    report = build_import_report(db, project, view.by_file,
+    entries = enrich_file_entries(db, project.id, view.by_file)
+    report = build_import_report(db, project, entries,
         view.files_total, view.files_done, view.files_error)
     job.report = report.model_dump()
     job.status = 'error' if view.files_error else 'done'

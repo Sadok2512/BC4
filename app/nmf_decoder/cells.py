@@ -89,6 +89,13 @@ def cell_rows(light):
         indices=([b['cell_type']] if b['event_code']=='TXPC' and b.get('cell_type') is not None else
                  [b['stats'][column(f['code'])].value() for f in schema.get('header',[])
                   if f['code'].endswith('.cell_type') and column(f['code']) in b['stats']])
+        # NFF 2.19 PHRATE PDSCH/PBCH has no cell_type parameter: unlike
+        # PUSCH, these documented short layouts describe the PCell. Newer
+        # extended rows carry an explicit cell_type and take the branch above.
+        if not indices and b['event_code']=='PHRATE':
+            channel=b.get('stats',{}).get('phrate_ph_ch_type')
+            if channel is not None and channel.value() in {1,2}:
+                indices=[0]
         if len(indices)!=1 or indices[0] is None:continue
         raw=int(indices[0])
         if b.get('system')==7 and raw not in SERVING_CELL_TYPES_LTE:continue

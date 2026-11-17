@@ -669,4 +669,9 @@ def populate_measurement_points(
     report["transfers"] = [t.as_dict() for t in transfers]
     report["thrpt"] = thrpt_report
 
+    # All measurement families share one proven serving-PLMN timeline.
+    # Covers capture preambles, EN-DC NR and rows without a local SIB1.
+    from app.measure.operator_context import backfill_operator_context
+    report["operator_context"] = backfill_operator_context(db, project_id)
+
     return report

@@ -1,10 +1,53 @@
 """SQL projections of decoded observations; no legacy positional radio extraction."""
+import re
+
 from sqlalchemy import text
 from .schema import fields
 
 ALIASES={'rsrp':'cell_rsrp','rsrq':'cell_rsrq','rssi':'cell_rssi','sinr':'ci_rs_snr','cqi':'cqi_wb_cqi_0',
          'tx_power':'txpc_pusch_tx_power','pci':'cell_pci','earfcn':'cell_ch','band':'cell_band',
          'thr_dl':'app_dl_bitrate','thr_ul':'app_ul_bitrate','mos':'aqdl_mos','ta':'tad_ta'}
+
+
+def _safe_schema_token(value: str) -> str:
+    """Return a SQL-literal-safe decoder token from the closed schema."""
+    if not re.fullmatch(r"[a-z][a-z0-9_]*", value):
+        raise ValueError(f"unsafe decoder schema token: {value!r}")
+    return value
+
+
+def _native_source_sql(code: str, field: dict) -> str:
+    """Project one compact Light JSON value without flattening the capture."""
+    key = _safe_schema_token(code)
+    if field.get('group'):
+        group = _safe_schema_token(str(field['group']))
+        return f'''SELECT d.capture_id,d.seq,
+          (g.item->2->>'{key}')::double precision AS value
+          FROM nmf_event_light_native d
+          JOIN nmf_capture c USING(project_id,capture_id)
+          CROSS JOIN LATERAL jsonb_array_elements(COALESCE(d.groups,'[]'::jsonb)) AS g(item)
+          WHERE d.project_id=:pid AND c.decode_level='light'
+            AND g.item->>0='{group}' AND (g.item->>1)::integer=0
+            AND g.item->2 ? '{key}' '''
+    return f'''SELECT d.capture_id,d.seq,
+      (d.values->>'{key}')::double precision AS value
+      FROM nmf_event_light_native d
+      JOIN nmf_capture c USING(project_id,capture_id)
+      WHERE d.project_id=:pid AND c.decode_level='light'
+        AND d.values ? '{key}' '''
+
+
+def _legacy_light_source_sql(code: str) -> str:
+    """Read pre-native Light captures only, preventing duplicate observations."""
+    key = _safe_schema_token(code)
+    return f'''SELECT d.capture_id,d.seq,d.{key}::double precision AS value
+      FROM nmf_event_light d
+      JOIN nmf_capture c USING(project_id,capture_id)
+      WHERE d.project_id=:pid AND c.decode_level='light' AND d.{key} IS NOT NULL
+        AND NOT EXISTS (
+          SELECT 1 FROM nmf_event_light_native n
+          WHERE n.project_id=d.project_id AND n.capture_id=d.capture_id
+        )'''
 
 def source_sql(code):
     f=fields()[code];table='nmf_event_group' if f['group'] else 'nmf_event_deep'
@@ -16,11 +59,11 @@ def source_sql(code):
         if f['agg']=='dominant':
             deep=f"SELECT DISTINCT ON(capture_id,seq) capture_id,seq,value FROM (SELECT d.capture_id,d.seq,d.{code}::double precision value,sum(d.{weight}) w {base} GROUP BY d.capture_id,d.seq,d.{code}) ranked ORDER BY capture_id,seq,w DESC,value"
         else:deep=f"SELECT d.capture_id,d.seq,sum(d.{code}*d.{weight})/sum(d.{weight}) value {base} GROUP BY d.capture_id,d.seq"
-        return '('+deep+f") UNION ALL SELECT d.capture_id,d.seq,d.{code}::double precision value FROM nmf_event_light d JOIN nmf_capture c USING(project_id,capture_id) WHERE d.project_id=:pid AND c.decode_level='light' AND d.{code} IS NOT NULL"
+        return '('+deep+") UNION ALL "+_native_source_sql(code,f)+" UNION ALL "+_legacy_light_source_sql(code)
     return f'''SELECT d.capture_id,d.seq,d.{code}::double precision AS value FROM {table} d
       JOIN nmf_capture c USING(project_id,capture_id) WHERE d.project_id=:pid AND c.decode_level='deep'{extra} AND d.{code} IS NOT NULL
-      UNION ALL SELECT d.capture_id,d.seq,d.{code}::double precision AS value FROM nmf_event_light d
-      JOIN nmf_capture c USING(project_id,capture_id) WHERE d.project_id=:pid AND c.decode_level='light' AND d.{code} IS NOT NULL'''
+      UNION ALL {_native_source_sql(code,f)}
+      UNION ALL {_legacy_light_source_sql(code)}'''
 
 def observations(db,pid):
     result={}
@@ -66,7 +109,11 @@ def refresh_projections(db,pid):
         context.append(dict(pid=pid,cap=cap,seq=seq,earfcn=earfcn,band=band_from_earfcn(earfcn) if earfcn is not None else None))
     if context:db.execute(text("""UPDATE measurement_points SET rat='LTE',tech='LTE',earfcn=:earfcn,band=:band
         WHERE project_id=:pid AND capture_id=:cap AND seq=:seq AND event_code='CELLMEAS'"""),context)
-    return {'observations':len(values),'updated_sequences':len(rows)}
+    # CI is projected after the main measurement populate: apply the same
+    # proven PLMN timeline to these newly inserted rows as well.
+    from app.measure.operator_context import backfill_operator_context
+    operator_context=backfill_operator_context(db,pid)
+    return {'observations':len(values),'updated_sequences':len(rows),'operator_context':operator_context}
 
 def metric_counts(db,pid):
     """Count measured capture-seconds, retaining measured zero values.
