@@ -31,6 +31,26 @@ from app.services.import_admission import decide
 log = logging.getLogger(__name__)
 stop = threading.Event()
 LOCK_ID = 741629305
+PLANNER_STATISTICS_TABLES = (
+    "nmf_cell_second",
+    "nmf_cell_identity",
+    "nmf_event_light",
+)
+
+
+def refresh_import_planner_statistics(db) -> None:
+    """Refresh query-planner statistics after measurement projections change.
+
+    The semantic-cell table endpoint joins these three projections. Without a
+    post-import ANALYZE, PostgreSQL can estimate one row where a fresh capture
+    has hundreds and choose a nested-loop plan that keeps KPI tables loading
+    for minutes.
+    """
+    if db.get_bind().dialect.name != "postgresql":
+        return
+    for table_name in PLANNER_STATISTICS_TABLES:
+        db.execute(text(f"ANALYZE {table_name}"))
+    db.commit()
 
 
 def parsing_snapshot(job):
@@ -273,6 +293,7 @@ def _run_job_unexpired(db, job):
         populate_param_occurrence(db, project.id, purge=True)
         db.commit()
         run_populate_chain(db, project)
+        refresh_import_planner_statistics(db)
     finalize_import_report(db, job, project)
 
 

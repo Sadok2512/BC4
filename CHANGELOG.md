@@ -9703,3 +9703,10 @@ du front `franco-focus-forge` et lancer **front + back** de bout en bout.
 - Le harness post-déploiement ne transmet plus son jeton aux gardes G51/G56
   par argument de processus ; celles-ci le lisent uniquement depuis leur
   environnement.
+## 0.134.7 (patch) — statistiques KPI après import — 2026-11-17 (BC4)
+
+- Rafraîchit les statistiques PostgreSQL de `nmf_cell_second`,
+  `nmf_cell_identity` et `nmf_event_light` après la finalisation des
+  projections d'un import réussi.
+- Empêche le plan sous-estimé en boucles imbriquées qui maintenait
+  `/metrics/table` en chargement pendant plusieurs minutes après v028.

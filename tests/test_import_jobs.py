@@ -79,6 +79,32 @@ def test_62_files_finalized_once_and_not_per_file(db, monkeypatch):
     assert db.get(Project, 'p').status == 'ready'
 
 
+def test_refreshes_postgresql_planner_statistics_after_import():
+    statements = []
+
+    class PostgreSQLSession:
+        def __init__(self):
+            self.commits = 0
+
+        def get_bind(self):
+            return SimpleNamespace(dialect=SimpleNamespace(name="postgresql"))
+
+        def execute(self, statement):
+            statements.append(str(statement))
+
+        def commit(self):
+            self.commits += 1
+
+    session = PostgreSQLSession()
+    worker.refresh_import_planner_statistics(session)
+    assert statements == [
+        "ANALYZE nmf_cell_second",
+        "ANALYZE nmf_cell_identity",
+        "ANALYZE nmf_event_light",
+    ]
+    assert session.commits == 1
+
+
 def test_interrupted_job_resumes_skipping_completed_files(db, monkeypatch):
     job = queue.enqueue(db, 'p', uploads())
     entries = list(job.files)
