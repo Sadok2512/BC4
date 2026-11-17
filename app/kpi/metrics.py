@@ -26,7 +26,7 @@ def metric_catalog(db):
             unit='Mbit/s';sql='SELECT capture_id,seq,value/1000000.0 AS value FROM ('+sql+') raw'
         kind='categorical' if f.get('agg')=='dominant' else 'numeric'
         result[code]=Metric(f['label'],unit,'nmf_event_group' if f['group'] else 'nmf_event_deep',code,
-            'BOTH' if f['event'] in ('DRATE','AQDL','RTPJITTER','PPPRATE') else 'LTE',kind,sql)
+            'BOTH' if f['event'] in ('DRATE','AQDL','RTPJITTER','PPPRATE','TTI_NSPLUS') else 'LTE',kind,sql)
     for alias,code in ALIASES.items():
         if code in result:result[alias]=result[code]
     return result

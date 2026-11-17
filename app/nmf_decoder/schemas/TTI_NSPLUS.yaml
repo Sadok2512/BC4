@@ -1,0 +1,150 @@
+{
+  "event": "TTI_NSPLUS",
+  "systems": [7, 12],
+  "system_col": 4,
+  "min_format": "2.59",
+  "schema_version": "1.12.0",
+  "unknown_tail": "keep",
+  "context_count": 0,
+  "header": [
+    {
+      "col": 5,
+      "code": "tti.frame_idx",
+      "label": "Source frame index",
+      "type": "int",
+      "unit": "index",
+      "agg": "last",
+      "range": [0, null],
+      "proof": "NS+8 qbt-core nmf_writer.rs tti_nsplus() parameter 1",
+      "category": "allocation_mcs"
+    },
+    {
+      "col": 6,
+      "code": "tti.sfn",
+      "label": "LTE system frame number",
+      "type": "int",
+      "unit": "SFN",
+      "agg": "last",
+      "range": [0, 4095],
+      "proof": "NS+8 qbt-core nmf_writer.rs tti_nsplus() parameter 2; phy_lte_b173_v48.rs 12-bit frame_num",
+      "category": "allocation_mcs"
+    },
+    {
+      "col": 7,
+      "code": "tti.subfn",
+      "label": "LTE subframe index",
+      "type": "int",
+      "unit": "subframe",
+      "agg": "last",
+      "range": [0, 15],
+      "proof": "NS+8 qbt-core nmf_writer.rs tti_nsplus() parameter 3; phy_lte_b173_v48.rs low nibble",
+      "category": "allocation_mcs"
+    },
+    {
+      "col": 8,
+      "code": "tti.carrier",
+      "label": "Serving carrier index",
+      "type": "int",
+      "unit": "index",
+      "agg": "dominant",
+      "range": [0, 255],
+      "proof": "NS+8 qbt-core nmf_writer.rs tti_nsplus() parameter 4",
+      "category": "carrier_aggregation"
+    },
+    {
+      "col": 9,
+      "code": "tti.rnti",
+      "label": "Temporary radio network identifier",
+      "type": "int",
+      "unit": "RNTI",
+      "agg": "dominant",
+      "range": [0, 65535],
+      "metric": false,
+      "dimension": true,
+      "proof": "NS+8 qbt-core nmf_writer.rs tti_nsplus() parameter 5",
+      "category": "terminal_cell"
+    },
+    {
+      "col": 10,
+      "code": "tti.mcs",
+      "label": "PDSCH MCS index per transport block",
+      "type": "int",
+      "unit": "MCS",
+      "agg": "mean",
+      "range": [0, 31],
+      "proof": "NS+8 qbt-core nmf_writer.rs tti_nsplus() parameter 6; phy_lte_b173_v48.rs I_MCS",
+      "category": "allocation_mcs"
+    },
+    {
+      "col": 11,
+      "code": "tti.prb",
+      "label": "Scheduled physical resource blocks",
+      "type": "int",
+      "unit": "PRB",
+      "agg": "mean",
+      "range": [0, 255],
+      "proof": "NS+8 qbt-core nmf_writer.rs tti_nsplus() parameter 7",
+      "category": "allocation_mcs"
+    },
+    {
+      "col": 12,
+      "code": "tti.tbs_bytes",
+      "label": "Transport block size",
+      "type": "int",
+      "unit": "byte",
+      "agg": "sum",
+      "range": [0, 16383],
+      "proof": "NS+8 qbt-core nmf_writer.rs tti_nsplus() parameter 8; phy_lte_b173_v48.rs 14-bit TB size in bytes",
+      "category": "throughput_layers"
+    },
+    {
+      "col": 13,
+      "code": "tti.crc_ok",
+      "label": "Transport block CRC result",
+      "type": "int",
+      "unit": "boolean",
+      "agg": "dominant",
+      "range": [0, 1],
+      "enum": {"0": "FAIL", "1": "OK"},
+      "proof": "NS+8 qbt-core nmf_writer.rs tti_nsplus(): crc_ok serialised as 1/0",
+      "category": "link_quality"
+    },
+    {
+      "col": 14,
+      "code": "tti.harq_id",
+      "label": "HARQ process identifier",
+      "type": "int",
+      "unit": "id",
+      "agg": "dominant",
+      "range": [0, 255],
+      "proof": "NS+8 qbt-core nmf_writer.rs tti_nsplus() parameter 10",
+      "category": "allocation_mcs"
+    },
+    {
+      "col": 15,
+      "code": "tti.rv",
+      "label": "HARQ redundancy version",
+      "type": "int",
+      "unit": "RV",
+      "agg": "dominant",
+      "range": [0, 3],
+      "enum": {"0": "RV0", "1": "RV1", "2": "RV2", "3": "RV3"},
+      "proof": "NS+8 qbt-core nmf_writer.rs tti_nsplus() parameter 11; phy_lte_b173_v48.rs RV domain",
+      "category": "allocation_mcs"
+    },
+    {
+      "col": 16,
+      "code": "tti.rat",
+      "label": "Radio access technology",
+      "type": "str",
+      "unit": "enum",
+      "agg": "dominant",
+      "enum": {"LTE": "LTE", "NR": "NR"},
+      "metric": false,
+      "dimension": true,
+      "proof": "NS+8 qbt-core nmf_writer.rs tti_nsplus() parameter 12",
+      "category": "terminal_cell"
+    }
+  ],
+  "groups": []
+}

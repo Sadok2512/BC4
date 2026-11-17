@@ -52,6 +52,13 @@ def _table_group_key(metric, item, second, *, table_only=False):
     Non-table analysis keeps its historical buckets because graphs and
     histograms intentionally aggregate ordinary metrics by second.
     """
+    # TTI_NSPLUS is already one evidence row per transport block. Collapsing
+    # it into the ordinary one-second measurements row destroys the promised
+    # millisecond sampling and hides two-codeword observations. Keep the
+    # canonical capture sequence as the raw table identity; equal timestamps
+    # remain equal and no missing subframe is synthesized.
+    if table_only and metric.get('native_tti'):
+        return (item['seq'], None, None)
     if table_only:
         return (second, None, None)
     physical = bool(metric.get('cell_type_filter')) and metric.get('event') == 'CELLMEAS'
@@ -96,7 +103,8 @@ CATEGORIES = {
  'throughput_layers':'Throughput by layer', 'link_quality':'Link quality', 'allocation_mcs':'Allocation & MCS',
  'csi':'CSI', 'mimo_port':'MIMO by port', 'ul_power':'UL power', 'voice':'Voice',
  'services':'Services', 'position':'Position', 'signalling_states':'Events',
- 'session':'Capture context', 'terminal_cell':'Capture context', 'undocumented':'Undocumented'}
+ 'session':'Capture context', 'terminal_cell':'Capture context', 'tti':'TTI 1 ms',
+ 'undocumented':'Undocumented'}
 FIELD_LABELS={'plaid_mcs0':'MCS CW0 (DL)','plaid_mcs1':'MCS CW1 (DL)','plaiu_mcs0':'MCS CW0 (UL)',
  # 0.74.7 — labels manquants côté YAML, override explicite ici (plus simple
  # qu'un sweep des schemas/*.yaml). Les codes sont ceux de source_column.
@@ -192,7 +200,7 @@ def definitions():
             cell_scoped=scoped,cells=[],cell_options=[],attributes=[],proof='documented',proof_ref=f['proof'],
             decoder_version=DECODER_VERSION,n_in_project=0,available=True,reason=english_text(s.get('cell_scope_reason')),
             alias_of=ALIASES.get(code),agg=f.get('agg'),weighted=bool(f.get('weight')),sql=m.sql,
-            enum_values=_enum_values)
+            enum_values=_enum_values,native_tti=f['event']=='TTI_NSPLUS')
     # Direct leaves use the same decoder schema metadata as evt_EVENT~attr,
     # but expose the catalog's stable field code without an artificial event
     # wrapper.  Repeated LOCK values keep set_index in attributes.

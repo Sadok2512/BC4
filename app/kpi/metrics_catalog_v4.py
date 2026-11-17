@@ -605,6 +605,134 @@ def _ancestors(nodes_by_id: dict, start_id: str) -> set[str]:
     return out
 
 
+def _append_tti_nsplus_metrics(
+    db: Session,
+    project_id: str,
+    capture_ids: tuple[str, ...],
+    nodes_by_id: dict[str, dict],
+    nodes_out: list[dict],
+    metrics_out: list[dict],
+    siblings_counter: dict[str | None, int],
+) -> None:
+    """Expose the documented NS+8 per-TB extension without second bucketing.
+
+    Deep captures read their typed raw rows; Light captures read compact
+    native JSON. The branches are disjoint by ``nmf_capture.decode_level``,
+    so compatibility projections cannot duplicate an observation.
+    """
+    from app.kpi.metrics_v3 import definitions
+    from app.nmf_decoder.schema import fields as decoder_fields
+
+    declared = {
+        code: field for code, field in decoder_fields().items()
+        if field.get("event") == "TTI_NSPLUS"
+        and field.get("metric") is not False
+        and field.get("agg") is not None
+    }
+    if not declared:
+        return
+    params = {"pid": project_id, "captures": list(capture_ids)}
+    scope = " AND d.capture_id=ANY(:captures)" if capture_ids else ""
+    event_count = int(db.execute(text(f"""
+        SELECT COALESCE(SUM(n),0) FROM (
+          SELECT COUNT(*)::bigint AS n
+          FROM nmf_event_deep d JOIN nmf_capture c USING(project_id,capture_id)
+          WHERE d.project_id=:pid AND c.decode_level='deep'
+            AND d.event_code='TTI_NSPLUS'{scope}
+          UNION ALL
+          SELECT COUNT(*)::bigint AS n
+          FROM nmf_event_light_native d JOIN nmf_capture c USING(project_id,capture_id)
+          WHERE d.project_id=:pid AND c.decode_level='light'
+            AND d.event_code='TTI_NSPLUS'{scope}
+        ) observed
+    """), params).scalar() or 0)
+    if event_count == 0:
+        return
+
+    parent_id = "cat_LTE_allocation_mcs"
+    if not any(node.get("node_id") == parent_id for node in nodes_out):
+        baked = nodes_by_id.get(parent_id)
+        if baked:
+            nodes_out.append(dict(
+                node_id=parent_id, parent_id=baked.get("parent_id"), order=0,
+                node_type="category", label=baked.get("label") or "Allocation & MCS",
+                event=None, source_column=None, metric_id=None, display_code=None,
+                cell=None, cell_label=None, cell_system=None, technology="LTE",
+                unit="", analytics_tab=None, availability_status=None, n=0,
+                proof=None, selectable=False, reason=None, kind=None,
+            ))
+    if not any(node.get("node_id") == parent_id for node in nodes_out):
+        return
+
+    event_id = "ev_tti_nsplus"
+    event_order = siblings_counter.get(parent_id, 0)
+    siblings_counter[parent_id] = event_order + 1
+    nodes_out.append(dict(
+        node_id=event_id, parent_id=parent_id, order=event_order,
+        node_type="event", label="TTI_NSPLUS · 1 ms", event="TTI_NSPLUS",
+        source_column=None, metric_id=None, display_code=None, cell=None,
+        cell_label=None, cell_system="LTE", technology="LTE", unit="",
+        analytics_tab=None, availability_status="available", n=event_count,
+        proof="NS+8 qbt-core nmf_writer.rs::tti_nsplus", selectable=False,
+        reason=None, kind=None,
+    ))
+
+    defs = definitions()
+    for field_index, (code, field) in enumerate(sorted(
+        declared.items(), key=lambda item: item[1].get("col", 0)
+    )):
+        metric = defs.get(code)
+        if metric is None or not code.replace("_", "").isalnum():
+            continue
+        count = int(db.execute(text(f"""
+            SELECT COALESCE(SUM(n),0) FROM (
+              SELECT COUNT(*) FILTER (WHERE d.{code} IS NOT NULL)::bigint AS n
+              FROM nmf_event_deep d JOIN nmf_capture c USING(project_id,capture_id)
+              WHERE d.project_id=:pid AND c.decode_level='deep'
+                AND d.event_code='TTI_NSPLUS'{scope}
+              UNION ALL
+              SELECT COUNT(*) FILTER (WHERE d.values ? '{code}')::bigint AS n
+              FROM nmf_event_light_native d JOIN nmf_capture c USING(project_id,capture_id)
+              WHERE d.project_id=:pid AND c.decode_level='light'
+                AND d.event_code='TTI_NSPLUS'{scope}
+            ) observed
+        """), params).scalar() or 0)
+        order = siblings_counter.get(event_id, 0)
+        siblings_counter[event_id] = order + 1
+        kind = "KPI_CATEGORICAL" if metric["kind"] == "categorical" else "KPI"
+        available = count > 0
+        proof = field.get("proof") or "NS+8 TTI_NSPLUS extension contract"
+        nodes_out.append(dict(
+            node_id=f"lf_{code}", parent_id=event_id, order=order,
+            label=metric["label"], display_code=code,
+            enum_values=metric.get("enum_values") or {},
+            note="Sparse per-transport-block evidence; no missing TTI synthesis",
+            source=None, node_type="leaf", analytics_tab="metrics",
+            metric_id=code, selection=code, event="TTI_NSPLUS",
+            field_idx=field_index, source_column=code, unit=metric["unit"],
+            cell=None, technology="LTE", metric_label=metric["label"],
+            cell_label=None, cell_system="LTE", raw_cell_type=None,
+            cell_relation=None, technical_label=None,
+            availability_status="available" if available else "no_data",
+            n=count, proof=proof, selectable=available,
+            reason=None if available else "No TTI_NSPLUS value in the current scope",
+            kind=kind,
+        ))
+        metrics_out.append(dict(
+            code=code, display_code=code, label=metric["label"],
+            unit=metric["unit"], source_table="nmf_event_deep",
+            source_tables=["nmf_event_deep", "nmf_event_light_native"],
+            source_column=code, tech=metric["tech"], kind=metric["kind"],
+            enum_values=metric.get("enum_values") or {}, n_in_project=count,
+            decoder_version=DECODER_VERSION, event="TTI_NSPLUS",
+            category_label="TTI 1 ms", cell_scoped=False, cells=[],
+            cell_options=[], attributes=[], proof="documented", available=available,
+            reason=None if available else "No TTI_NSPLUS value in the current scope",
+            alias_of=None, event_group=None, unproven_cells=[], root_notices=[],
+            event_code="TTI_NSPLUS", proof_ref=proof, category="tti",
+        ))
+
+
 def build_catalog_v4(
     db: Session,
     project_id: str,
@@ -2073,6 +2201,11 @@ def build_catalog_v4(
                 proof_ref="nmf_event_deep per-capture aggregation",
                 category="mobility",
             ))
+
+    _append_tti_nsplus_metrics(
+        db, project_id, capture_ids, nodes_by_id, nodes_out, metrics_out,
+        siblings_counter,
+    )
 
     from app.kpi.display_names import apply_display_name
     from app.kpi.simple_tree import apply_simple_metadata, simple_tree_payload

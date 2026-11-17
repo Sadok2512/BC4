@@ -9710,3 +9710,14 @@ du front `franco-focus-forge` et lancer **front + back** de bout en bout.
   projections d'un import réussi.
 - Empêche le plan sous-estimé en boucles imbriquées qui maintenait
   `/metrics/table` en chargement pendant plusieurs minutes après v028.
+
+## 0.135.0 — TTI_NSPLUS à la milliseconde — 2026-11-17 (BC4)
+
+- Décode le contrat NS+8 `TTI_NSPLUS` per-transport-block : SFN/subframe,
+  carrier, MCS, PRB, TBS, CRC, HARQ et RV ; RNTI/RAT restent documentés mais
+  ne sont pas exposés comme métriques.
+- Conserve les observations TTI brutes dans Graph et Table sans les rabattre
+  dans une unique ligne par seconde et sans synthétiser les sous-trames
+  absentes.
+- Ajoute dynamiquement la branche `TTI_NSPLUS · 1 ms` au catalogue lorsqu'une
+  capture du scope contient l'extension.
