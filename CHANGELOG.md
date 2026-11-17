@@ -9689,3 +9689,14 @@ du front `franco-focus-forge` et lancer **front + back** de bout en bout.
 - Documented string fields are retained as strings; only undocumented strings
   are hashed. Metrics projections therefore expose the same values as the NMF
   source and preserve zero-valued measurements.
+## 0.134.6 (security) — rotation des secrets d'exécution — 2026-11-17 (BC4)
+
+- Remplace l'inspection directe de `ps` par `scripts/safe_process_inspect.py` :
+  les affectations sensibles, options d'authentification et identifiants dans
+  les URL sont masqués en mémoire avant toute sortie.
+- Ajoute `scripts/rotate_runtime_secrets.py`, protégé par `DEPLOY_LOCK`, pour
+  renouveler transactionnellement les identifiants PostgreSQL, le secret JWT
+  et la clé de chiffrement LLM. Une éventuelle clé d'API LLM stockée est
+  rechiffrée sans être exposée.
+- Le secret de chiffrement LLM n'a plus de valeur de repli dans le compose de
+  production : il doit provenir du fichier `.env` mode 600.
