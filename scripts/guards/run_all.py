@@ -66,13 +66,13 @@ def main(argv: list[str] | None = None) -> int:
         ("G32", [python, str(LEGACY / "G32_procedures_vs_event_pair.py"), "--pid", args.pid]),
         ("G51", [
             python, str(LEGACY / "G51_metrics_catalog_regression.py"),
-            "--base-url", args.base_url, "--token", args.token,
+            "--base-url", args.base_url,
             "--project", args.pid, "--capture", args.capture,
             "--workers", "1", "--timeout", "120",
         ]),
         ("G56", [
             python, str(ROOT / "scripts" / "guards" / "G56_proven_links.py"),
-            "--base-url", args.base_url, "--token", args.token,
+            "--base-url", args.base_url,
             "--project", args.pid,
             "--proven-capture", G56_PROVEN_CAPTURE,
             "--probable-capture", args.capture,

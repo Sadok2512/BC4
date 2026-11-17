@@ -9700,3 +9700,6 @@ du front `franco-focus-forge` et lancer **front + back** de bout en bout.
   rechiffrée sans être exposée.
 - Le secret de chiffrement LLM n'a plus de valeur de repli dans le compose de
   production : il doit provenir du fichier `.env` mode 600.
+- Le harness post-déploiement ne transmet plus son jeton aux gardes G51/G56
+  par argument de processus ; celles-ci le lisent uniquement depuis leur
+  environnement.
