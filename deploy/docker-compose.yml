@@ -52,7 +52,7 @@ services:
       start_period: 20s
 
   api:
-    image: bc4-api:0.133.6-5c664f6
+    image: bc4-api:0.134.6-security
     build: ./bc4-back
     restart: unless-stopped
     environment:
@@ -79,7 +79,7 @@ services:
       # marche mais PUT d'une api_key renvoie 400 LLM_CRYPTO (fail-fast).
       # ⚠ Changer cette clé rend ILLISIBLES les ciphers déjà stockés
       # (procédure de rotation : PUT api_key:"" puis PUT nouvelle clé).
-      BC4_LLM_SECRET_KEY: ${BC4_LLM_SECRET_KEY:-uhvf4VfgIGAG68ug0E-vtXK1J0v1i5Dq21ezW-m3Hys=}
+      BC4_LLM_SECRET_KEY: ${BC4_LLM_SECRET_KEY:?BC4_LLM_SECRET_KEY required in .env}
       # Chemin où `app/ingest/nmf.py::resolve_decoder` cherche `bc4_decoder.py`.
       # Le décodeur est un artefact SÉPARÉ (pas copié dans l'image) : bind-mount
       # read-only pour qu'un bump du décodeur ne force pas un rebuild de l'API.
@@ -130,7 +130,7 @@ services:
       retries: 20
 
   import-worker:
-    image: bc4-api:0.133.6-5c664f6
+    image: bc4-api:0.134.6-security
     command: python -m app.services.import_worker
     restart: unless-stopped
     environment:

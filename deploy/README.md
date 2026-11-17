@@ -29,6 +29,7 @@ pour fail-fast au démarrage) :
 | `POSTGRES_PASSWORD` | Mot de passe PG du rôle `bc4` (généré via `secrets.token_urlsafe(32)`). |
 | `BC4_PGPW` | Même valeur que `POSTGRES_PASSWORD`, utilisée dans la construction de `BC4_DSN`. |
 | `BC4_JWT_SECRET` | Secret JWT (généré via `secrets.token_urlsafe(64)`). |
+| `BC4_LLM_SECRET_KEY` | Clé Fernet obligatoire, générée et conservée uniquement dans `.env`. |
 | `BC4_ADMIN_PASSWORD` | Requis au premier démarrage d'une base vide ; jamais de valeur par défaut. Une fois l'admin créé, il peut être omis et son hash reste inchangé. |
 
 Variables optionnelles (défauts fournis) :
@@ -39,46 +40,32 @@ Variables optionnelles (défauts fournis) :
 | `BC4_JWT_TTL_MIN` | 60 min |
 | `BC4_ADMIN_EMAIL` | `admin@bc4.local` (identité recherchée par le seed) |
 | `BC4_DEMO_EMAIL` / `BC4_DEMO_PASSWORD` / `BC4_DEMO_ROLE` | compte démo (vide par défaut) |
-| `BC4_LLM_SECRET_KEY` | clé Fernet pour chiffrer `settings_llm.api_key_cipher` |
 | `BC4_SEED_DEMO` | 0 par défaut (0.89.4+) ; mettre `1` pour seed démo complet |
 
 Voir `deploy/.env.example` pour un modèle (valeurs factices).
 
 ## Rotation des secrets
 
-### Rotation `POSTGRES_PASSWORD` + `BC4_PGPW`
+La rotation groupée renouvelle `POSTGRES_PASSWORD` / `BC4_PGPW`,
+`BC4_JWT_SECRET` et `BC4_LLM_SECRET_KEY`. Elle rechiffre aussi une éventuelle
+clé d'API LLM en base. Aucune valeur ne transite dans les arguments de
+processus ni dans la sortie standard.
 
 ```bash
-# Génère sans jamais afficher la valeur en clair
-NEW_PGPW="$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')"
-# ALTER ROLE via psql -v (interpolation sûre)
-printf '%s\n' "ALTER ROLE bc4 WITH PASSWORD :'pw';" | \
-  docker exec -i bc4-db-1 psql -v ON_ERROR_STOP=1 -U bc4 -d postgres -v pw="$NEW_PGPW"
-# Écrire dans .env (chmod 600)
-umask 077
-grep -v "^POSTGRES_PASSWORD=\|^BC4_PGPW=" /home/devmat/BC4/.env > /tmp/.env.new
-echo "POSTGRES_PASSWORD=$NEW_PGPW" >> /tmp/.env.new
-echo "BC4_PGPW=$NEW_PGPW" >> /tmp/.env.new
-mv /tmp/.env.new /home/devmat/BC4/.env
-chmod 600 /home/devmat/BC4/.env
-unset NEW_PGPW
-# docker compose up -d api import-worker  # recharge BC4_DSN
+/home/devmat/BC4/bc4-back/.venv/bin/python \
+  /home/devmat/BC4/bc4-back/scripts/rotate_runtime_secrets.py \
+  --env-file /home/devmat/BC4/.env \
+  --compose-file /home/devmat/BC4/docker-compose.yml \
+  --lock-file /home/devmat/BC4/DEPLOY_LOCK
+docker compose up -d --no-build api import-worker
 ```
 
-### Rotation `BC4_JWT_SECRET`
-
-Rotater le JWT invalide toutes les sessions utilisateur en cours — à
-communiquer avant.
+La rotation JWT invalide toutes les sessions utilisateur en cours — à
+communiquer avant l'intervention.
 
 ```bash
-NEW_JWT="$(python3 -c 'import secrets; print(secrets.token_urlsafe(64))')"
-umask 077
-grep -v "^BC4_JWT_SECRET=" /home/devmat/BC4/.env > /tmp/.env.new
-echo "BC4_JWT_SECRET=$NEW_JWT" >> /tmp/.env.new
-mv /tmp/.env.new /home/devmat/BC4/.env
-chmod 600 /home/devmat/BC4/.env
-unset NEW_JWT
-docker compose up -d api import-worker
+# Inspection de processus : jamais de `ps ... | grep/rg` direct.
+scripts/safe_process_inspect.py --match 'import_worker|uvicorn'
 ```
 
 ## Rebuild + redémarrage
