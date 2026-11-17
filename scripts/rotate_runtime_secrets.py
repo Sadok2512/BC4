@@ -137,7 +137,26 @@ def main() -> int:
                     raise RuntimeError("stored LLM API key cannot be decrypted") from exc
                 new_cipher = Fernet(new_llm).encrypt(plaintext).decode()
                 cipher_state = "reencrypted"
-            cursor.execute("ALTER ROLE bc4 PASSWORD %s", (new_pg,))
+            # PostgreSQL utility statements do not accept a bind placeholder
+            # in PASSWORD position.  Keep the value out of the SQL text (and
+            # therefore statement logs) by binding it into a transaction-local
+            # custom setting, then consuming it from a fixed DO block.
+            cursor.execute(
+                "SELECT set_config('bc4.rotation_password', %s, true)",
+                (new_pg,),
+            )
+            cursor.execute(
+                """
+                DO $rotation$
+                BEGIN
+                    EXECUTE format(
+                        'ALTER ROLE bc4 PASSWORD %L',
+                        current_setting('bc4.rotation_password')
+                    );
+                END
+                $rotation$
+                """
+            )
             if row and cipher:
                 cursor.execute(
                     "UPDATE settings_llm SET api_key_cipher = %s WHERE id = 1",
