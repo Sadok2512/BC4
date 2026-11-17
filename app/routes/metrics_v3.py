@@ -77,7 +77,7 @@ def _intrinsic_metric_rat(metric: dict) -> str | None:
     aggregate context RAT even though the selected leaf itself is proven LTE
     or NR.
     """
-    system=(metric.get('cell_display') or {}).get('system')
+    system=(metric.get('cell_display') or {}).get('system') or metric.get('intrinsic_rat')
     return system if system in {'LTE','NR'} else None
 
 

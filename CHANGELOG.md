@@ -1,3 +1,10 @@
+## 0.135.1 — Table TTI avec filtre LTE — 2026-11-17 (BC4)
+
+- Marque le contrat `TTI_NSPLUS` courant comme intrinsèquement LTE afin que
+  le filtre global `rat=LTE` ne supprime plus ses lignes, dont le contexte
+  radio n'est pas projeté sur la même séquence.
+- Conserve le filtre générique pour toute métrique sans preuve RAT explicite.
+
 ## 0.134.5 (patch) — PHRATE analytique v025 — 2026-11-17 (BC4)
 
 - Résout les feuilles PHRATE historiques sans `field_system` depuis leur

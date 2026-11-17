@@ -58,6 +58,17 @@ def test_intrinsic_rat_keeps_only_requested_systems():
     assert not _lean_table_allowed(True, selected, filters)
 
 
+def test_intrinsic_rat_keeps_tti_rows_under_browser_lte_filter():
+    selected, filters = _apply_intrinsic_rat(
+        [{"code": "tti_mcs", "native_tti": True, "intrinsic_rat": "LTE"}],
+        {"capture_id": "capture", "rat": ["LTE"]},
+    )
+
+    assert [metric["code"] for metric in selected] == ["tti_mcs"]
+    assert filters == {"capture_id": "capture"}
+    assert _lean_table_allowed(True, selected, filters)
+
+
 def test_intrinsic_rat_does_not_remove_unproven_or_other_filters():
     untyped = [{"event": "CHI", "base_code": "chi_ch", "cell_display": None}]
     original = {"capture_id": "capture", "rat": ["LTE", "NR"]}

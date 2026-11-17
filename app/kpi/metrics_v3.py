@@ -200,7 +200,8 @@ def definitions():
             cell_scoped=scoped,cells=[],cell_options=[],attributes=[],proof='documented',proof_ref=f['proof'],
             decoder_version=DECODER_VERSION,n_in_project=0,available=True,reason=english_text(s.get('cell_scope_reason')),
             alias_of=ALIASES.get(code),agg=f.get('agg'),weighted=bool(f.get('weight')),sql=m.sql,
-            enum_values=_enum_values,native_tti=f['event']=='TTI_NSPLUS')
+            enum_values=_enum_values,native_tti=f['event']=='TTI_NSPLUS',
+            intrinsic_rat='LTE' if f['event']=='TTI_NSPLUS' else None)
     # Direct leaves use the same decoder schema metadata as evt_EVENT~attr,
     # but expose the catalog's stable field code without an artificial event
     # wrapper.  Repeated LOCK values keep set_index in attributes.
